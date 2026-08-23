@@ -30,11 +30,13 @@ If you have a **third** site, add it under `apps/<name>` and create another Verc
 
 ## Cinch Seed admin
 
+Primary domain: **[cinchseed.com](https://cinchseed.com)**
+
 `/admin` on Cinch is the Seed studio:
 - Agent roster with API key status (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`)
 - Create Seed projects and invite specialists
 - Project manager assigns tasks by skill + cost
-- Activity feed, module library, and embed snippet for site health/rebuild
+- Activity feed, module library, and embed snippet hosted at `https://cinchseed.com/v1/watch.js`
 
 ## Detective Shopper admin
 

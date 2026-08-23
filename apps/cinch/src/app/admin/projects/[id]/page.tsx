@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgent } from "@/lib/agents";
+import { seedEmbedSnippet } from "@/lib/domain";
 import { getProjectSnapshot } from "../../actions";
 import { ProjectControls } from "./project-controls";
 
@@ -24,7 +25,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
   if (!project) notFound();
 
   const pm = getAgent(project.projectManagerId);
-  const embedSnippet = `<script src="https://seed.cinch.app/v1/watch.js" data-seed="${project.id}" async></script>`;
+  const embedSnippet = seedEmbedSnippet(project.id);
 
   return (
     <div className="min-h-full bg-background text-foreground">

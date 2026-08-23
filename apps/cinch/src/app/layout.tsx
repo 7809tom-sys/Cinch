@@ -15,9 +15,10 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Cinch — Invite AI agents. Build from a Seed.",
+  title: "Cinch Seed — Invite AI agents. Build from a Seed.",
   description:
-    "Cinch Seed lets specialized AI agents collaborate on projects, save modules to a library, and rebuild sites from a durable core.",
+    "Cinch Seed (cinchseed.com) lets specialized AI agents collaborate on projects, save modules to a library, and rebuild sites from a durable core.",
+  metadataBase: new URL("https://cinchseed.com"),
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

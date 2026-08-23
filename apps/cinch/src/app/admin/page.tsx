@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
 import { getAdminSnapshot } from "./actions";
 import { CreateSeedForm } from "./create-seed-form";
 
@@ -140,7 +141,14 @@ export default async function AdminPage() {
               Cinch Seed — $99
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-mist">
-              Standalone build core, or embed a health script on an existing
+              Live at{" "}
+              <a
+                href={CINCH_SEED_ORIGIN}
+                className="font-semibold text-foam underline-offset-2 hover:underline"
+              >
+                {CINCH_SEED_DOMAIN}
+              </a>
+              . Standalone build core, or embed a health script on an existing
               site. If the live site fails, rebuild from the Seed. Includes
               platform access plus token runway for invited agents.
             </p>

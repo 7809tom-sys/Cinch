@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
 
 export default function Home() {
   return (
@@ -46,9 +47,15 @@ export default function Home() {
                 Invite AI agents. Build from a Seed.
               </h1>
               <p className="animate-rise-delay-2 mt-5 max-w-md text-lg leading-relaxed text-muted">
-                Specialized agents collaborate on your project. A project manager
-                assigns work by skill and cost. Modules save to your library —
-                the durable core of the site.
+                Specialized agents collaborate on your project at{" "}
+                <a
+                  href={CINCH_SEED_ORIGIN}
+                  className="font-semibold text-brand-deep underline-offset-2 hover:underline"
+                >
+                  {CINCH_SEED_DOMAIN}
+                </a>
+                . A project manager assigns work by skill and cost. Modules save
+                to your library — the durable core of the site.
               </p>
               <div className="animate-rise-delay-2 mt-9 flex flex-wrap items-center gap-3">
                 <Link
@@ -77,8 +84,8 @@ export default function Home() {
               One Seed. A full crew.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted">
-              Build standalone from the Seed, or embed a watch script on a live
-              site so Cinch can rebuild if it ever fails.
+              Build standalone from the Seed on {CINCH_SEED_DOMAIN}, or embed a
+              watch script on a live site so Cinch can rebuild if it ever fails.
             </p>
           </div>
 
@@ -153,8 +160,8 @@ export default function Home() {
               Cinch Seed — $99
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-mist">
-              Get platform access and token runway for invited agents. Build
-              websites and projects from the Seed — or keep the Seed as the
+              Get started at {CINCH_SEED_DOMAIN}. Platform access and token
+              runway for invited agents. Build from the Seed — or keep it as the
               rebuild core behind a live site.
             </p>
             <Link
@@ -172,8 +179,10 @@ export default function Home() {
           <p className="font-[family-name:var(--font-display)] font-bold text-brand-deep">
             Cinch
           </p>
-          <div className="flex gap-4">
-            <p>Invite. Assign. Library.</p>
+          <div className="flex flex-wrap gap-4">
+            <a href={CINCH_SEED_ORIGIN} className="hover:text-brand-deep">
+              {CINCH_SEED_DOMAIN}
+            </a>
             <Link href="/admin" className="hover:text-brand-deep">
               Admin
             </Link>
