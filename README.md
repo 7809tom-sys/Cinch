@@ -32,6 +32,10 @@ If you have a **third** site, add it under `apps/<name>` and create another Verc
 
 `/admin` on Detective Shopper lets you paste an affiliate API key. It is saved as `IMPACT_API_KEY` in a gitignored `.env.local` (see `apps/detective-shopper/.env.example`). On Vercel, set the same variable in the project’s Environment Variables. The page also links to Impact and Awin partner signup.
 
+## Recipe generator
+
+`/recipes` accepts scanned pantry items, calls Spoonacular (`findByIngredients` + recipe information), and shows matching recipes with ingredients and step-by-step instructions. Set `SPOONACULAR_API_KEY` in `.env.local` or Vercel.
+
 ## Scripts
 
 | Command | Description |

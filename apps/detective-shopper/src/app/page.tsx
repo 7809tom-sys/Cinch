@@ -12,6 +12,9 @@ export default function Home() {
             Detective Shopper
           </a>
           <nav className="flex items-center gap-6 text-sm font-medium text-mist">
+            <a href="/recipes" className="transition-colors hover:text-foam">
+              Recipes
+            </a>
             <a href="#method" className="transition-colors hover:text-foam">
               Method
             </a>
@@ -166,6 +169,9 @@ export default function Home() {
           </p>
           <div className="flex items-center gap-4">
             <p>Investigate before you buy.</p>
+            <a href="/recipes" className="transition-colors hover:text-foam">
+              Recipes
+            </a>
             <a href="/admin" className="transition-colors hover:text-foam">
               Admin
             </a>
