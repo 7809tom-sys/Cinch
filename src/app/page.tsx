@@ -22,7 +22,7 @@ export default function Home() {
           </a>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
             <a href="#team" className="transition-colors hover:text-brand-deep">
-              Your team
+              All-stars
             </a>
             <a
               href="#protect"
@@ -82,7 +82,7 @@ export default function Home() {
                   href="#team"
                   className="inline-flex h-12 items-center justify-center rounded-md px-4 text-sm font-bold text-brand-deep transition-colors hover:text-brand"
                 >
-                  Meet your agents →
+                  Meet the all-stars →
                 </a>
               </div>
             </div>
@@ -92,15 +92,15 @@ export default function Home() {
         <section id="team" className="bg-foam px-6 py-24 sm:px-8">
           <div className="mx-auto max-w-6xl">
             <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-              YOUR TEAM OF AGENTS
+              YOUR ALL-STAR GROUP OF AI AGENTS
             </p>
             <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
-              Hey — your crew is ready. Here&apos;s who they are, and what they
-              excel at.
+              Meet your all-star group of AI agents — and what each one excels
+              at.
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
-              With your API keys in place, Seed staffs the build with this team.
-              Each agent owns a lane so the site gets built, updated, and
+              With your API keys in place, Seed puts this all-star group on the
+              job. Each agent owns a lane so the site gets built, updated, and
               protected without you juggling every task.
             </p>
 
@@ -239,14 +239,15 @@ export default function Home() {
               Seed — $99
             </h2>
             <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-muted">
-              Plant it on {CINCH_SEED_DOMAIN}. Your agent team builds the site,
-              updates it live, and protects it from outside the live server.
+              Plant it on {CINCH_SEED_DOMAIN}. Your all-star group of AI agents
+              builds the site, updates it live, and protects it from outside the
+              live server.
             </p>
             <Link
               href="/admin"
               className="mt-10 inline-flex h-14 items-center justify-center rounded-md bg-brand-deep px-8 text-base font-bold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand"
             >
-              Meet the team and start
+              Meet the all-stars and start
             </Link>
             <p className="mt-5 text-sm text-muted">
               <a
