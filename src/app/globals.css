@@ -1,14 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eef6f2;
-  --foreground: #13221f;
-  --brand: #1f6b5c;
-  --brand-deep: #0f3d35;
-  --foam: #f7fbf9;
-  --mist: #d5e9e0;
-  --accent: #3d9b7a;
-  --muted: #4d6560;
+  /* Warm paper + living teal + sun gold — not flat green print */
+  --background: #f3efe6;
+  --foreground: #1a1f1c;
+  --brand: #1a7a6d;
+  --brand-deep: #0b2e2a;
+  --foam: #fffaf2;
+  --mist: #e7ddd0;
+  --accent: #e8a54b;
+  --accent-deep: #c47a2c;
+  --muted: #5a635e;
+  --leaf: #3d9b7a;
 }
 
 @theme inline {
@@ -19,7 +22,9 @@
   --color-foam: var(--foam);
   --color-mist: var(--mist);
   --color-accent: var(--accent);
+  --color-accent-deep: var(--accent-deep);
   --color-muted: var(--muted);
+  --color-leaf: var(--leaf);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
 }
@@ -40,14 +45,14 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent) 35%, white);
+  background: color-mix(in srgb, var(--accent) 45%, white);
   color: var(--brand-deep);
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(22px);
   }
   to {
     opacity: 1;
@@ -57,41 +62,65 @@ body {
 
 @keyframes drift {
   from {
-    transform: scale(1.04) translate3d(0, 0, 0);
+    transform: scale(1.06) translate3d(1%, 0, 0);
   }
   to {
-    transform: scale(1) translate3d(0, -1.5%, 0);
+    transform: scale(1) translate3d(-0.5%, -1.2%, 0);
   }
 }
 
-@keyframes shimmer {
+@keyframes pulse-gold {
   0%,
   100% {
-    opacity: 0.45;
+    opacity: 0.35;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.85;
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes sprout {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-rise {
-  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-rise-delay {
-  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
 }
 
 .animate-rise-delay-2 {
-  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+  animation: rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both;
+}
+
+.animate-sprout {
+  animation: sprout 1s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both;
 }
 
 .hero-media {
-  animation: drift 14s ease-in-out alternate infinite;
+  animation: drift 16s ease-in-out alternate infinite;
 }
 
 .hero-glow {
-  animation: shimmer 6s ease-in-out infinite;
+  animation: pulse-gold 5.5s ease-in-out infinite;
+}
+
+.grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.07;
+  mix-blend-mode: multiply;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -102,6 +131,7 @@ body {
   .animate-rise,
   .animate-rise-delay,
   .animate-rise-delay-2,
+  .animate-sprout,
   .hero-media,
   .hero-glow {
     animation: none;
