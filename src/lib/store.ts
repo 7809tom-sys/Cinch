@@ -42,24 +42,41 @@ type StoreShape = {
   projects: SeedProject[];
 };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
+const DATA_DIR =
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join("/tmp", "cinch-seed-data")
+    : path.join(process.cwd(), ".data");
 const STORE_PATH = path.join(DATA_DIR, "seed-projects.json");
 
+let memoryStore: StoreShape | null = null;
+
 async function ensureStore(): Promise<StoreShape> {
+  if (memoryStore) return memoryStore;
+
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
-    return JSON.parse(raw) as StoreShape;
+    memoryStore = JSON.parse(raw) as StoreShape;
+    return memoryStore;
   } catch {
-    const empty: StoreShape = { projects: [] };
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(STORE_PATH, JSON.stringify(empty, null, 2), "utf8");
-    return empty;
+    memoryStore = { projects: [] };
+    try {
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      await fs.writeFile(STORE_PATH, JSON.stringify(memoryStore, null, 2), "utf8");
+    } catch {
+      // Read-only hosts: keep working from memory for this instance.
+    }
+    return memoryStore;
   }
 }
 
 async function writeStore(store: StoreShape): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  memoryStore = store;
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
+  } catch {
+    // Persist in memory only when the filesystem is not writable.
+  }
 }
 
 function now() {
