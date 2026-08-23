@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
+import { upsertLibraryModule } from "./module-library";
 import {
   getProject,
   now,
@@ -115,11 +116,24 @@ export async function advanceAssignedWork(
       `${agent?.name ?? "Agent"} finished “${task.title}” and saved a module to the library.`,
       task.assigneeId,
     );
-    project.modules.unshift({
+    const moduleEntry = {
       id: randomUUID(),
       title: task.title,
       savedAt: now(),
       fromTaskId: task.id,
+    };
+    project.modules.unshift(moduleEntry);
+
+    // Shared library: every finished modular is available for future Seeds.
+    await upsertLibraryModule({
+      title: task.title,
+      summary: task.detail,
+      skills: task.requiredSkills,
+      sourceProjectId: project.id,
+      sourceProjectName: project.name,
+      sourceTaskId: task.id,
+      // First customer funds creation; later Seeds reuse at 85% of (cost + merge).
+      originalCostUsd: 0,
     });
   }
 

@@ -212,9 +212,9 @@ export default async function AdminPage() {
               >
                 {CINCH_SEED_DOMAIN}
               </a>
-              . Standalone build core, or embed a health script on an existing
-              site. If the live site fails, rebuild from the Seed. Includes
-              platform access plus token runway for invited agents.
+              . We call it a Seed because it grows — watching critical tools,
+              pushing modular adaptations, and improving functionality,
+              efficiency, and customer care on the live site.
             </p>
           </div>
         </aside>

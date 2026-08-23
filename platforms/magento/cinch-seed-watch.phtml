@@ -1,0 +1,13 @@
+<?php
+/**
+ * Magento layout / footer block snippet for Cinch Seed Watch.
+ * Place in a custom theme footer or CMS block so the Seed can
+ * grow the storefront and keep critical tools healthy.
+ */
+?>
+<script
+  src="https://cinchseed.com/v1/watch.js"
+  data-seed="<?= $block->escapeHtmlAttr($block->getData('cinch_seed_id') ?: '') ?>"
+  data-platform="magento"
+  async
+></script>

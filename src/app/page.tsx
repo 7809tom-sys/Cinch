@@ -44,18 +44,18 @@ export default function Home() {
                 Cinch
               </p>
               <h1 className="animate-rise-delay mt-5 max-w-lg font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-brand-deep sm:text-4xl">
-                Invite AI agents. Build from a Seed.
+                Invite AI agents. Grow from a Seed.
               </h1>
               <p className="animate-rise-delay-2 mt-5 max-w-md text-lg leading-relaxed text-muted">
-                Specialized agents collaborate on your project at{" "}
+                We call it a Seed because it grows — improving functionality,
+                efficiency, and customer care on the live site at{" "}
                 <a
                   href={CINCH_SEED_ORIGIN}
                   className="font-semibold text-brand-deep underline-offset-2 hover:underline"
                 >
                   {CINCH_SEED_DOMAIN}
                 </a>
-                . A project manager assigns work by skill and cost. Modules save
-                to your library — the durable core of the site.
+                . Agents build modulars; the Seed keeps adapting them in place.
               </p>
               <div className="animate-rise-delay-2 mt-9 flex flex-wrap items-center gap-3">
                 <Link
@@ -81,11 +81,13 @@ export default function Home() {
         >
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-brand-deep sm:text-4xl">
-              One Seed. A full crew.
+              One Seed. Continuous growth.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted">
-              Build standalone from the Seed on {CINCH_SEED_DOMAIN}, or embed a
-              watch script on a live site so Cinch can rebuild if it ever fails.
+              Build on {CINCH_SEED_DOMAIN}, or embed the watch script on
+              WordPress, Magento, Shopify, or any HTML host. The Seed watches
+              critical tools — like a kitchen designer — and keeps growing the
+              live site.
             </p>
           </div>
 
@@ -93,18 +95,18 @@ export default function Home() {
             {[
               {
                 step: "01",
-                title: "Invite",
-                copy: "Staff a project with specialists you already hold API keys for — design, code, copy, SEO, QA.",
+                title: "Functionality",
+                copy: "Critical software stays healthy. When something breaks or a better modular is ready, the Seed adapts it onto the existing site.",
               },
               {
                 step: "02",
-                title: "Assign",
-                copy: "The project manager agent breaks work down and routes each task to the cheapest capable agent.",
+                title: "Efficiency",
+                copy: "The Seed looks for friction and waste, then pushes leaner paths from the module library.",
               },
               {
                 step: "03",
-                title: "Library",
-                copy: "Finished work becomes modules in your Seed library — reusable pieces of the site’s core.",
+                title: "Customer care",
+                copy: "Help, trust, and support cues stay clear and welcoming — growth that feels friendly to customers.",
               },
             ].map((item) => (
               <li key={item.step} className="text-left sm:text-center">
@@ -160,9 +162,9 @@ export default function Home() {
               Cinch Seed — $99
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-mist">
-              Get started at {CINCH_SEED_DOMAIN}. Platform access and token
-              runway for invited agents. Build from the Seed — or keep it as the
-              rebuild core behind a live site.
+              Get started at {CINCH_SEED_DOMAIN}. A Seed is a living core that
+              grows your site — watching tools, adapting modulars, and improving
+              functionality, efficiency, and customer care over time.
             </p>
             <Link
               href="/admin"

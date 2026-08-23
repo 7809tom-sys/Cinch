@@ -1,0 +1,297 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { randomUUID } from "crypto";
+import type { AgentSkill } from "./agents";
+import { moduleReuseFee } from "./pricing";
+
+export type LibraryModule = {
+  id: string;
+  /** Stable key used to dedupe/reuse across Seeds */
+  slug: string;
+  title: string;
+  summary: string;
+  skills: AgentSkill[];
+  sourceProjectId: string;
+  sourceProjectName: string;
+  sourceTaskId: string;
+  /** What the first customer effectively funded to create this modular */
+  originalCostUsd: number;
+  /** Account that funded creation — receives 8% credit on each reuse */
+  creatorAccountId: string;
+  /** Running credit balance earned from reuses (USD) */
+  creatorCreditBalanceUsd: number;
+  /** Lifetime credits issued from reuses (USD) */
+  creatorCreditEarnedUsd: number;
+  timesUsed: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreatorCreditLedgerEntry = {
+  id: string;
+  moduleId: string;
+  moduleTitle: string;
+  creatorAccountId: string;
+  reuseProjectId: string;
+  reuseFeeUsd: number;
+  creditUsd: number;
+  createdAt: string;
+};
+
+
+type LibraryStore = {
+  modules: LibraryModule[];
+  creditLedger: CreatorCreditLedgerEntry[];
+};
+
+const DATA_DIR =
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join("/tmp", "cinch-seed-data")
+    : path.join(process.cwd(), ".data");
+const LIBRARY_PATH = path.join(DATA_DIR, "module-library.json");
+
+let memory: LibraryStore | null = null;
+
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+async function ensureLibrary(): Promise<LibraryStore> {
+  if (memory) return memory;
+  try {
+    const raw = await fs.readFile(LIBRARY_PATH, "utf8");
+    memory = JSON.parse(raw) as LibraryStore;
+    memory.modules = memory.modules ?? [];
+    memory.creditLedger = memory.creditLedger ?? [];
+    return memory;
+  } catch {
+    memory = { modules: [], creditLedger: [] };
+    try {
+      await fs.mkdir(DATA_DIR, { recursive: true });
+      await fs.writeFile(LIBRARY_PATH, JSON.stringify(memory, null, 2), "utf8");
+    } catch {
+      // memory-only
+    }
+    return memory;
+  }
+}
+
+async function writeLibrary(store: LibraryStore): Promise<void> {
+  memory = store;
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(LIBRARY_PATH, JSON.stringify(store, null, 2), "utf8");
+  } catch {
+    // memory-only
+  }
+}
+
+export async function listLibraryModules(): Promise<LibraryModule[]> {
+  const store = await ensureLibrary();
+  return [...store.modules].sort((a, b) =>
+    b.updatedAt.localeCompare(a.updatedAt),
+  );
+}
+
+/**
+ * Every finished modular automatically lands in the shared library.
+ * Same title/slug updates the existing entry so future builds can reuse it.
+ */
+export async function upsertLibraryModule(input: {
+  title: string;
+  summary: string;
+  skills: AgentSkill[];
+  sourceProjectId: string;
+  sourceProjectName: string;
+  sourceTaskId: string;
+  originalCostUsd?: number;
+  creatorAccountId?: string;
+}): Promise<LibraryModule> {
+  const store = await ensureLibrary();
+  const slug = slugify(input.title) || randomUUID();
+  const stamp = new Date().toISOString();
+  const existing = store.modules.find((module) => module.slug === slug);
+
+  if (existing) {
+    existing.title = input.title.trim();
+    existing.summary = input.summary.trim();
+    existing.skills = input.skills;
+    existing.sourceProjectId = input.sourceProjectId;
+    existing.sourceProjectName = input.sourceProjectName;
+    existing.sourceTaskId = input.sourceTaskId;
+    // Keep the first-customer creation cost; don't overwrite on reuse.
+    if (
+      (!existing.originalCostUsd || existing.originalCostUsd <= 0) &&
+      typeof input.originalCostUsd === "number"
+    ) {
+      existing.originalCostUsd = Math.max(0, input.originalCostUsd);
+    }
+    if (!existing.creatorAccountId) {
+      existing.creatorAccountId = (
+        input.creatorAccountId ||
+        input.sourceProjectId ||
+        existing.sourceProjectId
+      ).trim();
+    }
+    existing.creatorCreditBalanceUsd = existing.creatorCreditBalanceUsd ?? 0;
+    existing.creatorCreditEarnedUsd = existing.creatorCreditEarnedUsd ?? 0;
+    existing.timesUsed += 1;
+    existing.updatedAt = stamp;
+    await writeLibrary(store);
+    return existing;
+  }
+
+  const module: LibraryModule = {
+    id: randomUUID(),
+    slug,
+    title: input.title.trim(),
+    summary: input.summary.trim(),
+    skills: input.skills,
+    sourceProjectId: input.sourceProjectId,
+    sourceProjectName: input.sourceProjectName,
+    sourceTaskId: input.sourceTaskId,
+    originalCostUsd: Math.max(0, Number(input.originalCostUsd) || 0),
+    creatorAccountId: (input.creatorAccountId || input.sourceProjectId).trim(),
+    creatorCreditBalanceUsd: 0,
+    creatorCreditEarnedUsd: 0,
+    timesUsed: 1,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+  store.modules.unshift(module);
+  store.modules = store.modules.slice(0, 200);
+  await writeLibrary(store);
+  return module;
+}
+
+/** Mark a library module as referenced by a later Seed build. */
+export async function recordLibraryReuse(moduleId: string): Promise<void> {
+  const store = await ensureLibrary();
+  const module = store.modules.find((item) => item.id === moduleId);
+  if (!module) return;
+  module.timesUsed += 1;
+  module.updatedAt = new Date().toISOString();
+  await writeLibrary(store);
+}
+
+
+/** Quote reuse of a library modular for a later Seed (85% of create + merge). */
+export async function quoteModuleReuse(input: {
+  moduleId: string;
+  aiMergeCostUsd: number;
+}): Promise<{
+  module: LibraryModule;
+  originalCostUsd: number;
+  aiMergeCostUsd: number;
+  basisUsd: number;
+  feeUsd: number;
+  creatorCreditUsd: number;
+  rate: number;
+  creatorCreditRate: number;
+} | null> {
+  const store = await ensureLibrary();
+  const module = store.modules.find((item) => item.id === input.moduleId);
+  if (!module) return null;
+  const quote = moduleReuseFee({
+    originalModularCostUsd: module.originalCostUsd || 0,
+    aiMergeCostUsd: input.aiMergeCostUsd,
+  });
+  return {
+    module,
+    originalCostUsd: module.originalCostUsd || 0,
+    aiMergeCostUsd: Math.max(0, Number(input.aiMergeCostUsd) || 0),
+    ...quote,
+  };
+}
+
+/**
+ * Apply a reuse: charge the later Seed the reuse fee, and credit 8%
+ * back to the original creator's account balance.
+ */
+export async function applyModuleReuse(input: {
+  moduleId: string;
+  reuseProjectId: string;
+  aiMergeCostUsd: number;
+}): Promise<{
+  module: LibraryModule;
+  feeUsd: number;
+  creatorCreditUsd: number;
+  ledgerEntry: CreatorCreditLedgerEntry;
+} | null> {
+  const store = await ensureLibrary();
+  const module = store.modules.find((item) => item.id === input.moduleId);
+  if (!module) return null;
+
+  const quote = moduleReuseFee({
+    originalModularCostUsd: module.originalCostUsd || 0,
+    aiMergeCostUsd: input.aiMergeCostUsd,
+  });
+
+  module.timesUsed += 1;
+  module.creatorCreditBalanceUsd =
+    Math.round(
+      ((module.creatorCreditBalanceUsd || 0) + quote.creatorCreditUsd) * 100,
+    ) / 100;
+  module.creatorCreditEarnedUsd =
+    Math.round(
+      ((module.creatorCreditEarnedUsd || 0) + quote.creatorCreditUsd) * 100,
+    ) / 100;
+  module.updatedAt = new Date().toISOString();
+
+  const ledgerEntry: CreatorCreditLedgerEntry = {
+    id: randomUUID(),
+    moduleId: module.id,
+    moduleTitle: module.title,
+    creatorAccountId: module.creatorAccountId || module.sourceProjectId,
+    reuseProjectId: input.reuseProjectId,
+    reuseFeeUsd: quote.feeUsd,
+    creditUsd: quote.creatorCreditUsd,
+    createdAt: new Date().toISOString(),
+  };
+  store.creditLedger = store.creditLedger ?? [];
+  store.creditLedger.unshift(ledgerEntry);
+  store.creditLedger = store.creditLedger.slice(0, 500);
+
+  await writeLibrary(store);
+  return {
+    module,
+    feeUsd: quote.feeUsd,
+    creatorCreditUsd: quote.creatorCreditUsd,
+    ledgerEntry,
+  };
+}
+
+export async function listCreatorCredits(
+  creatorAccountId: string,
+): Promise<{
+  balanceUsd: number;
+  earnedUsd: number;
+  entries: CreatorCreditLedgerEntry[];
+}> {
+  const store = await ensureLibrary();
+  const entries = (store.creditLedger ?? []).filter(
+    (entry) => entry.creatorAccountId === creatorAccountId,
+  );
+  const modules = store.modules.filter(
+    (module) =>
+      (module.creatorAccountId || module.sourceProjectId) === creatorAccountId,
+  );
+  const balanceUsd = modules.reduce(
+    (sum, module) => sum + (module.creatorCreditBalanceUsd || 0),
+    0,
+  );
+  const earnedUsd = modules.reduce(
+    (sum, module) => sum + (module.creatorCreditEarnedUsd || 0),
+    0,
+  );
+  return {
+    balanceUsd: Math.round(balanceUsd * 100) / 100,
+    earnedUsd: Math.round(earnedUsd * 100) / 100,
+    entries,
+  };
+}
+

@@ -1,0 +1,12 @@
+{% comment %}
+  Cinch Seed Watch — paste in theme.liquid before </body>
+  or ship later as a Theme App Extension.
+  The Seed grows functionality, efficiency, and customer care on the live shop.
+{% endcomment %}
+<script
+  src="https://cinchseed.com/v1/watch.js"
+  data-seed="{{ settings.cinch_seed_id | default: '' }}"
+  data-platform="shopify"
+  data-shop="{{ shop.permanent_domain }}"
+  async
+></script>
