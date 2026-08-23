@@ -2,6 +2,37 @@ import Image from "next/image";
 import Link from "next/link";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
 
+const FAB_ROWS = [
+  {
+    feature: "Live Seed watch on your existing site",
+    advantage:
+      "Works with WordPress, Magento, Shopify, or any HTML host — no rip-and-replace.",
+    benefit:
+      "You keep the traffic and tools you already earned, while the site keeps getting better.",
+  },
+  {
+    feature: "Critical-tool health probes",
+    advantage:
+      "Spots failures in software customers rely on — like a kitchen designer — before they become lost sales.",
+    benefit:
+      "Peace of mind: the tools that make you money stay up, and fixes land on the live site.",
+  },
+  {
+    feature: "Modular library that adapts in place",
+    advantage:
+      "New capability is pushed onto the live site; later Seeds reuse proven modulars at lower cost.",
+    benefit:
+      "Every improvement compounds — you get ahead now, and stay cheaper and faster to improve later.",
+  },
+  {
+    feature: "Growth across three axes",
+    advantage:
+      "Functionality, efficiency, and customer care improve together — not as separate projects.",
+    benefit:
+      "Customers feel a site that works, moves quickly, and treats them well — so they come back.",
+  },
+] as const;
+
 export default function Home() {
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -14,8 +45,8 @@ export default function Home() {
             Cinch
           </a>
           <nav className="flex items-center gap-6 text-sm font-semibold text-brand-deep/70">
-            <a href="#how" className="transition-colors hover:text-brand-deep">
-              How it grows
+            <a href="#fab" className="transition-colors hover:text-brand-deep">
+              Feature · Advantage · Benefit
             </a>
             <Link
               href="/admin"
@@ -28,7 +59,7 @@ export default function Home() {
       </header>
 
       <main id="top">
-        {/* Hero: one composition — brand + line + support + CTAs; laptop stays right */}
+        {/* Hero stays benefit-led; detail lives in FAB below */}
         <section className="relative isolate min-h-[100svh] overflow-hidden bg-brand-deep">
           <div className="absolute inset-0">
             <Image
@@ -38,7 +69,6 @@ export default function Home() {
               priority
               className="hero-media object-cover object-[78%_center] sm:object-[70%_center] lg:object-center"
             />
-            {/* Wide left veil so copy never sits on the laptop screen */}
             <div className="absolute inset-0 bg-[linear-gradient(100deg,#f3efe6_0%,#f3efe6_34%,rgba(243,239,230,0.82)_48%,rgba(243,239,230,0.2)_64%,rgba(11,46,42,0.35)_100%)] sm:bg-[linear-gradient(105deg,#f3efe6_0%,#f3efe6_30%,rgba(243,239,230,0.75)_44%,rgba(243,239,230,0.12)_62%,rgba(11,46,42,0.28)_100%)]" />
             <div className="grain pointer-events-none absolute inset-0" />
             <div className="hero-glow pointer-events-none absolute right-[12%] top-[18%] h-48 w-48 rounded-full bg-accent/40 blur-3xl sm:h-64 sm:w-64" />
@@ -50,25 +80,24 @@ export default function Home() {
                 Cinch
               </p>
               <h1 className="animate-rise-delay mt-6 font-[family-name:var(--font-display)] text-3xl font-bold leading-[1.1] tracking-tight text-brand-deep sm:text-5xl">
-                Your site that keeps growing.
+                Buy the benefit. Keep the advantage.
               </h1>
               <p className="animate-rise-delay-2 mt-5 max-w-sm text-base leading-relaxed text-muted sm:text-lg">
-                A Seed improves functionality, efficiency, and customer care on
-                the live site — so tools keep working and visitors feel looked
-                after.
+                Feature → Advantage → Benefit. See exactly what Seed is, why it
+                wins, and what you gain on the live site.
               </p>
               <div className="animate-sprout mt-9 flex flex-wrap items-center gap-3">
                 <Link
                   href="/admin"
                   className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-bold text-brand-deep transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-accent-deep hover:text-foam"
                 >
-                  Start growing
+                  Get the benefits
                 </Link>
                 <a
-                  href="#how"
+                  href="#fab"
                   className="inline-flex h-12 items-center justify-center rounded-md border border-brand-deep/15 bg-foam/70 px-5 text-sm font-bold text-brand-deep backdrop-blur-sm transition-colors hover:bg-foam"
                 >
-                  See the Seed
+                  See FAB
                 </a>
               </div>
             </div>
@@ -76,7 +105,7 @@ export default function Home() {
         </section>
 
         <section
-          id="how"
+          id="fab"
           className="relative overflow-hidden border-t border-brand-deep/10 bg-foam px-6 py-24 sm:px-8"
         >
           <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full bg-leaf/15 blur-3xl" />
@@ -84,61 +113,100 @@ export default function Home() {
 
           <div className="relative mx-auto max-w-3xl text-center">
             <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.2em] text-accent-deep">
-              WHY SEED
+              FEATURE · ADVANTAGE · BENEFIT
             </p>
             <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
-              It grows with your customers.
+              What it is. Why it wins. What you get.
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted">
-              Embed once on WordPress, Magento, Shopify, or any site. The Seed
-              watches critical tools — like a kitchen designer — and keeps
-              adapting better experiences in place.
+              People buy benefits. Advantages make those benefits believable.
+              Features are how Seed delivers them.
             </p>
           </div>
 
-          <ol className="relative mx-auto mt-16 grid max-w-5xl gap-10 sm:grid-cols-3 sm:gap-8">
-            {[
-              {
-                step: "01",
-                title: "Functionality",
-                copy: "Keep the software customers rely on healthy — and ship new capability when a modular is ready.",
-              },
-              {
-                step: "02",
-                title: "Efficiency",
-                copy: "Find friction, cut waste, and push leaner paths from the shared module library.",
-              },
-              {
-                step: "03",
-                title: "Customer care",
-                copy: "Clarify help and trust cues so people feel guided, not stuck.",
-              },
-            ].map((item) => (
-              <li key={item.step} className="text-left">
+          {/* Legend */}
+          <div className="relative mx-auto mt-12 flex max-w-5xl flex-wrap justify-center gap-x-8 gap-y-3 text-sm font-semibold">
+            <p>
+              <span className="text-accent-deep">Feature</span>
+              <span className="text-muted"> — what Seed has</span>
+            </p>
+            <p>
+              <span className="text-brand">Advantage</span>
+              <span className="text-muted"> — why that matters vs. rebuilds</span>
+            </p>
+            <p>
+              <span className="text-brand-deep">Benefit</span>
+              <span className="text-muted"> — what you personally gain</span>
+            </p>
+          </div>
+
+          <ol className="relative mx-auto mt-14 max-w-5xl space-y-10">
+            {FAB_ROWS.map((row, index) => (
+              <li
+                key={row.feature}
+                className="border-t border-brand-deep/10 pt-10 first:border-t-0 first:pt-0"
+              >
                 <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-                  {item.step}
+                  {String(index + 1).padStart(2, "0")}
                 </p>
-                <h3 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-extrabold text-brand-deep">
-                  {item.title}
-                </h3>
-                <p className="mt-3 text-base leading-relaxed text-muted">
-                  {item.copy}
-                </p>
+                <div className="mt-4 grid gap-6 md:grid-cols-3 md:gap-8">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent-deep">
+                      Feature
+                    </p>
+                    <p className="mt-2 font-[family-name:var(--font-display)] text-lg font-bold leading-snug text-brand-deep">
+                      {row.feature}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">
+                      Advantage
+                    </p>
+                    <p className="mt-2 text-base leading-relaxed text-muted">
+                      {row.advantage}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-deep">
+                      Benefit
+                    </p>
+                    <p className="mt-2 text-base font-semibold leading-relaxed text-brand-deep">
+                      {row.benefit}
+                    </p>
+                  </div>
+                </div>
               </li>
             ))}
           </ol>
         </section>
 
-        <section className="relative overflow-hidden bg-[linear-gradient(165deg,#0b2e2a_0%,#1a7a6d_48%,#c47a2c_140%)] px-6 py-24 text-foam sm:px-8">
+        <section
+          id="future"
+          className="relative overflow-hidden bg-[linear-gradient(165deg,#0b2e2a_0%,#1a7a6d_48%,#c47a2c_140%)] px-6 py-24 text-foam sm:px-8"
+        >
           <div className="grain pointer-events-none absolute inset-0 opacity-[0.12] mix-blend-soft-light" />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div>
-              <h2 className="font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-4xl">
-                Watch it grow from Admin.
-              </h2>
-              <p className="mt-5 max-w-md text-lg leading-relaxed text-mist">
-                See agents at work, modulars landing in the library, and live
-                growth signals from the sites you already run.
+          <div className="relative mx-auto max-w-3xl text-center">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.2em] text-accent">
+              FUTURE EDGE
+            </p>
+            <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-5xl">
+              Advantages that stack over time.
+            </h2>
+            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-mist">
+              Feature: a shared modular library. Advantage: reuse costs less
+              than first build. Benefit: you stay cheaper and faster to improve
+              than competitors who start over.
+            </p>
+          </div>
+
+          <div className="relative mx-auto mt-16 grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <div className="text-left">
+              <h3 className="font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight sm:text-3xl">
+                Watch FAB land from Admin.
+              </h3>
+              <p className="mt-4 max-w-md text-lg leading-relaxed text-mist">
+                See live health, queued adaptations, and growth across the
+                benefits that matter — tools up, visits smoother, care clearer.
               </p>
               <Link
                 href="/admin"
@@ -168,14 +236,15 @@ export default function Home() {
               Cinch Seed — $99
             </h2>
             <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted">
-              Start at {CINCH_SEED_DOMAIN}. Plant a Seed once — it keeps growing
-              the live site for you.
+              Start at {CINCH_SEED_DOMAIN}. Buy the benefit today — healthier
+              tools, smoother visits, friendlier care — and keep the advantage
+              as the Seed grows.
             </p>
             <Link
               href="/admin"
               className="mt-9 inline-flex h-12 items-center justify-center rounded-md bg-brand-deep px-7 text-sm font-bold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand"
             >
-              Plant your Seed
+              Claim your benefits
             </Link>
             <p className="mt-4 text-sm text-muted">
               <a

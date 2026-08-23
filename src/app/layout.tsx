@@ -15,9 +15,9 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Cinch Seed — Your site that keeps growing",
+  title: "Cinch Seed — Feature, Advantage, Benefit",
   description:
-    "Cinch Seed grows live websites — improving functionality, efficiency, and customer care. Invite AI agents, adapt modulars in place, and keep critical tools healthy.",
+    "Feature → Advantage → Benefit. Cinch Seed watches your live site, keeps critical tools healthy, and compounds improvements so you gain smoother visits, better care, and lasting advantage.",
   metadataBase: new URL("https://cinchseed.com"),
 };
 
