@@ -25,12 +25,13 @@ Detective Shopper still needs Root Directory = `apps/detective-shopper`.
 
 ## Cinch Seed
 
-Primary domain: **[cinchseed.com](https://cinchseed.com)**
+Primary domain: **[cinchseed.com](https://cinchseed.com)** / **[www.cinchseed.com](https://www.cinchseed.com)**
 
 - `/admin` — Seed studio, agent roster, PM assignment, module library
+- `/admin/test` — provider key tests + pre-launch Seed checklist
 - Embed: `https://cinchseed.com/v1/watch.js`
 
-Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`
+Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`, optional `CINCH_LAUNCH_MODE=test|live`
 
 ## Detective Shopper
 

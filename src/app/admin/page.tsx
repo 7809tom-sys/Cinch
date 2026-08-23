@@ -26,7 +26,12 @@ export default async function AdminPage() {
           >
             Cinch
           </Link>
-          <span className="text-sm font-medium text-muted">Administration</span>
+          <nav className="flex items-center gap-5 text-sm font-medium text-muted">
+            <Link href="/admin/test" className="transition-colors hover:text-brand-deep">
+              Test before live
+            </Link>
+            <span>Administration</span>
+          </nav>
         </div>
       </header>
 
