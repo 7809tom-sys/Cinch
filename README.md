@@ -41,6 +41,16 @@ Domain is currently on Cloudflare pointing at Manus (`cname.manus.space`). To se
 5. Delete/disable the old Manus `CNAME` to `cname.manus.space`.
 6. Confirm https://cinchseed.com loads the Cinch Seed app (not the Manus maintenance page).
 
+### Fix 404 / DEPLOYMENT_NOT_FOUND on cinchseed.com
+
+That error means DNS reached Vercel, but no successful production deployment is serving the domain.
+
+1. Vercel → **cinch** → **Settings → General → Root Directory** = `apps/cinch`
+2. Leave Install/Build blank so `apps/cinch/vercel.json` runs (installs from monorepo root, builds the `cinch` workspace)
+3. **Deployments → Redeploy** the latest commit (or merge this PR to `main` and let production deploy)
+4. Open the deployment logs — build must be **Ready**, not Error
+5. Reload https://cinchseed.com
+
 
 ## Cinch Seed admin
 
