@@ -1,29 +1,38 @@
-# Cinch
+# Cinch monorepo
 
-A Next.js landing page ready to deploy on Vercel.
+Two Vercel-ready Next.js sites in one GitHub repo:
+
+| App | Path | Vercel root directory |
+| --- | --- | --- |
+| **Cinch** | `apps/cinch` | `apps/cinch` |
+| **Detective Shopper** | `apps/detective-shopper` | `apps/detective-shopper` |
 
 ## Local development
 
 ```bash
 npm install
-npm run dev
+npm run dev:cinch              # http://localhost:3000
+npm run dev:detective-shopper  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Run only one app at a time on the default port, or start the second with `npm run dev -w <app> -- -p 3001`.
 
 ## Deploy on Vercel
 
-1. Push this repo to GitHub.
-2. Open [vercel.com/new](https://vercel.com/new) and import **Cinch**.
-3. Keep the defaults (Next.js is detected automatically) and click **Deploy**.
+Your Vercel team already links this repo as a monorepo with projects **cinch** and **detective-shopper**. Set each project’s **Root Directory**:
 
-Every push to `main` creates a production deployment; other branches get preview URLs.
+1. [cinch](https://vercel.com/cinch-ai-builder/cinch) → `apps/cinch`
+2. [detective-shopper](https://vercel.com/cinch-ai-builder/detective-shopper) → `apps/detective-shopper`
+
+Framework preset: Next.js. Then redeploy.
+
+If you have a **third** site, add it under `apps/<name>` and create another Vercel project with that root directory.
 
 ## Scripts
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the development server |
-| `npm run build` | Create a production build |
-| `npm run start` | Serve the production build |
-| `npm run lint` | Run ESLint |
+| `npm run build` | Build both apps |
+| `npm run lint` | Lint both apps |
+| `npm run build:cinch` | Build Cinch only |
+| `npm run build:detective-shopper` | Build Detective Shopper only |

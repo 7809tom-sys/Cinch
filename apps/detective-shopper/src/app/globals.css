@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+:root {
+  --background: #121c27;
+  --foreground: #e8eef3;
+  --brand: #f0b429;
+  --brand-deep: #c48a12;
+  --panel: #1a2a3a;
+  --mist: #9bb0c3;
+  --foam: #e8eef3;
+  --accent: #7eb6d9;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-panel: var(--panel);
+  --color-mist: var(--mist);
+  --color-foam: var(--foam);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--brand) 45%, transparent);
+  color: var(--foam);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: scale(1.06) translate3d(2%, 0, 0);
+  }
+  to {
+    transform: scale(1) translate3d(-1%, -1%, 0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-rise {
+  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-rise-delay {
+  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.animate-rise-delay-2 {
+  animation: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both;
+}
+
+.hero-media {
+  animation: sweep 16s ease-in-out alternate infinite;
+}
+
+.hero-glow {
+  animation: pulse-glow 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-rise,
+  .animate-rise-delay,
+  .animate-rise-delay-2,
+  .hero-media,
+  .hero-glow {
+    animation: none;
+  }
+}
