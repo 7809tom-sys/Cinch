@@ -5,10 +5,11 @@
  * Domains (Cloudflare):  50% markup  → customer pays 1.5×
  * Tokens (model APIs): 150–200% markup → customer pays 2.5×–3.0×
  *
- * Modular library reuse:
+ * Modular library reuse (library membership earnings):
  * - First customer pays full build cost for a new modular (creation).
  * - Later Seeds reuse it at 85% of (original modular cost + AI merge cost).
- * - Original creator gets an 8% account credit on every reuse fee collected.
+ * - Original creator gets an 8% credit on every reuse fee — paid into their
+ *   library member account so future members can earn from the library.
  */
 
 import { billingWaivedFor } from "./access";

@@ -150,16 +150,24 @@ export default function Home() {
           <div className="relative mx-auto flex min-h-[70svh] max-w-6xl flex-col justify-end px-6 py-20 sm:px-8 lg:justify-center">
             <div className="max-w-xl">
               <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
-                KEEPS GROWING
+                LIBRARY MEMBERSHIP
               </p>
               <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-foam sm:text-5xl">
-                Every modular makes the next win cheaper.
+                Fund a modular once. Earn when others reuse it.
               </h2>
               <p className="mt-5 text-lg leading-relaxed text-mist">
-                First builds fund the library. Later adaptations reuse what
-                already works. That is the future advantage — you get ahead
-                now, and stay cheaper to improve than anyone starting over.
+                Your finished work joins the shared library under your member
+                account. Later Seeds reuse it at 85% of create + merge — and
+                you get 8% of that fee credited back. Future members
+                don&apos;t just buy from the library — they can make money
+                with it.
               </p>
+              <a
+                href="#start"
+                className="mt-8 inline-flex text-sm font-bold text-accent transition-colors hover:text-foam"
+              >
+                Open a library account with Seed →
+              </a>
             </div>
           </div>
         </section>
@@ -178,8 +186,9 @@ export default function Home() {
               Seed — $99
             </h2>
             <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-muted">
-              Plant it on {CINCH_SEED_DOMAIN}. Prove the look, the feel, and
-              the buy — then grow the same standard onto every site you run.
+              Plant it on {CINCH_SEED_DOMAIN}. Grow a site worth buying from —
+              and open a library account that can earn when your modulars get
+              reused.
             </p>
             <Link
               href="/admin"

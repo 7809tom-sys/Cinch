@@ -24,6 +24,7 @@ import {
   queueGrowthCycle,
   queueSiteImprovement,
 } from "@/lib/seed-watch";
+import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import {
   createProject,
   getProject,
@@ -34,15 +35,17 @@ import {
 } from "@/lib/store";
 
 export async function getAdminSnapshot() {
-  const [projects, agents, settings] = await Promise.all([
+  const [projects, agents, settings, library] = await Promise.all([
     listProjects(),
     Promise.resolve(listAgentsWithKeyStatus()),
     getSiteSettings(),
+    getLibraryMemberSnapshot(),
   ]);
   return {
     projects,
     agents,
     settings,
+    library,
     cloudflareConfigured: isCloudflareRegistrarConfigured(),
     platforms: PLATFORM_ADAPTERS.map((adapter) => ({
       id: adapter.id,
