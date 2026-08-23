@@ -15,9 +15,9 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Cinch Seed — A site people want to buy from",
+  title: "Cinch Seed — Builds, updates, and protects your site",
   description:
-    "Cinch Seed grows live websites that stay working, feel exciting, and keep winning customers. Plant a Seed once — tools stay up, visits get smoother, and every modular compounds your advantage.",
+    "Cinch Seed builds your site, updates it in place, and protects it from outside your live server — so if hosting goes down, the Seed can still restore you.",
   metadataBase: new URL("https://cinchseed.com"),
 };
 

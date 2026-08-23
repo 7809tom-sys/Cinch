@@ -14,8 +14,20 @@ export default function Home() {
             Cinch
           </a>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
-            <a href="#why" className="transition-colors hover:text-brand-deep">
-              Why Seed
+            <a href="#build" className="transition-colors hover:text-brand-deep">
+              Build
+            </a>
+            <a
+              href="#update"
+              className="transition-colors hover:text-brand-deep"
+            >
+              Update
+            </a>
+            <a
+              href="#protect"
+              className="transition-colors hover:text-brand-deep"
+            >
+              Protect
             </a>
             <Link
               href="/admin"
@@ -28,7 +40,6 @@ export default function Home() {
       </header>
 
       <main id="top">
-        {/* One composition: brand + line + support + CTA + full-bleed photo */}
         <section className="relative isolate min-h-[100svh] overflow-hidden bg-brand-deep">
           <div className="absolute inset-0">
             <Image
@@ -50,12 +61,11 @@ export default function Home() {
                 Cinch
               </p>
               <h1 className="animate-rise-delay mt-5 font-[family-name:var(--font-display)] text-[2rem] font-bold leading-[1.05] tracking-tight text-brand-deep sm:text-5xl lg:text-6xl">
-                A site people want to buy from.
+                Builds. Updates. Protects.
               </h1>
               <p className="animate-rise-delay-2 mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-                Seed keeps your live site exciting, working, and ahead —
-                because if we can&apos;t make this look worth buying, we
-                shouldn&apos;t touch yours.
+                Seed lives outside your live server — so it can grow your site,
+                keep improving it, and bring it back if it ever goes down.
               </p>
               <div className="animate-sprout mt-9 flex flex-wrap items-center gap-3">
                 <Link
@@ -65,39 +75,38 @@ export default function Home() {
                   Plant a Seed — $99
                 </Link>
                 <a
-                  href="#why"
+                  href="#build"
                   className="inline-flex h-12 items-center justify-center rounded-md px-4 text-sm font-bold text-brand-deep transition-colors hover:text-brand"
                 >
-                  See why it sells →
+                  See how Seed works →
                 </a>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Broken-up story panels — not a textbook grid */}
-        <section id="why" className="bg-foam">
+        <section id="build" className="bg-foam">
           <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:py-28">
             <div className="order-2 lg:order-1">
               <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-                STAYS UP
+                BUILDS YOUR SITE
               </p>
               <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
-                The tools that make money keep working.
+                Agents assemble the site from a living Seed.
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-                Kitchen designers. Configurators. Checkout. Seed watches the
-                software your customers depend on — and pushes fixes onto the
-                live site before a quiet failure costs you a sale.
+                Invite specialists, let the project manager assign work, and
+                save finished modulars into your core. Seed is the durable
+                build — not a fragile one-time launch.
               </p>
               <p className="mt-4 max-w-md text-base font-semibold leading-relaxed text-brand-deep">
-                You buy peace of mind. Your customers buy with confidence.
+                You get a real site. Seed keeps the blueprint that made it.
               </p>
             </div>
             <div className="relative order-1 aspect-[4/3] overflow-hidden lg:order-2">
               <Image
                 src="/cinch-tools.jpg"
-                alt="Premium kitchen design tool glowing on a display in a warm showroom"
+                alt="Premium design tools glowing on a display — Seed building capability"
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className="object-cover transition-transform duration-700 hover:scale-[1.03]"
@@ -106,12 +115,12 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="bg-brand-deep text-foam">
+        <section id="update" className="bg-brand-deep text-foam">
           <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:py-28">
             <div className="relative aspect-[4/3] overflow-hidden">
               <Image
                 src="/cinch-customers.jpg"
-                alt="Bright modern workspace with a large screen and warm sun — visits that feel easy"
+                alt="Bright workspace with a live site on screen — continuous updates"
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
                 className="object-cover transition-transform duration-700 hover:scale-[1.03]"
@@ -119,56 +128,71 @@ export default function Home() {
             </div>
             <div>
               <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
-                FEELS GOOD
+                UPDATES YOUR SITE
               </p>
               <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-5xl">
-                Faster paths. Friendlier care. More return visits.
+                Keeps improving the live experience in place.
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-mist">
-                Seed doesn&apos;t just patch bugs. It tightens friction and
-                clarifies help so people feel looked after — the difference
-                between a browse and a buy.
+                Seed watches what customers feel — functionality, speed, and
+                care — then pushes adapted modulars onto the site you already
+                run. WordPress, Magento, Shopify, or custom HTML.
               </p>
               <p className="mt-4 max-w-md text-base font-semibold leading-relaxed text-foam">
-                Advantage: one living system. Benefit: customers who come back.
+                No rip-and-replace. The site gets better while it stays open.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="relative isolate min-h-[70svh] overflow-hidden">
+        <section
+          id="protect"
+          className="relative isolate min-h-[75svh] overflow-hidden"
+        >
           <div className="absolute inset-0">
             <Image
               src="/cinch-growth.jpg"
-              alt="Seedling in warm light — compounding growth"
+              alt="Seedling in warm light — protection that lives apart from the live server"
               fill
               sizes="100vw"
               className="object-cover object-center"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,46,42,0.9)_0%,rgba(11,46,42,0.55)_40%,rgba(196,122,44,0.45)_100%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,46,42,0.92)_0%,rgba(11,46,42,0.62)_42%,rgba(196,122,44,0.5)_100%)]" />
           </div>
-          <div className="relative mx-auto flex min-h-[70svh] max-w-6xl flex-col justify-end px-6 py-20 sm:px-8 lg:justify-center">
+          <div className="relative mx-auto flex min-h-[75svh] max-w-6xl flex-col justify-end px-6 py-20 sm:px-8 lg:justify-center">
             <div className="max-w-xl">
               <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
-                LIBRARY MEMBERSHIP
+                PROTECTS YOUR SITE
               </p>
               <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-foam sm:text-5xl">
-                Fund a modular once. Earn when others reuse it.
+                If the live site goes down, Seed is still standing.
               </h2>
               <p className="mt-5 text-lg leading-relaxed text-mist">
-                Your finished work joins the shared library under your member
-                account. Later Seeds reuse it at 85% of create + merge — and
-                you get 8% of that fee credited back. Future members
-                don&apos;t just buy from the library — they can make money
-                with it.
+                Seed does not live on the same server as your public site. It
+                watches from outside, holds the durable core, and can rebuild
+                or restore when hosting fails — so a downed server does not
+                take your future with it.
               </p>
-              <a
-                href="#start"
-                className="mt-8 inline-flex text-sm font-bold text-accent transition-colors hover:text-foam"
-              >
-                Open a library account with Seed →
-              </a>
+              <p className="mt-4 text-base font-semibold leading-relaxed text-foam">
+                Separate cell. Separate safety. Your Seed stays ready.
+              </p>
             </div>
+          </div>
+        </section>
+
+        <section className="bg-foam px-6 py-20 sm:px-8">
+          <div className="mx-auto max-w-5xl">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+              LIBRARY MEMBERSHIP
+            </p>
+            <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-4xl">
+              Fund a modular once. Earn when others reuse it.
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+              Finished work joins the shared library under your member account.
+              Later Seeds reuse it at 85% of create + merge — and you get 8% of
+              that fee credited back. Members can make money with the library.
+            </p>
           </div>
         </section>
 
@@ -186,9 +210,9 @@ export default function Home() {
               Seed — $99
             </h2>
             <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-muted">
-              Plant it on {CINCH_SEED_DOMAIN}. Grow a site worth buying from —
-              and open a library account that can earn when your modulars get
-              reused.
+              Plant it on {CINCH_SEED_DOMAIN}. One Seed that builds your site,
+              updates it in place, and protects it from outside the live
+              server.
             </p>
             <Link
               href="/admin"

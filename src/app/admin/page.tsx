@@ -276,8 +276,10 @@ export default async function AdminPage() {
               >
                 {CINCH_SEED_DOMAIN}
               </a>
-              . Seed grows live sites — and library members earn 8% credit
-              whenever their modulars are reused by later Seeds.
+              . Seed builds your site, updates it in place, and protects it
+              from outside the live server — so if hosting fails, your Seed
+              can still bring you back. Library members also earn 8% when
+              their modulars are reused.
             </p>
           </div>
         </aside>
