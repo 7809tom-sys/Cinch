@@ -164,7 +164,12 @@ export default function Home() {
           <p className="font-[family-name:var(--font-display)] font-semibold text-foam">
             Detective Shopper
           </p>
-          <p>Investigate before you buy.</p>
+          <div className="flex items-center gap-4">
+            <p>Investigate before you buy.</p>
+            <a href="/admin" className="transition-colors hover:text-foam">
+              Admin
+            </a>
+          </div>
         </div>
       </footer>
     </div>

@@ -28,6 +28,10 @@ Framework preset: Next.js. Then redeploy.
 
 If you have a **third** site, add it under `apps/<name>` and create another Vercel project with that root directory.
 
+## Detective Shopper admin
+
+`/admin` on Detective Shopper lets you paste an affiliate API key. It is saved as `IMPACT_API_KEY` in a gitignored `.env.local` (see `apps/detective-shopper/.env.example`). On Vercel, set the same variable in the project’s Environment Variables. The page also links to Impact and Awin partner signup.
+
 ## Scripts
 
 | Command | Description |
