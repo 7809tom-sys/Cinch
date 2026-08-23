@@ -23,6 +23,47 @@ export type AgentDefinition = {
   isProjectManager?: boolean;
 };
 
+export type ProviderAccount = {
+  id: string;
+  name: string;
+  envKey: string;
+  signupUrl: string;
+  keysUrl: string;
+  blurb: string;
+};
+
+/** Where to create accounts / API keys for each agent provider. */
+export const PROVIDER_ACCOUNTS: ProviderAccount[] = [
+  {
+    id: "openai",
+    name: "OpenAI",
+    envKey: "OPENAI_API_KEY",
+    signupUrl: "https://platform.openai.com/signup",
+    keysUrl: "https://platform.openai.com/api-keys",
+    blurb: "Sign up on the OpenAI Platform, then create a secret API key.",
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    envKey: "ANTHROPIC_API_KEY",
+    signupUrl: "https://console.anthropic.com/login",
+    keysUrl: "https://console.anthropic.com/settings/keys",
+    blurb: "Create a Claude Console account, then generate an API key.",
+  },
+  {
+    id: "google",
+    name: "Google",
+    envKey: "GOOGLE_AI_API_KEY",
+    signupUrl: "https://aistudio.google.com/",
+    keysUrl: "https://aistudio.google.com/app/apikey",
+    blurb: "Sign in with Google AI Studio and click Get API key.",
+  },
+];
+
+export function providerForEnvKey(envKey: string): ProviderAccount | undefined {
+  return PROVIDER_ACCOUNTS.find((provider) => provider.envKey === envKey);
+}
+
 export const AGENT_CATALOG: AgentDefinition[] = [
   {
     id: "pm-conductor",

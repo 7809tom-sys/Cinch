@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PROVIDER_ACCOUNTS, providerForEnvKey } from "@/lib/agents";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
 import { getAdminSnapshot } from "./actions";
 import { CreateSeedForm } from "./create-seed-form";
@@ -92,6 +93,48 @@ export default async function AdminPage() {
         <aside className="space-y-6">
           <div className="border border-brand/10 bg-foam px-6 py-6">
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+              Provider accounts
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Sign up with each provider, create an API key, then add it in
+              Vercel → cinch → Environment Variables.
+            </p>
+            <ul className="mt-5 space-y-4">
+              {PROVIDER_ACCOUNTS.map((provider) => (
+                <li
+                  key={provider.id}
+                  className="border-b border-brand/10 pb-4 last:border-b-0 last:pb-0"
+                >
+                  <p className="font-semibold text-brand-deep">{provider.name}</p>
+                  <p className="mt-1 text-sm text-muted">{provider.blurb}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Env: <code>{provider.envKey}</code>
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <a
+                      href={provider.signupUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-brand hover:text-brand-deep"
+                    >
+                      Sign up →
+                    </a>
+                    <a
+                      href={provider.keysUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-semibold text-muted hover:text-brand-deep"
+                    >
+                      Get API key →
+                    </a>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="border border-brand/10 bg-foam px-6 py-6">
+            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               Agent roster
             </h2>
             <p className="mt-2 text-sm text-muted">
@@ -99,40 +142,56 @@ export default async function AdminPage() {
               in the environment.
             </p>
             <ul className="mt-5 space-y-3">
-              {agents.map((agent) => (
-                <li
-                  key={agent.id}
-                  className="border-b border-brand/10 pb-3 last:border-b-0 last:pb-0"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-brand-deep">
-                        {agent.name}
-                        {agent.isProjectManager ? " · PM" : ""}
-                      </p>
-                      <p className="text-sm text-muted">
-                        {agent.role} · {agent.provider}
-                      </p>
-                      <p className="mt-1 text-xs text-muted">
-                        Skills: {agent.skills.join(", ")} · level {agent.skillLevel} ·{" "}
-                        {agent.costHint} cost
-                      </p>
+              {agents.map((agent) => {
+                const provider = providerForEnvKey(agent.envKey);
+                return (
+                  <li
+                    key={agent.id}
+                    className="border-b border-brand/10 pb-3 last:border-b-0 last:pb-0"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-brand-deep">
+                          {agent.name}
+                          {agent.isProjectManager ? " · PM" : ""}
+                        </p>
+                        <p className="text-sm text-muted">
+                          {agent.role} · {agent.provider}
+                        </p>
+                        <p className="mt-1 text-xs text-muted">
+                          Skills: {agent.skills.join(", ")} · level{" "}
+                          {agent.skillLevel} · {agent.costHint} cost
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${
+                          agent.configured
+                            ? "bg-accent/15 text-brand"
+                            : "bg-mist text-muted"
+                        }`}
+                      >
+                        {agent.configured ? "KEY SET" : "NO KEY"}
+                      </span>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${
-                        agent.configured
-                          ? "bg-accent/15 text-brand"
-                          : "bg-mist text-muted"
-                      }`}
-                    >
-                      {agent.configured ? "KEY SET" : "NO KEY"}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-muted">
-                    Env: <code>{agent.envKey}</code>
-                  </p>
-                </li>
-              ))}
+                    <p className="mt-2 text-xs text-muted">
+                      Env: <code>{agent.envKey}</code>
+                      {provider ? (
+                        <>
+                          {" · "}
+                          <a
+                            href={provider.signupUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-semibold text-brand hover:text-brand-deep"
+                          >
+                            Sign up for {provider.name}
+                          </a>
+                        </>
+                      ) : null}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
