@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SiteFooter } from "@/components/site-footer";
 import { AGENT_CATALOG } from "@/lib/agents";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
 
@@ -24,6 +25,9 @@ export default function Home() {
             <a href="#team" className="transition-colors hover:text-brand-deep">
               All-stars
             </a>
+            <Link href="/about" className="transition-colors hover:text-brand-deep">
+              About
+            </Link>
             <a
               href="#protect"
               className="transition-colors hover:text-brand-deep"
@@ -130,7 +134,8 @@ export default function Home() {
                 BUILDS YOUR SITE
               </p>
               <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
-                Your agents assemble the site from a living Seed.
+                Your all-star group of AI agents assembles the site from a
+                living Seed.
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
                 Conductor assigns the work. Design, code, copy, SEO, and QA each
@@ -261,21 +266,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-brand-deep/10 bg-foam px-6 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 text-sm text-muted sm:flex-row sm:items-center">
-          <p className="font-[family-name:var(--font-display)] font-extrabold text-brand-deep">
-            Cinch
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <a href={CINCH_SEED_ORIGIN} className="hover:text-brand-deep">
-              {CINCH_SEED_DOMAIN}
-            </a>
-            <Link href="/admin" className="hover:text-brand-deep">
-              Admin
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
