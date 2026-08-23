@@ -28,6 +28,20 @@ Framework preset: Next.js. Then redeploy.
 
 If you have a **third** site, add it under `apps/<name>` and create another Vercel project with that root directory.
 
+### Move cinchseed.com off Manus → Vercel (Cloudflare DNS)
+
+Domain is currently on Cloudflare pointing at Manus (`cname.manus.space`). To serve this Cinch app:
+
+1. In Vercel → **cinch** project → **Settings → Domains**, add `cinchseed.com` and `www.cinchseed.com`.
+2. Set Root Directory to `apps/cinch` and deploy a successful production build from `main` (or this branch).
+3. In **Cloudflare → DNS** for `cinchseed.com`, replace the Manus records:
+   - **Apex** `@` → **A** `76.76.21.21` (or the exact value Vercel shows)
+   - **www** → **CNAME** to the target Vercel shows (often `cname.vercel-dns.com` / project-specific)
+4. Set those records to **DNS only** (grey cloud) until Vercel shows **Valid Configuration**, then you can re-enable the orange proxy if you want.
+5. Delete/disable the old Manus `CNAME` to `cname.manus.space`.
+6. Confirm https://cinchseed.com loads the Cinch Seed app (not the Manus maintenance page).
+
+
 ## Cinch Seed admin
 
 Primary domain: **[cinchseed.com](https://cinchseed.com)**
