@@ -46,7 +46,7 @@ Domain is currently on Cloudflare pointing at Manus (`cname.manus.space`). To se
 That error means DNS reached Vercel, but no successful production deployment is serving the domain.
 
 1. Vercel → **cinch** → **Settings → General → Root Directory** = `apps/cinch`
-2. Leave Install/Build blank so `apps/cinch/vercel.json` runs (installs from monorepo root, builds the `cinch` workspace)
+2. Install/Build can stay default (`npm install` / `npm run build`) — each app has its own `package-lock.json`
 3. **Deployments → Redeploy** the latest commit (or merge this PR to `main` and let production deploy)
 4. Open the deployment logs — build must be **Ready**, not Error
 5. Reload https://cinchseed.com
