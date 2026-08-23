@@ -43,11 +43,11 @@ export const LIBRARY_MEMBER_PITCH: LibraryMemberPitch = {
   feature:
     "Every modular you fund lands in the shared library under your member account.",
   advantage:
-    "When another Seed reuses it, they pay 85% of create + merge — not a full rebuild.",
+    "When another Seed reuses it, they pay a reuse fee instead of funding a full rebuild.",
   benefit:
-    "You earn 8% of that reuse fee as credit in your library account — real future income from work you already paid to create.",
-  earnRateLabel: "8% creator credit on every reuse",
-  reuseRateLabel: "Later Seeds pay 85% of create + merge",
+    "You earn creator credit back into your library account — future income from work you already paid to create.",
+  earnRateLabel: "Creator credit on every reuse",
+  reuseRateLabel: "Later Seeds pay a reuse fee — not a full rebuild",
 };
 
 /** Estimate what one reuse pays the creator for a modular. */

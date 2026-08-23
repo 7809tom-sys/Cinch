@@ -278,7 +278,7 @@ export default async function AdminPage() {
               </a>
               . Seed builds your site, updates it in place, and protects it
               from outside the live server — so if hosting fails, your Seed
-              can still bring you back. Library members also earn 8% when
+              can still bring you back. Library members earn credit when
               their modulars are reused.
             </p>
           </div>
