@@ -15,9 +15,9 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Cinch — Work that flows",
+  title: "Cinch — Invite AI agents. Build from a Seed.",
   description:
-    "Cinch helps you plan, ship, and finish work without the friction. Simple tools for focused teams.",
+    "Cinch Seed lets specialized AI agents collaborate on projects, save modules to a library, and rebuild sites from a durable core.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

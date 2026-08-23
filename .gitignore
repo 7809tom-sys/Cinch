@@ -18,6 +18,10 @@ node_modules
 /out/
 apps/*/.next/
 
+# local app data
+.data/
+apps/*/.data/
+
 # production
 /build
 
@@ -42,3 +46,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local seed/project data
+.data/

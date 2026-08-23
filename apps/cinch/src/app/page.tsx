@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -15,12 +16,9 @@ export default function Home() {
             <a href="#how" className="transition-colors hover:text-brand-deep">
               How it works
             </a>
-            <a
-              href="#start"
-              className="hidden transition-colors hover:text-brand-deep sm:inline"
-            >
-              Get started
-            </a>
+            <Link href="/admin" className="transition-colors hover:text-brand-deep">
+              Admin
+            </Link>
           </nav>
         </div>
       </header>
@@ -44,25 +42,26 @@ export default function Home() {
               <p className="animate-rise font-[family-name:var(--font-display)] text-5xl font-extrabold tracking-tight text-brand-deep sm:text-7xl">
                 Cinch
               </p>
-              <h1 className="animate-rise-delay mt-5 max-w-md font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-brand-deep sm:text-4xl">
-                Make hard work feel easy.
+              <h1 className="animate-rise-delay mt-5 max-w-lg font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-brand-deep sm:text-4xl">
+                Invite AI agents. Build from a Seed.
               </h1>
               <p className="animate-rise-delay-2 mt-5 max-w-md text-lg leading-relaxed text-muted">
-                Plan the day, clear the noise, and ship what matters — without
-                another tangled toolstack.
+                Specialized agents collaborate on your project. A project manager
+                assigns work by skill and cost. Modules save to your library —
+                the durable core of the site.
               </p>
               <div className="animate-rise-delay-2 mt-9 flex flex-wrap items-center gap-3">
-                <a
-                  href="#start"
+                <Link
+                  href="/admin"
                   className="inline-flex h-12 items-center justify-center rounded-md bg-brand px-6 text-sm font-semibold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand-deep"
                 >
-                  Start free
-                </a>
+                  Open admin studio
+                </Link>
                 <a
                   href="#how"
                   className="inline-flex h-12 items-center justify-center rounded-md px-5 text-sm font-semibold text-brand-deep transition-colors hover:bg-mist/70"
                 >
-                  See how it works
+                  See how Seed works
                 </a>
               </div>
             </div>
@@ -75,11 +74,11 @@ export default function Home() {
         >
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-brand-deep sm:text-4xl">
-              Three moves. Done.
+              One Seed. A full crew.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted">
-              Cinch keeps your day in one clear flow so finishing feels natural,
-              not forced.
+              Build standalone from the Seed, or embed a watch script on a live
+              site so Cinch can rebuild if it ever fails.
             </p>
           </div>
 
@@ -87,18 +86,18 @@ export default function Home() {
             {[
               {
                 step: "01",
-                title: "Capture",
-                copy: "Drop tasks in as they appear. Cinch sorts the signal from the noise.",
+                title: "Invite",
+                copy: "Staff a project with specialists you already hold API keys for — design, code, copy, SEO, QA.",
               },
               {
                 step: "02",
-                title: "Focus",
-                copy: "See only what belongs in this block of time — nothing else.",
+                title: "Assign",
+                copy: "The project manager agent breaks work down and routes each task to the cheapest capable agent.",
               },
               {
                 step: "03",
-                title: "Finish",
-                copy: "Close the loop with a clean handoff, note, or ship checklist.",
+                title: "Library",
+                copy: "Finished work becomes modules in your Seed library — reusable pieces of the site’s core.",
               },
             ].map((item) => (
               <li key={item.step} className="text-left sm:text-center">
@@ -120,12 +119,19 @@ export default function Home() {
           <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-24 sm:px-8 lg:grid-cols-2 lg:gap-16">
             <div>
               <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-brand-deep sm:text-4xl">
-                Built for calm momentum
+                Administration you can trust
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-                Less dashboard theater. More quiet progress. Cinch is the thin
-                layer between intention and done.
+                See which agents are on the job, what they were assigned, and
+                what landed in the module library — while the Seed stays the
+                source of truth.
               </p>
+              <Link
+                href="/admin"
+                className="mt-8 inline-flex h-11 items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-foam transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-brand-deep"
+              >
+                Enter administration
+              </Link>
             </div>
             <div className="relative -mx-6 min-h-64 sm:-mx-8 lg:mx-0 lg:min-h-80">
               <Image
@@ -144,19 +150,19 @@ export default function Home() {
         >
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">
-              Ready when you are
+              Cinch Seed — $99
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-mist">
-              Connect this repo to Vercel, push to main, and Cinch is live.
+              Get platform access and token runway for invited agents. Build
+              websites and projects from the Seed — or keep the Seed as the
+              rebuild core behind a live site.
             </p>
-            <a
-              href="https://vercel.com/new"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/admin"
               className="mt-9 inline-flex h-12 items-center justify-center rounded-md bg-foam px-6 text-sm font-semibold text-brand-deep transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-mist"
             >
-              Deploy on Vercel
-            </a>
+              Start a Seed project
+            </Link>
           </div>
         </section>
       </main>
@@ -166,7 +172,12 @@ export default function Home() {
           <p className="font-[family-name:var(--font-display)] font-bold text-brand-deep">
             Cinch
           </p>
-          <p>Work that flows.</p>
+          <div className="flex gap-4">
+            <p>Invite. Assign. Library.</p>
+            <Link href="/admin" className="hover:text-brand-deep">
+              Admin
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
