@@ -63,15 +63,17 @@ export default function Home() {
         <section className="relative isolate min-h-[100svh] overflow-hidden bg-brand-deep">
           <div className="absolute inset-0">
             <Image
-              src="/hero-scene.svg"
-              alt="Warm studio light with a sprouting seed and a Cinch workspace glowing on a laptop"
+              src="/cinch-hero.jpg"
+              alt="Sunlit desk with a sprouting seed and a Cinch growth dashboard on a laptop"
               fill
               priority
-              className="hero-media object-cover object-[78%_center] sm:object-[70%_center] lg:object-center"
+              sizes="100vw"
+              className="hero-media object-cover object-[72%_center] sm:object-[65%_center] lg:object-center"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(100deg,#f3efe6_0%,#f3efe6_34%,rgba(243,239,230,0.82)_48%,rgba(243,239,230,0.2)_64%,rgba(11,46,42,0.35)_100%)] sm:bg-[linear-gradient(105deg,#f3efe6_0%,#f3efe6_30%,rgba(243,239,230,0.75)_44%,rgba(243,239,230,0.12)_62%,rgba(11,46,42,0.28)_100%)]" />
+            {/* Soft left veil keeps copy readable without covering the photo */}
+            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(243,239,230,0.92)_0%,rgba(243,239,230,0.78)_32%,rgba(243,239,230,0.28)_52%,rgba(11,46,42,0.2)_100%)] sm:bg-[linear-gradient(105deg,rgba(243,239,230,0.9)_0%,rgba(243,239,230,0.72)_28%,rgba(243,239,230,0.18)_50%,rgba(11,46,42,0.18)_100%)]" />
             <div className="grain pointer-events-none absolute inset-0" />
-            <div className="hero-glow pointer-events-none absolute right-[12%] top-[18%] h-48 w-48 rounded-full bg-accent/40 blur-3xl sm:h-64 sm:w-64" />
+            <div className="hero-glow pointer-events-none absolute right-[18%] top-[22%] h-48 w-48 rounded-full bg-accent/30 blur-3xl sm:h-64 sm:w-64" />
           </div>
 
           <div className="relative mx-auto flex min-h-[100svh] w-full max-w-6xl flex-col justify-center px-6 pb-24 pt-28 sm:px-8">
@@ -182,9 +184,20 @@ export default function Home() {
 
         <section
           id="future"
-          className="relative overflow-hidden bg-[linear-gradient(165deg,#0b2e2a_0%,#1a7a6d_48%,#c47a2c_140%)] px-6 py-24 text-foam sm:px-8"
+          className="relative isolate overflow-hidden px-6 py-28 text-foam sm:px-8"
         >
-          <div className="grain pointer-events-none absolute inset-0 opacity-[0.12] mix-blend-soft-light" />
+          <div className="absolute inset-0">
+            <Image
+              src="/cinch-growth.jpg"
+              alt="A young seedling in warm light — growth and future advantage"
+              fill
+              sizes="100vw"
+              className="object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(165deg,rgba(11,46,42,0.88)_0%,rgba(26,122,109,0.72)_45%,rgba(196,122,44,0.55)_100%)]" />
+            <div className="grain pointer-events-none absolute inset-0 opacity-[0.1] mix-blend-soft-light" />
+          </div>
+
           <div className="relative mx-auto max-w-3xl text-center">
             <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.2em] text-accent">
               FUTURE EDGE
@@ -197,33 +210,12 @@ export default function Home() {
               than first build. Benefit: you stay cheaper and faster to improve
               than competitors who start over.
             </p>
-          </div>
-
-          <div className="relative mx-auto mt-16 grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="text-left">
-              <h3 className="font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight sm:text-3xl">
-                Watch FAB land from Admin.
-              </h3>
-              <p className="mt-4 max-w-md text-lg leading-relaxed text-mist">
-                See live health, queued adaptations, and growth across the
-                benefits that matter — tools up, visits smoother, care clearer.
-              </p>
-              <Link
-                href="/admin"
-                className="mt-8 inline-flex h-11 items-center justify-center rounded-md bg-accent px-5 text-sm font-bold text-brand-deep transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-foam"
-              >
-                Open administration
-              </Link>
-            </div>
-            <div className="relative mx-auto w-full max-w-lg">
-              <Image
-                src="/hosting-flow.svg"
-                alt="Diagram of a customer site pointing at Cinch Seed hosting"
-                width={640}
-                height={360}
-                className="h-auto w-full opacity-95"
-              />
-            </div>
+            <Link
+              href="/admin"
+              className="mt-10 inline-flex h-11 items-center justify-center rounded-md bg-accent px-5 text-sm font-bold text-brand-deep transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-foam"
+            >
+              Open administration
+            </Link>
           </div>
         </section>
 
