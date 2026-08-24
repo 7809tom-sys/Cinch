@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgent } from "@/lib/agents";
 import { seedEmbedSnippet } from "@/lib/domain";
+import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
 import { getProjectSnapshot } from "../../actions";
 import { ProjectControls } from "./project-controls";
 
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function ProjectAdminPage({ params }: PageProps) {
   const { id } = await params;
-  const { project, agents } = await getProjectSnapshot(id);
+  const { project, agents, watch, platforms } = await getProjectSnapshot(id);
   if (!project) notFound();
 
   const pm = getAgent(project.projectManagerId);
@@ -61,6 +62,9 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 {pm?.name ?? "Conductor"}
               </span>{" "}
               assigns tasks by skill level and cost.
+            </p>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+              {SEED_GROWTH_TAGLINE}
             </p>
           </div>
 
@@ -121,6 +125,63 @@ export default async function ProjectAdminPage({ params }: PageProps) {
         <aside className="space-y-6">
           <div className="border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              Seed growth monitor
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Status from the live embed — critical tools plus pending
+              adaptations across the three growth axes.
+            </p>
+            <p className="mt-3 text-sm font-semibold text-brand-deep">
+              {watch?.isLive ? "Live signal received" : "Waiting for watch script"}
+              {watch?.heartbeat
+                ? ` · last ${new Date(watch.heartbeat.receivedAt).toLocaleString()}`
+                : ""}
+            </p>
+            {watch?.failingTools && watch.failingTools.length > 0 ? (
+              <ul className="mt-3 space-y-2">
+                {watch.failingTools.map((tool) => (
+                  <li key={tool.toolId} className="text-sm text-accent">
+                    {tool.label}: {tool.detail}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm text-muted">
+                No failing critical tools reported.
+              </p>
+            )}
+            <ul className="mt-4 space-y-2">
+              {GROWTH_AXES.map((axis) => {
+                const pending =
+                  watch?.pending.filter((item) => item.growthAxis === axis.id)
+                    .length ?? 0;
+                return (
+                  <li key={axis.id} className="text-sm text-brand-deep">
+                    <span className="font-semibold">{axis.label}</span>
+                    <span className="text-muted">
+                      {" "}
+                      · {pending} pending · {axis.short}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {(watch?.pending.length ?? 0) > 0 ? (
+              <ul className="mt-4 max-h-40 space-y-2 overflow-y-auto border-t border-brand/10 pt-3">
+                {watch?.pending.slice(0, 8).map((item) => (
+                  <li key={item.id} className="text-xs text-muted">
+                    <span className="font-semibold text-brand-deep">
+                      {item.moduleTitle}
+                    </span>{" "}
+                    · {item.growthAxis.replace("_", " ")}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+          <div className="border border-brand/10 bg-foam px-5 py-5">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
               Crew activity
             </h2>
             <ul className="mt-4 space-y-3">
@@ -154,7 +215,8 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             </h2>
             {project.modules.length === 0 ? (
               <p className="mt-3 text-sm text-muted">
-                Completed agent work lands here as reusable modules.
+                Completed agent work lands here as reusable modules the Seed can
+                adapt onto the live site.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
@@ -172,15 +234,29 @@ export default async function ProjectAdminPage({ params }: PageProps) {
 
           <div className="border border-brand/10 bg-brand-deep px-5 py-5 text-foam">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
-              Seed embed script
+              Seed watch script
             </h2>
             <p className="mt-2 text-sm text-mist">
-              Drop this on a live site so the Seed can watch health and rebuild
-              if it fails — or build entirely from this Seed as the core.
+              Drop this on WordPress, Magento, Shopify, or any HTML host. The
+              Seed watches tools like a kitchen designer, then pushes growth
+              adaptations in place.
             </p>
             <pre className="mt-4 overflow-x-auto rounded-md bg-black/20 p-3 text-xs leading-relaxed text-mist">
               {embedSnippet}
             </pre>
+            <ul className="mt-4 space-y-3">
+              {platforms?.map((platform) => (
+                <li key={platform.id}>
+                  <p className="text-sm font-semibold text-foam">
+                    {platform.name}
+                  </p>
+                  <p className="mt-1 text-xs text-mist">{platform.blurb}</p>
+                  <pre className="mt-2 max-h-28 overflow-auto rounded-md bg-black/20 p-2 text-[10px] leading-relaxed text-mist">
+                    {platform.snippet}
+                  </pre>
+                </li>
+              ))}
+            </ul>
           </div>
         </aside>
       </main>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PROVIDER_ACCOUNTS, providerForEnvKey } from "@/lib/agents";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
+import { formatUsd } from "@/lib/pricing";
 import { getAdminSnapshot } from "./actions";
 import { CreateSeedForm } from "./create-seed-form";
 
@@ -13,7 +14,7 @@ export const metadata = {
 };
 
 export default async function AdminPage() {
-  const { projects, agents } = await getAdminSnapshot();
+  const { projects, agents, library } = await getAdminSnapshot();
   const configuredCount = agents.filter((agent) => agent.configured).length;
 
   return (
@@ -96,6 +97,69 @@ export default async function AdminPage() {
         </section>
 
         <aside className="space-y-6">
+          <div className="border border-brand/10 bg-foam px-6 py-6">
+            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+              Library member earnings
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              {library.pitch.benefit}
+            </p>
+            <dl className="mt-5 grid grid-cols-3 gap-3 text-center">
+              <div className="border border-brand/10 px-2 py-3">
+                <dt className="text-[11px] font-bold tracking-wide text-muted uppercase">
+                  Modulars
+                </dt>
+                <dd className="mt-1 font-[family-name:var(--font-display)] text-xl font-extrabold text-brand-deep">
+                  {library.moduleCount}
+                </dd>
+              </div>
+              <div className="border border-brand/10 px-2 py-3">
+                <dt className="text-[11px] font-bold tracking-wide text-muted uppercase">
+                  Earned
+                </dt>
+                <dd className="mt-1 font-[family-name:var(--font-display)] text-xl font-extrabold text-brand-deep">
+                  {formatUsd(library.earnedUsd)}
+                </dd>
+              </div>
+              <div className="border border-brand/10 px-2 py-3">
+                <dt className="text-[11px] font-bold tracking-wide text-muted uppercase">
+                  Balance
+                </dt>
+                <dd className="mt-1 font-[family-name:var(--font-display)] text-xl font-extrabold text-accent-deep">
+                  {formatUsd(library.balanceUsd)}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-4 text-xs font-semibold text-brand">
+              {library.pitch.earnRateLabel} · {library.pitch.reuseRateLabel}
+            </p>
+            {library.topEarners.length > 0 ? (
+              <ul className="mt-4 space-y-2">
+                {library.topEarners.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-start justify-between gap-3 text-sm"
+                  >
+                    <span className="text-brand-deep">
+                      {item.title}
+                      <span className="block text-xs text-muted">
+                        reused {item.timesUsed}×
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-semibold text-brand-deep">
+                      {formatUsd(item.earnedUsd)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-sm text-muted">
+                Finish a modular on a Seed — it joins the library and starts
+                earning when others reuse it.
+              </p>
+            )}
+          </div>
+
           <div className="border border-brand/10 bg-foam px-6 py-6">
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               Provider accounts
@@ -212,9 +276,10 @@ export default async function AdminPage() {
               >
                 {CINCH_SEED_DOMAIN}
               </a>
-              . Standalone build core, or embed a health script on an existing
-              site. If the live site fails, rebuild from the Seed. Includes
-              platform access plus token runway for invited agents.
+              . Seed builds your site, updates it in place, and protects it
+              from outside the live server — so if hosting fails, your Seed
+              can still bring you back. Library members earn credit when
+              their modulars are reused.
             </p>
           </div>
         </aside>

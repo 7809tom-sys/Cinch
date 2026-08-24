@@ -6,6 +6,7 @@ import {
   assignTasksAction,
   inviteAgentAction,
   planBuildAction,
+  queueGrowthCycleAction,
   removeAgentAction,
 } from "../../actions";
 
@@ -46,9 +47,9 @@ export function ProjectControls({
           type="button"
           disabled={pending}
           onClick={() => run(() => assignTasksAction(projectId))}
-          className="inline-flex h-10 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+          className="inline-flex h-10 items-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
         >
-          PM: assign by skill + cost
+          PM: assign work
         </button>
         <button
           type="button"
@@ -56,37 +57,45 @@ export function ProjectControls({
           onClick={() => run(() => advanceWorkAction(projectId))}
           className="inline-flex h-10 items-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
         >
-          Advance agent work
+          Advance assigned work
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run(() => queueGrowthCycleAction(projectId))}
+          className="inline-flex h-10 items-center rounded-md border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+        >
+          Grow Seed (3 axes)
         </button>
       </div>
 
       <div>
-        <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+        <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
           Invite specialists
-        </h3>
+        </h2>
         <ul className="mt-3 space-y-2">
           {availableAgentIds.map((agent) => {
             const invited = invitedAgentIds.includes(agent.id);
             return (
               <li
                 key={agent.id}
-                className="flex flex-wrap items-center justify-between gap-3 border border-brand/10 bg-foam px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-brand/10 py-2 last:border-b-0"
               >
                 <div>
-                  <p className="font-semibold text-brand-deep">
-                    {agent.name}{" "}
-                    <span className="font-normal text-muted">· {agent.role}</span>
-                  </p>
-                  <p className="text-xs text-muted">
-                    API key {agent.configured ? "ready" : "missing"}
+                  <p className="font-semibold text-brand-deep">{agent.name}</p>
+                  <p className="text-sm text-muted">
+                    {agent.role}
+                    {agent.configured ? "" : " · no API key yet"}
                   </p>
                 </div>
                 {invited ? (
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => run(() => removeAgentAction(projectId, agent.id))}
-                    className="text-sm font-semibold text-muted hover:text-brand-deep"
+                    onClick={() =>
+                      run(() => removeAgentAction(projectId, agent.id))
+                    }
+                    className="text-sm font-semibold text-muted hover:text-brand-deep disabled:opacity-60"
                   >
                     Remove
                   </button>
@@ -94,8 +103,10 @@ export function ProjectControls({
                   <button
                     type="button"
                     disabled={pending}
-                    onClick={() => run(() => inviteAgentAction(projectId, agent.id))}
-                    className="text-sm font-semibold text-brand hover:text-brand-deep disabled:opacity-40"
+                    onClick={() =>
+                      run(() => inviteAgentAction(projectId, agent.id))
+                    }
+                    className="text-sm font-semibold text-brand hover:text-brand-deep disabled:opacity-60"
                   >
                     Invite
                   </button>

@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
+import { applyModuleReuse, listLibraryModules } from "./module-library";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
 
@@ -251,6 +252,30 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     `${pm.name} drafted ${project.tasks.length} build tasks from the Seed brief.`,
     pm.id,
   );
+
+  const library = await listLibraryModules();
+  if (library.length > 0) {
+    const references = library.slice(0, 5);
+    const creditNotes: string[] = [];
+    for (const module of references) {
+      // Demo merge cost until live token metering is wired; quote still applies 85%/8%.
+      const reuse = await applyModuleReuse({
+        moduleId: module.id,
+        reuseProjectId: project.id,
+        aiMergeCostUsd: 5,
+      });
+      if (reuse) {
+        creditNotes.push(
+          `${module.title} (reuse ${reuse.feeUsd.toFixed(2)}, creator credit ${reuse.creatorCreditUsd.toFixed(2)})`,
+        );
+      }
+    }
+    pushActivity(
+      project,
+      `${pm.name} reused ${creditNotes.length} modular(s) from the shared library at 85% of create+merge; creators earned 8% credit: ${creditNotes.join("; ")}.`,
+      pm.id,
+    );
+  }
 
   await writeStore(store);
   return project;

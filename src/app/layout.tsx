@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Figtree, Syne } from "next/font/google";
+import { Bricolage_Grotesque, Figtree } from "next/font/google";
 import "./globals.css";
 
-const display = Syne({
+const display = Bricolage_Grotesque({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["600", "700", "800"],
@@ -15,9 +15,9 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Cinch Seed — Invite AI agents. Build from a Seed.",
+  title: "Cinch Seed — Builds, updates, and protects your site",
   description:
-    "Cinch Seed (cinchseed.com) lets specialized AI agents collaborate on projects, save modules to a library, and rebuild sites from a durable core.",
+    "Cinch Seed builds your site, updates it in place, and protects it from outside your live server — so if hosting goes down, the Seed can still restore you.",
   metadataBase: new URL("https://cinchseed.com"),
 };
 

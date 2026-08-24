@@ -1,6 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SiteFooter } from "@/components/site-footer";
+import { AGENT_CATALOG } from "@/lib/agents";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
+
+const AGENT_TEAM = AGENT_CATALOG.map((agent) => ({
+  name: agent.name,
+  role: agent.role,
+  excels: agent.specialty,
+}));
 
 export default function Home() {
   return (
@@ -9,186 +17,256 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-8">
           <a
             href="#top"
-            className="font-[family-name:var(--font-display)] text-lg font-bold tracking-tight text-brand-deep"
+            className="font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight text-brand-deep"
           >
             Cinch
           </a>
-          <nav className="flex items-center gap-6 text-sm font-medium text-muted">
-            <a href="#how" className="transition-colors hover:text-brand-deep">
-              How it works
+          <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
+            <a href="#team" className="transition-colors hover:text-brand-deep">
+              All-stars
             </a>
-            <Link href="/admin" className="transition-colors hover:text-brand-deep">
-              Admin
+            <Link href="/about" className="transition-colors hover:text-brand-deep">
+              About
+            </Link>
+            <a
+              href="#protect"
+              className="transition-colors hover:text-brand-deep"
+            >
+              Protect
+            </a>
+            <Link
+              href="/admin"
+              className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
+            >
+              Start
             </Link>
           </nav>
         </div>
       </header>
 
       <main id="top">
-        <section className="relative isolate min-h-[100svh] overflow-hidden">
-          <div className="absolute inset-0">
+        {/* Split hero: solid copy column — never over the laptop screen */}
+        <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#fffaf2]">
+          <div className="absolute inset-y-0 right-0 w-full lg:w-[58%]">
             <Image
-              src="/hero-scene.svg"
-              alt="A calm desk with an open notebook and laptop showing a clean Cinch workspace"
+              src="/cinch-hero-bold.jpg"
+              alt="Cinematic desk with a glowing Cinch workspace and a living sprout"
               fill
               priority
-              className="hero-media object-cover object-[68%_center] sm:object-center"
+              sizes="(max-width: 1024px) 100vw, 58vw"
+              className="hero-media object-cover object-[72%_center] sm:object-[65%_center]"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(238,246,242,0.94)_0%,rgba(238,246,242,0.78)_38%,rgba(238,246,242,0.18)_68%,rgba(15,61,53,0.12)_100%)]" />
-            <div className="hero-glow pointer-events-none absolute -left-24 top-24 h-64 w-64 rounded-full bg-accent/25 blur-3xl" />
+            {/* Mobile/tablet: opaque left slab so type never shades into the screen */}
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,#fffaf2_0%,#fffaf2_42%,rgba(255,250,242,0.92)_52%,rgba(255,250,242,0.15)_68%,transparent_82%)] lg:hidden" />
+            {/* Desktop: soft edge only where the solid column meets the photo */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-24 bg-gradient-to-r from-[#fffaf2] to-transparent lg:block" />
+            <div className="grain pointer-events-none absolute inset-0 opacity-[0.04]" />
           </div>
 
-          <div className="relative mx-auto flex min-h-[100svh] w-full max-w-6xl flex-col justify-center px-6 pb-20 pt-28 sm:px-8">
-            <div className="max-w-xl">
-              <p className="animate-rise font-[family-name:var(--font-display)] text-5xl font-extrabold tracking-tight text-brand-deep sm:text-7xl">
+          <div className="relative mx-auto flex min-h-[100svh] w-full max-w-6xl items-center px-6 pb-24 pt-28 sm:px-8">
+            <div className="w-full max-w-[22rem] rounded-none bg-[#fffaf2]/95] py-2 sm:max-w-md lg:max-w-[28rem] lg:bg-[#fffaf2] lg:pr-8">
+              <p className="animate-rise font-[family-name:var(--font-display)] text-6xl font-extrabold leading-none tracking-tight text-brand-deep sm:text-8xl">
                 Cinch
               </p>
-              <h1 className="animate-rise-delay mt-5 max-w-lg font-[family-name:var(--font-display)] text-3xl font-semibold leading-tight tracking-tight text-brand-deep sm:text-4xl">
-                Invite AI agents. Build from a Seed.
+              <h1 className="animate-rise-delay mt-5 font-[family-name:var(--font-display)] text-[2rem] font-bold leading-[1.05] tracking-tight text-brand-deep sm:text-5xl">
+                Builds. Updates. Protects.
               </h1>
-              <p className="animate-rise-delay-2 mt-5 max-w-md text-lg leading-relaxed text-muted">
-                Specialized agents collaborate on your project at{" "}
-                <a
-                  href={CINCH_SEED_ORIGIN}
-                  className="font-semibold text-brand-deep underline-offset-2 hover:underline"
-                >
-                  {CINCH_SEED_DOMAIN}
-                </a>
-                . A project manager assigns work by skill and cost. Modules save
-                to your library — the durable core of the site.
+              <p className="animate-rise-delay-2 mt-5 text-base leading-relaxed text-muted sm:text-lg">
+                Seed lives outside your live server — so it can grow your site,
+                keep improving it, and bring it back if it ever goes down.
               </p>
-              <div className="animate-rise-delay-2 mt-9 flex flex-wrap items-center gap-3">
+              <div className="animate-sprout mt-9 flex flex-wrap items-center gap-3">
                 <Link
                   href="/admin"
-                  className="inline-flex h-12 items-center justify-center rounded-md bg-brand px-6 text-sm font-semibold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand-deep"
+                  className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-7 text-sm font-bold text-brand-deep shadow-[0_10px_30px_rgba(232,165,75,0.35)] transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-accent-deep hover:text-foam"
                 >
-                  Open admin studio
+                  Plant a Seed — $99
                 </Link>
                 <a
-                  href="#how"
-                  className="inline-flex h-12 items-center justify-center rounded-md px-5 text-sm font-semibold text-brand-deep transition-colors hover:bg-mist/70"
+                  href="#team"
+                  className="inline-flex h-12 items-center justify-center rounded-md px-4 text-sm font-bold text-brand-deep transition-colors hover:text-brand"
                 >
-                  See how Seed works
+                  Meet the all-stars →
                 </a>
               </div>
             </div>
           </div>
         </section>
 
-        <section
-          id="how"
-          className="border-t border-brand/10 bg-foam px-6 py-24 sm:px-8"
-        >
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-brand-deep sm:text-4xl">
-              One Seed. A full crew.
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-muted">
-              Build standalone from the Seed on {CINCH_SEED_DOMAIN}, or embed a
-              watch script on a live site so Cinch can rebuild if it ever fails.
+        <section id="team" className="bg-foam px-6 py-24 sm:px-8">
+          <div className="mx-auto max-w-6xl">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+              YOUR ALL-STAR GROUP OF AI AGENTS
             </p>
-          </div>
+            <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
+              Meet your all-star group of AI agents — and what each one excels
+              at.
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+              With your API keys in place, Seed puts this all-star group on the
+              job. Each agent owns a lane so the site gets built, updated, and
+              protected without you juggling every task.
+            </p>
 
-          <ol className="mx-auto mt-16 grid max-w-5xl gap-12 sm:grid-cols-3 sm:gap-8">
-            {[
-              {
-                step: "01",
-                title: "Invite",
-                copy: "Staff a project with specialists you already hold API keys for — design, code, copy, SEO, QA.",
-              },
-              {
-                step: "02",
-                title: "Assign",
-                copy: "The project manager agent breaks work down and routes each task to the cheapest capable agent.",
-              },
-              {
-                step: "03",
-                title: "Library",
-                copy: "Finished work becomes modules in your Seed library — reusable pieces of the site’s core.",
-              },
-            ].map((item) => (
-              <li key={item.step} className="text-left sm:text-center">
-                <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
-                  {item.step}
-                </p>
-                <h3 className="mt-3 font-[family-name:var(--font-display)] text-2xl font-bold text-brand-deep">
-                  {item.title}
-                </h3>
-                <p className="mt-3 text-base leading-relaxed text-muted">
-                  {item.copy}
-                </p>
-              </li>
-            ))}
-          </ol>
+            <ul className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {AGENT_TEAM.map((agent) => (
+                <li key={agent.name} className="border-t border-brand-deep/15 pt-5">
+                  <p className="font-[family-name:var(--font-display)] text-xl font-extrabold text-brand-deep">
+                    {agent.name}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-accent-deep">
+                    {agent.role}
+                  </p>
+                  <p className="mt-3 text-base leading-relaxed text-muted">
+                    Excels at {agent.excels.charAt(0).toLowerCase()}
+                    {agent.excels.slice(1)}.
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
-        <section className="overflow-hidden bg-[linear-gradient(180deg,#f7fbf9_0%,#e8f3ee_100%)]">
-          <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-24 sm:px-8 lg:grid-cols-2 lg:gap-16">
-            <div>
-              <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-brand-deep sm:text-4xl">
-                Administration you can trust
+        <section id="build" className="bg-background">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:py-28">
+            <div className="order-2 lg:order-1">
+              <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+                BUILDS YOUR SITE
+              </p>
+              <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
+                Your all-star group of AI agents assembles the site from a
+                living Seed.
               </h2>
               <p className="mt-5 max-w-md text-lg leading-relaxed text-muted">
-                See which agents are on the job, what they were assigned, and
-                what landed in the module library — while the Seed stays the
-                source of truth.
+                Conductor assigns the work. Design, code, copy, SEO, and QA each
+                take their lane. Finished modulars land in your core — a durable
+                build, not a one-time launch.
               </p>
-              <Link
-                href="/admin"
-                className="mt-8 inline-flex h-11 items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-foam transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-brand-deep"
-              >
-                Enter administration
-              </Link>
             </div>
-            <div className="relative -mx-6 min-h-64 sm:-mx-8 lg:mx-0 lg:min-h-80">
+            <div className="relative order-1 aspect-[4/3] overflow-hidden lg:order-2">
               <Image
-                src="/hero-scene.svg"
-                alt="Cinch product workspace preview"
+                src="/cinch-tools.jpg"
+                alt="Premium design tools glowing on a display — Seed building capability"
                 fill
-                className="object-cover object-left"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover transition-transform duration-700 hover:scale-[1.03]"
               />
             </div>
           </div>
         </section>
 
+        <section id="update" className="bg-brand-deep text-foam">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:py-28">
+            <div className="relative aspect-[4/3] overflow-hidden">
+              <Image
+                src="/cinch-customers.jpg"
+                alt="Bright workspace with a live site on screen — continuous updates"
+                fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover transition-transform duration-700 hover:scale-[1.03]"
+              />
+            </div>
+            <div>
+              <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
+                UPDATES YOUR SITE
+              </p>
+              <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-5xl">
+                Keeps improving the live experience in place.
+              </h2>
+              <p className="mt-5 max-w-md text-lg leading-relaxed text-mist">
+                Seed watches what customers feel — functionality, speed, and
+                care — then pushes adapted modulars onto the site you already
+                run. WordPress, Magento, Shopify, or custom HTML.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="protect"
+          className="relative isolate min-h-[70svh] overflow-hidden"
+        >
+          <div className="absolute inset-0">
+            <Image
+              src="/cinch-growth.jpg"
+              alt="Seedling in warm light — protection apart from the live server"
+              fill
+              sizes="100vw"
+              className="object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,46,42,0.92)_0%,rgba(11,46,42,0.62)_42%,rgba(196,122,44,0.5)_100%)]" />
+          </div>
+          <div className="relative mx-auto flex min-h-[70svh] max-w-6xl flex-col justify-end px-6 py-20 sm:px-8 lg:justify-center">
+            <div className="max-w-xl">
+              <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
+                PROTECTS YOUR SITE
+              </p>
+              <h2 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-foam sm:text-5xl">
+                If the live site goes down, Seed is still standing.
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-mist">
+                Seed does not live on the same server as your public site. It
+                watches from outside, holds the durable core, and can rebuild
+                or restore when hosting fails — so a downed server does not take
+                your future with it.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-foam px-6 py-20 sm:px-8">
+          <div className="mx-auto max-w-5xl">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+              LIBRARY MEMBERSHIP
+            </p>
+            <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-4xl">
+              Fund a modular once. Earn when others reuse it.
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted">
+              Finished work joins the shared library under your member account.
+              When later Seeds reuse it, you earn credit back — so your library
+              account can make money as the network grows.
+            </p>
+          </div>
+        </section>
+
         <section
           id="start"
-          className="bg-brand-deep px-6 py-24 text-foam sm:px-8"
+          className="relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_#fff6e8_0%,_#f3efe6_55%,_#e7ddd0_100%)] px-6 py-28 sm:px-8"
         >
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">
-              Cinch Seed — $99
+          <div className="pointer-events-none absolute -right-10 top-10 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
+          <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-brand/15 blur-3xl" />
+          <div className="relative mx-auto max-w-3xl text-center">
+            <p className="font-[family-name:var(--font-display)] text-6xl font-extrabold tracking-tight text-brand-deep sm:text-8xl">
+              Cinch
+            </p>
+            <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
+              Seed — $99
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-mist">
-              Get started at {CINCH_SEED_DOMAIN}. Platform access and token
-              runway for invited agents. Build from the Seed — or keep it as the
-              rebuild core behind a live site.
+            <p className="mx-auto mt-5 max-w-lg text-lg leading-relaxed text-muted">
+              Plant it on {CINCH_SEED_DOMAIN}. Your all-star group of AI agents
+              builds the site, updates it live, and protects it from outside the
+              live server.
             </p>
             <Link
               href="/admin"
-              className="mt-9 inline-flex h-12 items-center justify-center rounded-md bg-foam px-6 text-sm font-semibold text-brand-deep transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-mist"
+              className="mt-10 inline-flex h-14 items-center justify-center rounded-md bg-brand-deep px-8 text-base font-bold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand"
             >
-              Start a Seed project
+              Meet the all-stars and start
             </Link>
+            <p className="mt-5 text-sm text-muted">
+              <a
+                href={CINCH_SEED_ORIGIN}
+                className="font-semibold text-brand underline-offset-2 hover:underline"
+              >
+                {CINCH_SEED_DOMAIN}
+              </a>
+            </p>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-brand/10 bg-foam px-6 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 text-sm text-muted sm:flex-row sm:items-center">
-          <p className="font-[family-name:var(--font-display)] font-bold text-brand-deep">
-            Cinch
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <a href={CINCH_SEED_ORIGIN} className="hover:text-brand-deep">
-              {CINCH_SEED_DOMAIN}
-            </a>
-            <Link href="/admin" className="hover:text-brand-deep">
-              Admin
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
