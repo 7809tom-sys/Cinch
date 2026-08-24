@@ -58,6 +58,34 @@ const KNOWN_PRODUCTS: Record<string, Omit<Product, "upc" | "source">> = {
     size: "7.25 oz",
     referencePriceUsd: 1.29,
   },
+  "025500000000": {
+    name: "Folgers Classic Roast Ground Coffee",
+    brand: "Folgers",
+    category: "Coffee",
+    size: "25.9 oz",
+    referencePriceUsd: 9.98,
+  },
+  "043000954000": {
+    name: "Maxwell House Original Roast Coffee",
+    brand: "Maxwell House",
+    category: "Coffee",
+    size: "30.6 oz",
+    referencePriceUsd: 8.48,
+  },
+  "012000161551": {
+    name: "Starbucks Pike Place Ground Coffee",
+    brand: "Starbucks",
+    category: "Coffee",
+    size: "18 oz",
+    referencePriceUsd: 11.49,
+  },
+  "078742000000": {
+    name: "Great Value Classic Roast Coffee",
+    brand: "Great Value",
+    category: "Coffee",
+    size: "30.5 oz",
+    referencePriceUsd: 6.62,
+  },
 };
 
 const DEMO_CATEGORIES = [
@@ -74,6 +102,26 @@ export function getFeaturedProducts(): Product[] {
     source: "demo" as const,
     ...data,
   }));
+}
+
+/** Text search across product name, brand, and category (e.g. "Folgers coffee"). */
+export function searchProducts(query: string): Product[] {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return [];
+  return getFeaturedProducts().filter((product) => {
+    const haystack =
+      `${product.name} ${product.brand} ${product.category}`.toLowerCase();
+    return terms.every((term) => haystack.includes(term));
+  });
+}
+
+/** Same-category products from other brands — for shoppers who aren't brand-loyal. */
+export function getAlternatives(product: Product): Product[] {
+  return getFeaturedProducts().filter(
+    (candidate) =>
+      candidate.category === product.category &&
+      candidate.brand !== product.brand,
+  );
 }
 
 function demoProduct(upc: string): Product {

@@ -5,6 +5,18 @@ export function formatUsd(value: number): string {
   }).format(Math.max(0, Math.round(value * 100) / 100));
 }
 
+/** Estimated dollar value of a coupon, used for cumulative savings. */
+export function couponValueUsd(
+  deal: { amountUsd?: number; percentOff?: number },
+  referencePriceUsd: number,
+): number {
+  if (deal.amountUsd) return Math.round(deal.amountUsd * 100) / 100;
+  if (deal.percentOff) {
+    return Math.round(referencePriceUsd * (deal.percentOff / 100) * 100) / 100;
+  }
+  return 0;
+}
+
 /** Normalize a scanned/typed barcode to digits only. */
 export function normalizeUpc(raw: string): string {
   return raw.replace(/\D/g, "");
