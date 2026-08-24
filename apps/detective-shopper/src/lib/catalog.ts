@@ -68,6 +68,14 @@ const DEMO_CATEGORIES = [
   ["Pantry", "Harvest Lane", "16 oz"],
 ] as const;
 
+export function getFeaturedProducts(): Product[] {
+  return Object.entries(KNOWN_PRODUCTS).map(([upc, data]) => ({
+    upc,
+    source: "demo" as const,
+    ...data,
+  }));
+}
+
 function demoProduct(upc: string): Product {
   const known = KNOWN_PRODUCTS[upc];
   if (known) {

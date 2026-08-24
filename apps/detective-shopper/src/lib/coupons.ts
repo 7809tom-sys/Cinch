@@ -1,4 +1,4 @@
-import type { Product } from "./catalog";
+import { getFeaturedProducts, type Product } from "./catalog";
 import { seededUnit } from "./format";
 
 export type Deal = {
@@ -75,6 +75,17 @@ export async function findDeals(product: Product): Promise<Deal[]> {
   }
 
   return deals;
+}
+
+export type FeaturedDeals = { product: Product; deals: Deal[] };
+
+/** Curated coupons across popular products for the signed-in coupons feed. */
+export async function getFeaturedDeals(): Promise<FeaturedDeals[]> {
+  const products = getFeaturedProducts();
+  const results = await Promise.all(
+    products.map(async (product) => ({ product, deals: await findDeals(product) })),
+  );
+  return results.filter((entry) => entry.deals.length > 0);
 }
 
 async function fetchLiveDeals(product: Product): Promise<Deal[]> {

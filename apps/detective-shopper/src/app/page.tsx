@@ -15,6 +15,9 @@ export default function Home() {
             <a href="/scan" className="transition-colors hover:text-foam">
               Scan
             </a>
+            <a href="/coupons" className="transition-colors hover:text-foam">
+              Coupons
+            </a>
             <a href="/recipes" className="transition-colors hover:text-foam">
               Recipes
             </a>
