@@ -52,9 +52,39 @@ export default async function AdminTestPage() {
             1. Provider keys ({readyCount}/{initialResults.length} passing)
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Sign up, create keys, add them in Vercel Environment Variables, then
-            run the tests.
+            Keys do <strong>not</strong> connect from the OpenAI / Anthropic /
+            Google websites alone. You must paste each key into{" "}
+            <strong>Vercel → cinch → Settings → Environment Variables</strong>{" "}
+            for <strong>Production</strong>, then redeploy.
           </p>
+          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
+            <li>
+              Open{" "}
+              <a
+                href="https://vercel.com/cinch-ai-builder/cinch/settings/environment-variables"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand"
+              >
+                Vercel environment variables
+              </a>
+              .
+            </li>
+            <li>
+              Add exactly these names (spelling matters):{" "}
+              <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>,{" "}
+              <code>GOOGLE_AI_API_KEY</code>.
+            </li>
+            <li>
+              Check <strong>Production</strong> (and Preview if you want tests
+              there too). Save.
+            </li>
+            <li>
+              Redeploy Production (Deployments → … → Redeploy), or push a
+              commit. New env vars do not apply until redeploy.
+            </li>
+            <li>Come back here and click <strong>Run provider tests</strong>.</li>
+          </ol>
           <div className="mt-5">
             <ProviderTestPanel initialResults={initialResults} />
           </div>
