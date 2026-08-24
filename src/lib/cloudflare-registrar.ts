@@ -23,6 +23,88 @@ export function isCloudflareRegistrarConfigured() {
   return cloudflareConfigured();
 }
 
+export type CloudflareConnection = {
+  configured: boolean;
+  ok: boolean;
+  message: string;
+  accountName?: string;
+};
+
+const CF_API_BASE = "https://api.cloudflare.com/client/v4";
+
+type CloudflareEnvelope<T> = {
+  success: boolean;
+  errors?: Array<{ message?: string }>;
+  result?: T;
+};
+
+async function cfGet<T>(url: string): Promise<CloudflareEnvelope<T>> {
+  const token = process.env.CLOUDFLARE_API_TOKEN!.trim();
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+  const json = (await response.json()) as CloudflareEnvelope<T>;
+  if (!response.ok || !json.success) {
+    const message =
+      json.errors?.map((error) => error.message).filter(Boolean).join("; ") ||
+      `Cloudflare request failed (${response.status}).`;
+    throw new Error(message);
+  }
+  return json;
+}
+
+/**
+ * Confirms the app is actually connected to the user's Cloudflare account:
+ * validates the API token and that the token can reach the configured account
+ * (where their domains are parked). Used by the pre-launch checklist.
+ */
+export async function verifyCloudflareConnection(): Promise<CloudflareConnection> {
+  if (!cloudflareConfigured()) {
+    return {
+      configured: false,
+      ok: false,
+      message:
+        "Not connected yet — add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.",
+    };
+  }
+
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID!.trim();
+
+  try {
+    const verify = await cfGet<{ status?: string }>(
+      `${CF_API_BASE}/user/tokens/verify`,
+    );
+    if (verify.result?.status && verify.result.status !== "active") {
+      throw new Error(`API token is ${verify.result.status}, not active.`);
+    }
+
+    const account = await cfGet<{ name?: string }>(
+      `${CF_API_BASE}/accounts/${encodeURIComponent(accountId)}`,
+    );
+    const accountName = account.result?.name;
+
+    return {
+      configured: true,
+      ok: true,
+      message: accountName
+        ? `Connected to Cloudflare account “${accountName}”.`
+        : "Connected to Cloudflare.",
+      accountName,
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      ok: false,
+      message:
+        error instanceof Error ? error.message : "Cloudflare connection failed.",
+    };
+  }
+}
+
 async function cfFetch(apiPath: string, init?: RequestInit) {
   const token = process.env.CLOUDFLARE_API_TOKEN!.trim();
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID!.trim();

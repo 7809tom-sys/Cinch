@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { launchMode, runAllProviderTests } from "@/lib/provider-tests";
+import { verifyCloudflareConnection } from "@/lib/cloudflare-registrar";
 import { ProviderTestPanel } from "./provider-test-panel";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,10 @@ export const metadata = {
 
 export default async function AdminTestPage() {
   const mode = launchMode();
-  const initialResults = await runAllProviderTests();
+  const [initialResults, cloudflare] = await Promise.all([
+    runAllProviderTests(),
+    verifyCloudflareConnection(),
+  ]);
   const readyCount = initialResults.filter((result) => result.ok).length;
 
   return (
@@ -91,8 +95,71 @@ export default async function AdminTestPage() {
         </section>
 
         <section className="mt-8 border border-brand/10 bg-foam px-6 py-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+              2. Domain registrar — Cloudflare
+            </h2>
+            <span
+              className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${
+                cloudflare.ok
+                  ? "bg-accent/15 text-brand"
+                  : cloudflare.configured
+                    ? "bg-brand/10 text-brand-deep"
+                    : "bg-mist text-muted"
+              }`}
+            >
+              {cloudflare.ok
+                ? "CONNECTED"
+                : cloudflare.configured
+                  ? "ERROR"
+                  : "NOT CONNECTED"}
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-muted">
+            Cinch books domains through Cloudflare Registrar. Connect the
+            Cloudflare account where your domain is parked so search and booking
+            run live instead of demo pricing.
+          </p>
+          <p className="mt-3 text-sm text-brand-deep">{cloudflare.message}</p>
+          {!cloudflare.configured ? (
+            <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
+              <li>
+                Create a token at{" "}
+                <a
+                  href="https://dash.cloudflare.com/profile/api-tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-brand"
+                >
+                  Cloudflare → My Profile → API Tokens
+                </a>{" "}
+                (needs Account · Domain API rights).
+              </li>
+              <li>
+                Copy your Account ID from{" "}
+                <a
+                  href="https://dash.cloudflare.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-brand"
+                >
+                  the Cloudflare dashboard
+                </a>{" "}
+                (Account Home → right sidebar).
+              </li>
+              <li>
+                Add <code>CLOUDFLARE_API_TOKEN</code> and{" "}
+                <code>CLOUDFLARE_ACCOUNT_ID</code> in{" "}
+                <strong>Vercel → cinch → Environment Variables</strong>, then
+                redeploy.
+              </li>
+            </ol>
+          ) : null}
+        </section>
+
+        <section className="mt-8 border border-brand/10 bg-foam px-6 py-6">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-            2. Seed studio smoke test
+            3. Seed studio smoke test
           </h2>
           <ol className="mt-4 list-decimal space-y-3 pl-5 text-sm leading-relaxed text-muted">
             <li>
@@ -117,7 +184,7 @@ export default async function AdminTestPage() {
 
         <section className="mt-8 border border-brand/10 bg-brand-deep px-6 py-6 text-foam">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold">
-            3. Go live when ready
+            4. Go live when ready
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-mist">
             When provider tests pass and the Seed flow feels solid, set{" "}
