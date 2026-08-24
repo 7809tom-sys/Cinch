@@ -61,7 +61,9 @@ export async function comparePrices(product: Product): Promise<StorePrice[]> {
     return price;
   });
 
-  return prices.sort((a, b) => a.priceUsd - b.priceUsd);
+  return prices.sort(
+    (a, b) => Number(b.inStock) - Number(a.inStock) || a.priceUsd - b.priceUsd,
+  );
 }
 
 async function fetchLivePrices(product: Product): Promise<StorePrice[]> {
@@ -100,5 +102,7 @@ async function fetchLivePrices(product: Product): Promise<StorePrice[]> {
         : true,
       url: offer.link,
     }))
-    .sort((a, b) => a.priceUsd - b.priceUsd);
+    .sort(
+      (a, b) => Number(b.inStock) - Number(a.inStock) || a.priceUsd - b.priceUsd,
+    );
 }

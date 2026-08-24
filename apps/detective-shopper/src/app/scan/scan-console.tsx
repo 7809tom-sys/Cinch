@@ -128,7 +128,11 @@ export function ScanConsole() {
               </h3>
               <ul className="mt-4 space-y-2">
                 {result.prices.map((price, i) => {
-                  const best = i === 0 && price.inStock;
+                  const best =
+                    price.inStock &&
+                    result.savings.bestStore != null &&
+                    price.store === result.savings.bestStore.store &&
+                    price.priceUsd === result.savings.bestStore.priceUsd;
                   return (
                     <li
                       key={`${price.store}-${i}`}
@@ -136,14 +140,14 @@ export function ScanConsole() {
                         best
                           ? "border-brand/50 bg-brand/10"
                           : "border-white/10 bg-background"
-                      }`}
+                      } ${price.inStock ? "" : "opacity-60"}`}
                     >
                       <div className="min-w-0">
                         <p className="flex items-center gap-2 font-semibold text-foam">
                           {price.store}
                           {best ? (
                             <span className="rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold text-background">
-                              CHEAPEST
+                              BEST IN STOCK
                             </span>
                           ) : null}
                         </p>
@@ -155,7 +159,9 @@ export function ScanConsole() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-foam">
+                        <span
+                          className={`font-semibold text-foam ${price.inStock ? "" : "line-through"}`}
+                        >
                           {formatUsd(price.priceUsd)}
                         </span>
                         {price.url ? (
