@@ -59,16 +59,17 @@ export default async function AdminTestPage() {
           </p>
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
             <li>
-              Open{" "}
+              Open your{" "}
               <a
-                href="https://vercel.com/cinch-ai-builder/cinch/settings/environment-variables"
+                href="https://vercel.com/dashboard"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-semibold text-brand"
               >
-                Vercel environment variables
+                Vercel dashboard
               </a>
-              .
+              , open the <strong>cinch</strong> project, then go to{" "}
+              <strong>Settings → Environment Variables</strong>.
             </li>
             <li>
               Add exactly these names (spelling matters):{" "}
