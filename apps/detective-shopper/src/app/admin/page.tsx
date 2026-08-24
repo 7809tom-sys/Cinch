@@ -1,16 +1,33 @@
 import Link from "next/link";
-import { getAffiliateKeyStatus, saveAffiliateApiKey } from "./actions";
-import { SaveKeyForm } from "./save-key-form";
+import { INTEGRATIONS } from "@/lib/integrations";
+import { getKeyStatus } from "./actions";
+import { IntegrationsPanel, type IntegrationCard } from "./integrations-panel";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Admin settings — Detective Shopper",
-  description: "Configure affiliate API credentials for Detective Shopper.",
+  title: "Admin — Detective Shopper integrations",
+  description:
+    "Connect UPC lookup, coupon feed, and affiliate APIs that power Detective Shopper scans and savings.",
 };
 
 export default async function AdminPage() {
-  const status = await getAffiliateKeyStatus();
+  const cards: IntegrationCard[] = await Promise.all(
+    INTEGRATIONS.map(async (def) => {
+      const status = await getKeyStatus(def.envKey);
+      return {
+        id: def.id,
+        name: def.name,
+        envKey: def.envKey,
+        role: def.role,
+        signupUrl: def.signupUrl,
+        configured: status.configured,
+        masked: status.masked,
+      };
+    }),
+  );
+
+  const configuredCount = cards.filter((card) => card.configured).length;
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -22,7 +39,12 @@ export default async function AdminPage() {
           >
             Detective Shopper
           </Link>
-          <span className="text-sm font-medium text-mist">Admin</span>
+          <nav className="flex items-center gap-5 text-sm font-medium text-mist">
+            <Link href="/scan" className="transition-colors hover:text-foam">
+              Scan
+            </Link>
+            <span>Admin</span>
+          </nav>
         </div>
       </header>
 
@@ -31,80 +53,36 @@ export default async function AdminPage() {
           SETTINGS
         </p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foam sm:text-4xl">
-          Affiliate API key
+          Data integrations ({configuredCount}/{cards.length} connected)
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-mist">
-          Store your Impact (or other affiliate network) API key as{" "}
-          <code className="text-foam">IMPACT_API_KEY</code> — never hardcode it
-          in source. Local saves go to a gitignored{" "}
-          <code className="text-foam">.env.local</code> file.
+          Connect the feeds that power scans, price comparison, coupons, and
+          affiliate monetization. Keys save to a gitignored{" "}
+          <code className="text-foam">.env.local</code> for local dev; set the
+          same names in Vercel → Detective Shopper → Environment Variables for
+          production. Use <strong>Test connection</strong> to confirm each key
+          resolves without a 404.
         </p>
 
-        <section className="mt-10 border border-white/10 bg-panel px-6 py-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-foam">
-                Current key
-              </h2>
-              <p className="mt-2 text-sm text-mist">
-                {status.configured ? (
-                  <>
-                    Configured from environment:{" "}
-                    <span className="font-mono text-foam">{status.masked}</span>
-                  </>
-                ) : (
-                  "No IMPACT_API_KEY found in the environment yet."
-                )}
-              </p>
-            </div>
-            <span
-              className={`rounded-md px-3 py-1 text-xs font-semibold tracking-wide ${
-                status.configured
-                  ? "bg-brand/20 text-brand"
-                  : "bg-white/10 text-mist"
-              }`}
-            >
-              {status.configured ? "SET" : "MISSING"}
-            </span>
-          </div>
+        <div className="mt-10">
+          <IntegrationsPanel integrations={cards} />
+        </div>
 
-          <div className="mt-8">
-            <SaveKeyForm action={saveAffiliateApiKey} />
-          </div>
-        </section>
-
-        <section className="mt-8 border border-white/10 bg-panel px-6 py-6">
-          <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-foam">
-            Need an affiliate account?
+        <div className="mt-10 rounded-2xl border border-white/10 bg-panel px-5 py-5">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
+            Affiliate link wrapping
           </h2>
-          <p className="mt-3 text-sm leading-relaxed text-mist">
-            Sign up as a partner on Impact to get API credentials for tracking
-            and deep links. Awin works the same way if you prefer that network.
+          <p className="mt-2 text-sm leading-relaxed text-mist">
+            When <code className="text-foam">IMPACT_API_KEY</code> is set,
+            outbound retailer links in the price comparison and savings panel are
+            automatically wrapped with your publisher tracking parameters
+            (optionally set <code className="text-foam">IMPACT_MEDIA_PARTNER_ID</code>{" "}
+            to tag clicks by media partner).
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href="https://app.impact.com/login.user"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-11 items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-background transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand-deep"
-            >
-              Sign up for Impact
-            </a>
-            <a
-              href="https://www.awin.com/us/publisher"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-11 items-center justify-center rounded-md px-5 text-sm font-semibold text-foam transition-colors hover:bg-white/5"
-            >
-              Or join Awin
-            </a>
-          </div>
-        </section>
+        </div>
 
-        <p className="mt-10 text-sm text-mist">
-          Production tip: in the Vercel project for Detective Shopper, add{" "}
-          <code className="text-foam">IMPACT_API_KEY</code> under Settings →
-          Environment Variables, then redeploy.
+        <p className="mt-8 text-sm text-mist">
+          Tip: after adding keys in Vercel, redeploy so all routes pick them up.
         </p>
       </main>
     </div>
