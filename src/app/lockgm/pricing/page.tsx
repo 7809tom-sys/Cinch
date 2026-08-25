@@ -17,8 +17,8 @@ export default function LockgmPricingPage() {
         Pick your seat in the war room
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Free Shadow GM tools for draft night. Upgrade for premium reports and
-        the pro scouting pipeline.
+        Annual seats — cheap enough to stay year-round. $20 for your home sport,
+        $59 when you want every war room on the calendar.
       </p>
 
       <ul className="mt-12 grid gap-8 lg:grid-cols-3">
@@ -33,6 +33,11 @@ export default function LockgmPricingPage() {
             <p className="lockgm-display mt-3 text-4xl font-extrabold">
               {tier.priceLabel}
             </p>
+            {tier.billing === "year" ? (
+              <p className="mt-1 text-xs font-bold tracking-wide text-[color:var(--lg-mute)] uppercase">
+                Billed yearly
+              </p>
+            ) : null}
             <p className="mt-3 text-sm leading-relaxed text-[color:var(--lg-mute)]">
               {tier.blurb}
             </p>

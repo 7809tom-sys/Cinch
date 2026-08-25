@@ -4,54 +4,63 @@ export type SubTier = {
   id: SubTierId;
   name: string;
   priceLabel: string;
+  /** Annual price in USD (0 for free) */
   priceUsd: number;
+  billing: "free" | "year";
   blurb: string;
   perks: string[];
   cta: string;
 };
 
+/**
+ * Annual pricing on purpose: $20/yr for one sport keeps the serious 4% in;
+ * $59/yr unlocks every war room — cheaper than three monthly apps.
+ */
 export const SUB_TIERS: SubTier[] = [
   {
     id: "free",
     name: "Shadow",
     priceLabel: "$0",
     priceUsd: 0,
-    blurb: "Run live draft rooms and follow the public board.",
+    billing: "free",
+    blurb: "Draft-day rooms and a starter board — no card required.",
     perks: [
       "Live draft sync + beat-the-pick",
       "Personal SR-### report board",
-      "8-sport war rooms",
       "Public teaser grades",
+      "Browse every sport",
     ],
     cta: "Start as Shadow GM",
   },
   {
     id: "pro",
     name: "War Room",
-    priceLabel: "$19/mo",
-    priceUsd: 19,
-    blurb: "Premium reports and salary-cap trade desk.",
+    priceLabel: "$20/yr",
+    priceUsd: 20,
+    billing: "year",
+    blurb: "One home sport — AI scouts, full reports, budget desk. Built for the year-round grind.",
     perks: [
       "Everything in Shadow",
+      "Full tools for 1 sport you choose",
       "Scout Alpha + Beta research AIs",
-      "Full premium reports",
-      "Budget / wage + trade desk",
+      "Premium reports + budget / trade desk",
     ],
     cta: "Unlock War Room",
   },
   {
     id: "pipeline",
-    name: "Pipeline",
-    priceLabel: "$49/mo",
-    priceUsd: 49,
-    blurb: "HS→college multi-stage tracking for serious scouts.",
+    name: "All-Sports",
+    priceLabel: "$59/yr",
+    priceUsd: 59,
+    billing: "year",
+    blurb: "Every sport, deep pipeline, and the AGM ledger path — one seat for the whole calendar.",
     perks: [
       "Everything in War Room",
-      "Multi-stage pipeline (all sports)",
-      "Pro scouting queue review",
-      "Deep early-stage tracking",
+      "All 8 sports unlocked",
+      "Multi-stage pipeline + early tracking",
+      "Outcome ledger / AGM board path",
     ],
-    cta: "Join Pipeline",
+    cta: "Take all sports",
   },
 ];
 
