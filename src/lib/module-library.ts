@@ -295,3 +295,12 @@ export async function listCreatorCredits(
   };
 }
 
+export async function listCreditLedger(
+  limit = 50,
+): Promise<CreatorCreditLedgerEntry[]> {
+  const store = await ensureLibrary();
+  return [...(store.creditLedger ?? [])]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, limit);
+}
+

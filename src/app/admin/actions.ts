@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { listAgentsWithKeyStatus } from "@/lib/agents";
+import {
+  freeAdminEmails,
+  resolveAccessRole,
+} from "@/lib/access";
+import { listAgentsWithKeyStatus, PROVIDER_ACCOUNTS } from "@/lib/agents";
 import {
   checkDomains,
   isCloudflareRegistrarConfigured,
@@ -9,22 +13,48 @@ import {
   searchDomains,
 } from "@/lib/cloudflare-registrar";
 import {
+  listActiveSessions,
+  listCustomers,
+} from "@/lib/customers";
+import { CINCH_SEED_DOMAIN, seedHostHostname } from "@/lib/domain";
+import { getLibraryMemberSnapshot } from "@/lib/library-membership";
+import {
+  listCreditLedger,
+  listLibraryModules,
+} from "@/lib/module-library";
+import { PLATFORM_ADAPTERS } from "@/lib/platforms";
+import {
+  DOMAIN_MARKUP,
+  HOSTING_MARKUP,
+  MODULE_CREATOR_CREDIT_RATE,
+  MODULE_REUSE_RATE,
+  TOKEN_MARKUP_MAX,
+  TOKEN_MARKUP_MIN,
+  domainFeeFromCloudflare,
+  formatUsd,
+  hostingFeeFromVercel,
+  tokenFeeRange,
+} from "@/lib/pricing";
+import {
   advanceAssignedWork,
   runProjectManagerAssignment,
 } from "@/lib/project-manager";
+import {
+  getSeedWatchSnapshot,
+  queueGrowthCycle,
+  queueSiteImprovement,
+} from "@/lib/seed-watch";
 import {
   addDomainOrder,
   getSiteSettings,
   updateAnalyticsSettings,
   updateHostingBilling,
 } from "@/lib/site-settings";
-import { PLATFORM_ADAPTERS } from "@/lib/platforms";
 import {
-  getSeedWatchSnapshot,
-  queueGrowthCycle,
-  queueSiteImprovement,
-} from "@/lib/seed-watch";
-import { getLibraryMemberSnapshot } from "@/lib/library-membership";
+  listCatalogSites,
+  listPurchases,
+} from "@/lib/site-catalog";
+import { SEED_SITE_PRICE_USD } from "@/lib/site-url";
 import {
   createProject,
   getProject,
@@ -35,23 +65,120 @@ import {
 } from "@/lib/store";
 
 export async function getAdminSnapshot() {
-  const [projects, agents, settings, library] = await Promise.all([
+  const [
+    projects,
+    agents,
+    settings,
+    library,
+    customers,
+    sessions,
+    purchases,
+    catalog,
+    modules,
+    ledger,
+  ] = await Promise.all([
     listProjects(),
     Promise.resolve(listAgentsWithKeyStatus()),
     getSiteSettings(),
     getLibraryMemberSnapshot(),
+    listCustomers(),
+    listActiveSessions(),
+    listPurchases(),
+    listCatalogSites(),
+    listLibraryModules(),
+    listCreditLedger(40),
   ]);
+
+  const purchaseRevenueUsd = purchases.reduce(
+    (sum, purchase) => sum + (purchase.priceUsd || 0),
+    0,
+  );
+  const liveWatch = await Promise.all(
+    projects.slice(0, 40).map(async (project) => {
+      const watch = await getSeedWatchSnapshot(project.id);
+      return {
+        projectId: project.id,
+        name: project.name,
+        isLive: watch.isLive,
+        pending: watch.pending.length,
+        failingTools: watch.failingTools.length,
+      };
+    }),
+  );
+
+  const hostingCustomerFee = hostingFeeFromVercel(settings.vercelCostUsd);
+  const sampleToken = tokenFeeRange(10);
+  const freeAdmins = freeAdminEmails();
+
   return {
     projects,
     agents,
     settings,
     library,
+    customers: customers.map((account) => ({
+      ...account,
+      role: resolveAccessRole(account.email),
+      billingWaived: freeAdmins.includes(account.email),
+      hostHint: account.projectIds[0]
+        ? seedHostHostname(
+            projects.find((p) => p.id === account.projectIds[0])?.name ??
+              account.name,
+          )
+        : null,
+    })),
+    sessions,
+    purchases,
+    catalog,
+    modules,
+    ledger,
+    freeAdminEmails: freeAdmins,
+    metrics: {
+      projectCount: projects.length,
+      customerCount: customers.length,
+      purchaseCount: purchases.length,
+      purchaseRevenueUsd: Math.round(purchaseRevenueUsd * 100) / 100,
+      activeSessionCount: sessions.length,
+      libraryModuleCount: library.moduleCount,
+      libraryEarnedUsd: library.earnedUsd,
+      libraryBalanceUsd: library.balanceUsd,
+      liveSeedCount: liveWatch.filter((item) => item.isLive).length,
+      keysConfigured: agents.filter((agent) => agent.configured).length,
+      agentCount: agents.length,
+      domainOrderCount: settings.domainOrders.length,
+    },
+    pricing: {
+      seedPriceUsd: SEED_SITE_PRICE_USD,
+      hostingMarkup: HOSTING_MARKUP,
+      domainMarkup: DOMAIN_MARKUP,
+      tokenMarkupMin: TOKEN_MARKUP_MIN,
+      tokenMarkupMax: TOKEN_MARKUP_MAX,
+      tokenMarkupCurrent: settings.tokenMarkup,
+      moduleReuseRate: MODULE_REUSE_RATE,
+      creatorCreditRate: MODULE_CREATOR_CREDIT_RATE,
+      vercelCostUsd: settings.vercelCostUsd,
+      hostingCustomerFeeUsd: hostingCustomerFee,
+      sampleTokenProviderUsd: 10,
+      sampleTokenCustomerMinUsd: sampleToken.min,
+      sampleTokenCustomerMaxUsd: sampleToken.max,
+      domainSampleCostUsd: 10,
+      domainSamplePriceUsd: domainFeeFromCloudflare(10),
+      labels: {
+        seed: formatUsd(SEED_SITE_PRICE_USD),
+        hostingFee: formatUsd(hostingCustomerFee),
+        vercelCost: formatUsd(settings.vercelCostUsd),
+        domainSample: formatUsd(domainFeeFromCloudflare(10)),
+      },
+    },
+    liveWatch,
     cloudflareConfigured: isCloudflareRegistrarConfigured(),
     platforms: PLATFORM_ADAPTERS.map((adapter) => ({
       id: adapter.id,
       name: adapter.name,
       blurb: adapter.blurb,
     })),
+    providers: PROVIDER_ACCOUNTS,
+    domain: CINCH_SEED_DOMAIN,
+    launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
   };
 }
 
