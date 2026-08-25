@@ -25,6 +25,9 @@ export default function Home() {
             <a href="#team" className="transition-colors hover:text-brand-deep">
               All-stars
             </a>
+            <Link href="/lockgm" className="transition-colors hover:text-brand-deep">
+              LockGM
+            </Link>
             <Link href="/browse" className="transition-colors hover:text-brand-deep">
               Browse
             </Link>
