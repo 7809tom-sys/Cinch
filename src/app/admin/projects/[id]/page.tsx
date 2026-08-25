@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgent } from "@/lib/agents";
+import { getCustomerByEmail } from "@/lib/customers";
 import { seedEmbedSnippet } from "@/lib/domain";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
 import { getProjectSnapshot } from "../../actions";
@@ -27,6 +28,9 @@ export default async function ProjectAdminPage({ params }: PageProps) {
 
   const pm = getAgent(project.projectManagerId);
   const embedSnippet = seedEmbedSnippet(project.id);
+  const customer = project.customerEmail
+    ? await getCustomerByEmail(project.customerEmail)
+    : null;
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -123,6 +127,35 @@ export default async function ProjectAdminPage({ params }: PageProps) {
         </section>
 
         <aside className="space-y-6">
+          {customer ? (
+            <div className="border border-brand/10 bg-foam px-5 py-5">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+                Customer portal
+              </h2>
+              <p className="mt-2 text-sm text-muted">
+                {customer.name} · {customer.email}
+              </p>
+              <p className="mt-3 text-xs font-semibold tracking-wide text-accent-deep uppercase">
+                Access code
+              </p>
+              <p className="mt-1 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-[0.18em] text-brand-deep">
+                {customer.accessCode}
+              </p>
+              <Link
+                href={`/portal/${project.id}`}
+                className="mt-4 inline-flex text-sm font-semibold text-brand hover:text-brand-deep"
+              >
+                Open customer view →
+              </Link>
+              <Link
+                href={`/portal/${project.id}/source`}
+                className="mt-2 block text-sm font-semibold text-muted hover:text-brand-deep"
+              >
+                Live source →
+              </Link>
+            </div>
+          ) : null}
+
           <div className="border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
               Seed growth monitor

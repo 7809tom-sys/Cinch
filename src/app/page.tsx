@@ -25,15 +25,15 @@ export default function Home() {
             <a href="#team" className="transition-colors hover:text-brand-deep">
               All-stars
             </a>
+            <Link href="/browse" className="transition-colors hover:text-brand-deep">
+              Browse
+            </Link>
             <Link href="/about" className="transition-colors hover:text-brand-deep">
               About
             </Link>
-            <a
-              href="#protect"
-              className="transition-colors hover:text-brand-deep"
-            >
-              Protect
-            </a>
+            <Link href="/login" className="transition-colors hover:text-brand-deep">
+              Log in
+            </Link>
             <Link
               href="/admin"
               className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
@@ -227,6 +227,40 @@ export default function Home() {
               When later Seeds reuse it, you earn credit back — so your library
               account can make money as the network grows.
             </p>
+          </div>
+        </section>
+
+        <section
+          id="browse"
+          className="relative overflow-hidden bg-brand-deep px-6 py-24 text-foam sm:px-8"
+        >
+          <div className="pointer-events-none absolute -left-10 top-10 h-56 w-56 rounded-full bg-accent/20 blur-3xl" />
+          <div className="relative mx-auto max-w-6xl">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
+              DROP A SITE · CUSTOMER PORTAL
+            </p>
+            <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-5xl">
+              Drop a website you like. Log in to watch it become your Seed.
+            </h2>
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-mist">
+              Paste or drag an existing site into the drop zone, preview it, and
+              purchase. Your portal shows what agents are working on — and a
+              live source page streams the code as it is written.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link
+                href="/browse"
+                className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-6 text-sm font-bold text-brand-deep transition-transform hover:-translate-y-0.5"
+              >
+                Open the drop zone
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex h-12 items-center justify-center rounded-md border border-foam/30 px-6 text-sm font-bold text-foam transition-colors hover:bg-foam/10"
+              >
+                Customer login
+              </Link>
+            </div>
           </div>
         </section>
 

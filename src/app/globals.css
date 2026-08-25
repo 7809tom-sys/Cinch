@@ -123,6 +123,19 @@ body {
   mix-blend-mode: multiply;
 }
 
+@keyframes source-flash {
+  0% {
+    background-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.source-flash {
+  animation: source-flash 1.4s ease-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -133,7 +146,8 @@ body {
   .animate-rise-delay-2,
   .animate-sprout,
   .hero-media,
-  .hero-glow {
+  .hero-glow,
+  .source-flash {
     animation: none;
   }
 }

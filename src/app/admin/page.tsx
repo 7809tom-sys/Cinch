@@ -28,6 +28,9 @@ export default async function AdminPage() {
             Cinch
           </Link>
           <nav className="flex items-center gap-5 text-sm font-medium text-muted">
+            <Link href="/login" className="transition-colors hover:text-brand-deep">
+              Customer portal
+            </Link>
             <Link href="/admin/test" className="transition-colors hover:text-brand-deep">
               Test before live
             </Link>

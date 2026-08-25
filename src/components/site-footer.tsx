@@ -12,6 +12,12 @@ export function SiteFooter() {
           <a href={CINCH_SEED_ORIGIN} className="hover:text-brand-deep">
             {CINCH_SEED_DOMAIN}
           </a>
+          <Link href="/browse" className="hover:text-brand-deep">
+            Browse
+          </Link>
+          <Link href="/login" className="hover:text-brand-deep">
+            Log in
+          </Link>
           <Link href="/about" className="hover:text-brand-deep">
             About us
           </Link>

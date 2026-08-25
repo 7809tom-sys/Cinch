@@ -94,14 +94,22 @@ export async function queueToolFixAction(
 export async function createSeedProjectAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const brief = String(formData.get("brief") ?? "").trim();
+  const customerEmail = String(formData.get("customerEmail") ?? "").trim();
+  const customerName = String(formData.get("customerName") ?? "").trim();
 
   if (!name || !brief) {
     return { ok: false as const, error: "Name and brief are required." };
   }
 
-  const project = await createProject({ name, brief });
+  const project = await createProject({
+    name,
+    brief,
+    customerEmail: customerEmail || null,
+    customerName: customerName || null,
+  });
   revalidatePath("/admin");
   revalidatePath(`/admin/projects/${project.id}`);
+  revalidatePath("/portal");
   return { ok: true as const, projectId: project.id };
 }
 

@@ -27,6 +27,10 @@ Detective Shopper still needs Root Directory = `apps/detective-shopper`.
 
 Primary domain: **[cinchseed.com](https://cinchseed.com)** / **[www.cinchseed.com](https://www.cinchseed.com)**
 
+- `/login` — customer portal login (email + access code from your Seed order)
+- `/portal` — your Seeds, work status, and links to live source
+- `/portal/[id]/source` — real-time source tree while agents build
+- `/browse` — drop an existing website, preview it, and purchase a Seed
 - `/admin` — Seed studio, agent roster, PM assignment, module library
 - `/admin/test` — provider key tests + pre-launch Seed checklist
 - Embed: `https://cinchseed.com/v1/watch.js`

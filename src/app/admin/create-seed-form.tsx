@@ -45,6 +45,29 @@ export function CreateSeedForm() {
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
       </label>
+      <label className="block">
+        <span className="text-sm font-medium text-brand-deep">
+          Customer email{" "}
+          <span className="font-normal text-muted">(portal login)</span>
+        </span>
+        <input
+          name="customerEmail"
+          type="email"
+          placeholder="owner@business.com"
+          className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+        />
+      </label>
+      <label className="block">
+        <span className="text-sm font-medium text-brand-deep">
+          Customer name{" "}
+          <span className="font-normal text-muted">(optional)</span>
+        </span>
+        <input
+          name="customerName"
+          placeholder="Alex Owner"
+          className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+        />
+      </label>
       <button
         type="submit"
         disabled={pending}
