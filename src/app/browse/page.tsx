@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Browse & buy — Cinch Seed",
   description:
-    "Drop an existing website into Cinch Seed, preview it, and purchase a living Seed with portal access and live source.",
+    "Drop an existing website into Cinch Seed, get a critique with time and build-cost estimates, then purchase an improved Seed.",
 };
 
 export default async function BrowsePage() {
@@ -54,12 +54,12 @@ export default async function BrowsePage() {
             Cinch
           </p>
           <h1 className="animate-rise-delay mt-4 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
-            Find a site you love. Make it your Seed.
+            Drop a site. Get a critique. Buy the improved Seed.
           </h1>
           <p className="animate-rise-delay-2 mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            Drop any existing website into the zone below, preview it, and
-            purchase. Your portal opens with work status and a live source view
-            while agents build.
+            We review the live page, show time and build cost up front, then
+            plant a Seed that improves on what you dropped — with portal status
+            and live source while agents work.
           </p>
 
           <div className="mt-12">

@@ -25,6 +25,11 @@ import {
   SEED_SITE_PRICE_USD,
 } from "@/lib/site-catalog";
 import {
+  critiqueToBrief,
+  critiqueWebsite,
+  type SiteCritique,
+} from "@/lib/site-critique";
+import {
   createProject,
   getProject,
   listProjectsForCustomer,
@@ -128,11 +133,34 @@ export async function getBrowseSnapshot() {
   return { sites, customer };
 }
 
+export async function critiqueSiteAction(rawUrl: string): Promise<
+  | { ok: true; critique: SiteCritique }
+  | { ok: false; error: string }
+> {
+  const previewUrl = normalizePreviewUrl(rawUrl);
+  if (!previewUrl) {
+    return { ok: false, error: "Enter a valid website URL to critique." };
+  }
+  try {
+    const critique = await critiqueWebsite(previewUrl);
+    return { ok: true, critique };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not critique that website.",
+    };
+  }
+}
+
 export async function purchaseCatalogSiteAction(formData: FormData) {
   const catalogSiteId = String(formData.get("catalogSiteId") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
   const previewUrlRaw = String(formData.get("previewUrl") ?? "").trim();
+  const critiqueJson = String(formData.get("critiqueJson") ?? "").trim();
 
   if (!email || !email.includes("@")) {
     return { ok: false as const, error: "Enter a valid email for your portal login." };
@@ -142,6 +170,15 @@ export async function purchaseCatalogSiteAction(formData: FormData) {
   let previewUrl = normalizePreviewUrl(previewUrlRaw);
   let catalogSiteIdResolved: string | null = null;
   let listPrice = SEED_SITE_PRICE_USD;
+  let critique: SiteCritique | null = null;
+
+  if (critiqueJson) {
+    try {
+      critique = JSON.parse(critiqueJson) as SiteCritique;
+    } catch {
+      critique = null;
+    }
+  }
 
   if (catalogSiteId) {
     const site = await getCatalogSite(catalogSiteId);
@@ -165,12 +202,21 @@ export async function purchaseCatalogSiteAction(formData: FormData) {
     }
   }
 
+  if (!critique && previewUrl) {
+    critique = await critiqueWebsite(previewUrl);
+  }
+  if (critique?.title) {
+    title = critique.title.slice(0, 80);
+  }
+
   const priceUsd = priceForAccount(listPrice, email);
   const customer = await upsertCustomer({ email, name: name || undefined });
 
-  const brief = catalogSiteIdResolved
-    ? `Customer purchased “${title}” from the Cinch Seed catalog. Model the live experience at ${previewUrl} and grow a durable Seed from that reference.`
-    : `Customer dropped ${previewUrl} into the Seed drop zone and purchased it as their starting site. Rebuild and protect this experience as a living Seed.`;
+  const brief = critique
+    ? critiqueToBrief(critique)
+    : catalogSiteIdResolved
+      ? `Customer purchased “${title}” from the Cinch Seed catalog. Model the live experience at ${previewUrl} and grow a durable Seed from that reference.`
+      : `Customer dropped ${previewUrl} into the Seed drop zone and purchased it as their starting site. Rebuild and protect this experience as a living Seed.`;
 
   const project = await createProject({
     name: `${title} Seed`,
@@ -203,6 +249,7 @@ export async function purchaseCatalogSiteAction(formData: FormData) {
     accessCode: customer.accessCode,
     priceLabel: formatUsd(priceUsd),
     email: customer.email,
+    estimateLabel: critique?.estimate.summaryLabel ?? null,
   };
 }
 

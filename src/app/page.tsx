@@ -240,12 +240,12 @@ export default function Home() {
               DROP A SITE · CUSTOMER PORTAL
             </p>
             <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight sm:text-5xl">
-              Drop a website you like. Log in to watch it become your Seed.
+              Drop a website. See the critique. Watch the improved Seed grow.
             </h2>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-mist">
-              Paste or drag an existing site into the drop zone, preview it, and
-              purchase. Your portal shows what agents are working on — and a
-              live source page streams the code as it is written.
+              Paste or drag a site into the drop zone. We critique it, show time
+              and build cost, then you purchase. Your portal tracks the work —
+              and live source streams the code as it is written.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link

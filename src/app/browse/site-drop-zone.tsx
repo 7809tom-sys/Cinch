@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { purchaseCatalogSiteAction } from "@/app/portal/actions";
+import {
+  critiqueSiteAction,
+  purchaseCatalogSiteAction,
+} from "@/app/portal/actions";
+import type { SiteCritique } from "@/lib/site-critique";
 import { normalizePreviewUrl } from "@/lib/site-url";
 
 type CatalogSite = {
@@ -15,6 +19,12 @@ type CatalogSite = {
   accent: string;
 };
 
+function severityClass(severity: SiteCritique["findings"][number]["severity"]) {
+  if (severity === "strength") return "text-leaf";
+  if (severity === "high") return "text-accent-deep";
+  return "text-muted";
+}
+
 export function SiteDropZone({
   sites,
   defaultEmail,
@@ -26,11 +36,13 @@ export function SiteDropZone({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [critiquing, setCritiquing] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     null,
   );
+  const [critique, setCritique] = useState<SiteCritique | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{
@@ -38,8 +50,25 @@ export function SiteDropZone({
     email: string;
     priceLabel: string;
     projectId: string;
+    estimateLabel: string | null;
   } | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  function runCritique(normalized: string, catalogId: string | null) {
+    setPreviewUrl(normalized);
+    setSelectedCatalogId(catalogId);
+    setCritique(null);
+    setCritiquing(true);
+    startTransition(async () => {
+      const result = await critiqueSiteAction(normalized);
+      setCritiquing(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setCritique(result.critique);
+    });
+  }
 
   function applyUrl(raw: string, catalogId: string | null = null) {
     const normalized = normalizePreviewUrl(raw);
@@ -49,17 +78,19 @@ export function SiteDropZone({
       setError("That does not look like a website URL.");
       setPreviewUrl(null);
       setSelectedCatalogId(null);
+      setCritique(null);
       return;
     }
     setUrlInput(normalized);
-    setPreviewUrl(normalized);
-    setSelectedCatalogId(catalogId);
+    runCritique(normalized, catalogId);
   }
 
   useEffect(() => {
     function onDragOver(event: DragEvent) {
-      if (!event.dataTransfer?.types.includes("text/uri-list") &&
-          !event.dataTransfer?.types.includes("text/plain")) {
+      if (
+        !event.dataTransfer?.types.includes("text/uri-list") &&
+        !event.dataTransfer?.types.includes("text/plain")
+      ) {
         return;
       }
       event.preventDefault();
@@ -92,6 +123,7 @@ export function SiteDropZone({
   const selectedSite = selectedCatalogId
     ? sites.find((site) => site.id === selectedCatalogId)
     : null;
+  const seedPrice = selectedSite?.priceUsd ?? critique?.estimate.seedPriceUsd ?? 99;
 
   return (
     <div className="space-y-10">
@@ -111,8 +143,8 @@ export function SiteDropZone({
           Drop an existing website here
         </h2>
         <p className="mt-3 max-w-xl text-base leading-relaxed text-muted">
-          Paste a URL, drag a link into this area, or pick a ready Seed below.
-          Preview it — if you like it, purchase and we open your portal Seed.
+          Paste a URL or drag a link in. We critique the live site, show time
+          and build cost, then you can purchase an improved Seed.
         </p>
 
         <form
@@ -125,17 +157,20 @@ export function SiteDropZone({
           <input
             value={urlInput}
             onChange={(event) => setUrlInput(event.target.value)}
-            placeholder="https://your-favorite-site.com"
+            placeholder="https://your-business.com"
             className="w-full flex-1 rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
           />
           <button
             type="submit"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-foam"
+            disabled={critiquing || pending}
+            className="inline-flex h-12 items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-foam disabled:opacity-60"
           >
-            Preview
+            {critiquing ? "Critiquing…" : "Preview & critique"}
           </button>
         </form>
-        {error ? <p className="relative mt-3 text-sm text-accent-deep">{error}</p> : null}
+        {error ? (
+          <p className="relative mt-3 text-sm text-accent-deep">{error}</p>
+        ) : null}
       </div>
 
       {previewUrl ? (
@@ -146,12 +181,12 @@ export function SiteDropZone({
                 PREVIEW
               </p>
               <h3 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-extrabold text-brand-deep">
-                {selectedSite?.title ?? "Your dropped site"}
+                {critique?.title ?? selectedSite?.title ?? "Your dropped site"}
               </h3>
               <p className="mt-1 text-sm text-muted">{previewUrl}</p>
             </div>
             <p className="font-[family-name:var(--font-display)] text-2xl font-extrabold text-brand-deep">
-              ${selectedSite?.priceUsd ?? 99}
+              ${seedPrice}
             </p>
           </div>
 
@@ -172,12 +207,77 @@ export function SiteDropZone({
             />
           </div>
 
+          <div className="border border-brand/10 bg-foam px-5 py-5">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+              CRITIQUE & ESTIMATE
+            </p>
+            {critiquing || (!critique && pending) ? (
+              <p className="mt-3 text-sm text-muted">
+                Reading the live site and sizing a {seedPrice === 99 ? "6–7 page" : ""}{" "}
+                Seed build…
+              </p>
+            ) : critique ? (
+              <>
+                <p className="mt-3 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight text-brand-deep sm:text-3xl">
+                  {critique.estimate.summaryLabel}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-muted">
+                  {critique.overview}
+                </p>
+                <p className="mt-2 text-xs font-semibold tracking-wide text-accent-deep uppercase">
+                  ~{critique.pageCountEstimate} pages ·{" "}
+                  {critique.estimate.minutesMin}–{critique.estimate.minutesMax}{" "}
+                  min · build cost est. $
+                  {critique.estimate.buildCostMinUsd}–$
+                  {critique.estimate.buildCostMaxUsd} · you pay ${seedPrice}
+                </p>
+                <ul className="mt-5 space-y-3 border-t border-brand/10 pt-4">
+                  {critique.findings.map((finding) => (
+                    <li key={`${finding.area}-${finding.note}`} className="text-sm">
+                      <span
+                        className={`font-semibold uppercase tracking-wide text-xs ${severityClass(finding.severity)}`}
+                      >
+                        {finding.severity === "strength" ? "Keep" : "Improve"} ·{" "}
+                        {finding.area}
+                      </span>
+                      <p className="mt-1 text-brand-deep">{finding.note}</p>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5 border-t border-brand/10 pt-4">
+                  <p className="text-sm font-semibold text-brand-deep">
+                    How we&apos;ll improve it
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {critique.improvements.map((item) => (
+                      <li key={item} className="text-sm text-muted">
+                        · {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {critique.fetchNote ? (
+                  <p className="mt-4 text-xs text-muted">{critique.fetchNote}</p>
+                ) : null}
+              </>
+            ) : (
+              <p className="mt-3 text-sm text-muted">
+                Critique will appear here after preview.
+              </p>
+            )}
+          </div>
+
           <form
             className="grid gap-4 border border-brand/10 bg-foam px-5 py-5 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
+              if (!critique) {
+                setError("Wait for the critique and estimate before purchasing.");
+                return;
+              }
               const formData = new FormData(event.currentTarget);
               formData.set("previewUrl", previewUrl);
+              formData.set("critiqueJson", JSON.stringify(critique));
               if (selectedCatalogId) {
                 formData.set("catalogSiteId", selectedCatalogId);
               }
@@ -194,6 +294,7 @@ export function SiteDropZone({
                   email: result.email,
                   priceLabel: result.priceLabel,
                   projectId: result.projectId,
+                  estimateLabel: result.estimateLabel,
                 });
                 router.refresh();
               });
@@ -226,16 +327,17 @@ export function SiteDropZone({
             <div className="sm:col-span-2">
               <button
                 type="submit"
-                disabled={pending}
+                disabled={pending || critiquing || !critique}
                 className="inline-flex h-12 items-center justify-center rounded-md bg-brand-deep px-6 text-sm font-bold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
               >
                 {pending
                   ? "Planting your Seed…"
-                  : `Purchase — $${selectedSite?.priceUsd ?? 99}`}
+                  : `Purchase improved Seed — $${seedPrice}`}
               </button>
               <p className="mt-3 text-sm text-muted">
-                You get a customer portal, live work status, and a real-time
-                source page for this Seed.
+                {critique
+                  ? `Agents start from this critique. Preview ready in about ${critique.estimate.minutesMin}–${critique.estimate.minutesMax} minutes — no artificial delay.`
+                  : "Critique first, then purchase."}
               </p>
             </div>
           </form>
@@ -245,6 +347,9 @@ export function SiteDropZone({
               <p className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
                 Seed purchased {success.priceLabel}
               </p>
+              {success.estimateLabel ? (
+                <p className="mt-2 text-sm text-muted">{success.estimateLabel}</p>
+              ) : null}
               <p className="mt-2 text-sm text-muted">
                 Logged in as {success.email}. Save your access code:
               </p>
@@ -293,7 +398,7 @@ export function SiteDropZone({
                   onClick={() => applyUrl(site.previewUrl, site.id)}
                   className="inline-flex h-11 shrink-0 items-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-transform hover:-translate-y-0.5"
                 >
-                  Preview & buy
+                  Critique & buy
                 </button>
               </div>
             </li>
