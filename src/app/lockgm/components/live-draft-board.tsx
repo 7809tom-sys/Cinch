@@ -19,7 +19,7 @@ type PickRow = {
   shadowPickName?: string;
 };
 
-const PICK_WINDOW_MS = 6500;
+const PICK_WINDOW_MS = 10000;
 
 export function LiveDraftBoard() {
   const { sport, franchise, sportId } = useSport();
@@ -235,9 +235,12 @@ export function LiveDraftBoard() {
           BEAT THE PICK
         </p>
         <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-          Lock the player you think <strong className="text-[color:var(--lg-text)]">{onClockTeam}</strong> will
-          take — <strong className="text-[color:var(--lg-text)]">before</strong> their
-          clock hits zero. Call the same name and you beat the room.
+          Lock the player you think{" "}
+          <strong className="text-[color:var(--lg-text)]">{onClockTeam}</strong>{" "}
+          will take —{" "}
+          <strong className="text-[color:var(--lg-text)]">before</strong> their
+          clock hits zero. In this live sim the room takes consensus #1 each
+          pick — lock that name early to practice a beat.
         </p>
         {myLockedReports.length > 0 ? (
           <p className="mt-2 text-xs text-[color:var(--lg-mute)]">

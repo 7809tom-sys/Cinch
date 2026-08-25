@@ -120,7 +120,10 @@ export function AiScoutAgents({
 
   function claimAsMyReport() {
     if (!prospect || !mergedText.trim()) return;
-    const number = nextReportNumber(notebook.reports);
+    // Always merge against the latest notebook so we don't wipe scout identity
+    // saved from the "My reports" form in another component.
+    const latest = loadNotebook();
+    const number = nextReportNumber(latest.reports);
     const report: PersonalReport = {
       id: `rep_${Date.now()}`,
       number,
@@ -135,8 +138,8 @@ export function AiScoutAgents({
       updatedAt: new Date().toISOString(),
     };
     const next: ScoutNotebook = {
-      ...notebook,
-      reports: [report, ...notebook.reports],
+      ...latest,
+      reports: [report, ...latest.reports],
     };
     persist(next);
     onClaimed?.(report);

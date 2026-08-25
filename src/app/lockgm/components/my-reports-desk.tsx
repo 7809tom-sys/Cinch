@@ -54,10 +54,16 @@ export function MyReportsDesk() {
       franchise.prospects.find((p) => p.id === prospectId) ??
       franchise.prospects[0];
     if (!prospect || !body.trim()) return;
-    if (!notebook.identity.scoutNumber) {
-      saveIdentity();
-    }
-    const number = nextReportNumber(notebook.reports);
+    const latest = loadNotebook();
+    const identity = {
+      scoutNumber:
+        scoutNumber.trim().toUpperCase() ||
+        latest.identity.scoutNumber ||
+        "SC-0000",
+      displayName:
+        displayName.trim() || latest.identity.displayName || "Shadow GM",
+    };
+    const number = nextReportNumber(latest.reports);
     const report: PersonalReport = {
       id: `rep_${Date.now()}`,
       number,
@@ -72,25 +78,21 @@ export function MyReportsDesk() {
       updatedAt: new Date().toISOString(),
     };
     persist({
-      ...notebook,
-      identity: {
-        scoutNumber:
-          scoutNumber.trim().toUpperCase() ||
-          notebook.identity.scoutNumber ||
-          "SC-0000",
-        displayName:
-          displayName.trim() || notebook.identity.displayName || "Shadow GM",
-      },
-      reports: [report, ...notebook.reports],
+      ...latest,
+      identity,
+      reports: [report, ...latest.reports],
     });
+    setScoutNumber(identity.scoutNumber);
+    setDisplayName(identity.displayName);
     setBody("");
     setGrade("");
   }
 
   function setStatus(id: string, status: PersonalReport["status"]) {
+    const latest = loadNotebook();
     persist({
-      ...notebook,
-      reports: notebook.reports.map((r) =>
+      ...latest,
+      reports: latest.reports.map((r) =>
         r.id === id
           ? { ...r, status, updatedAt: new Date().toISOString() }
           : r,
@@ -99,9 +101,10 @@ export function MyReportsDesk() {
   }
 
   function removeReport(id: string) {
+    const latest = loadNotebook();
     persist({
-      ...notebook,
-      reports: notebook.reports.filter((r) => r.id !== id),
+      ...latest,
+      reports: latest.reports.filter((r) => r.id !== id),
     });
   }
 
