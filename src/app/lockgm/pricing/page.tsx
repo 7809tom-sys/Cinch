@@ -4,7 +4,7 @@ import { SUB_TIERS } from "@/lib/lockgm/config";
 export const metadata = {
   title: "Tiers — LockGM",
   description:
-    "Shadow, War Room, and Pipeline subscription tiers for LockGM.",
+    "Shadow ($0), War Room ($20/yr one sport), All-Sports ($59/yr).",
 };
 
 export default function LockgmPricingPage() {

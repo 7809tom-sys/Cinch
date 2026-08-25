@@ -122,7 +122,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
               ) : (
                 <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
                   Locked — upgrade to <strong>War Room</strong> or{" "}
-                  <strong>Pipeline</strong> for full reports.
+                  <strong>All-Sports</strong> for full reports.
                 </p>
               )}
             </div>
@@ -137,7 +137,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                 </p>
               ) : (
                 <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-                  Deep early-stage tracking is a Pipeline tier feature.
+                  Deep early-stage tracking is an All-Sports tier feature.
                 </p>
               )}
             </div>
