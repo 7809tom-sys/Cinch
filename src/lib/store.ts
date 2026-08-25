@@ -3,6 +3,8 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
 import { applyModuleReuse, listLibraryModules } from "./module-library";
+import { attachProjectToCustomer } from "./customers";
+import { bootstrapSourceTree } from "./seed-source";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
 
@@ -37,6 +39,11 @@ export type SeedProject = {
   activity: ActivityEvent[];
   modules: Array<{ id: string; title: string; savedAt: string; fromTaskId: string }>;
   embedEnabled: boolean;
+  /** Customer who owns this Seed (portal login) */
+  customerEmail: string | null;
+  customerName: string | null;
+  /** Optional reference site the Seed is modeling */
+  referenceUrl: string | null;
 };
 
 type StoreShape = {
@@ -57,6 +64,12 @@ async function ensureStore(): Promise<StoreShape> {
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
     memoryStore = JSON.parse(raw) as StoreShape;
+    memoryStore.projects = (memoryStore.projects ?? []).map((project) => ({
+      ...project,
+      customerEmail: project.customerEmail ?? null,
+      customerName: project.customerName ?? null,
+      referenceUrl: project.referenceUrl ?? null,
+    }));
     return memoryStore;
   } catch {
     memoryStore = { projects: [] };
@@ -112,10 +125,16 @@ export async function getProject(id: string): Promise<SeedProject | null> {
 export async function createProject(input: {
   name: string;
   brief: string;
+  customerEmail?: string | null;
+  customerName?: string | null;
+  referenceUrl?: string | null;
 }): Promise<SeedProject> {
   const store = await ensureStore();
   const pm = getProjectManager();
   const stamp = now();
+  const customerEmail = input.customerEmail?.trim().toLowerCase() || null;
+  const customerName = input.customerName?.trim() || null;
+  const referenceUrl = input.referenceUrl?.trim() || null;
 
   const project: SeedProject = {
     id: randomUUID(),
@@ -129,6 +148,9 @@ export async function createProject(input: {
     activity: [],
     modules: [],
     embedEnabled: true,
+    customerEmail,
+    customerName,
+    referenceUrl,
   };
 
   pushActivity(
@@ -136,10 +158,48 @@ export async function createProject(input: {
     `${pm.name} opened the Seed and is ready to staff the build.`,
     pm.id,
   );
+  if (referenceUrl) {
+    pushActivity(
+      project,
+      `${pm.name} locked a reference site to model: ${referenceUrl}.`,
+      pm.id,
+    );
+  }
 
   store.projects.unshift(project);
   await writeStore(store);
+
+  await bootstrapSourceTree({
+    projectId: project.id,
+    projectName: project.name,
+    brief: project.brief,
+  });
+
+  if (customerEmail) {
+    const customer = await attachProjectToCustomer(
+      customerEmail,
+      project.id,
+      customerName ?? undefined,
+    );
+    pushActivity(
+      project,
+      `Customer portal ready for ${customer.email} — access code ${customer.accessCode}.`,
+      pm.id,
+    );
+    await saveProject(project);
+  }
+
   return project;
+}
+
+export async function listProjectsForCustomer(
+  email: string,
+): Promise<SeedProject[]> {
+  const store = await ensureStore();
+  const normalized = email.trim().toLowerCase();
+  return store.projects
+    .filter((project) => project.customerEmail === normalized)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export async function inviteAgent(

@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
 import { upsertLibraryModule } from "./module-library";
+import { applyTaskToSource } from "./seed-source";
 import {
   getProject,
   now,
@@ -104,6 +105,14 @@ export async function advanceAssignedWork(
       `${agent?.name ?? "Agent"} started “${task.title}”.`,
       task.assigneeId,
     );
+    await applyTaskToSource({
+      projectId: project.id,
+      taskTitle: task.title,
+      taskDetail: task.detail,
+      agentName: agent?.name ?? null,
+      agentId: task.assigneeId,
+      phase: "started",
+    });
   }
 
   const inProgress = project.tasks.filter((task) => task.status === "in_progress");
@@ -116,6 +125,14 @@ export async function advanceAssignedWork(
       `${agent?.name ?? "Agent"} finished “${task.title}” and saved a module to the library.`,
       task.assigneeId,
     );
+    await applyTaskToSource({
+      projectId: project.id,
+      taskTitle: task.title,
+      taskDetail: task.detail,
+      agentName: agent?.name ?? null,
+      agentId: task.assigneeId,
+      phase: "finished",
+    });
     const moduleEntry = {
       id: randomUUID(),
       title: task.title,
