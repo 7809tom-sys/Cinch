@@ -31,11 +31,12 @@ Primary domain: **[cinchseed.com](https://cinchseed.com)** / **[www.cinchseed.co
 - `/portal` — your Seeds, work status, and links to live source
 - `/portal/[id]/source` — real-time source tree while agents build
 - `/browse` — drop a website, get a critique with time/cost estimate, purchase an improved Seed
-- `/admin` — command center: accounts, pricing, purchases, Seeds, library, domains, agents, settings
+- `/admin` — command center (Google master login required)
+- `/admin/login` — Sign in with Google (allowlisted master emails)
 - `/admin/test` — provider key tests + pre-launch Seed checklist
 - Embed: `https://cinchseed.com/v1/watch.js`
 
-Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`, optional `CINCH_LAUNCH_MODE=test|live`
+Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`
 
 ## Detective Shopper
 

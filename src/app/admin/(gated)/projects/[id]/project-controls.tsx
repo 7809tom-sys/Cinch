@@ -8,7 +8,7 @@ import {
   planBuildAction,
   queueGrowthCycleAction,
   removeAgentAction,
-} from "../../actions";
+} from "@/app/admin/actions";
 
 export function ProjectControls({
   projectId,

@@ -1,11 +1,11 @@
+import { getProjectSnapshot } from "@/app/admin/actions";
+import { ProjectControls } from "./project-controls";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgent } from "@/lib/agents";
 import { getCustomerByEmail } from "@/lib/customers";
 import { seedEmbedSnippet } from "@/lib/domain";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
-import { getProjectSnapshot } from "../../actions";
-import { ProjectControls } from "./project-controls";
 
 export const dynamic = "force-dynamic";
 

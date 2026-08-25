@@ -1,11 +1,13 @@
+import { getAdminSnapshot } from "@/app/admin/actions";
+import { AdminAnalyticsForm } from "@/app/admin/admin-analytics-form";
+import { AdminBillingForm } from "@/app/admin/admin-billing-form";
+import { AdminDomainPanel } from "@/app/admin/admin-domain-panel";
+import { CreateSeedForm } from "@/app/admin/create-seed-form";
+import { logoutMasterAction } from "@/app/admin/master-actions";
 import Link from "next/link";
 import { providerForEnvKey } from "@/lib/agents";
 import { formatUsd } from "@/lib/pricing";
-import { getAdminSnapshot } from "./actions";
-import { AdminAnalyticsForm } from "./admin-analytics-form";
-import { AdminBillingForm } from "./admin-billing-form";
-import { AdminDomainPanel } from "./admin-domain-panel";
-import { CreateSeedForm } from "./create-seed-form";
+import { getMasterSession } from "@/lib/master-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +52,10 @@ function Metric({
 }
 
 export default async function AdminPage() {
-  const snap = await getAdminSnapshot();
+  const [snap, master] = await Promise.all([
+    getAdminSnapshot(),
+    getMasterSession(),
+  ]);
   const {
     projects,
     agents,
@@ -89,6 +94,11 @@ export default async function AdminPage() {
             </p>
           </div>
           <nav className="flex flex-wrap items-center justify-end gap-3 text-sm font-semibold text-muted">
+            {master ? (
+              <span className="hidden text-xs font-semibold text-brand-deep sm:inline">
+                {master.name}
+              </span>
+            ) : null}
             <Link href="/browse" className="hover:text-brand-deep">
               Browse
             </Link>
@@ -98,6 +108,14 @@ export default async function AdminPage() {
             <Link href="/admin/test" className="hover:text-brand-deep">
               Test
             </Link>
+            <form action={logoutMasterAction}>
+              <button
+                type="submit"
+                className="rounded-md border border-brand/20 px-2.5 py-1 text-xs font-bold text-brand-deep hover:bg-mist/50"
+              >
+                Sign out
+              </button>
+            </form>
             <span className="rounded-md bg-brand-deep px-2.5 py-1 text-[11px] font-bold tracking-wide text-foam uppercase">
               {launchMode}
             </span>
