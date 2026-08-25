@@ -1,45 +1,51 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  PROSPECTS,
-  STAGE_LABEL,
-  type PlayerStage,
-  type Prospect,
-} from "@/lib/lockgm/prospects";
+import { useEffect, useMemo, useState } from "react";
+import { useSport } from "@/lib/lockgm/sport-context";
 import type { SubTierId } from "@/lib/lockgm/config";
+import type { Prospect } from "@/lib/lockgm/sport-catalog";
 
-const STAGES: Array<PlayerStage | "all"> = [
-  "all",
-  "high_school",
-  "college",
-  "declare",
-  "pro_ready",
-];
-
-export function ScoutingPipeline({
-  tier = "free",
-}: {
-  tier?: SubTierId;
-}) {
-  const [stage, setStage] = useState<(typeof STAGES)[number]>("all");
-  const [activeId, setActiveId] = useState<string | null>(PROSPECTS[0]?.id ?? null);
+export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
+  const { sport, franchise } = useSport();
+  const stages = sport.stageOrder;
+  const [stage, setStage] = useState<string>("all");
+  const [activeId, setActiveId] = useState<string | null>(
+    franchise.prospects[0]?.id ?? null,
+  );
   const canReadPremium = tier === "pro" || tier === "pipeline";
-  const canSeeHsDeep = tier === "pipeline";
+  const canSeeDeep = tier === "pipeline";
+
+  useEffect(() => {
+    setStage("all");
+    setActiveId(franchise.prospects[0]?.id ?? null);
+  }, [franchise.prospects, sport.id]);
 
   const list = useMemo(() => {
-    return [...PROSPECTS]
+    return [...franchise.prospects]
       .filter((p) => (stage === "all" ? true : p.stage === stage))
       .sort((a, b) => a.rank - b.rank);
-  }, [stage]);
+  }, [franchise.prospects, stage]);
 
   const active: Prospect | null =
     list.find((p) => p.id === activeId) ?? list[0] ?? null;
 
+  const earlyStage = stages[0];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        {STAGES.map((key) => (
+        <button
+          type="button"
+          onClick={() => setStage("all")}
+          className={`rounded-md px-3 py-1.5 text-xs font-bold tracking-wide uppercase ${
+            stage === "all"
+              ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+              : "border border-[color:var(--lg-line)] text-[color:var(--lg-mute)]"
+          }`}
+        >
+          All stages
+        </button>
+        {stages.map((key) => (
           <button
             key={key}
             type="button"
@@ -50,7 +56,7 @@ export function ScoutingPipeline({
                 : "border border-[color:var(--lg-line)] text-[color:var(--lg-mute)]"
             }`}
           >
-            {key === "all" ? "All stages" : STAGE_LABEL[key]}
+            {sport.stages[key] ?? key}
           </button>
         ))}
       </div>
@@ -74,7 +80,7 @@ export function ScoutingPipeline({
                   </p>
                   <p className="text-xs text-[color:var(--lg-mute)]">
                     {prospect.position} · {prospect.school} ·{" "}
-                    {STAGE_LABEL[prospect.stage]}
+                    {sport.stages[prospect.stage] ?? prospect.stage}
                   </p>
                 </div>
                 <span className="text-xs font-bold text-[color:var(--lg-accent)]">
@@ -96,8 +102,10 @@ export function ScoutingPipeline({
             <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
               {active.position} · {active.school} · {active.height} ·{" "}
               {active.weight} lbs
-              {active.forty ? ` · ${active.forty} forty` : ""} · grade{" "}
-              {active.grade}
+              {active.metric != null
+                ? ` · ${sport.metricLabel} ${active.metric}`
+                : ""}{" "}
+              · grade {active.grade}
             </p>
             <p className="mt-4 text-base text-[color:var(--lg-text)]">
               {active.reportTeaser}
@@ -123,13 +131,13 @@ export function ScoutingPipeline({
               <p className="text-xs font-bold tracking-wide text-[color:var(--lg-mute)] uppercase">
                 Multi-stage pipeline
               </p>
-              {canSeeHsDeep || active.stage !== "high_school" ? (
+              {canSeeDeep || active.stage !== earlyStage ? (
                 <p className="mt-2 text-sm leading-relaxed text-[color:var(--lg-text)]">
                   {active.pipelineNote}
                 </p>
               ) : (
                 <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-                  HS deep tracking is a Pipeline tier feature.
+                  Deep early-stage tracking is a Pipeline tier feature.
                 </p>
               )}
             </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SPORTS } from "@/lib/lockgm/sports";
 
 export default function LockgmHomePage() {
   return (
@@ -19,51 +20,72 @@ export default function LockgmHomePage() {
           <h1 className="lg-rise-2 mt-5 max-w-xl lockgm-display text-3xl font-bold leading-[1.05] text-[color:var(--lg-text)] sm:text-5xl">
             Be the Shadow GM.
           </h1>
-          <p className="lg-rise-3 mt-5 max-w-md text-base leading-relaxed text-[color:var(--lg-mute)] sm:text-lg">
-            Live draft sync, auto board removals, salary-cap trades, and a
-            scouting pipeline from high school to the league.
+          <p className="lg-rise-3 mt-5 max-w-lg text-base leading-relaxed text-[color:var(--lg-mute)] sm:text-lg">
+            AI scout research, your numbered reports, and draft-day races —
+            across the world’s biggest team sports.
           </p>
           <div className="lg-rise-3 mt-9 flex flex-wrap gap-3">
             <Link
-              href="/lockgm/draft"
+              href="/lockgm/reports"
               className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
             >
-              Open live draft
+              Open my reports
             </Link>
             <Link
-              href="/lockgm/scouting"
+              href="/lockgm/draft"
               className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold text-[color:var(--lg-text)] hover:border-[color:var(--lg-accent)]"
             >
-              Scout the pipeline
+              Enter draft day
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="border-t border-[color:var(--lg-line)] px-6 py-20 sm:px-8">
+      <section className="border-t border-[color:var(--lg-line)] px-6 py-16 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-            WAR ROOM TOOLS
+            WORLD TEAM SPORTS
           </p>
-          <h2 className="mt-3 max-w-2xl lockgm-display text-3xl font-extrabold text-[color:var(--lg-text)] sm:text-4xl">
-            Everything a Shadow GM needs on draft night.
+          <h2 className="mt-3 max-w-2xl lockgm-display text-3xl font-extrabold sm:text-4xl">
+            One war room. Eight sports.
+          </h2>
+          <ul className="mt-8 flex flex-wrap gap-3">
+            {SPORTS.map((s) => (
+              <li
+                key={s.id}
+                className="border border-[color:var(--lg-line)] px-3 py-2 text-sm font-bold text-[color:var(--lg-text)]"
+              >
+                {s.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="bg-[color:var(--lg-panel)] px-6 py-20 sm:px-8">
+        <div className="mx-auto max-w-6xl">
+          <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+            HOW PRO GMS WORK HERE
+          </p>
+          <h2 className="mt-3 max-w-2xl lockgm-display text-3xl font-extrabold sm:text-4xl">
+            Research. Tabulate. Beat the clock.
           </h2>
           <ul className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                title: "Live draft sync",
-                body: "Picks land in real time. When a player is taken, they’re stripped from every Shadow board automatically.",
+                title: "AI scout pair",
+                body: "Assign Scout Alpha (tape) and Scout Beta (comps) to dig — then claim the merge as your SR-###.",
+                href: "/lockgm/reports",
+              },
+              {
+                title: "Your numbered board",
+                body: "Key in a customer / scout number. Type reports by hand or from AI. Lock them for draft day.",
+                href: "/lockgm/reports",
+              },
+              {
+                title: "Beat the pick",
+                body: "On draft day, lock your call before the team on the clock. Right name, early lock — you beat the room.",
                 href: "/lockgm/draft",
-              },
-              {
-                title: "Salary cap desk",
-                body: "Model trades against the ceiling before you move. Cap hits update as pieces move in and out.",
-                href: "/lockgm/cap",
-              },
-              {
-                title: "Scouting pipeline",
-                body: "Track prospects from high school through college declare — premium reports for War Room & Pipeline tiers.",
-                href: "/lockgm/scouting",
               },
             ].map((item) => (
               <li
@@ -88,25 +110,32 @@ export default function LockgmHomePage() {
         </div>
       </section>
 
-      <section className="bg-[color:var(--lg-panel)] px-6 py-20 sm:px-8">
+      <section className="px-6 py-20 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-            PRO PIPELINE
+            FRONT OFFICE
           </p>
           <h2 className="mt-3 max-w-xl lockgm-display text-3xl font-extrabold sm:text-4xl">
-            Fans scout. Pros listen.
+            Needs, assets, wage ceilings.
           </h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-            LockGM doubles as a professional scouting pipeline — standout Shadow
-            reports and multi-stage tracking feed a curated queue clubs can
-            review.
+            Sit in the GM office, stress-test the budget desk, and follow the
+            pipeline — the same tools a professional front office lives in.
           </p>
-          <Link
-            href="/lockgm/pricing"
-            className="mt-8 inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)]"
-          >
-            See tiers
-          </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/lockgm/office"
+              className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)]"
+            >
+              Open GM office
+            </Link>
+            <Link
+              href="/lockgm/pricing"
+              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
+            >
+              See tiers
+            </Link>
+          </div>
         </div>
       </section>
     </main>

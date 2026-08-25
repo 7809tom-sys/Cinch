@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, IBM_Plex_Sans } from "next/font/google";
+import { SportProvider } from "@/lib/lockgm/sport-context";
 import { LockgmChrome } from "./components/lockgm-chrome";
 import "./lockgm.css";
 
@@ -18,7 +19,7 @@ const body = IBM_Plex_Sans({
 export const metadata: Metadata = {
   title: "LockGM — Shadow GM draft & scouting",
   description:
-    "Live draft simulator and scouting platform where fans act as Shadow GMs — sync drafts, track the salary cap, and follow prospects from high school to the league.",
+    "Multi-sport Shadow GM platform: AI scout research, personal numbered reports, salary/wage desks, and draft-day beat-the-pick races.",
 };
 
 export default function LockgmLayout({
@@ -30,7 +31,9 @@ export default function LockgmLayout({
     <div
       className={`${display.variable} ${body.variable} lockgm-root min-h-full`}
     >
-      <LockgmChrome>{children}</LockgmChrome>
+      <SportProvider>
+        <LockgmChrome>{children}</LockgmChrome>
+      </SportProvider>
     </div>
   );
 }

@@ -1,26 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  ROSTER_CAP_HITS,
-  TEAM_CAP_CEILING_M,
-  TEAM_STARTING_USED_M,
-  TRADE_MARKET,
-} from "@/lib/lockgm/config";
+import { useEffect, useMemo, useState } from "react";
+import { useSport } from "@/lib/lockgm/sport-context";
 
 export function CapTradeDesk() {
+  const { sport, franchise, sportId } = useSport();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [sportId]);
 
   const delta = useMemo(() => {
     let sum = 0;
-    for (const piece of TRADE_MARKET) {
+    for (const piece of franchise.tradeMarket) {
       if (selected.has(piece.id)) sum += piece.capDeltaM;
     }
     return Math.round(sum * 10) / 10;
-  }, [selected]);
+  }, [selected, franchise.tradeMarket]);
 
-  const used = Math.round((TEAM_STARTING_USED_M + delta) * 10) / 10;
-  const room = Math.round((TEAM_CAP_CEILING_M - used) * 10) / 10;
+  const used = Math.round((franchise.startingUsedM + delta) * 10) / 10;
+  const room = Math.round((franchise.capCeilingM - used) * 10) / 10;
   const over = room < 0;
 
   function toggle(id: string) {
@@ -37,15 +37,15 @@ export function CapTradeDesk() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="border-t border-[color:var(--lg-line)] pt-3">
           <p className="text-[11px] font-bold tracking-[0.16em] text-[color:var(--lg-mute)] uppercase">
-            Cap ceiling
+            {sport.budgetLabel}
           </p>
           <p className="lockgm-display mt-1 text-3xl font-extrabold text-[color:var(--lg-text)]">
-            ${TEAM_CAP_CEILING_M}M
+            ${franchise.capCeilingM}M
           </p>
         </div>
         <div className="border-t border-[color:var(--lg-line)] pt-3">
           <p className="text-[11px] font-bold tracking-[0.16em] text-[color:var(--lg-mute)] uppercase">
-            Used after trade
+            Used after move
           </p>
           <p className="lockgm-display mt-1 text-3xl font-extrabold text-[color:var(--lg-text)]">
             ${used}M
@@ -53,7 +53,7 @@ export function CapTradeDesk() {
         </div>
         <div className="border-t border-[color:var(--lg-line)] pt-3">
           <p className="text-[11px] font-bold tracking-[0.16em] text-[color:var(--lg-mute)] uppercase">
-            Cap room
+            {sport.roomLabel}
           </p>
           <p
             className={`lockgm-display mt-1 text-3xl font-extrabold ${
@@ -73,7 +73,7 @@ export function CapTradeDesk() {
             over ? "bg-[color:var(--lg-warn)]" : "bg-[color:var(--lg-accent)]"
           }`}
           style={{
-            width: `${Math.min(100, (used / TEAM_CAP_CEILING_M) * 100)}%`,
+            width: `${Math.min(100, (used / franchise.capCeilingM) * 100)}%`,
           }}
         />
       </div>
@@ -84,7 +84,7 @@ export function CapTradeDesk() {
             Current charges
           </h3>
           <ul className="mt-4 divide-y divide-[color:var(--lg-line)] border-t border-[color:var(--lg-line)]">
-            {ROSTER_CAP_HITS.map((row) => (
+            {franchise.roster.map((row) => (
               <li
                 key={row.id}
                 className="flex justify-between gap-3 py-3 text-sm"
@@ -106,13 +106,13 @@ export function CapTradeDesk() {
 
         <div>
           <h3 className="lockgm-display text-xl font-bold text-[color:var(--lg-accent)]">
-            Trade sandbox
+            {sport.tradeLabel}
           </h3>
           <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-            Toggle pieces. Cap delta updates live — stay under the ceiling.
+            Toggle pieces. Budget delta updates live — stay under the ceiling.
           </p>
           <ul className="mt-4 space-y-2">
-            {TRADE_MARKET.map((piece) => {
+            {franchise.tradeMarket.map((piece) => {
               const on = selected.has(piece.id);
               return (
                 <li key={piece.id}>
@@ -137,7 +137,7 @@ export function CapTradeDesk() {
                     >
                       {piece.capDeltaM > 0 ? "+" : ""}
                       {piece.capDeltaM === 0
-                        ? "pick"
+                        ? piece.kind
                         : `$${piece.capDeltaM}M`}
                     </span>
                   </button>
@@ -146,7 +146,7 @@ export function CapTradeDesk() {
             })}
           </ul>
           <p className="mt-4 text-sm font-bold">
-            Trade delta:{" "}
+            Move delta:{" "}
             <span
               className={
                 delta <= 0
@@ -157,7 +157,7 @@ export function CapTradeDesk() {
               {delta > 0 ? "+" : ""}
               {delta}M
             </span>
-            {over ? " · over the cap" : " · legal under ceiling"}
+            {over ? " · over the ceiling" : " · legal under ceiling"}
           </p>
         </div>
       </div>
