@@ -112,6 +112,13 @@ export async function listCatalogSites(): Promise<CatalogSite[]> {
   return store.sites;
 }
 
+export async function listPurchases(): Promise<SitePurchase[]> {
+  const store = await ensureCatalog();
+  return [...store.purchases].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+}
+
 export async function getCatalogSite(
   id: string,
 ): Promise<CatalogSite | null> {

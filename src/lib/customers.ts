@@ -89,6 +89,32 @@ async function writeCustomers(store: CustomerStore): Promise<void> {
   }
 }
 
+export async function listCustomers(): Promise<CustomerAccount[]> {
+  const store = await ensureCustomers();
+  return [...store.accounts].sort((a, b) =>
+    b.updatedAt.localeCompare(a.updatedAt),
+  );
+}
+
+export async function listActiveSessions(): Promise<
+  Array<CustomerSession & { email: string | null; name: string | null }>
+> {
+  const store = await ensureCustomers();
+  const stamp = now();
+  return store.sessions
+    .filter((session) => session.expiresAt > stamp)
+    .map((session) => {
+      const account = store.accounts.find(
+        (item) => item.id === session.customerId,
+      );
+      return {
+        ...session,
+        email: account?.email ?? null,
+        name: account?.name ?? null,
+      };
+    });
+}
+
 export async function getCustomerByEmail(
   email: string,
 ): Promise<CustomerAccount | null> {
