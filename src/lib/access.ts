@@ -4,9 +4,13 @@
  *
  * Set CINCH_FREE_ADMIN_EMAILS to a comma-separated allowlist
  * (e.g. "you@cinchseed.com,admin@cinchseed.com").
+ * The platform owner is always included.
  */
 
 export type AccessRole = "owner" | "admin" | "customer";
+
+/** Built-in platform owner — always admin / billing-waived. */
+export const PLATFORM_OWNER_EMAIL = "7809tom@gmail.com";
 
 function parseAllowlist(raw: string | undefined): string[] {
   return (raw ?? "")
@@ -16,7 +20,9 @@ function parseAllowlist(raw: string | undefined): string[] {
 }
 
 export function freeAdminEmails(): string[] {
-  return parseAllowlist(process.env.CINCH_FREE_ADMIN_EMAILS);
+  const fromEnv = parseAllowlist(process.env.CINCH_FREE_ADMIN_EMAILS);
+  const merged = new Set<string>([PLATFORM_OWNER_EMAIL, ...fromEnv]);
+  return [...merged];
 }
 
 export function isFreeAdminAccount(email: string | null | undefined): boolean {
@@ -28,10 +34,10 @@ export function isFreeAdminAccount(email: string | null | undefined): boolean {
 export function resolveAccessRole(
   email: string | null | undefined,
 ): AccessRole {
-  if (isFreeAdminAccount(email)) {
-    const list = freeAdminEmails();
-    return list[0] === email?.trim().toLowerCase() ? "owner" : "admin";
-  }
+  if (!email) return "customer";
+  const normalized = email.trim().toLowerCase();
+  if (normalized === PLATFORM_OWNER_EMAIL) return "owner";
+  if (isFreeAdminAccount(normalized)) return "admin";
   return "customer";
 }
 

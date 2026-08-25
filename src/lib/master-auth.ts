@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
-import { freeAdminEmails } from "./access";
+import { freeAdminEmails, PLATFORM_OWNER_EMAIL } from "./access";
 
 export type MasterUser = {
   email: string;
@@ -76,8 +76,12 @@ export function masterAllowlist(): string[] {
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
-  if (dedicated.length > 0) return dedicated;
-  return freeAdminEmails();
+  const merged = new Set<string>([
+    PLATFORM_OWNER_EMAIL,
+    ...dedicated,
+    ...freeAdminEmails(),
+  ]);
+  return [...merged];
 }
 
 export function isMasterEmail(email: string | null | undefined): boolean {

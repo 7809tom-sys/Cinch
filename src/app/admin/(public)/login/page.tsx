@@ -82,9 +82,8 @@ export default async function AdminLoginPage() {
                 <div className="border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-brand-deep">
                   <p className="font-semibold">No master emails allowlisted.</p>
                   <p className="mt-2 text-muted">
-                    Set <code>CINCH_MASTER_EMAILS</code> (or{" "}
-                    <code>CINCH_FREE_ADMIN_EMAILS</code>) to the Google accounts
-                    that may open admin.
+                Set <code>CINCH_MASTER_EMAILS</code> for extra admins if needed.
+                    Owner <code>7809tom@gmail.com</code> is always allowed.
                   </p>
                 </div>
               ) : (
