@@ -18,9 +18,9 @@ export default function LockgmScoutingPage() {
         {path}
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Follow prospects across stages for {sport.name}. Premium reports unlock
-        on War Room; deep early-stage tracking unlocks on All-Sports — the same
-        queue pros can review.
+        Follow prospects across stages for {sport.name}. Full scouting reports
+        unlock on the Reports upgrade; deep early-stage tracking unlocks on
+        All-Sports — the same queue pros can review.
       </p>
       <div className="mt-10">
         <ScoutingTierSwitch />

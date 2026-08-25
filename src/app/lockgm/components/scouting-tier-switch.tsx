@@ -14,7 +14,7 @@ export function ScoutingTierSwitch() {
         {(
           [
             ["free", "Shadow"],
-            ["pro", "War Room"],
+            ["pro", "Reports"],
             ["pipeline", "All-Sports"],
           ] as const
         ).map(([id, label]) => (

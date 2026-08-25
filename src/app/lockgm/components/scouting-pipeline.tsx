@@ -121,8 +121,8 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                 </p>
               ) : (
                 <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-                  Locked — upgrade to <strong>War Room</strong> or{" "}
-                  <strong>All-Sports</strong> for full reports.
+                  Locked — upgrade to <strong>Reports</strong> or{" "}
+                  <strong>All-Sports</strong> for full scouting write-ups.
                 </p>
               )}
             </div>

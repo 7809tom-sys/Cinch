@@ -13,8 +13,9 @@ export type SubTier = {
 };
 
 /**
- * Annual pricing on purpose: $20/yr for one sport keeps the serious 4% in;
- * $59/yr unlocks every war room — cheaper than three monthly apps.
+ * Annual ladder:
+ * Shadow free → Reports ($20/yr) is the scouting-report upgrade for one sport →
+ * All-Sports ($59/yr) unlocks reports + pipeline everywhere.
  */
 export const SUB_TIERS: SubTier[] = [
   {
@@ -26,7 +27,7 @@ export const SUB_TIERS: SubTier[] = [
     blurb: "Draft-day rooms and a starter board — no card required.",
     perks: [
       "Live draft sync + beat-the-pick",
-      "Personal SR-### report board",
+      "Personal SR-### board (handwritten)",
       "Public teaser grades",
       "Browse every sport",
     ],
@@ -34,18 +35,18 @@ export const SUB_TIERS: SubTier[] = [
   },
   {
     id: "pro",
-    name: "War Room",
+    name: "Reports",
     priceLabel: "$20/yr",
     priceUsd: 20,
     billing: "year",
-    blurb: "One home sport — AI scouts, full reports, budget desk. Built for the year-round grind.",
+    blurb: "The scouting-report upgrade — AI research staff and full write-ups for one home sport.",
     perks: [
       "Everything in Shadow",
-      "Full tools for 1 sport you choose",
-      "Scout Alpha + Beta research AIs",
-      "Premium reports + budget / trade desk",
+      "Scout Alpha + Beta on your prospects",
+      "Full premium scouting reports",
+      "Budget / trade desk for 1 sport",
     ],
-    cta: "Unlock War Room",
+    cta: "Upgrade reports",
   },
   {
     id: "pipeline",
@@ -53,9 +54,9 @@ export const SUB_TIERS: SubTier[] = [
     priceLabel: "$59/yr",
     priceUsd: 59,
     billing: "year",
-    blurb: "Every sport, deep pipeline, and the AGM ledger path — one seat for the whole calendar.",
+    blurb: "Reports for every sport, deep pipeline tracking, and the AGM ledger path.",
     perks: [
-      "Everything in War Room",
+      "Everything in Reports",
       "All 8 sports unlocked",
       "Multi-stage pipeline + early tracking",
       "Outcome ledger / AGM board path",

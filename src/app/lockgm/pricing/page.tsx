@@ -4,7 +4,7 @@ import { SUB_TIERS } from "@/lib/lockgm/config";
 export const metadata = {
   title: "Tiers — LockGM",
   description:
-    "Shadow ($0), War Room ($20/yr one sport), All-Sports ($59/yr).",
+    "Shadow ($0), Reports ($20/yr scouting upgrade), All-Sports ($59/yr).",
 };
 
 export default function LockgmPricingPage() {
@@ -17,8 +17,8 @@ export default function LockgmPricingPage() {
         Pick your seat in the war room
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Annual seats — cheap enough to stay year-round. $20 for your home sport,
-        $59 when you want every war room on the calendar.
+        Draft day is free. The upgrade is scouting reports — $20/yr for one
+        sport, $59/yr when you want every sport on the calendar.
       </p>
 
       <ul className="mt-12 grid gap-8 lg:grid-cols-3">
