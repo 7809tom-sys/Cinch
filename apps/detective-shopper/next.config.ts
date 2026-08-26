@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
         hostname: "img.spoonacular.com",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
     ],
   },
 };
