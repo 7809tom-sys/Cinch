@@ -5,7 +5,7 @@ import { formatUsd, couponValueUsd } from "@/lib/format";
 import { searchCoupons, type CouponHit, type SearchCouponsResult } from "./actions";
 import { SaveButton } from "./save-button";
 
-function DealRows({ hit }: { hit: CouponHit }) {
+function DealRows({ hit, canSave }: { hit: CouponHit; canSave: boolean }) {
   if (hit.deals.length === 0) {
     return <p className="mt-2 text-sm text-mist">No active coupons right now.</p>;
   }
@@ -23,25 +23,27 @@ function DealRows({ hit }: { hit: CouponHit }) {
               {deal.code ? ` · code ${deal.code}` : ""}
             </p>
           </div>
-          <SaveButton
-            coupon={{
-              id: deal.id,
-              label: deal.label,
-              source: deal.source,
-              type: deal.type,
-              code: deal.code,
-              productName: hit.product.name,
-              savedUsd: couponValueUsd(deal, hit.product.referencePriceUsd),
-            }}
-            initiallySaved={false}
-          />
+          {canSave ? (
+            <SaveButton
+              coupon={{
+                id: deal.id,
+                label: deal.label,
+                source: deal.source,
+                type: deal.type,
+                code: deal.code,
+                productName: hit.product.name,
+                savedUsd: couponValueUsd(deal, hit.product.referencePriceUsd),
+              }}
+              initiallySaved={false}
+            />
+          ) : null}
         </li>
       ))}
     </ul>
   );
 }
 
-export function SearchCoupons() {
+export function SearchCoupons({ canSave = false }: { canSave?: boolean }) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<SearchCouponsResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -110,7 +112,7 @@ export function SearchCoupons() {
                 {formatUsd(result.match.bestPriceUsd)}
               </span>
             </div>
-            <DealRows hit={result.match} />
+            <DealRows hit={result.match} canSave={canSave} />
           </div>
 
           {result.alternatives.length > 0 ? (
@@ -148,7 +150,7 @@ export function SearchCoupons() {
                           ) : null}
                         </div>
                       </div>
-                      <DealRows hit={alt} />
+                      <DealRows hit={alt} canSave={canSave} />
                     </div>
                   );
                 })}
