@@ -24,33 +24,20 @@ async function testOpenAI(apiKey: string): Promise<string> {
 }
 
 async function testAnthropic(apiKey: string): Promise<string> {
-  // Lightweight auth check — invalid keys 401; valid keys may 400 on empty body.
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
+  // Validate against the Models list so the probe never depends on a specific
+  // (and eventually retired) model id the way a Messages call would.
+  const response = await fetch("https://api.anthropic.com/v1/models?limit=1", {
     headers: {
-      "content-type": "application/json",
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     },
-    body: JSON.stringify({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1,
-      messages: [{ role: "user", content: "ping" }],
-    }),
     cache: "no-store",
   });
-
-  if (response.status === 401 || response.status === 403) {
-    const body = await response.text();
-    throw new Error(`Anthropic auth failed (${response.status}): ${body.slice(0, 160)}`);
-  }
-
-  if (!response.ok && response.status !== 400 && response.status !== 429) {
+  if (!response.ok) {
     const body = await response.text();
     throw new Error(`Anthropic ${response.status}: ${body.slice(0, 160)}`);
   }
-
-  return "Anthropic key is accepted.";
+  return "Anthropic key works (models list OK).";
 }
 
 async function testGoogle(apiKey: string): Promise<string> {
