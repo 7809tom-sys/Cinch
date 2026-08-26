@@ -8,6 +8,16 @@ import {
 
 export const CUSTOMER_SESSION_COOKIE = "cinch_customer_session";
 
+export function customerSessionCookieOptions(maxAge = 30 * 24 * 60 * 60) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge,
+  };
+}
+
 export async function getCurrentCustomer(): Promise<CustomerAccount | null> {
   const jar = await cookies();
   const token = jar.get(CUSTOMER_SESSION_COOKIE)?.value;
@@ -19,13 +29,13 @@ export async function establishCustomerSession(
 ): Promise<void> {
   const { token } = await createCustomerSession(customerId);
   const jar = await cookies();
-  jar.set(CUSTOMER_SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 30 * 24 * 60 * 60,
-  });
+  jar.set(CUSTOMER_SESSION_COOKIE, token, customerSessionCookieOptions());
+}
+
+/** For Route Handlers that set the cookie on NextResponse. */
+export async function establishCustomerSessionCookie(customerId: string) {
+  const { token } = await createCustomerSession(customerId);
+  return { token, cookieOptions: customerSessionCookieOptions() };
 }
 
 export async function clearCustomerSession(): Promise<void> {

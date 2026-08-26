@@ -16,7 +16,7 @@ export function SiteFooter() {
             Browse
           </Link>
           <Link href="/login" className="hover:text-brand-deep">
-            Log in
+            Sign in
           </Link>
           <Link href="/about" className="hover:text-brand-deep">
             About us

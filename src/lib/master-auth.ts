@@ -1,12 +1,16 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { freeAdminEmails, PLATFORM_OWNER_EMAIL } from "./access";
+import {
+  googleClientId,
+  isGoogleLoginConfigured,
+  verifyGoogleIdToken,
+  type GoogleIdentity,
+} from "./google-auth";
 
-export type MasterUser = {
-  email: string;
-  name: string;
-  picture?: string;
-};
+export type MasterUser = GoogleIdentity;
+
+export { googleClientId, isGoogleLoginConfigured };
 
 export const MASTER_SESSION_COOKIE = "cinch_master_session";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 14;
@@ -91,51 +95,17 @@ export function isMasterEmail(email: string | null | undefined): boolean {
   return list.includes(email.trim().toLowerCase());
 }
 
-export function isGoogleLoginConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim());
-}
-
-export function googleClientId(): string | null {
-  return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || null;
-}
-
 /**
- * Verify a Google ID token from Sign in with Google, then enforce the
- * master allowlist (CINCH_MASTER_EMAILS or CINCH_FREE_ADMIN_EMAILS).
+ * Verify Google ID token, then enforce the master allowlist.
+ * Public customer signup does not use this — use verifyGoogleIdToken instead.
  */
 export async function verifyGoogleMasterIdToken(
   idToken: string,
 ): Promise<MasterUser | null> {
-  if (!idToken) return null;
-
-  const response = await fetch(
-    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
-    { cache: "no-store" },
-  );
-  if (!response.ok) return null;
-
-  const data = (await response.json()) as {
-    aud?: string;
-    email?: string;
-    email_verified?: string | boolean;
-    name?: string;
-    picture?: string;
-  };
-
-  const clientId = googleClientId();
-  if (clientId && data.aud !== clientId) return null;
-  if (!data.email) return null;
-
-  const verified =
-    data.email_verified === true || data.email_verified === "true";
-  if (!verified) return null;
-  if (!isMasterEmail(data.email)) return null;
-
-  return {
-    email: data.email.trim().toLowerCase(),
-    name: data.name?.trim() || data.email,
-    picture: data.picture,
-  };
+  const identity = await verifyGoogleIdToken(idToken);
+  if (!identity) return null;
+  if (!isMasterEmail(identity.email)) return null;
+  return identity;
 }
 
 export async function getMasterSession(): Promise<MasterUser | null> {
