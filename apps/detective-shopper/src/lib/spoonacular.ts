@@ -187,10 +187,9 @@ export async function findRecipesByPantryItems(
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Spoonacular findByIngredients failed (${response.status}): ${body.slice(0, 200)}`,
-    );
+    // Bad key, exceeded free-tier quota, etc. — fall back to sample recipes
+    // so the page always shows results instead of an error.
+    return demoMatches(ingredients);
   }
 
   const data = (await response.json()) as Array<{
@@ -238,10 +237,7 @@ export async function getRecipeDetails(id: number): Promise<RecipeDetails> {
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Spoonacular recipe information failed (${response.status}): ${body.slice(0, 200)}`,
-    );
+    return demoDetails(id);
   }
 
   const data = (await response.json()) as {
