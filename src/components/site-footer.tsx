@@ -15,17 +15,11 @@ export function SiteFooter() {
           <Link href="/browse" className="hover:text-brand-deep">
             Browse
           </Link>
-          <Link href="/login" className="hover:text-brand-deep">
-            Sign in
-          </Link>
           <Link href="/about" className="hover:text-brand-deep">
             About us
           </Link>
           <Link href="/legal" className="hover:text-brand-deep">
             Legal
-          </Link>
-          <Link href="/admin" className="hover:text-brand-deep">
-            Admin
           </Link>
         </div>
       </div>

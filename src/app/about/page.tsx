@@ -20,14 +20,11 @@ export default function AboutPage() {
             Cinch
           </Link>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
+            <Link href="/browse" className="transition-colors hover:text-brand-deep">
+              Browse
+            </Link>
             <Link href="/legal" className="transition-colors hover:text-brand-deep">
               Legal
-            </Link>
-            <Link
-              href="/admin"
-              className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
-            >
-              Start
             </Link>
           </nav>
         </div>
