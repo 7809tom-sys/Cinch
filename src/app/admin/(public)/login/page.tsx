@@ -71,12 +71,34 @@ export default async function AdminLoginPage() {
               {!configured || !clientId ? (
                 <div className="border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-brand-deep">
                   <p className="font-semibold">Google login is not configured.</p>
-                  <p className="mt-2 text-muted">
-                    Set <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> and{" "}
-                    <code>AUTH_SECRET</code> in Vercel, authorize{" "}
-                    <code>https://www.cinchseed.com</code> (and localhost) in
-                    Google Cloud, then redeploy.
-                  </p>
+                  <ol className="mt-2 list-decimal space-y-2 pl-4 text-muted">
+                    <li>
+                      In{" "}
+                      <a
+                        href="https://console.cloud.google.com/apis/credentials"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand"
+                      >
+                        Google Cloud → Credentials
+                      </a>
+                      , create an OAuth client ID of type{" "}
+                      <strong>Web application</strong> (not an AI API key).
+                    </li>
+                    <li>
+                      Add authorized JavaScript origins:{" "}
+                      <code>https://www.cinchseed.com</code>,{" "}
+                      <code>https://cinchseed.com</code>,{" "}
+                      <code>http://localhost:3000</code>.
+                    </li>
+                    <li>
+                      Paste the Client ID (ends in{" "}
+                      <code>.apps.googleusercontent.com</code>) into Vercel as{" "}
+                      <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>, set{" "}
+                      <code>AUTH_SECRET</code> to a long random string, then
+                      redeploy Production.
+                    </li>
+                  </ol>
                 </div>
               ) : allowlist.length === 0 ? (
                 <div className="border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-brand-deep">
@@ -87,7 +109,45 @@ export default async function AdminLoginPage() {
                   </p>
                 </div>
               ) : (
-                <MasterGoogleSignIn clientId={clientId} redirectTo="/admin" />
+                <>
+                  <MasterGoogleSignIn clientId={clientId} redirectTo="/admin" />
+                  <div className="mt-5 border border-brand/10 bg-mist/40 px-4 py-4 text-xs leading-relaxed text-muted">
+                    <p className="font-semibold text-brand-deep">
+                      Seeing “OAuth client was not found” / Error 401:
+                      invalid_client?
+                    </p>
+                    <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+                      <li>
+                        Open{" "}
+                        <a
+                          href="https://console.cloud.google.com/apis/credentials"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-brand"
+                        >
+                          Google Cloud → Credentials
+                        </a>{" "}
+                        and create an <strong>OAuth client ID</strong> of type{" "}
+                        <strong>Web application</strong> (not an AI Studio API
+                        key).
+                      </li>
+                      <li>
+                        Under <strong>Authorized JavaScript origins</strong>,
+                        add{" "}
+                        <code>https://www.cinchseed.com</code>,{" "}
+                        <code>https://cinchseed.com</code>, and for local{" "}
+                        <code>http://localhost:3000</code>.
+                      </li>
+                      <li>
+                        Copy the Client ID (ends in{" "}
+                        <code>.apps.googleusercontent.com</code>) into Vercel as{" "}
+                        <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>. Also set a
+                        long random <code>AUTH_SECRET</code>. Redeploy
+                        Production — public env vars only update after redeploy.
+                      </li>
+                    </ol>
+                  </div>
+                </>
               )}
             </div>
 
