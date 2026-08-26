@@ -1,26 +1,16 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+  BrowserMultiFormatReader,
+  type IScannerControls,
+} from "@zxing/browser";
 
-type DetectedBarcode = { rawValue: string };
-interface BarcodeDetectorLike {
-  detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
-}
-interface BarcodeDetectorCtor {
-  new (opts?: { formats?: string[] }): BarcodeDetectorLike;
-}
-
-function getDetectorCtor(): BarcodeDetectorCtor | null {
-  if (typeof window === "undefined") return null;
-  const ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor })
-    .BarcodeDetector;
-  return ctor ?? null;
+function cameraAvailable(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    Boolean(navigator.mediaDevices?.getUserMedia)
+  );
 }
 
 export function BarcodeScanner({
@@ -28,73 +18,67 @@ export function BarcodeScanner({
 }: {
   onDetected: (code: string) => void;
 }) {
-  // Feature-detect the native BarcodeDetector + camera after mount (false on
-  // the server so markup matches hydration).
+  // A camera is usable on iOS Safari + Android + desktop whenever getUserMedia
+  // exists (decoding is done in JS by ZXing, not the native BarcodeDetector).
   const supported = useSyncExternalStore(
     () => () => {},
-    () =>
-      Boolean(getDetectorCtor()) &&
-      typeof navigator !== "undefined" &&
-      Boolean(navigator.mediaDevices?.getUserMedia),
+    () => cameraAvailable(),
     () => false,
   );
+
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const controlsRef = useRef<IScannerControls | null>(null);
+
+  // Keep the latest callback without restarting the camera on parent re-render.
+  const onDetectedRef = useRef(onDetected);
+  useEffect(() => {
+    onDetectedRef.current = onDetected;
+  }, [onDetected]);
 
   const stop = useCallback(() => {
-    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    controlsRef.current?.stop();
+    controlsRef.current = null;
     setActive(false);
   }, []);
 
-  useEffect(() => stop, [stop]);
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    let controls: IScannerControls | null = null;
+    const reader = new BrowserMultiFormatReader();
 
-  const start = useCallback(async () => {
-    setError(null);
-    const Ctor = getDetectorCtor();
-    if (!Ctor) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
-      streamRef.current = stream;
-      setActive(true);
+    (async () => {
       const video = videoRef.current;
       if (!video) return;
-      video.srcObject = stream;
-      await video.play();
-
-      const detector = new Ctor({
-        formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"],
-      });
-
-      const tick = async () => {
-        if (!streamRef.current || !videoRef.current) return;
-        try {
-          const codes = await detector.detect(videoRef.current);
-          const hit = codes.find((code) => code.rawValue);
-          if (hit) {
-            onDetected(hit.rawValue);
-            stop();
-            return;
-          }
-        } catch {
-          // transient decode error; keep scanning
+      try {
+        controls = await reader.decodeFromConstraints(
+          { video: { facingMode: { ideal: "environment" } } },
+          video,
+          (result) => {
+            if (!result) return; // no barcode in this frame — keep scanning
+            onDetectedRef.current(result.getText());
+            controls?.stop();
+            if (!cancelled) setActive(false);
+          },
+        );
+        if (cancelled) controls.stop();
+        else controlsRef.current = controls;
+      } catch {
+        if (!cancelled) {
+          setError("Camera unavailable or blocked. Enter the barcode number below instead.");
+          setActive(false);
         }
-        rafRef.current = requestAnimationFrame(() => void tick());
-      };
-      rafRef.current = requestAnimationFrame(() => void tick());
-    } catch {
-      setError("Camera unavailable. Enter the barcode number instead.");
-      stop();
-    }
-  }, [onDetected, stop]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controls?.stop();
+      controlsRef.current = null;
+    };
+  }, [active]);
 
   if (!supported) return null;
 
@@ -103,10 +87,13 @@ export function BarcodeScanner({
       {!active ? (
         <button
           type="button"
-          onClick={() => void start()}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 text-sm font-semibold text-brand transition-colors hover:bg-brand/20"
+          onClick={() => {
+            setError(null);
+            setActive(true);
+          }}
+          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md border border-brand/40 bg-brand/10 px-4 text-sm font-semibold text-brand transition-colors hover:bg-brand/20 sm:w-auto"
         >
-          <span aria-hidden>📷</span> Scan with camera
+          <span aria-hidden>📷</span> Scan barcode with camera
         </button>
       ) : (
         <div className="relative overflow-hidden rounded-xl border border-brand/40 bg-black">
@@ -114,9 +101,15 @@ export function BarcodeScanner({
             ref={videoRef}
             playsInline
             muted
-            className="h-56 w-full object-cover"
+            autoPlay
+            className="h-64 w-full object-cover"
           />
-          <div className="pointer-events-none absolute inset-x-8 top-1/2 h-0.5 -translate-y-1/2 bg-brand/80" />
+          <div className="pointer-events-none absolute inset-x-6 top-1/2 h-0.5 -translate-y-1/2 bg-brand/80" />
+          <div className="pointer-events-none absolute inset-0 flex items-end justify-center pb-3">
+            <span className="rounded bg-background/70 px-3 py-1 text-xs font-medium text-foam">
+              Point the camera at a barcode
+            </span>
+          </div>
           <button
             type="button"
             onClick={stop}
