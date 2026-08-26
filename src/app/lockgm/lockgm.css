@@ -1,0 +1,69 @@
+.lockgm-root {
+  --lg-bg: #070b12;
+  --lg-panel: #0e1522;
+  --lg-line: rgba(200, 245, 66, 0.18);
+  --lg-text: #f4f7f2;
+  --lg-mute: #8b97a8;
+  --lg-accent: #c8f542;
+  --lg-accent-deep: #9bc41f;
+  --lg-warn: #ff6b4a;
+  --lg-field: #14352a;
+  color: var(--lg-text);
+  background: var(--lg-bg);
+  font-family: var(--lockgm-body), system-ui, sans-serif;
+}
+
+.lockgm-root a {
+  color: inherit;
+}
+
+.lockgm-display {
+  font-family: var(--lockgm-display), Impact, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+@keyframes lg-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes lg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lg-rise {
+  animation: lg-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lg-rise-2 {
+  animation: lg-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.lg-rise-3 {
+  animation: lg-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both;
+}
+
+.lg-live {
+  animation: lg-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-rise,
+  .lg-rise-2,
+  .lg-rise-3,
+  .lg-live {
+    animation: none;
+  }
+}

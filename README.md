@@ -38,6 +38,16 @@ Primary domain: **[cinchseed.com](https://cinchseed.com)** / **[www.cinchseed.co
 
 Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`
 
+## LockGM
+
+Live at **[cinchseed.com/lockgm](https://cinchseed.com/lockgm)** — Shadow GM draft simulator & scouting platform.
+
+- `/lockgm` — landing
+- `/lockgm/draft` — live draft sync + auto player removal
+- `/lockgm/cap` — salary cap / trade desk
+- `/lockgm/scouting` — HS→college pipeline + premium reports
+- `/lockgm/pricing` — Shadow / War Room / Pipeline tiers
+
 ## Detective Shopper
 
 - `/admin` — `IMPACT_API_KEY` + Impact/Awin links
