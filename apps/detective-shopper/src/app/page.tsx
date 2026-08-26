@@ -12,14 +12,17 @@ export default function Home() {
             Detective Shopper
           </a>
           <nav className="flex items-center gap-6 text-sm font-medium text-mist">
+            <a href="/scan" className="transition-colors hover:text-foam">
+              Scan
+            </a>
+            <a href="/coupons" className="transition-colors hover:text-foam">
+              Coupons
+            </a>
             <a href="/recipes" className="transition-colors hover:text-foam">
               Recipes
             </a>
-            <a href="#method" className="transition-colors hover:text-foam">
-              Method
-            </a>
             <a
-              href="#start"
+              href="/scan"
               className="hidden transition-colors hover:text-foam sm:inline"
             >
               Start investigating
@@ -56,7 +59,7 @@ export default function Home() {
               </p>
               <div className="animate-rise-delay-2 mt-9 flex flex-wrap items-center gap-3">
                 <a
-                  href="#start"
+                  href="/scan"
                   className="inline-flex h-12 items-center justify-center rounded-md bg-brand px-6 text-sm font-semibold text-background transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand-deep"
                 >
                   Start a case
@@ -147,16 +150,14 @@ export default function Home() {
               Open your next case
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-background/80">
-              Point Vercel at <code className="font-semibold">apps/detective-shopper</code> and
-              this site deploys on its own domain.
+              Scan a barcode and watch the best price and every coupon stack into
+              one out-of-pocket total.
             </p>
             <a
-              href="https://vercel.com/new"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/scan"
               className="mt-9 inline-flex h-12 items-center justify-center rounded-md bg-background px-6 text-sm font-semibold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-panel"
             >
-              Deploy Detective Shopper
+              Start a case
             </a>
           </div>
         </section>

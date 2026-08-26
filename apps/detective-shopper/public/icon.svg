@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Detective Shopper">
+  <rect width="512" height="512" rx="96" fill="#121c27"/>
+  <g fill="none" stroke="#f0b429" stroke-width="34" stroke-linecap="round">
+    <circle cx="222" cy="222" r="120"/>
+    <line x1="312" y1="312" x2="404" y2="404"/>
+  </g>
+  <g fill="#7eb6d9">
+    <path d="M168 190h108l-12 74a16 16 0 0 1-16 14h-52a16 16 0 0 1-16-14z" opacity="0.9"/>
+    <rect x="196" y="160" width="16" height="34" rx="8"/>
+    <rect x="232" y="160" width="16" height="34" rx="8"/>
+  </g>
+</svg>
