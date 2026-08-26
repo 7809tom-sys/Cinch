@@ -25,8 +25,8 @@ export default async function BrowsePage() {
             Cinch
           </Link>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
-            <Link href="/login" className="transition-colors hover:text-brand-deep">
-              Log in
+            <Link href="/about" className="transition-colors hover:text-brand-deep">
+              About
             </Link>
             {customer ? (
               <Link
@@ -35,14 +35,7 @@ export default async function BrowsePage() {
               >
                 My Seeds
               </Link>
-            ) : (
-              <Link
-                href="/admin"
-                className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
-              >
-                Start
-              </Link>
-            )}
+            ) : null}
           </nav>
         </div>
       </header>

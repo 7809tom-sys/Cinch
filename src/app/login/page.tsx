@@ -13,15 +13,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Sign in — Cinch Seed",
-  description:
-    "Sign in or sign up with Google to open your Cinch Seed portal.",
+  description: "Open your Cinch Seed portal with your email and access code.",
 };
 
 export default async function LoginPage() {
   const customer = await getCurrentCustomer();
   if (customer) redirect("/portal");
 
-  const configured = isGoogleLoginConfigured();
+  const googleOk = isGoogleLoginConfigured();
   const clientId = googleClientId();
 
   return (
@@ -57,51 +56,41 @@ export default async function LoginPage() {
               Cinch
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Sign in with Google to create an account or open your portal —
-              no access code required.
+              Log in with the email and access code from your Seed order.
             </p>
           </div>
           <div className="animate-sprout border border-brand/10 bg-foam/95 px-6 py-7 shadow-[0_20px_60px_rgba(11,46,42,0.08)]">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-brand-deep">
-              Sign in / sign up
+              Customer login
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Anyone with a Google account can join. First click creates your
-              Seed portal.
+              Not ordered yet?{" "}
+              <Link
+                href="/browse"
+                className="font-semibold text-brand hover:text-brand-deep"
+              >
+                Drop a site and purchase
+              </Link>
+              .
             </p>
 
-            <div className="mt-6">
-              {configured && clientId ? (
+            {googleOk && clientId ? (
+              <div className="mt-6">
                 <GoogleSignInButton
                   clientId={clientId}
                   endpoint="/api/auth/google/customer"
                   redirectTo="/portal"
                   buttonText="continue_with"
                 />
-              ) : (
-                <div className="border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-brand-deep">
-                  <p className="font-semibold">Google sign-in is almost ready.</p>
-                  <p className="mt-2 text-muted">
-                    The site owner needs to set{" "}
-                    <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> in Vercel once.
-                    Until then, use a Seed access code below.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <details className="mt-8 border-t border-brand/10 pt-5">
-              <summary className="cursor-pointer text-sm font-semibold text-brand-deep">
-                Or use a Seed access code
-              </summary>
-              <p className="mt-2 text-sm text-muted">
-                If you ordered a Seed and got an email code, you can still use
-                it here.
-              </p>
-              <div className="mt-4">
-                <LoginForm />
+                <p className="mt-4 text-center text-xs font-semibold uppercase tracking-wide text-muted">
+                  or
+                </p>
               </div>
-            </details>
+            ) : null}
+
+            <div className="mt-6">
+              <LoginForm />
+            </div>
           </div>
         </div>
       </main>
