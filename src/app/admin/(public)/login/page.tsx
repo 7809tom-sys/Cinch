@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { GoogleSignInButton } from "@/components/google-sign-in";
 import { SiteFooter } from "@/components/site-footer";
 import {
   getMasterSession,
@@ -7,7 +8,6 @@ import {
   isGoogleLoginConfigured,
   masterAllowlist,
 } from "@/lib/master-auth";
-import { MasterGoogleSignIn } from "./google-sign-in";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export default async function AdminLoginPage() {
             href="/login"
             className="text-sm font-semibold text-muted hover:text-brand-deep"
           >
-            Customer login
+            Customer sign in
           </Link>
         </div>
       </header>
@@ -54,8 +54,11 @@ export default async function AdminLoginPage() {
               Cinch
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Sign in with Google to open the Seed command center — accounts,
-              pricing, purchases, and every live build.
+              Staff only. Customers should use{" "}
+              <Link href="/login" className="font-semibold text-brand">
+                Sign in / sign up
+              </Link>{" "}
+              — open to anyone with Google.
             </p>
           </div>
 
@@ -73,21 +76,17 @@ export default async function AdminLoginPage() {
                   <p className="font-semibold">Google login is not configured.</p>
                   <p className="mt-2 text-muted">
                     Set <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> and{" "}
-                    <code>AUTH_SECRET</code> in Vercel, authorize{" "}
-                    <code>https://www.cinchseed.com</code> (and localhost) in
-                    Google Cloud, then redeploy.
-                  </p>
-                </div>
-              ) : allowlist.length === 0 ? (
-                <div className="border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-brand-deep">
-                  <p className="font-semibold">No master emails allowlisted.</p>
-                  <p className="mt-2 text-muted">
-                Set <code>CINCH_MASTER_EMAILS</code> for extra admins if needed.
-                    Owner <code>7809tom@gmail.com</code> is always allowed.
+                    <code>AUTH_SECRET</code> in Vercel, then redeploy. Same
+                    client powers public customer sign-in.
                   </p>
                 </div>
               ) : (
-                <MasterGoogleSignIn clientId={clientId} redirectTo="/admin" />
+                <GoogleSignInButton
+                  clientId={clientId}
+                  endpoint="/api/auth/google"
+                  redirectTo="/admin"
+                  buttonText="signin_with"
+                />
               )}
             </div>
 

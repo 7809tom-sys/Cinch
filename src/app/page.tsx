@@ -32,13 +32,13 @@ export default function Home() {
               About
             </Link>
             <Link href="/login" className="transition-colors hover:text-brand-deep">
-              Log in
+              Sign in
             </Link>
             <Link
-              href="/admin/login"
+              href="/login"
               className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
             >
-              Start
+              Sign up
             </Link>
           </nav>
         </div>
@@ -258,7 +258,7 @@ export default function Home() {
                 href="/login"
                 className="inline-flex h-12 items-center justify-center rounded-md border border-foam/30 px-6 text-sm font-bold text-foam transition-colors hover:bg-foam/10"
               >
-                Customer login
+                Sign in with Google
               </Link>
             </div>
           </div>
