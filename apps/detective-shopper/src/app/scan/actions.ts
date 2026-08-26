@@ -5,6 +5,7 @@ import { comparePrices, type StorePrice } from "@/lib/pricing";
 import { findDeals, isCouponsConfigured, type Deal } from "@/lib/coupons";
 import { computeSavings, type SavingsBreakdown } from "@/lib/savings";
 import { wrapAffiliateLink, isAffiliateConfigured } from "@/lib/affiliate";
+import { recordEvent } from "@/lib/metrics";
 
 export type InvestigateResult =
   | {
@@ -40,6 +41,8 @@ export async function investigate(rawUpc: string): Promise<InvestigateResult> {
     }));
 
     const savings = computeSavings(product, prices, deals);
+
+    await recordEvent({ type: "scan", savingsUsd: savings.totalSavingsUsd });
 
     return {
       ok: true,

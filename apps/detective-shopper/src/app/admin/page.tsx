@@ -1,38 +1,72 @@
 import Link from "next/link";
 import { INTEGRATIONS } from "@/lib/integrations";
+import { getMetrics } from "@/lib/metrics";
+import { formatUsd } from "@/lib/format";
+import { MEMBERSHIP_FEE_USD } from "@/lib/membership";
 import { getKeyStatus } from "./actions";
 import { IntegrationsPanel, type IntegrationCard } from "./integrations-panel";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Admin — Detective Shopper integrations",
+  title: "Admin — Detective Shopper revenue & customers",
   description:
-    "Connect UPC lookup, coupon feed, and affiliate APIs that power Detective Shopper scans and savings.",
+    "Revenue and customer insights for Detective Shopper, plus the affiliate programs that earn commission.",
 };
 
-export default async function AdminPage() {
-  const cards: IntegrationCard[] = await Promise.all(
-    INTEGRATIONS.map(async (def) => {
-      const status = await getKeyStatus(def.envKey);
-      return {
-        id: def.id,
-        name: def.name,
-        envKey: def.envKey,
-        role: def.role,
-        signupUrl: def.signupUrl,
-        configured: status.configured,
-        masked: status.masked,
-      };
-    }),
+function Kpi({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-5 py-4 ${
+        accent ? "border-brand/40 bg-brand/10" : "border-white/10 bg-panel"
+      }`}
+    >
+      <p className="text-xs font-semibold uppercase tracking-wide text-mist">
+        {label}
+      </p>
+      <p className="mt-2 font-[family-name:var(--font-display)] text-2xl font-extrabold text-foam">
+        {value}
+      </p>
+      {sub ? <p className="mt-1 text-xs text-mist">{sub}</p> : null}
+    </div>
   );
+}
 
-  const configuredCount = cards.filter((card) => card.configured).length;
+export default async function AdminPage() {
+  const [metrics, cards] = await Promise.all([
+    getMetrics(),
+    Promise.all(
+      INTEGRATIONS.map(async (def): Promise<IntegrationCard> => {
+        const status = await getKeyStatus(def.envKey);
+        return {
+          id: def.id,
+          name: def.name,
+          envKey: def.envKey,
+          role: def.role,
+          signupUrl: def.signupUrl,
+          configured: status.configured,
+          masked: status.masked,
+        };
+      }),
+    ),
+  ]);
+
+  const connectedCount = cards.filter((card) => card.configured).length;
 
   return (
     <div className="min-h-full bg-background text-foreground">
       <header className="border-b border-white/10">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-5 sm:px-8">
+        <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-6 py-5 sm:px-8">
           <Link
             href="/"
             className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-foam"
@@ -43,47 +77,133 @@ export default async function AdminPage() {
             <Link href="/scan" className="transition-colors hover:text-foam">
               Scan
             </Link>
+            <Link href="/coupons" className="transition-colors hover:text-foam">
+              Coupons
+            </Link>
             <span>Admin</span>
           </nav>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl px-6 py-12 sm:px-8">
+      <main className="mx-auto w-full max-w-4xl px-6 py-10 sm:px-8">
         <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-brand">
-          SETTINGS
+          REVENUE &amp; CUSTOMERS
         </p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight text-foam sm:text-4xl">
-          Data integrations ({configuredCount}/{cards.length} connected)
+          Command center
         </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-mist">
-          Connect the feeds that power scans, price comparison, coupons, and
-          affiliate monetization. Keys save to a gitignored{" "}
-          <code className="text-foam">.env.local</code> for local dev; set the
-          same names in Vercel → Detective Shopper → Environment Variables for
-          production. Use <strong>Test connection</strong> to confirm each key
-          resolves without a 404.
+        <p className="mt-3 max-w-2xl text-base leading-relaxed text-mist">
+          Every dollar earned and everything you learn about shoppers, in one
+          place. Numbers update as customers search, scan, save, and join.
         </p>
 
-        <div className="mt-10">
+        {!metrics.hasActivity ? (
+          <p className="mt-4 rounded-lg border border-white/10 bg-panel px-4 py-3 text-sm text-mist">
+            No customer activity recorded yet — as shoppers use Scan and Coupons,
+            revenue and insights populate here.
+          </p>
+        ) : null}
+
+        {/* Revenue */}
+        <h2 className="mt-8 font-[family-name:var(--font-display)] text-xl font-bold text-foam">
+          Revenue
+        </h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi
+            label="Total revenue"
+            value={formatUsd(metrics.totalRevenueUsd)}
+            sub="Membership + affiliate"
+            accent
+          />
+          <Kpi
+            label="Membership"
+            value={formatUsd(metrics.membershipRevenueUsd)}
+            sub={`${metrics.members} member${metrics.members === 1 ? "" : "s"} · ${formatUsd(MEMBERSHIP_FEE_USD)} each`}
+          />
+          <Kpi
+            label="Est. affiliate"
+            value={formatUsd(metrics.estAffiliateRevenueUsd)}
+            sub={`${metrics.affiliateClicks} tracked click${metrics.affiliateClicks === 1 ? "" : "s"}`}
+          />
+          <Kpi
+            label="Savings delivered"
+            value={formatUsd(metrics.savingsDeliveredUsd)}
+            sub="Value passed to shoppers"
+          />
+        </div>
+
+        {/* Customers */}
+        <h2 className="mt-10 font-[family-name:var(--font-display)] text-xl font-bold text-foam">
+          Customers
+        </h2>
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi label="Shoppers" value={String(metrics.shoppers)} sub="Signed in" />
+          <Kpi label="Searches" value={String(metrics.searches)} />
+          <Kpi label="Scans" value={String(metrics.scans)} />
+          <Kpi label="Coupons saved" value={String(metrics.saves)} />
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-panel px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-mist">
+              Membership conversion
+            </p>
+            <p className="mt-2 font-[family-name:var(--font-display)] text-2xl font-extrabold text-foam">
+              {metrics.membershipConversionPct}%
+            </p>
+            <p className="mt-1 text-xs text-mist">
+              of signed-in shoppers became members
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-panel px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-mist">
+              Top searches
+            </p>
+            {metrics.topSearches.length > 0 ? (
+              <ul className="mt-2 space-y-1 text-sm">
+                {metrics.topSearches.map((item) => (
+                  <li
+                    key={item.term}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <span className="text-foam">{item.term}</span>
+                    <span className="text-mist">{item.count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-mist">
+                What shoppers search for will appear here.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Revenue sources / affiliate programs */}
+        <h2 className="mt-10 font-[family-name:var(--font-display)] text-xl font-bold text-foam">
+          Revenue sources ({connectedCount}/{cards.length} connected)
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm text-mist">
+          Yes — you must sign up for each affiliate/coupon network to earn
+          commission, then paste the API key here to activate live deals and
+          tracked links. Set the same keys in Vercel → detective-shopper →
+          Environment Variables for production. Use <strong>Test connection</strong>{" "}
+          to confirm each resolves.
+        </p>
+        <div className="mt-5">
           <IntegrationsPanel integrations={cards} />
         </div>
 
-        <div className="mt-10 rounded-2xl border border-white/10 bg-panel px-5 py-5">
-          <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
-            Affiliate link wrapping
-          </h2>
+        <div className="mt-8 rounded-2xl border border-white/10 bg-panel px-5 py-5">
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
+            Durable analytics
+          </h3>
           <p className="mt-2 text-sm leading-relaxed text-mist">
-            When <code className="text-foam">IMPACT_API_KEY</code> is set,
-            outbound retailer links in the price comparison and savings panel are
-            automatically wrapped with your publisher tracking parameters
-            (optionally set <code className="text-foam">IMPACT_MEDIA_PARTNER_ID</code>{" "}
-            to tag clicks by media partner).
+            These metrics persist per server instance. For durable,
+            cross-deploy analytics, connect a datastore (Vercel KV/Postgres) or
+            an analytics provider — a straightforward next step.
           </p>
         </div>
-
-        <p className="mt-8 text-sm text-mist">
-          Tip: after adding keys in Vercel, redeploy so all routes pick them up.
-        </p>
       </main>
     </div>
   );

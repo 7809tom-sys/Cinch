@@ -16,6 +16,7 @@ import {
 import { comparePrices } from "@/lib/pricing";
 import { findDeals, type Deal } from "@/lib/coupons";
 import { MEMBER_COOKIE } from "@/lib/membership";
+import { recordEvent } from "@/lib/metrics";
 
 function cookieOptions() {
   return {
@@ -34,6 +35,7 @@ export async function saveCoupon(item: SavedCoupon): Promise<{ ok: true; saved: 
   }
   const store = await cookies();
   store.set(SAVED_COOKIE, JSON.stringify(list.slice(0, MAX_SAVED)), cookieOptions());
+  await recordEvent({ type: "save", savedUsd: item.savedUsd });
   revalidatePath("/coupons");
   return { ok: true, saved: true };
 }
@@ -51,6 +53,7 @@ export async function joinMembership(): Promise<{ ok: true }> {
   // Checkout for the $19.99 fee) is wired separately once payment keys exist.
   const store = await cookies();
   store.set(MEMBER_COOKIE, "1", cookieOptions());
+  await recordEvent({ type: "membership_join" });
   revalidatePath("/coupons");
   return { ok: true };
 }
@@ -86,6 +89,7 @@ async function toHit(product: Product): Promise<CouponHit> {
  * brand-loyal, surface cheaper same-category alternatives.
  */
 export async function searchCoupons(query: string): Promise<SearchCouponsResult> {
+  await recordEvent({ type: "search", term: query });
   const matches = searchProducts(query);
   if (matches.length === 0) {
     return { query, match: null, alternatives: [] };
