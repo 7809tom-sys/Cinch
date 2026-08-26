@@ -2,26 +2,30 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { GoogleSignInButton } from "@/components/google-sign-in";
 import { SiteFooter } from "@/components/site-footer";
+import { PLATFORM_OWNER_EMAIL } from "@/lib/access";
 import {
   getMasterSession,
   googleClientId,
   isGoogleLoginConfigured,
+  isMasterPasswordConfigured,
   masterAllowlist,
 } from "@/lib/master-auth";
+import { MasterPasswordForm } from "./master-password-form";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Master login — Cinch Seed",
-  description: "Sign in with Google to open the Cinch Seed command center.",
+  description: "Sign in to open the Cinch Seed command center.",
 };
 
 export default async function AdminLoginPage() {
   const session = await getMasterSession();
   if (session) redirect("/admin");
 
-  const configured = isGoogleLoginConfigured();
+  const googleOk = isGoogleLoginConfigured();
   const clientId = googleClientId();
+  const passwordOk = isMasterPasswordConfigured();
   const allowlist = masterAllowlist();
 
   return (
@@ -35,10 +39,10 @@ export default async function AdminLoginPage() {
             Cinch
           </Link>
           <Link
-            href="/login"
+            href="/browse"
             className="text-sm font-semibold text-muted hover:text-brand-deep"
           >
-            Customer sign in
+            Browse
           </Link>
         </div>
       </header>
@@ -54,11 +58,8 @@ export default async function AdminLoginPage() {
               Cinch
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Staff only. Customers should use{" "}
-              <Link href="/login" className="font-semibold text-brand">
-                Sign in / sign up
-              </Link>{" "}
-              — open to anyone with Google.
+              Staff only. Use email + password — Google is optional and not
+              required.
             </p>
           </div>
 
@@ -67,28 +68,40 @@ export default async function AdminLoginPage() {
               Master login
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Only allowlisted Google accounts can enter admin.
+              Allowlisted emails only. Default test password is{" "}
+              <code className="rounded bg-black/5 px-1.5 py-0.5 text-brand-deep">
+                cinch-seed
+              </code>{" "}
+              until you set <code>CINCH_MASTER_PASSWORD</code> in Vercel.
             </p>
 
             <div className="mt-6">
-              {!configured || !clientId ? (
+              {passwordOk ? (
+                <MasterPasswordForm defaultEmail={PLATFORM_OWNER_EMAIL} />
+              ) : (
                 <div className="border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-brand-deep">
-                  <p className="font-semibold">Google login is not configured.</p>
+                  <p className="font-semibold">Set a master password</p>
                   <p className="mt-2 text-muted">
-                    Set <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> and{" "}
-                    <code>AUTH_SECRET</code> in Vercel, then redeploy. Same
-                    client powers public customer sign-in.
+                    Add <code>CINCH_MASTER_PASSWORD</code> in Vercel Environment
+                    Variables (Production), then redeploy.
                   </p>
                 </div>
-              ) : (
+              )}
+            </div>
+
+            {googleOk && clientId ? (
+              <div className="mt-8 border-t border-brand/10 pt-5">
+                <p className="mb-3 text-sm font-semibold text-brand-deep">
+                  Or continue with Google
+                </p>
                 <GoogleSignInButton
                   clientId={clientId}
                   endpoint="/api/auth/google"
                   redirectTo="/admin"
                   buttonText="signin_with"
                 />
-              )}
-            </div>
+              </div>
+            ) : null}
 
             {allowlist.length > 0 ? (
               <p className="mt-6 text-xs text-muted">

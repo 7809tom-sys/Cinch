@@ -108,6 +108,46 @@ export async function verifyGoogleMasterIdToken(
   return identity;
 }
 
+/**
+ * Master password for email+password login (no Google required).
+ * Prefer CINCH_MASTER_PASSWORD. In non-live mode, falls back to "cinch-seed"
+ * so the owner can get in before Google OAuth is wired.
+ */
+export function masterPassword(): string {
+  const fromEnv = process.env.CINCH_MASTER_PASSWORD?.trim();
+  if (fromEnv) return fromEnv;
+  const mode = (process.env.CINCH_LAUNCH_MODE ?? "test").trim().toLowerCase();
+  if (mode !== "live") return "cinch-seed";
+  return "";
+}
+
+export function isMasterPasswordConfigured(): boolean {
+  return Boolean(masterPassword());
+}
+
+function safeEqualString(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+/** Allowlisted email + master password → MasterUser, or null. */
+export function verifyMasterPasswordLogin(
+  email: string,
+  password: string,
+): MasterUser | null {
+  const expected = masterPassword();
+  if (!expected) return null;
+  const normalized = email.trim().toLowerCase();
+  if (!isMasterEmail(normalized)) return null;
+  if (!safeEqualString(password, expected)) return null;
+  return {
+    email: normalized,
+    name: normalized.split("@")[0] || normalized,
+  };
+}
+
 export async function getMasterSession(): Promise<MasterUser | null> {
   const jar = await cookies();
   const user = decodeMasterSession(jar.get(MASTER_SESSION_COOKIE)?.value);

@@ -10,11 +10,18 @@ export type GoogleIdentity = {
   picture?: string;
 };
 
+/** Only treat as configured when the value looks like a real Google Web client. */
 export function isGoogleLoginConfigured(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim());
+  const id = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
+  return (
+    id.length > 20 &&
+    id.includes("-") &&
+    id.endsWith(".apps.googleusercontent.com")
+  );
 }
 
 export function googleClientId(): string | null {
+  if (!isGoogleLoginConfigured()) return null;
   return process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || null;
 }
 

@@ -34,15 +34,6 @@ export default function Home() {
             <Link href="/about" className="transition-colors hover:text-brand-deep">
               About
             </Link>
-            <Link href="/login" className="transition-colors hover:text-brand-deep">
-              Sign in
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
-            >
-              Sign up
-            </Link>
           </nav>
         </div>
       </header>
@@ -80,7 +71,7 @@ export default function Home() {
               </p>
               <div className="animate-sprout mt-9 flex flex-wrap items-center gap-3">
                 <Link
-                  href="/admin"
+                  href="/browse"
                   className="inline-flex h-12 items-center justify-center rounded-md bg-accent px-7 text-sm font-bold text-brand-deep shadow-[0_10px_30px_rgba(232,165,75,0.35)] transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-accent-deep hover:text-foam"
                 >
                   Plant a Seed — $99
@@ -257,12 +248,6 @@ export default function Home() {
               >
                 Open the drop zone
               </Link>
-              <Link
-                href="/login"
-                className="inline-flex h-12 items-center justify-center rounded-md border border-foam/30 px-6 text-sm font-bold text-foam transition-colors hover:bg-foam/10"
-              >
-                Sign in with Google
-              </Link>
             </div>
           </div>
         </section>
@@ -286,10 +271,10 @@ export default function Home() {
               live server.
             </p>
             <Link
-              href="/admin"
+              href="/browse"
               className="mt-10 inline-flex h-14 items-center justify-center rounded-md bg-brand-deep px-8 text-base font-bold text-foam transition-[transform,background-color] duration-200 hover:-translate-y-0.5 hover:bg-brand"
             >
-              Meet the all-stars and start
+              Plant a Seed — $99
             </Link>
             <p className="mt-5 text-sm text-muted">
               <a
