@@ -94,9 +94,8 @@ export function RecipeGenerator({ apiConfigured }: Props) {
     <div className="space-y-10">
       {!apiConfigured ? (
         <div className="border border-brand/40 bg-brand/10 px-5 py-4 text-sm leading-relaxed text-foam">
-          Set <code className="text-brand">SPOONACULAR_API_KEY</code> in{" "}
-          <code className="text-brand">.env.local</code> (or Vercel Environment
-          Variables), then restart the server. Get a key at{" "}
+          Showing <strong>sample recipes</strong>. Add{" "}
+          <code className="text-brand">SPOONACULAR_API_KEY</code> (free at{" "}
           <a
             href="https://spoonacular.com/food-api"
             target="_blank"
@@ -105,7 +104,8 @@ export function RecipeGenerator({ apiConfigured }: Props) {
           >
             spoonacular.com/food-api
           </a>
-          .
+          ) in Vercel → Environment Variables for live results from thousands of
+          recipes.
         </div>
       ) : null}
 
