@@ -194,15 +194,31 @@ export default async function AdminPage() {
           <IntegrationsPanel integrations={cards} />
         </div>
 
-        <div className="mt-8 rounded-2xl border border-white/10 bg-panel px-5 py-5">
+        <div
+          className={`mt-8 rounded-2xl border px-5 py-5 ${
+            metrics.durable
+              ? "border-brand/30 bg-brand/5"
+              : "border-white/10 bg-panel"
+          }`}
+        >
           <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
-            Durable analytics
+            {metrics.durable ? "★ Durable analytics active" : "Durable analytics"}
           </h3>
-          <p className="mt-2 text-sm leading-relaxed text-mist">
-            These metrics persist per server instance. For durable,
-            cross-deploy analytics, connect a datastore (Vercel KV/Postgres) or
-            an analytics provider — a straightforward next step.
-          </p>
+          {metrics.durable ? (
+            <p className="mt-2 text-sm leading-relaxed text-mist">
+              Metrics are stored in Redis (Vercel KV / Upstash) and persist
+              across deploys and server instances.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm leading-relaxed text-mist">
+              Metrics currently persist per server instance only. To make them
+              durable across deploys, add a Redis store from the Vercel
+              Marketplace (Upstash) — it injects{" "}
+              <code className="text-foam">KV_REST_API_URL</code> and{" "}
+              <code className="text-foam">KV_REST_API_TOKEN</code>, and this
+              dashboard switches to durable storage automatically.
+            </p>
+          )}
         </div>
       </main>
     </div>
