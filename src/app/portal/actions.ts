@@ -45,7 +45,9 @@ import {
   getProject,
   listProjectsForCustomer,
   planBuild,
+  regenerateConnectKey,
   removeCustomDomain,
+  setEmbedEnabled,
   type SeedProject,
 } from "@/lib/store";
 
@@ -271,6 +273,39 @@ export async function disconnectCustomDomainAction(
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/admin");
   return { ok: true, project };
+}
+
+/** Customer self-service: rotate this Seed's Connect API key. */
+export async function regenerateMyConnectKeyAction(
+  projectId: string,
+): Promise<
+  { ok: true; connectKey: string } | { ok: false; error: string }
+> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const project = await regenerateConnectKey(projectId);
+  if (!project) return { ok: false, error: "Seed not found." };
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, connectKey: project.connectKey };
+}
+
+/** Customer self-service: turn the Connect API on/off for this Seed. */
+export async function setMyEmbedEnabledAction(
+  projectId: string,
+  enabled: boolean,
+): Promise<
+  { ok: true; embedEnabled: boolean } | { ok: false; error: string }
+> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const project = await setEmbedEnabled(projectId, enabled);
+  if (!project) return { ok: false, error: "Seed not found." };
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, embedEnabled: project.embedEnabled };
 }
 
 export async function getPortalSourceSnapshot(projectId: string) {

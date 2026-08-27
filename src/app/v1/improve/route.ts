@@ -3,6 +3,7 @@ import {
   listPendingImprovements,
   markImprovementsApplied,
 } from "@/lib/seed-watch";
+import { verifyConnectRequest } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -14,19 +15,23 @@ const cors = {
 
 /** Watch script pulls pending modular adaptations for this Seed. */
 export async function GET(request: Request) {
-  const seed = new URL(request.url).searchParams.get("seed")?.trim();
-  if (!seed) {
+  const url = new URL(request.url);
+  const seed = url.searchParams.get("seed");
+  const key = url.searchParams.get("key");
+
+  const auth = await verifyConnectRequest(seed, key);
+  if (!auth.ok) {
     return NextResponse.json(
-      { ok: false, error: "seed required" },
-      { status: 400, headers: cors },
+      { ok: false, error: auth.error },
+      { status: auth.status, headers: cors },
     );
   }
 
-  const improvements = await listPendingImprovements(seed);
+  const improvements = await listPendingImprovements(auth.project.id);
   return NextResponse.json(
     {
       ok: true,
-      seed,
+      seed: auth.project.id,
       improvements: improvements.map((item) => ({
         id: item.id,
         moduleId: item.moduleId,
@@ -42,22 +47,23 @@ export async function GET(request: Request) {
 
 /** Watch script acknowledges applied adaptations. */
 export async function POST(request: Request) {
-  let body: { seed?: string; appliedIds?: string[] } = {};
+  let body: { seed?: string; key?: string; appliedIds?: string[] } = {};
   try {
     body = (await request.json()) as typeof body;
   } catch {
     body = {};
   }
 
-  if (!body.seed?.trim()) {
+  const auth = await verifyConnectRequest(body.seed, body.key);
+  if (!auth.ok) {
     return NextResponse.json(
-      { ok: false, error: "seed required" },
-      { status: 400, headers: cors },
+      { ok: false, error: auth.error },
+      { status: auth.status, headers: cors },
     );
   }
 
   const count = await markImprovementsApplied(
-    body.seed,
+    auth.project.id,
     Array.isArray(body.appliedIds) ? body.appliedIds : [],
   );
 

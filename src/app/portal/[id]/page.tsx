@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
 import { seedHostHostname } from "@/lib/domain";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
+import { ConnectPanel } from "./connect-panel";
 import { CustomDomainPanel } from "./custom-domain-panel";
 
 export const dynamic = "force-dynamic";
@@ -188,6 +189,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
             projectId={project.id}
             customDomain={project.customDomain}
             fallbackHostname={seedHostHostname(project.name)}
+          />
+
+          <ConnectPanel
+            projectId={project.id}
+            connectKey={project.connectKey}
+            embedEnabled={project.embedEnabled}
           />
 
           <div className="border border-brand/10 bg-foam px-5 py-5">

@@ -1,4 +1,5 @@
 import { getProjectSnapshot } from "@/app/admin/actions";
+import { ConnectApiControls } from "./connect-api-controls";
 import { ProjectControls } from "./project-controls";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,7 +28,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
   if (!project) notFound();
 
   const pm = getAgent(project.projectManagerId);
-  const embedSnippet = seedEmbedSnippet(project.id);
+  const embedSnippet = seedEmbedSnippet(project.id, project.connectKey);
   const customer = project.customerEmail
     ? await getCustomerByEmail(project.customerEmail)
     : null;
@@ -302,13 +303,20 @@ export default async function ProjectAdminPage({ params }: PageProps) {
 
           <div className="border border-brand/10 bg-brand-deep px-5 py-5 text-foam">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
-              Seed watch script
+              Connect API — Seed watch script
             </h2>
             <p className="mt-2 text-sm text-mist">
               Drop this on WordPress, Magento, Shopify, or any HTML host. The
               Seed watches tools like a kitchen designer, then pushes growth
-              adaptations in place.
+              adaptations in place. Every call needs this Seed&apos;s id +
+              key — nobody else can beacon fake data or read/apply
+              adaptations for it.
             </p>
+            <ConnectApiControls
+              projectId={project.id}
+              embedEnabled={project.embedEnabled}
+              connectKey={project.connectKey}
+            />
             <pre className="mt-4 overflow-x-auto rounded-md bg-black/20 p-3 text-xs leading-relaxed text-mist">
               {embedSnippet}
             </pre>
