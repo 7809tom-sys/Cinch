@@ -46,10 +46,10 @@ export default async function LockgmHomePage() {
       <section className="border-t border-[color:var(--lg-line)] px-6 py-16 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-            WORLD TEAM SPORTS
+            {content.worldSports.kicker}
           </p>
           <h2 className="mt-3 max-w-2xl lockgm-display text-3xl font-extrabold sm:text-4xl">
-            One war room. Eight sports.
+            {content.worldSports.headline}
           </h2>
           <ul className="mt-8 flex flex-wrap gap-3">
             {SPORTS.map((s) => (

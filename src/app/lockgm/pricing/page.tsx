@@ -14,14 +14,13 @@ export default async function LockgmPricingPage() {
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8">
       <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-        SUBSCRIPTIONS
+        {content.pricingIntro.kicker}
       </p>
       <h1 className="mt-3 lockgm-display text-4xl font-extrabold sm:text-5xl">
-        Pick your seat in the war room
+        {content.pricingIntro.headline}
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Draft day is free. The upgrade is scouting reports — $20/yr for one
-        sport, $59/yr when you want every sport on the calendar.
+        {content.pricingIntro.body}
       </p>
 
       <ul className="mt-12 grid gap-8 lg:grid-cols-3">

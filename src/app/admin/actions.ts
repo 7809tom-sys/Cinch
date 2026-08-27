@@ -29,6 +29,8 @@ import {
   type LockgmFeatureCard,
   type LockgmHeroContent,
   type LockgmFrontOfficeContent,
+  type LockgmSectionIntro,
+  type LockgmReportsContent,
 } from "@/lib/lockgm-content";
 import type { SubTierId } from "@/lib/lockgm/config";
 import {
@@ -482,7 +484,11 @@ export async function disconnectLockgmDomainAction() {
 export async function updateLockgmContentAction(input: {
   hero: LockgmHeroContent;
   features: LockgmFeatureCard[];
+  worldSports: { kicker: string; headline: string };
   frontOffice: LockgmFrontOfficeContent;
+  pricingIntro: LockgmSectionIntro;
+  officeIntro: LockgmSectionIntro;
+  reportsIntro: LockgmReportsContent;
   tiers: Record<SubTierId, { blurb: string; perks: string[]; cta: string }>;
 }) {
   try {
@@ -490,6 +496,8 @@ export async function updateLockgmContentAction(input: {
     revalidatePath("/admin");
     revalidatePath("/lockgm");
     revalidatePath("/lockgm/pricing");
+    revalidatePath("/lockgm/office");
+    revalidatePath("/lockgm/reports");
     return { ok: true as const, content };
   } catch (error) {
     return {
@@ -505,5 +513,7 @@ export async function resetLockgmContentAction() {
   revalidatePath("/admin");
   revalidatePath("/lockgm");
   revalidatePath("/lockgm/pricing");
+  revalidatePath("/lockgm/office");
+  revalidatePath("/lockgm/reports");
   return { ok: true as const, content };
 }
