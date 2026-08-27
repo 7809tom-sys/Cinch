@@ -3,6 +3,7 @@ import { AdminAnalyticsForm } from "@/app/admin/admin-analytics-form";
 import { AdminBillingForm } from "@/app/admin/admin-billing-form";
 import { AdminDomainPanel } from "@/app/admin/admin-domain-panel";
 import { CreateSeedForm } from "@/app/admin/create-seed-form";
+import { LockgmDomainPanel } from "@/app/admin/lockgm-domain-panel";
 import { logoutMasterAction } from "@/app/admin/master-actions";
 import Link from "next/link";
 import { providerForEnvKey } from "@/lib/agents";
@@ -72,6 +73,7 @@ export default async function AdminPage() {
     pricing,
     liveWatch,
     cloudflareConfigured,
+    cloudflareDnsConfigured,
     freeAdminEmails,
     launchMode,
     domain,
@@ -792,6 +794,11 @@ export default async function AdminPage() {
               </div>
             )}
           </div>
+
+          <LockgmDomainPanel
+            domain={settings.lockgmDomain}
+            cloudflareDnsConfigured={cloudflareDnsConfigured}
+          />
         </section>
 
         {/* AGENTS */}

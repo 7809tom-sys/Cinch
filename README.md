@@ -51,6 +51,22 @@ Live at **[cinchseed.com/lockgm](https://cinchseed.com/lockgm)** — Shadow GM d
 - `/lockgm/scouting` — HS→college pipeline + premium reports
 - `/lockgm/pricing` — Shadow / War Room / Pipeline tiers
 
+### Give LockGM its own domain
+
+LockGM can also be served at the root of a domain you already own (e.g.
+`lockgm.com/office` instead of `cinchseed.com/lockgm/office`) via
+`src/proxy.ts`, which rewrites requests on that domain to the `/lockgm`
+routes and redirects any `/lockgm/*` links back to the clean root-relative
+URL.
+
+1. **Admin → Domains → "LockGM's own domain"**: connect the domain, add the
+   shown DNS record (A for an apex domain, CNAME for a subdomain) at your
+   registrar, then **Check DNS now** until it shows verified.
+2. Vercel → this project → Settings → Domains → add the domain.
+3. Set `LOCKGM_DOMAIN=yourdomain.com` and redeploy.
+
+`cinchseed.com/lockgm/*` keeps working unchanged regardless.
+
 ## Detective Shopper
 
 - `/admin` — `IMPACT_API_KEY` + Impact/Awin links

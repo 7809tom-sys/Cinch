@@ -122,6 +122,12 @@ export function CustomDomainPanel({
             <p className="mt-2 text-xs text-muted">
               DNS changes can take a few minutes to a few hours to propagate.
             </p>
+            <p className="mt-3 rounded-md bg-accent/10 px-3 py-2 text-xs leading-relaxed text-accent-deep">
+              <strong>On Cloudflare?</strong> Set this record&apos;s proxy
+              status to <strong>DNS only</strong> (grey cloud), not{" "}
+              <strong>Proxied</strong> (orange cloud), or this check
+              won&apos;t see the right address.
+            </p>
           </div>
 
           {domain.lastCheckDetail ? (

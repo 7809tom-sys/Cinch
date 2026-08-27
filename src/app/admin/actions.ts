@@ -7,6 +7,10 @@ import {
 } from "@/lib/access";
 import { listAgentsWithKeyStatus, PROVIDER_ACCOUNTS } from "@/lib/agents";
 import {
+  autoConfigureDnsForHostname,
+  isCloudflareDnsConfigured,
+} from "@/lib/cloudflare-dns";
+import {
   checkDomains,
   isCloudflareRegistrarConfigured,
   requestDomainRegistration,
@@ -46,6 +50,9 @@ import {
 } from "@/lib/seed-watch";
 import {
   addDomainOrder,
+  checkLockgmDomainDns,
+  connectLockgmDomain,
+  disconnectLockgmDomain,
   getSiteSettings,
   updateAnalyticsSettings,
   updateHostingBilling,
@@ -179,6 +186,7 @@ export async function getAdminSnapshot() {
     },
     liveWatch,
     cloudflareConfigured: isCloudflareRegistrarConfigured(),
+    cloudflareDnsConfigured: isCloudflareDnsConfigured(),
     platforms: PLATFORM_ADAPTERS.map((adapter) => ({
       id: adapter.id,
       name: adapter.name,
@@ -372,4 +380,50 @@ export async function bookDomainAction(
       error: error instanceof Error ? error.message : "Could not book domain.",
     };
   }
+}
+
+/** Connect a domain you already own directly to LockGM (not a customer Seed). */
+export async function connectLockgmDomainAction(hostname: string) {
+  const result = await connectLockgmDomain(hostname);
+  if ("error" in result) return { ok: false as const, error: result.error };
+  revalidatePath("/admin");
+  return { ok: true as const, settings: result.settings };
+}
+
+export async function checkLockgmDomainAction() {
+  const result = await checkLockgmDomainDns();
+  if ("error" in result) return { ok: false as const, error: result.error };
+  revalidatePath("/admin");
+  return { ok: true as const, settings: result.settings };
+}
+
+/**
+ * When the domain's nameservers are on Cloudflare, create the DNS record
+ * for them automatically instead of asking them to do it by hand.
+ */
+export async function autoConfigureLockgmDnsAction() {
+  const settings = await getSiteSettings();
+  const domain = settings.lockgmDomain;
+  if (!domain) {
+    return { ok: false as const, error: "Connect a domain first." };
+  }
+
+  const result = await autoConfigureDnsForHostname(domain.hostname, {
+    type: domain.recordType,
+    name: domain.recordName,
+    value: domain.recordValue,
+  });
+  if (!result.ok) return { ok: false as const, error: result.error };
+
+  revalidatePath("/admin");
+  return {
+    ok: true as const,
+    detail: `Created ${result.record.type} record for ${result.record.name} in zone ${result.zone} (DNS only, not proxied).`,
+  };
+}
+
+export async function disconnectLockgmDomainAction() {
+  const settings = await disconnectLockgmDomain();
+  revalidatePath("/admin");
+  return { ok: true as const, settings };
 }
