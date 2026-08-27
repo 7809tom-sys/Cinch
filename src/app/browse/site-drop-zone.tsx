@@ -351,7 +351,8 @@ export function SiteDropZone({
                 <p className="mt-2 text-sm text-muted">{success.estimateLabel}</p>
               ) : null}
               <p className="mt-2 text-sm text-muted">
-                Logged in as {success.email}. Save your access code:
+                Logged in as {success.email}. Set a password anytime on Sign in
+                (email + password twice). Optional backup access code:
               </p>
               <p className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-[0.2em] text-brand-deep">
                 {success.accessCode}

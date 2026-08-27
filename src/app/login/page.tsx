@@ -13,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Sign in — Cinch Seed",
-  description: "Open your Cinch Seed portal with your email and access code.",
+  description:
+    "Create or open your Cinch Seed portal with email and password.",
 };
 
 export default async function LoginPage() {
@@ -56,14 +57,13 @@ export default async function LoginPage() {
               Cinch
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Log in with the email and access code from your Seed order.
-              Google sign-in is optional and stays off until a working OAuth
-              client is configured.
+              Use your email and a password (enter it twice to confirm). New
+              emails get a portal login automatically.
             </p>
           </div>
           <div className="animate-sprout border border-brand/10 bg-foam/95 px-6 py-7 shadow-[0_20px_60px_rgba(11,46,42,0.08)]">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-brand-deep">
-              Customer login
+              Sign in / create account
             </h2>
             <p className="mt-2 text-sm text-muted">
               Not ordered yet?{" "}
