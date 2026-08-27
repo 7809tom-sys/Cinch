@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Cinch Seed">
+  <rect width="512" height="512" rx="96" fill="#0b2e2a"/>
+  <circle cx="256" cy="300" r="118" fill="#fffaf2"/>
+  <path fill="#3d9b7a" d="M256 120c38 52 58 98 58 148 0 44-26 72-58 72s-58-28-58-72c0-50 20-96 58-148z"/>
+  <path fill="none" stroke="#e8a54b" stroke-width="22" stroke-linecap="round" d="M256 268c28-36 62-54 98-62"/>
+  <circle cx="256" cy="300" r="18" fill="#0b2e2a"/>
+</svg>

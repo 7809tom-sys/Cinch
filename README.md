@@ -27,6 +27,9 @@ Detective Shopper still needs Root Directory = `apps/detective-shopper`.
 
 Primary domain: **[cinchseed.com](https://cinchseed.com)** / **[www.cinchseed.com](https://www.cinchseed.com)**
 
+Installable Progressive Web App (Add to Home Screen / Install app) via
+`/manifest.webmanifest` + service worker.
+
 - `/login` — customer portal login (email + access code from your Seed order)
 - `/portal` — your Seeds, work status, and links to live source
 - `/portal/[id]/source` — real-time source tree while agents build
