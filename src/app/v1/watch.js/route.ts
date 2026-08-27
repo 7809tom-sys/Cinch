@@ -22,12 +22,13 @@ export async function GET() {
     var script = document.currentScript;
     if (!script) return;
     var seed = script.getAttribute("data-seed") || "";
+    var key = script.getAttribute("data-key") || "";
     var platform = script.getAttribute("data-platform") || "generic";
-    if (!seed) return;
+    if (!seed || !key) return;
 
     var origin = ${JSON.stringify(origin)};
     var healthUrl = origin + "/v1/health";
-    var improveUrl = origin + "/v1/improve?seed=" + encodeURIComponent(seed);
+    var improveUrl = origin + "/v1/improve?seed=" + encodeURIComponent(seed) + "&key=" + encodeURIComponent(key);
     var defaultTools = ${JSON.stringify(defaultTools)};
 
     function parseTools() {
@@ -75,6 +76,7 @@ export async function GET() {
       var tools = parseTools().map(probeTool);
       var payload = {
         seed: seed,
+        key: key,
         platform: platform,
         href: location.href,
         ts: Date.now(),
@@ -141,7 +143,7 @@ export async function GET() {
             fetch(origin + "/v1/improve", {
               method: "POST",
               headers: { "content-type": "application/json" },
-              body: JSON.stringify({ seed: seed, appliedIds: applied }),
+              body: JSON.stringify({ seed: seed, key: key, appliedIds: applied }),
               keepalive: true,
               mode: "cors"
             }).catch(function () {});

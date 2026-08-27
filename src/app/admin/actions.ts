@@ -62,7 +62,9 @@ import {
   listConnectedCustomDomains,
   listProjects,
   planBuild,
+  regenerateConnectKey,
   removeAgent,
+  setEmbedEnabled,
 } from "@/lib/store";
 
 export async function getAdminSnapshot() {
@@ -198,9 +200,30 @@ export async function getProjectSnapshot(projectId: string) {
     id: adapter.id,
     name: adapter.name,
     blurb: adapter.blurb,
-    snippet: project ? adapter.installSnippet(project.id) : "",
+    snippet: project
+      ? adapter.installSnippet(project.id, project.connectKey)
+      : "",
   }));
   return { project, agents, watch, platforms };
+}
+
+export async function regenerateConnectKeyAction(projectId: string) {
+  const project = await regenerateConnectKey(projectId);
+  if (!project) return { ok: false as const, error: "Seed not found." };
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath(`/portal/${projectId}`);
+  return { ok: true as const, connectKey: project.connectKey };
+}
+
+export async function setEmbedEnabledAction(
+  projectId: string,
+  enabled: boolean,
+) {
+  const project = await setEmbedEnabled(projectId, enabled);
+  if (!project) return { ok: false as const, error: "Seed not found." };
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath(`/portal/${projectId}`);
+  return { ok: true as const, embedEnabled: project.embedEnabled };
 }
 
 export async function queueGrowthCycleAction(projectId: string) {

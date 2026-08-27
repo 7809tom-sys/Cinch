@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
 import { applyModuleReuse, listLibraryModules } from "./module-library";
 import { attachProjectToCustomer } from "./customers";
@@ -58,7 +58,14 @@ export type SeedProject = {
   tasks: ProjectTask[];
   activity: ActivityEvent[];
   modules: Array<{ id: string; title: string; savedAt: string; fromTaskId: string }>;
+  /** Whether the Connect API (watch script) accepts requests for this Seed. */
   embedEnabled: boolean;
+  /**
+   * Secret required alongside the (public) project id for every Connect
+   * API call — without it, knowing the id alone isn't enough to beacon
+   * fake health data or read/ack queued adaptations.
+   */
+  connectKey: string;
   /** Customer who owns this Seed (portal login) */
   customerEmail: string | null;
   customerName: string | null;
@@ -86,13 +93,25 @@ async function ensureStore(): Promise<StoreShape> {
   try {
     const raw = await fs.readFile(STORE_PATH, "utf8");
     memoryStore = JSON.parse(raw) as StoreShape;
-    memoryStore.projects = (memoryStore.projects ?? []).map((project) => ({
-      ...project,
-      customerEmail: project.customerEmail ?? null,
-      customerName: project.customerName ?? null,
-      referenceUrl: project.referenceUrl ?? null,
-      customDomain: project.customDomain ?? null,
-    }));
+    let backfilled = false;
+    memoryStore.projects = (memoryStore.projects ?? []).map((project) => {
+      if (!project.connectKey) backfilled = true;
+      return {
+        ...project,
+        customerEmail: project.customerEmail ?? null,
+        customerName: project.customerName ?? null,
+        referenceUrl: project.referenceUrl ?? null,
+        customDomain: project.customDomain ?? null,
+        embedEnabled: project.embedEnabled ?? true,
+        connectKey: project.connectKey || generateConnectKey(),
+      };
+    });
+    if (backfilled) {
+      // Persist the newly-generated keys so they stay stable across restarts.
+      await fs
+        .writeFile(STORE_PATH, JSON.stringify(memoryStore, null, 2), "utf8")
+        .catch(() => {});
+    }
     return memoryStore;
   } catch {
     memoryStore = { projects: [] };
@@ -120,6 +139,10 @@ function now() {
   return new Date().toISOString();
 }
 
+export function generateConnectKey(): string {
+  return `cs_${randomBytes(24).toString("hex")}`;
+}
+
 function pushActivity(
   project: SeedProject,
   message: string,
@@ -143,6 +166,81 @@ export async function listProjects(): Promise<SeedProject[]> {
 export async function getProject(id: string): Promise<SeedProject | null> {
   const store = await ensureStore();
   return store.projects.find((project) => project.id === id) ?? null;
+}
+
+/** Rotate the Connect API secret — old embeds stop authenticating immediately. */
+export async function regenerateConnectKey(
+  projectId: string,
+): Promise<SeedProject | null> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return null;
+  project.connectKey = generateConnectKey();
+  pushActivity(
+    project,
+    "Connect API key regenerated — update the embed on the live site.",
+    project.projectManagerId,
+  );
+  await writeStore(store);
+  return project;
+}
+
+/** Turn the Connect API on/off for this Seed without touching the key. */
+export async function setEmbedEnabled(
+  projectId: string,
+  enabled: boolean,
+): Promise<SeedProject | null> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return null;
+  project.embedEnabled = enabled;
+  pushActivity(
+    project,
+    enabled
+      ? "Connect API re-enabled for this Seed."
+      : "Connect API disabled — the live site's embed will stop syncing.",
+    project.projectManagerId,
+  );
+  await writeStore(store);
+  return project;
+}
+
+/**
+ * Authenticate an incoming Connect API request. Every /v1/* call from an
+ * embedded site must present the project id (seed) + its secret key.
+ */
+export async function verifyConnectRequest(
+  seedId: string | undefined | null,
+  connectKey: string | undefined | null,
+): Promise<
+  | { ok: true; project: SeedProject }
+  | { ok: false; status: 400 | 401 | 403 | 404; error: string }
+> {
+  const id = seedId?.trim();
+  if (!id) return { ok: false, status: 400, error: "seed is required." };
+
+  const project = await getProject(id);
+  if (!project) {
+    return { ok: false, status: 404, error: "Unknown Seed." };
+  }
+  if (!project.embedEnabled) {
+    return {
+      ok: false,
+      status: 403,
+      error: "Connect API is disabled for this Seed.",
+    };
+  }
+
+  const key = connectKey?.trim() ?? "";
+  const expected = project.connectKey;
+  const a = Buffer.from(key);
+  const b = Buffer.from(expected);
+  const matches = a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
+  if (!matches) {
+    return { ok: false, status: 401, error: "Invalid or missing Connect key." };
+  }
+
+  return { ok: true, project };
 }
 
 export async function createProject(input: {
@@ -171,6 +269,7 @@ export async function createProject(input: {
     activity: [],
     modules: [],
     embedEnabled: true,
+    connectKey: generateConnectKey(),
     customerEmail,
     customerName,
     referenceUrl,

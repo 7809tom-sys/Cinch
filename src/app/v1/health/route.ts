@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { recordHeartbeat, type ToolHealthReport } from "@/lib/seed-watch";
+import { verifyConnectRequest } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ const cors = {
 export async function POST(request: Request) {
   let body: {
     seed?: string;
+    key?: string;
     platform?: string;
     href?: string;
     ua?: string;
@@ -23,15 +25,16 @@ export async function POST(request: Request) {
     body = {};
   }
 
-  if (!body.seed?.trim()) {
+  const auth = await verifyConnectRequest(body.seed, body.key);
+  if (!auth.ok) {
     return NextResponse.json(
-      { ok: false, error: "seed required" },
-      { status: 400, headers: cors },
+      { ok: false, error: auth.error },
+      { status: auth.status, headers: cors },
     );
   }
 
   const beat = await recordHeartbeat({
-    seedId: body.seed,
+    seedId: auth.project.id,
     platform: body.platform,
     href: body.href,
     ua: body.ua,
