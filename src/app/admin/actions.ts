@@ -59,6 +59,7 @@ import {
   createProject,
   getProject,
   inviteAgent,
+  listConnectedCustomDomains,
   listProjects,
   planBuild,
   removeAgent,
@@ -76,6 +77,7 @@ export async function getAdminSnapshot() {
     catalog,
     modules,
     ledger,
+    connectedDomains,
   ] = await Promise.all([
     listProjects(),
     Promise.resolve(listAgentsWithKeyStatus()),
@@ -87,6 +89,7 @@ export async function getAdminSnapshot() {
     listCatalogSites(),
     listLibraryModules(),
     listCreditLedger(40),
+    listConnectedCustomDomains(),
   ]);
 
   const purchaseRevenueUsd = purchases.reduce(
@@ -131,6 +134,7 @@ export async function getAdminSnapshot() {
     catalog,
     modules,
     ledger,
+    connectedDomains,
     freeAdminEmails: freeAdmins,
     metrics: {
       projectCount: projects.length,
@@ -145,6 +149,10 @@ export async function getAdminSnapshot() {
       keysConfigured: agents.filter((agent) => agent.configured).length,
       agentCount: agents.length,
       domainOrderCount: settings.domainOrders.length,
+      connectedDomainCount: connectedDomains.length,
+      connectedDomainVerifiedCount: connectedDomains.filter(
+        (item) => item.customDomain.status === "verified",
+      ).length,
     },
     pricing: {
       seedPriceUsd: SEED_SITE_PRICE_USD,
