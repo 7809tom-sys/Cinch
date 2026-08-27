@@ -24,6 +24,9 @@ export function SiteFooter() {
           <Link href="/legal" className="hover:text-brand-deep">
             Legal
           </Link>
+          <Link href="/login" className="hover:text-brand-deep">
+            Sign in
+          </Link>
         </div>
       </div>
     </footer>

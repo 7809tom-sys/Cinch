@@ -26,6 +26,12 @@ export default function LegalPage() {
             <Link href="/about" className="transition-colors hover:text-brand-deep">
               About us
             </Link>
+            <Link
+              href="/login"
+              className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
+            >
+              Sign in
+            </Link>
           </nav>
         </div>
       </header>

@@ -36,7 +36,7 @@ export function SiteHeader() {
   return (
     <header className="absolute inset-x-0 top-0 z-30">
       <div
-        className={`relative z-50 mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4 sm:px-8 sm:py-5 ${
+        className={`relative z-50 mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:px-8 sm:py-5 ${
           open ? "bg-[#fffaf2]" : ""
         }`}
       >
@@ -48,58 +48,74 @@ export function SiteHeader() {
           Cinch
         </a>
 
-        <nav
-          className="hidden items-center gap-5 text-sm font-semibold text-brand-deep/75 md:flex"
-          aria-label="Primary"
-        >
-          {NAV_LINKS.map((link) =>
-            link.external ? (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="transition-colors hover:text-brand-deep"
-              >
-                {link.label}
-              </Link>
-            ) : (
-              <a
-                key={link.href}
-                href={link.href}
-                className="transition-colors hover:text-brand-deep"
-              >
-                {link.label}
-              </a>
-            ),
-          )}
-        </nav>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <nav
+            className="hidden items-center gap-5 text-sm font-semibold text-brand-deep/75 md:flex"
+            aria-label="Primary"
+          >
+            {NAV_LINKS.map((link) =>
+              link.external ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="transition-colors hover:text-brand-deep"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="transition-colors hover:text-brand-deep"
+                >
+                  {link.label}
+                </a>
+              ),
+            )}
+            <Link
+              href="/login"
+              className="rounded-md bg-brand-deep px-3.5 py-1.5 text-foam transition-colors hover:bg-brand"
+            >
+              Sign in
+            </Link>
+          </nav>
 
-        <button
-          type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-md text-brand-deep transition-colors hover:bg-brand-deep/5 md:hidden"
-          aria-controls={menuId}
-          aria-expanded={open}
-          aria-label={open ? "Close menu" : "Open menu"}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
-          <span className="relative block h-3.5 w-5" aria-hidden="true">
-            <span
-              className={`absolute left-0 top-0 block h-0.5 w-5 origin-center bg-brand-deep transition-transform duration-200 ${
-                open ? "translate-y-[6px] rotate-45" : ""
-              }`}
-            />
-            <span
-              className={`absolute left-0 top-[6px] block h-0.5 w-5 bg-brand-deep transition-opacity duration-200 ${
-                open ? "opacity-0" : "opacity-100"
-              }`}
-            />
-            <span
-              className={`absolute left-0 top-[12px] block h-0.5 w-5 origin-center bg-brand-deep transition-transform duration-200 ${
-                open ? "-translate-y-[6px] -rotate-45" : ""
-              }`}
-            />
-          </span>
-        </button>
+          <Link
+            href="/login"
+            onClick={close}
+            className="inline-flex h-10 items-center justify-center rounded-md bg-brand-deep px-3.5 text-sm font-semibold text-foam transition-colors hover:bg-brand md:hidden"
+          >
+            Sign in
+          </Link>
+
+          <button
+            type="button"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md text-brand-deep transition-colors hover:bg-brand-deep/5 md:hidden"
+            aria-controls={menuId}
+            aria-expanded={open}
+            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={() => setOpen((value) => !value)}
+          >
+            <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
+            <span className="relative block h-3.5 w-5" aria-hidden="true">
+              <span
+                className={`absolute left-0 top-0 block h-0.5 w-5 origin-center bg-brand-deep transition-transform duration-200 ${
+                  open ? "translate-y-[6px] rotate-45" : ""
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-[6px] block h-0.5 w-5 bg-brand-deep transition-opacity duration-200 ${
+                  open ? "opacity-0" : "opacity-100"
+                }`}
+              />
+              <span
+                className={`absolute left-0 top-[12px] block h-0.5 w-5 origin-center bg-brand-deep transition-transform duration-200 ${
+                  open ? "-translate-y-[6px] -rotate-45" : ""
+                }`}
+              />
+            </span>
+          </button>
+        </div>
       </div>
 
       <div
@@ -144,6 +160,15 @@ export function SiteHeader() {
                 )}
               </li>
             ))}
+            <li>
+              <Link
+                href="/login"
+                onClick={close}
+                className="mt-2 block rounded-md bg-brand-deep px-3 py-3 text-center font-[family-name:var(--font-display)] text-lg font-bold text-foam transition-colors hover:bg-brand"
+              >
+                Sign in
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
