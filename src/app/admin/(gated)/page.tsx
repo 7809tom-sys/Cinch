@@ -67,6 +67,7 @@ export default async function AdminPage() {
     catalog,
     modules,
     ledger,
+    connectedDomains,
     metrics,
     pricing,
     liveWatch,
@@ -193,6 +194,11 @@ export default async function AdminPage() {
               label="Agent keys"
               value={`${configuredCount}/${metrics.agentCount}`}
               hint={`${metrics.domainOrderCount} domain orders`}
+            />
+            <Metric
+              label="Connected domains"
+              value={String(metrics.connectedDomainCount)}
+              hint={`${metrics.connectedDomainVerifiedCount} seamlessly hosting`}
             />
           </div>
         </section>
@@ -710,6 +716,81 @@ export default async function AdminPage() {
                 </ul>
               )}
             </div>
+          </div>
+
+          <div className="mt-10 border-t border-brand/15 pt-6">
+            <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              Customer domains connected elsewhere
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm text-muted">
+              Customers who already own a domain (GoDaddy, Namecheap, etc.)
+              point it here for seamless hosting — no separate registrar
+              purchase needed. Status is checked against live DNS.
+            </p>
+            {connectedDomains.length === 0 ? (
+              <p className="mt-4 text-sm text-muted">
+                No customer domains connected yet.
+              </p>
+            ) : (
+              <div className="mt-4 overflow-x-auto border-t border-brand/15">
+                <table className="w-full min-w-[720px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-brand/10 text-[11px] font-bold tracking-wide text-muted uppercase">
+                      <th className="py-3 pr-4">Domain</th>
+                      <th className="py-3 pr-4">Seed</th>
+                      <th className="py-3 pr-4">DNS record needed</th>
+                      <th className="py-3 pr-4">Status</th>
+                      <th className="py-3 pr-4">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {connectedDomains.map(({ project, customDomain }) => (
+                      <tr
+                        key={project.id}
+                        className="border-b border-brand/10 align-top"
+                      >
+                        <td className="py-3 pr-4 font-semibold text-brand-deep">
+                          {customDomain.hostname}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <Link
+                            href={`/admin/projects/${project.id}`}
+                            className="font-semibold text-brand hover:text-brand-deep"
+                          >
+                            {project.name}
+                          </Link>
+                          {project.customerEmail ? (
+                            <p className="text-xs text-muted">
+                              {project.customerEmail}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="py-3 pr-4 font-mono text-xs text-muted">
+                          {customDomain.recordType} {customDomain.recordName} →{" "}
+                          {customDomain.recordValue}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span
+                            className={`rounded-md px-2 py-1 text-[11px] font-bold tracking-wide uppercase ${
+                              customDomain.status === "verified"
+                                ? "bg-leaf/20 text-leaf"
+                                : customDomain.status === "failed"
+                                  ? "bg-accent/15 text-accent-deep"
+                                  : "bg-mist text-brand-deep"
+                            }`}
+                          >
+                            {customDomain.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-xs text-muted">
+                          {new Date(customDomain.updatedAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
 

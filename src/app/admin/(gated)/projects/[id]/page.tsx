@@ -158,6 +158,41 @@ export default async function ProjectAdminPage({ params }: PageProps) {
 
           <div className="border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              Custom domain
+            </h2>
+            {project.customDomain ? (
+              <>
+                <p className="mt-2 font-semibold text-brand-deep">
+                  {project.customDomain.hostname}
+                </p>
+                <span
+                  className={`mt-2 inline-flex rounded-md px-2 py-1 text-[11px] font-bold tracking-wide uppercase ${
+                    project.customDomain.status === "verified"
+                      ? "bg-leaf/20 text-leaf"
+                      : project.customDomain.status === "failed"
+                        ? "bg-accent/15 text-accent-deep"
+                        : "bg-mist text-brand-deep"
+                  }`}
+                >
+                  {project.customDomain.status}
+                </span>
+                <p className="mt-3 font-mono text-xs text-muted">
+                  {project.customDomain.recordType}{" "}
+                  {project.customDomain.recordName} →{" "}
+                  {project.customDomain.recordValue}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-sm text-muted">
+                Customer has not connected a domain of their own yet — this
+                Seed only answers on its cinchseed.com subdomain. They can add
+                one from their portal for seamless hosting.
+              </p>
+            )}
+          </div>
+
+          <div className="border border-brand/10 bg-foam px-5 py-5">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
               Seed growth monitor
             </h2>
             <p className="mt-2 text-sm text-muted">

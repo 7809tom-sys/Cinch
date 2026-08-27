@@ -4,6 +4,12 @@ import { randomUUID } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
 import { applyModuleReuse, listLibraryModules } from "./module-library";
 import { attachProjectToCustomer } from "./customers";
+import {
+  expectedDnsRecord,
+  isValidHostname,
+  normalizeHostname,
+  verifyDnsForHostname,
+} from "./dns-verify";
 import { bootstrapSourceTree } from "./seed-source";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
@@ -27,6 +33,20 @@ export type ActivityEvent = {
   message: string;
 };
 
+export type CustomDomainStatus = "pending" | "verified" | "failed";
+
+export type CustomDomainConnection = {
+  hostname: string;
+  status: CustomDomainStatus;
+  recordType: "A" | "CNAME";
+  recordName: string;
+  recordValue: string;
+  requestedAt: string;
+  updatedAt: string;
+  verifiedAt: string | null;
+  lastCheckDetail: string | null;
+};
+
 export type SeedProject = {
   id: string;
   name: string;
@@ -44,6 +64,8 @@ export type SeedProject = {
   customerName: string | null;
   /** Optional reference site the Seed is modeling */
   referenceUrl: string | null;
+  /** Customer's own domain (bought elsewhere) pointed at this Seed */
+  customDomain: CustomDomainConnection | null;
 };
 
 type StoreShape = {
@@ -69,6 +91,7 @@ async function ensureStore(): Promise<StoreShape> {
       customerEmail: project.customerEmail ?? null,
       customerName: project.customerName ?? null,
       referenceUrl: project.referenceUrl ?? null,
+      customDomain: project.customDomain ?? null,
     }));
     return memoryStore;
   } catch {
@@ -151,6 +174,7 @@ export async function createProject(input: {
     customerEmail,
     customerName,
     referenceUrl,
+    customDomain: null,
   };
 
   pushActivity(
@@ -190,6 +214,114 @@ export async function createProject(input: {
   }
 
   return project;
+}
+
+/**
+ * Point a customer's own domain (bought elsewhere) at their Seed, the same
+ * way any Vercel site connects a custom domain — no separate hosting system,
+ * just DNS the customer adds at their existing registrar.
+ */
+export async function connectCustomDomain(
+  projectId: string,
+  hostnameInput: string,
+): Promise<{ project: SeedProject } | { error: string }> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return { error: "Seed not found." };
+
+  const hostname = normalizeHostname(hostnameInput);
+  if (!hostname || !isValidHostname(hostname)) {
+    return { error: "Enter a real domain, like www.yourbusiness.com." };
+  }
+
+  const record = expectedDnsRecord(hostname);
+  const stamp = now();
+  project.customDomain = {
+    hostname,
+    status: "pending",
+    recordType: record.type,
+    recordName: record.name,
+    recordValue: record.value,
+    requestedAt: stamp,
+    updatedAt: stamp,
+    verifiedAt: null,
+    lastCheckDetail: null,
+  };
+  pushActivity(
+    project,
+    `Customer requested to connect their existing domain ${hostname} for seamless hosting.`,
+    project.projectManagerId,
+  );
+  await writeStore(store);
+  return { project };
+}
+
+export async function removeCustomDomain(
+  projectId: string,
+): Promise<SeedProject | null> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return null;
+  if (project.customDomain) {
+    pushActivity(
+      project,
+      `Disconnected custom domain ${project.customDomain.hostname}.`,
+      project.projectManagerId,
+    );
+  }
+  project.customDomain = null;
+  await writeStore(store);
+  return project;
+}
+
+/** Re-check live DNS against what Vercel expects and update status. */
+export async function checkCustomDomainDns(
+  projectId: string,
+): Promise<{ project: SeedProject } | { error: string }> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return { error: "Seed not found." };
+  if (!project.customDomain) {
+    return { error: "No custom domain connected yet." };
+  }
+
+  const result = await verifyDnsForHostname(project.customDomain.hostname);
+  const stamp = now();
+  project.customDomain.status = result.verified ? "verified" : "failed";
+  project.customDomain.updatedAt = stamp;
+  project.customDomain.verifiedAt = result.verified ? stamp : null;
+  project.customDomain.lastCheckDetail = result.error
+    ? result.error
+    : result.found.length
+      ? `Found ${result.recordType} → ${result.found.join(", ")}`
+      : "No matching DNS record found yet.";
+
+  if (result.verified) {
+    pushActivity(
+      project,
+      `Custom domain ${project.customDomain.hostname} verified — seamlessly hosting this Seed.`,
+      project.projectManagerId,
+    );
+  }
+
+  await writeStore(store);
+  return { project };
+}
+
+/** Every Seed with a customer-owned domain connected — for the admin overview. */
+export async function listConnectedCustomDomains(): Promise<
+  Array<{ project: SeedProject; customDomain: CustomDomainConnection }>
+> {
+  const store = await ensureStore();
+  return store.projects
+    .filter(
+      (project): project is SeedProject & { customDomain: CustomDomainConnection } =>
+        Boolean(project.customDomain),
+    )
+    .map((project) => ({ project, customDomain: project.customDomain! }))
+    .sort((a, b) =>
+      b.customDomain.updatedAt.localeCompare(a.customDomain.updatedAt),
+    );
 }
 
 export async function listProjectsForCustomer(

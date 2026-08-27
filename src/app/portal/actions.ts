@@ -36,10 +36,14 @@ import {
   type SiteCritique,
 } from "@/lib/site-critique";
 import {
+  checkCustomDomainDns,
+  connectCustomDomain,
   createProject,
   getProject,
   listProjectsForCustomer,
   planBuild,
+  removeCustomDomain,
+  type SeedProject,
 } from "@/lib/store";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
@@ -155,6 +159,77 @@ export async function getPortalProjectSnapshot(projectId: string) {
     .filter((name): name is string => Boolean(name));
 
   return { customer, project, watch, agents };
+}
+
+async function requireOwnedProject(
+  projectId: string,
+): Promise<
+  { ok: true; project: SeedProject } | { ok: false; error: string }
+> {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false, error: "Sign in to manage this Seed's domain." };
+  }
+  const project = await getProject(projectId);
+  const owns =
+    project &&
+    (customerOwnsProject(customer, projectId) ||
+      project.customerEmail === customer.email);
+  if (!project || !owns) {
+    return { ok: false, error: "Seed not found." };
+  }
+  return { ok: true, project };
+}
+
+type CustomDomainActionResult =
+  | { ok: true; project: SeedProject }
+  | { ok: false; error: string };
+
+/**
+ * Connect a domain the customer already owns (bought elsewhere) so it can
+ * seamlessly host this Seed alongside the default cinchseed.com subdomain.
+ */
+export async function connectCustomDomainAction(
+  projectId: string,
+  hostname: string,
+): Promise<CustomDomainActionResult> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const result = await connectCustomDomain(projectId, hostname);
+  if ("error" in result) return { ok: false, error: result.error };
+
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, project: result.project };
+}
+
+/** Re-check DNS propagation for the connected domain. */
+export async function checkCustomDomainAction(
+  projectId: string,
+): Promise<CustomDomainActionResult> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const result = await checkCustomDomainDns(projectId);
+  if ("error" in result) return { ok: false, error: result.error };
+
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, project: result.project };
+}
+
+export async function disconnectCustomDomainAction(
+  projectId: string,
+): Promise<CustomDomainActionResult> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const project = await removeCustomDomain(projectId);
+  if (!project) return { ok: false, error: "Seed not found." };
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, project };
 }
 
 export async function getPortalSourceSnapshot(projectId: string) {
