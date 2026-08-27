@@ -7,6 +7,11 @@ import {
 } from "@/lib/access";
 import { listAgentsWithKeyStatus, PROVIDER_ACCOUNTS } from "@/lib/agents";
 import {
+  extractJsonText,
+  generateWithAi,
+  isAiGenerationConfigured,
+} from "@/lib/ai-generate";
+import {
   autoConfigureDnsForHostname,
   isCloudflareDnsConfigured,
 } from "@/lib/cloudflare-dns";
@@ -24,8 +29,10 @@ import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/do
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import {
   getLockgmContent,
+  lockgmContentDraftSchema,
   resetLockgmContent,
   updateLockgmContent,
+  type LockgmContentDraft,
   type LockgmFeatureCard,
   type LockgmHeroContent,
   type LockgmFrontOfficeContent,
@@ -210,6 +217,7 @@ export async function getAdminSnapshot() {
     providers: PROVIDER_ACCOUNTS,
     domain: CINCH_SEED_DOMAIN,
     launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
+    aiGenerationConfigured: isAiGenerationConfigured(),
     platformProducts: [
       {
         id: "lockgm",
@@ -516,4 +524,95 @@ export async function resetLockgmContentAction() {
   revalidatePath("/lockgm/office");
   revalidatePath("/lockgm/reports");
   return { ok: true as const, content };
+}
+
+const LOCKGM_DRAFT_SYSTEM_PROMPT = `You are Quill, the copywriter on the Cinch Seed AI team, drafting copy for LockGM — a Shadow-GM draft & scouting platform.
+
+You will be given the CURRENT copy for every page as JSON, and an admin's plain-English instruction for what to change.
+
+Rules:
+- Reply with ONLY a single JSON object, no prose, no markdown code fences.
+- The JSON object must have EXACTLY this shape (all fields are strings unless noted):
+  {
+    "hero": { "headline", "subhead", "primaryCtaLabel", "secondaryCtaLabel" },
+    "features": [ { "title", "body" }, { "title", "body" }, { "title", "body" } ],
+    "worldSports": { "kicker", "headline" },
+    "frontOffice": { "headline", "body" },
+    "pricingIntro": { "kicker", "headline", "body" },
+    "officeIntro": { "kicker", "headline", "body" },
+    "reportsIntro": { "kicker", "headline", "body", "aiHeadline", "aiBody", "boardHeadline", "boardBody" },
+    "tiers": {
+      "free": { "blurb", "perks": [string, ...], "cta" },
+      "pro": { "blurb", "perks": [string, ...], "cta" },
+      "pipeline": { "blurb", "perks": [string, ...], "cta" }
+    }
+  }
+- "features" must have exactly 3 entries. Every "perks" array must have at least 1 entry.
+- Only change what the instruction asks for. Copy every other field through UNCHANGED from the current copy — never invent or drop fields, never leave a field empty.
+- Match the existing tone: confident, punchy, sports-insider voice. No emojis.`;
+
+/**
+ * Calls a real, configured AI provider (OpenAI/Anthropic/Google — whichever
+ * has a key set) to draft new LockGM copy from a plain-English instruction.
+ * Returns the proposed content for the admin to review; nothing is saved
+ * until they click "Save LockGM copy" in the panel.
+ */
+export async function generateLockgmContentDraftAction(instruction: string) {
+  const trimmed = instruction.trim();
+  if (!trimmed) {
+    return { ok: false as const, error: "Tell the AI team what to change first." };
+  }
+  if (!isAiGenerationConfigured()) {
+    return {
+      ok: false as const,
+      error:
+        "No AI provider is configured. Add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_AI_API_KEY in your Vercel project's environment variables and redeploy.",
+    };
+  }
+
+  const current = await getLockgmContent();
+  const currentForPrompt: Omit<typeof current, "updatedAt"> = {
+    hero: current.hero,
+    features: current.features,
+    worldSports: current.worldSports,
+    frontOffice: current.frontOffice,
+    pricingIntro: current.pricingIntro,
+    officeIntro: current.officeIntro,
+    reportsIntro: current.reportsIntro,
+    tiers: current.tiers,
+  };
+
+  const result = await generateWithAi({
+    systemPrompt: LOCKGM_DRAFT_SYSTEM_PROMPT,
+    userPrompt: `CURRENT COPY:\n${JSON.stringify(currentForPrompt, null, 2)}\n\nINSTRUCTION FROM THE ADMIN:\n${trimmed}\n\nReply with the full updated JSON object (all fields, per the schema).`,
+  });
+
+  if (!result.ok) {
+    return { ok: false as const, error: result.error };
+  }
+
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(extractJsonText(result.text));
+  } catch {
+    return {
+      ok: false as const,
+      error: "The AI's response wasn't valid JSON. Try rephrasing the instruction.",
+    };
+  }
+
+  const validated = lockgmContentDraftSchema.safeParse(parsedJson);
+  if (!validated.success) {
+    return {
+      ok: false as const,
+      error: `The AI's draft didn't match the expected shape (${validated.error.issues[0]?.message ?? "invalid"}). Try again or rephrase the instruction.`,
+    };
+  }
+
+  return {
+    ok: true as const,
+    draft: validated.data as LockgmContentDraft,
+    provider: result.provider,
+    model: result.model,
+  };
 }

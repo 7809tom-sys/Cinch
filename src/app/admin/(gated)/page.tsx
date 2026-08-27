@@ -79,6 +79,7 @@ export default async function AdminPage() {
     launchMode,
     domain,
     platformProducts,
+    aiGenerationConfigured,
   } = snap;
 
   const configuredCount = metrics.keysConfigured;
@@ -874,6 +875,7 @@ export default async function AdminPage() {
               platformProducts.find((product) => product.id === "lockgm")!
                 .content
             }
+            aiGenerationConfigured={aiGenerationConfigured}
           />
         </section>
 

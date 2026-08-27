@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { z } from "zod";
 import { SUB_TIERS, type SubTierId } from "@/lib/lockgm/config";
 
 /**
@@ -61,6 +62,67 @@ export type LockgmContent = {
   tiers: Record<SubTierId, LockgmTierOverride>;
   updatedAt: string;
 };
+
+/**
+ * Validates AI-drafted content before it's shown to an admin for review.
+ * Mirrors `LockgmContent` minus `updatedAt` (which the store sets itself).
+ * Kept intentionally strict (non-empty strings, exactly 3 feature cards) so
+ * a malformed or partial model response fails loudly instead of silently
+ * blanking out sections of the live page.
+ */
+const nonEmptyString = z.string().trim().min(1);
+
+export const lockgmContentDraftSchema = z.object({
+  hero: z.object({
+    headline: nonEmptyString,
+    subhead: nonEmptyString,
+    primaryCtaLabel: nonEmptyString,
+    secondaryCtaLabel: nonEmptyString,
+  }),
+  features: z
+    .array(z.object({ title: nonEmptyString, body: nonEmptyString }))
+    .length(3),
+  worldSports: z.object({ kicker: nonEmptyString, headline: nonEmptyString }),
+  frontOffice: z.object({ headline: nonEmptyString, body: nonEmptyString }),
+  pricingIntro: z.object({
+    kicker: nonEmptyString,
+    headline: nonEmptyString,
+    body: nonEmptyString,
+  }),
+  officeIntro: z.object({
+    kicker: nonEmptyString,
+    headline: nonEmptyString,
+    body: nonEmptyString,
+  }),
+  reportsIntro: z.object({
+    kicker: nonEmptyString,
+    headline: nonEmptyString,
+    body: nonEmptyString,
+    aiHeadline: nonEmptyString,
+    aiBody: nonEmptyString,
+    boardHeadline: nonEmptyString,
+    boardBody: nonEmptyString,
+  }),
+  tiers: z.object({
+    free: z.object({
+      blurb: nonEmptyString,
+      perks: z.array(nonEmptyString).min(1),
+      cta: nonEmptyString,
+    }),
+    pro: z.object({
+      blurb: nonEmptyString,
+      perks: z.array(nonEmptyString).min(1),
+      cta: nonEmptyString,
+    }),
+    pipeline: z.object({
+      blurb: nonEmptyString,
+      perks: z.array(nonEmptyString).min(1),
+      cta: nonEmptyString,
+    }),
+  }),
+});
+
+export type LockgmContentDraft = z.infer<typeof lockgmContentDraftSchema>;
 
 const DEFAULT_CONTENT: LockgmContent = {
   hero: {

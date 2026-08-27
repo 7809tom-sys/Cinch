@@ -1,10 +1,15 @@
 "use client";
 
 import { useState, useTransition, type ReactNode } from "react";
-import { resetLockgmContentAction, updateLockgmContentAction } from "./actions";
+import {
+  generateLockgmContentDraftAction,
+  resetLockgmContentAction,
+  updateLockgmContentAction,
+} from "./actions";
 import { SUB_TIERS, type SubTierId } from "@/lib/lockgm/config";
 import type {
   LockgmContent,
+  LockgmContentDraft,
   LockgmFeatureCard,
   LockgmFrontOfficeContent,
   LockgmHeroContent,
@@ -71,8 +76,18 @@ function PageGroup({
   );
 }
 
-export function LockgmContentPanel({ content }: { content: LockgmContent }) {
+export function LockgmContentPanel({
+  content,
+  aiGenerationConfigured,
+}: {
+  content: LockgmContent;
+  aiGenerationConfigured: boolean;
+}) {
   const [pending, startTransition] = useTransition();
+  const [aiPending, startAiTransition] = useTransition();
+  const [instruction, setInstruction] = useState("");
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDraftApplied, setAiDraftApplied] = useState<string | null>(null);
   const [hero, setHero] = useState<LockgmHeroContent>(content.hero);
   const [features, setFeatures] = useState<LockgmFeatureCard[]>(
     content.features,
@@ -106,7 +121,7 @@ export function LockgmContentPanel({ content }: { content: LockgmContent }) {
     setTiers((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   };
 
-  const applyContent = (next: LockgmContent) => {
+  const applyContent = (next: LockgmContent | LockgmContentDraft) => {
     setHero(next.hero);
     setFeatures(next.features);
     setWorldSports(next.worldSports);
@@ -115,6 +130,22 @@ export function LockgmContentPanel({ content }: { content: LockgmContent }) {
     setOfficeIntro(next.officeIntro);
     setReportsIntro(next.reportsIntro);
     setTiers(tiersToDraft(next.tiers));
+  };
+
+  const generateWithAi = () => {
+    setAiError(null);
+    setAiDraftApplied(null);
+    startAiTransition(async () => {
+      const result = await generateLockgmContentDraftAction(instruction);
+      if (!result.ok) {
+        setAiError(result.error);
+        return;
+      }
+      applyContent(result.draft);
+      setAiDraftApplied(
+        `AI draft loaded from ${result.provider} (${result.model}) — review the fields below, then click "Save LockGM copy" to publish.`,
+      );
+    });
   };
 
   const save = () => {
@@ -176,6 +207,62 @@ export function LockgmContentPanel({ content }: { content: LockgmContent }) {
         aren&apos;t covered here; they come from the sport catalog, not this
         editor.)
       </p>
+
+      <div className="mt-6 max-w-3xl rounded-lg border border-brand/15 bg-mist/30 p-4">
+        <p className="text-sm font-extrabold text-brand-deep">
+          Ask the AI team
+        </p>
+        {aiGenerationConfigured ? (
+          <>
+            <p className="mt-1 text-sm text-muted">
+              Tell it what to change in plain English — it drafts new copy for
+              every field below. Nothing goes live until you review it and
+              click &quot;Save LockGM copy.&quot;
+            </p>
+            <textarea
+              className={`${inputClass} mt-3`}
+              rows={2}
+              placeholder='e.g. "Make the hero headline more aggressive and mention the free tier" or "Rewrite the pricing intro to lead with the $59/yr All-Sports tier"'
+              value={instruction}
+              onChange={(e) => setInstruction(e.target.value)}
+              disabled={aiPending}
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={aiPending || !instruction.trim()}
+                onClick={generateWithAi}
+                className="inline-flex h-10 items-center justify-center rounded-md bg-accent-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+              >
+                {aiPending ? "Drafting…" : "Generate draft with AI"}
+              </button>
+              {aiDraftApplied ? (
+                <span className="text-sm text-leaf">{aiDraftApplied}</span>
+              ) : null}
+              {aiError ? (
+                <span className="text-sm text-accent-deep">{aiError}</span>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="mt-1 text-sm text-muted">
+            No AI provider is configured yet. Add{" "}
+            <code className="rounded bg-black/5 px-1 py-0.5">
+              OPENAI_API_KEY
+            </code>
+            ,{" "}
+            <code className="rounded bg-black/5 px-1 py-0.5">
+              ANTHROPIC_API_KEY
+            </code>
+            , or{" "}
+            <code className="rounded bg-black/5 px-1 py-0.5">
+              GOOGLE_AI_API_KEY
+            </code>{" "}
+            in your Vercel project&apos;s environment variables and redeploy
+            to enable this.
+          </p>
+        )}
+      </div>
 
       <div className="mt-6 space-y-6 max-w-3xl">
         <PageGroup title="Home page" route="/lockgm">
