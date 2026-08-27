@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 type CredentialResponse = { credential?: string };
@@ -37,7 +36,6 @@ export function GoogleSignInButton({
   redirectTo: string;
   buttonText?: "continue_with" | "signin_with" | "signup_with";
 }) {
-  const router = useRouter();
   const buttonRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,8 +67,9 @@ export function GoogleSignInButton({
               if (!res.ok || !data.ok) {
                 throw new Error(data.error || "Google sign-in failed.");
               }
-              router.push(data.redirectTo || redirectTo);
-              router.refresh();
+              // Full navigation so the freshly-set session cookie is
+              // guaranteed to be present on the very next request.
+              window.location.assign(data.redirectTo || redirectTo);
             })
             .catch((err: unknown) => {
               setError(
@@ -103,7 +102,7 @@ export function GoogleSignInButton({
     script.id = SCRIPT_ID;
     script.onload = init;
     document.body.appendChild(script);
-  }, [buttonText, clientId, endpoint, redirectTo, router]);
+  }, [buttonText, clientId, endpoint, redirectTo]);
 
   return (
     <div>

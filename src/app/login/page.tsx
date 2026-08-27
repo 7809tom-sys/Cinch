@@ -14,15 +14,20 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Sign in — Cinch Seed",
   description:
-    "Create or open your Cinch Seed portal with email and password.",
+    "Log in or sign up for your Cinch Seed portal — with Face ID / Touch ID support.",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ webauthnError?: string }>;
+}) {
   const customer = await getCurrentCustomer();
   if (customer) redirect("/portal");
 
   const googleOk = isGoogleLoginConfigured();
   const clientId = googleClientId();
+  const { webauthnError } = await searchParams;
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -57,13 +62,14 @@ export default async function LoginPage() {
               Cinch
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Use your email and a password (enter it twice to confirm). New
-              emails get a portal login automatically.
+              Log in if you already have an account, or sign up in a few
+              seconds. Once you&apos;re in, enable Face ID / Touch ID for
+              one-tap sign-in next time.
             </p>
           </div>
           <div className="animate-sprout border border-brand/10 bg-foam/95 px-6 py-7 shadow-[0_20px_60px_rgba(11,46,42,0.08)]">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-brand-deep">
-              Sign in / create account
+              Log in or sign up
             </h2>
             <p className="mt-2 text-sm text-muted">
               Not ordered yet?{" "}
@@ -77,7 +83,7 @@ export default async function LoginPage() {
             </p>
 
             <div className="mt-6">
-              <LoginForm />
+              <LoginForm initialError={webauthnError} />
             </div>
 
             {googleOk && clientId ? (

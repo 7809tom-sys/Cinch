@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
 import { isMasterEmail } from "@/lib/master-auth";
 import { logoutCustomerAction, getPortalHomeSnapshot } from "./actions";
+import { PasskeyPanel } from "./passkey-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export const metadata = {
 };
 
 export default async function PortalHomePage() {
-  const { customer, projects } = await getPortalHomeSnapshot();
+  const { customer, projects, passkeys } = await getPortalHomeSnapshot();
   if (!customer) redirect("/login");
   const isAdmin = isMasterEmail(customer.email);
 
@@ -73,6 +74,10 @@ export default async function PortalHomePage() {
             Open command center
           </Link>
         ) : null}
+
+        <div className="mt-8 max-w-xl">
+          <PasskeyPanel passkeys={passkeys ?? []} />
+        </div>
 
         <div className="mt-10">
           {projects.length === 0 ? (

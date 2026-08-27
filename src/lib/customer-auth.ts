@@ -32,9 +32,16 @@ export async function establishCustomerSession(
   jar.set(CUSTOMER_SESSION_COOKIE, token, customerSessionCookieOptions());
 }
 
-/** For Route Handlers that set the cookie on NextResponse. */
+/**
+ * For Route Handlers. Sets the cookie directly via next/headers `cookies()`
+ * (supported in Route Handlers, not just Server Actions/Components) rather
+ * than `NextResponse.cookies.set()`, matching the primitive every other
+ * working login path in this app already uses.
+ */
 export async function establishCustomerSessionCookie(customerId: string) {
   const { token } = await createCustomerSession(customerId);
+  const jar = await cookies();
+  jar.set(CUSTOMER_SESSION_COOKIE, token, customerSessionCookieOptions());
   return { token, cookieOptions: customerSessionCookieOptions() };
 }
 

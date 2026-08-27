@@ -10,9 +10,11 @@ import {
   getCurrentCustomer,
 } from "@/lib/customer-auth";
 import {
-  accountHasPassword,
   getCustomerByEmail,
-  registerOrLoginWithPassword,
+  listWebAuthnCredentials,
+  logInWithPassword,
+  removeWebAuthnCredential,
+  signUpWithPassword,
   upsertCustomer,
   verifyCustomerLogin,
 } from "@/lib/customers";
@@ -55,26 +57,14 @@ async function maybeGrantMasterAdmin(email: string, name?: string) {
   });
 }
 
-/**
- * Lets the login form know whether to show "confirm password" — only new
- * signups (or legacy accounts with no password yet) need to type it twice.
- */
-export async function checkCustomerNeedsConfirmAction(email: string) {
-  const trimmed = email.trim();
-  if (!trimmed || !trimmed.includes("@")) {
-    return { ok: true as const, needsConfirm: true };
-  }
-  const hasPassword = await accountHasPassword(trimmed);
-  return { ok: true as const, needsConfirm: !hasPassword };
-}
-
-export async function loginCustomerAction(formData: FormData) {
+/** Create a brand-new portal login. */
+export async function signUpCustomerAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
   const name = String(formData.get("name") ?? "").trim();
 
-  const result = await registerOrLoginWithPassword({
+  const result = await signUpWithPassword({
     email,
     password,
     confirmPassword,
@@ -82,10 +72,28 @@ export async function loginCustomerAction(formData: FormData) {
   });
 
   if (!result.ok) {
-    return {
-      ok: false as const,
-      error: result.error,
-    };
+    return { ok: false as const, error: result.error };
+  }
+
+  await establishCustomerSession(result.customer.id);
+  await maybeGrantMasterAdmin(result.customer.email, result.customer.name);
+  revalidatePath("/portal");
+  revalidatePath("/admin");
+  if (isMasterEmail(result.customer.email)) {
+    redirect("/admin");
+  }
+  redirect("/portal");
+}
+
+/** Sign in with an email + password that was already set up. */
+export async function logInCustomerAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  const result = await logInWithPassword({ email, password });
+
+  if (!result.ok) {
+    return { ok: false as const, error: result.error };
   }
 
   await establishCustomerSession(result.customer.id);
@@ -138,8 +146,16 @@ export async function logoutCustomerAction() {
 
 export async function getPortalHomeSnapshot() {
   const customer = await getCurrentCustomer();
-  if (!customer) return { customer: null, projects: [] as Awaited<ReturnType<typeof listProjectsForCustomer>> };
-  const projects = await listProjectsForCustomer(customer.email);
+  if (!customer)
+    return {
+      customer: null,
+      projects: [] as Awaited<ReturnType<typeof listProjectsForCustomer>>,
+      passkeys: [] as Awaited<ReturnType<typeof listWebAuthnCredentials>>,
+    };
+  const [projects, passkeys] = await Promise.all([
+    listProjectsForCustomer(customer.email),
+    listWebAuthnCredentials(customer.id),
+  ]);
   // Also include projects attached via customer.projectIds (purchases / admin).
   const byId = new Map(projects.map((project) => [project.id, project]));
   for (const projectId of customer.projectIds) {
@@ -152,7 +168,18 @@ export async function getPortalHomeSnapshot() {
     projects: [...byId.values()].sort((a, b) =>
       b.updatedAt.localeCompare(a.updatedAt),
     ),
+    passkeys,
   };
+}
+
+export async function removePasskeyAction(credentialId: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in first." };
+  }
+  await removeWebAuthnCredential(customer.id, credentialId);
+  revalidatePath("/portal");
+  return { ok: true as const };
 }
 
 export async function getPortalProjectSnapshot(projectId: string) {
