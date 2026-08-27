@@ -35,7 +35,11 @@ export function SiteHeader() {
 
   return (
     <header className="absolute inset-x-0 top-0 z-30">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4 sm:px-8 sm:py-5">
+      <div
+        className={`relative z-50 mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-4 sm:px-8 sm:py-5 ${
+          open ? "bg-[#fffaf2]" : ""
+        }`}
+      >
         <a
           href="#top"
           onClick={close}
