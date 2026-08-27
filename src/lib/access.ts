@@ -9,7 +9,7 @@
 
 export type AccessRole = "owner" | "admin" | "customer";
 
-/** Built-in platform owner — always admin / billing-waived. */
+/** Built-in platform owner — always admin / billing-waived / master allowlisted. */
 export const PLATFORM_OWNER_EMAIL = "7809tom@gmail.com";
 
 function parseAllowlist(raw: string | undefined): string[] {
@@ -44,4 +44,10 @@ export function resolveAccessRole(
 /** Billing and markups are waived for owner/admin test accounts. */
 export function billingWaivedFor(email: string | null | undefined): boolean {
   return isFreeAdminAccount(email);
+}
+
+/** True for the hardcoded platform owner email. */
+export function isPlatformOwner(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return email.trim().toLowerCase() === PLATFORM_OWNER_EMAIL;
 }

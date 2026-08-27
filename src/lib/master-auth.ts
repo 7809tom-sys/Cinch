@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { freeAdminEmails, PLATFORM_OWNER_EMAIL } from "./access";
+import { verifyCustomerPassword } from "./customers";
 import {
   googleClientId,
   isGoogleLoginConfigured,
@@ -145,6 +146,29 @@ export function verifyMasterPasswordLogin(
   return {
     email: normalized,
     name: normalized.split("@")[0] || normalized,
+  };
+}
+
+/**
+ * Master login via shared master password OR the owner's personal
+ * customer-portal password (for PLATFORM_OWNER / allowlisted admins).
+ */
+export async function verifyMasterPasswordLoginAsync(
+  email: string,
+  password: string,
+): Promise<MasterUser | null> {
+  const shared = verifyMasterPasswordLogin(email, password);
+  if (shared) return shared;
+
+  const normalized = email.trim().toLowerCase();
+  if (!isMasterEmail(normalized)) return null;
+
+  const customer = await verifyCustomerPassword(normalized, password);
+  if (!customer) return null;
+
+  return {
+    email: customer.email,
+    name: customer.name || customer.email.split("@")[0] || customer.email,
   };
 }
 

@@ -3,7 +3,7 @@ import {
   encodeMasterSession,
   MASTER_SESSION_COOKIE,
   masterSessionCookieOptions,
-  verifyMasterPasswordLogin,
+  verifyMasterPasswordLoginAsync,
 } from "@/lib/master-auth";
 
 /** Email + password master login — works without Google OAuth. */
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const user = verifyMasterPasswordLogin(email, password);
+  const user = await verifyMasterPasswordLoginAsync(email, password);
   if (!user) {
     return NextResponse.json(
       { ok: false, error: "Wrong email or password." },

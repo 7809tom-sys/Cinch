@@ -68,11 +68,16 @@ export default async function AdminLoginPage() {
               Master login
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Allowlisted emails only. Default test password is{" "}
+              Allowlisted emails only. Platform owner{" "}
+              <code className="rounded bg-black/5 px-1.5 py-0.5 text-brand-deep">
+                {PLATFORM_OWNER_EMAIL}
+              </code>{" "}
+              is always admin. Default test password is{" "}
               <code className="rounded bg-black/5 px-1.5 py-0.5 text-brand-deep">
                 cinch-seed
               </code>{" "}
-              until you set <code>CINCH_MASTER_PASSWORD</code> in Vercel.
+              until you set <code>CINCH_MASTER_PASSWORD</code> in Vercel — or
+              use the same password you set on Sign in.
             </p>
 
             <div className="mt-6">

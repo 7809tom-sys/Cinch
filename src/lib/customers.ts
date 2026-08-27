@@ -308,6 +308,21 @@ export async function registerOrLoginWithPassword(input: {
   return { ok: true, customer: account, isNew: false };
 }
 
+/** Verify an existing customer's password (no account creation). */
+export async function verifyCustomerPassword(
+  email: string,
+  password: string,
+): Promise<CustomerAccount | null> {
+  const account = await getCustomerByEmail(email);
+  if (!account?.passwordHash || !account.passwordSalt) return null;
+  const ok = await passwordsMatch(
+    password,
+    account.passwordHash,
+    account.passwordSalt,
+  );
+  return ok ? account : null;
+}
+
 export async function createCustomerSession(
   customerId: string,
 ): Promise<{ token: string; session: CustomerSession }> {

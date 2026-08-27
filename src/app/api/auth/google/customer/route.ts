@@ -5,10 +5,17 @@ import {
 } from "@/lib/customer-auth";
 import { getCustomerByEmail, upsertCustomer } from "@/lib/customers";
 import { verifyGoogleIdToken } from "@/lib/google-auth";
+import {
+  encodeMasterSession,
+  isMasterEmail,
+  MASTER_SESSION_COOKIE,
+  masterSessionCookieOptions,
+} from "@/lib/master-auth";
 
 /**
  * Open Google sign-in / sign-up for anyone.
  * Creates a customer account on first visit, then opens a portal session.
+ * Platform owner / master allowlist also receives an admin session.
  */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
@@ -38,11 +45,25 @@ export async function POST(request: Request) {
     customer.id,
   );
 
+  const isAdmin = isMasterEmail(customer.email);
   const response = NextResponse.json({
     ok: true,
     user: { email: customer.email, name: customer.name },
     isNew: !existing,
+    isAdmin,
+    redirectTo: isAdmin ? "/admin" : "/portal",
   });
   response.cookies.set(CUSTOMER_SESSION_COOKIE, token, cookieOptions);
+  if (isAdmin) {
+    response.cookies.set(
+      MASTER_SESSION_COOKIE,
+      encodeMasterSession({
+        email: customer.email,
+        name: customer.name,
+        picture: identity.picture,
+      }),
+      masterSessionCookieOptions(),
+    );
+  }
   return response;
 }
