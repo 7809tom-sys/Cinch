@@ -15,6 +15,11 @@ import {
   upsertCustomer,
   verifyCustomerLogin,
 } from "@/lib/customers";
+import {
+  clearMasterSession,
+  establishMasterSession,
+  isMasterEmail,
+} from "@/lib/master-auth";
 import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
@@ -37,6 +42,14 @@ import {
   planBuild,
 } from "@/lib/store";
 
+async function maybeGrantMasterAdmin(email: string, name?: string) {
+  if (!isMasterEmail(email)) return;
+  await establishMasterSession({
+    email: email.trim().toLowerCase(),
+    name: name?.trim() || email.split("@")[0] || email,
+  });
+}
+
 export async function loginCustomerAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -58,7 +71,12 @@ export async function loginCustomerAction(formData: FormData) {
   }
 
   await establishCustomerSession(result.customer.id);
+  await maybeGrantMasterAdmin(result.customer.email, result.customer.name);
   revalidatePath("/portal");
+  revalidatePath("/admin");
+  if (isMasterEmail(result.customer.email)) {
+    redirect("/admin");
+  }
   redirect("/portal");
 }
 
@@ -83,13 +101,20 @@ export async function loginCustomerWithAccessCodeAction(formData: FormData) {
   }
 
   await establishCustomerSession(customer.id);
+  await maybeGrantMasterAdmin(customer.email, customer.name);
   revalidatePath("/portal");
+  revalidatePath("/admin");
+  if (isMasterEmail(customer.email)) {
+    redirect("/admin");
+  }
   redirect("/portal");
 }
 
 export async function logoutCustomerAction() {
   await clearCustomerSession();
+  await clearMasterSession();
   revalidatePath("/portal");
+  revalidatePath("/admin");
   redirect("/login");
 }
 

@@ -64,11 +64,12 @@ export function GoogleSignInButton({
               const data = (await res.json().catch(() => ({}))) as {
                 ok?: boolean;
                 error?: string;
+                redirectTo?: string;
               };
               if (!res.ok || !data.ok) {
                 throw new Error(data.error || "Google sign-in failed.");
               }
-              router.push(redirectTo);
+              router.push(data.redirectTo || redirectTo);
               router.refresh();
             })
             .catch((err: unknown) => {

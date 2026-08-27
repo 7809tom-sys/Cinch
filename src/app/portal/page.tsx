@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
+import { isMasterEmail } from "@/lib/master-auth";
 import { logoutCustomerAction, getPortalHomeSnapshot } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export const metadata = {
 export default async function PortalHomePage() {
   const { customer, projects } = await getPortalHomeSnapshot();
   if (!customer) redirect("/login");
+  const isAdmin = isMasterEmail(customer.email);
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -29,6 +31,14 @@ export default async function PortalHomePage() {
             <Link href="/browse" className="hover:text-brand-deep">
               Browse
             </Link>
+            {isAdmin ? (
+              <Link
+                href="/admin"
+                className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
+              >
+                Admin
+              </Link>
+            ) : null}
             <span className="hidden text-muted sm:inline">{customer.email}</span>
             <form action={logoutCustomerAction}>
               <button
@@ -44,15 +54,25 @@ export default async function PortalHomePage() {
 
       <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8">
         <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-          CUSTOMER PORTAL
+          {isAdmin ? "OWNER · CUSTOMER PORTAL" : "CUSTOMER PORTAL"}
         </p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
           Hello{customer.name ? `, ${customer.name}` : ""}
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
-          Your Seeds live here. Open one to see what is being worked on, then
-          switch to Source for a live view of the code as agents write it.
+          {isAdmin
+            ? "You’re signed in as the platform owner. Open Admin for the command center, or manage Seeds here."
+            : "Your Seeds live here. Open one to see what is being worked on, then switch to Source for a live view of the code as agents write it."}
         </p>
+
+        {isAdmin ? (
+          <Link
+            href="/admin"
+            className="mt-6 inline-flex h-11 items-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-transform hover:-translate-y-0.5"
+          >
+            Open command center
+          </Link>
+        ) : null}
 
         <div className="mt-10">
           {projects.length === 0 ? (
