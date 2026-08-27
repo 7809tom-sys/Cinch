@@ -11,6 +11,7 @@ import {
 } from "@/lib/membership";
 import { formatUsd, couponValueUsd } from "@/lib/format";
 import { GoogleSignIn } from "./google-sign-in";
+import { EmailLogin } from "./email-login";
 import { SaveButton } from "./save-button";
 import { SearchCoupons } from "./search-coupons";
 import { JoinMembership } from "./join-membership";
@@ -114,23 +115,27 @@ export default async function CouponsPage() {
             )}
           </div>
         ) : (
-          <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-panel px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-semibold text-foam">
-                Save coupons &amp; track your savings
-              </p>
-              <p className="mt-1 text-sm text-mist">
-                Browse freely below. Sign in to save coupons to your list and
-                unlock membership perks.
-              </p>
+          <div className="mt-6 rounded-2xl border border-white/10 bg-panel px-5 py-5">
+            <p className="font-semibold text-foam">
+              Save coupons &amp; track your savings
+            </p>
+            <p className="mt-1 text-sm text-mist">
+              Browse freely below. Sign in to save coupons to your list and
+              unlock membership perks.
+            </p>
+            <div className="mt-4 max-w-sm">
+              <EmailLogin redirectTo="/coupons" />
+              {isGoogleLoginConfigured() && clientId ? (
+                <>
+                  <div className="my-4 flex items-center gap-3 text-xs text-mist">
+                    <span className="h-px flex-1 bg-white/10" />
+                    or
+                    <span className="h-px flex-1 bg-white/10" />
+                  </div>
+                  <GoogleSignIn clientId={clientId} redirectTo="/coupons" />
+                </>
+              ) : null}
             </div>
-            {isGoogleLoginConfigured() && clientId ? (
-              <GoogleSignIn clientId={clientId} redirectTo="/coupons" />
-            ) : (
-              <span className="shrink-0 rounded-md bg-white/10 px-3 py-2 text-xs font-semibold text-mist">
-                Google sign-in setup pending
-              </span>
-            )}
           </div>
         )}
 
