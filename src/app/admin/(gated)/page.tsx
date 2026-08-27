@@ -3,6 +3,7 @@ import { AdminAnalyticsForm } from "@/app/admin/admin-analytics-form";
 import { AdminBillingForm } from "@/app/admin/admin-billing-form";
 import { AdminDomainPanel } from "@/app/admin/admin-domain-panel";
 import { CreateSeedForm } from "@/app/admin/create-seed-form";
+import { LockgmContentPanel } from "@/app/admin/lockgm-content-panel";
 import { LockgmDomainPanel } from "@/app/admin/lockgm-domain-panel";
 import { logoutMasterAction } from "@/app/admin/master-actions";
 import Link from "next/link";
@@ -238,6 +239,12 @@ export default async function AdminPage() {
                         {url.replace(/^https?:\/\//, "")}
                       </a>
                     ))}
+                    <a
+                      href="#domains"
+                      className="rounded-md bg-brand-deep px-2.5 py-1 text-xs font-semibold text-foam hover:opacity-90"
+                    >
+                      Edit copy →
+                    </a>
                   </div>
                   {product.customDomain ? (
                     <p className="mt-3 text-xs text-muted">
@@ -860,6 +867,13 @@ export default async function AdminPage() {
           <LockgmDomainPanel
             domain={settings.lockgmDomain}
             cloudflareDnsConfigured={cloudflareDnsConfigured}
+          />
+
+          <LockgmContentPanel
+            content={
+              platformProducts.find((product) => product.id === "lockgm")!
+                .content
+            }
           />
         </section>
 

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { SPORTS } from "@/lib/lockgm/sports";
+import { getLockgmContent } from "@/lib/lockgm-content";
 
-export default function LockgmHomePage() {
+export default async function LockgmHomePage() {
+  const content = await getLockgmContent();
+
   return (
     <main>
       <section className="relative isolate min-h-[100svh] overflow-hidden">
@@ -18,24 +21,23 @@ export default function LockgmHomePage() {
             LockGM
           </p>
           <h1 className="lg-rise-2 mt-5 max-w-xl lockgm-display text-3xl font-bold leading-[1.05] text-[color:var(--lg-text)] sm:text-5xl">
-            Be the Shadow GM.
+            {content.hero.headline}
           </h1>
           <p className="lg-rise-3 mt-5 max-w-lg text-base leading-relaxed text-[color:var(--lg-mute)] sm:text-lg">
-            AI scout research, your numbered reports, and draft-day races —
-            across the world’s biggest team sports.
+            {content.hero.subhead}
           </p>
           <div className="lg-rise-3 mt-9 flex flex-wrap gap-3">
             <Link
               href="/lockgm/reports"
               className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
             >
-              Open my reports
+              {content.hero.primaryCtaLabel}
             </Link>
             <Link
               href="/lockgm/draft"
               className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold text-[color:var(--lg-text)] hover:border-[color:var(--lg-accent)]"
             >
-              Enter draft day
+              {content.hero.secondaryCtaLabel}
             </Link>
           </div>
         </div>
@@ -71,23 +73,7 @@ export default function LockgmHomePage() {
             Research. Tabulate. Beat the clock.
           </h2>
           <ul className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: "AI scout pair",
-                body: "Assign Scout Alpha (tape) and Scout Beta (comps) to dig — then claim the merge as your SR-###.",
-                href: "/lockgm/reports",
-              },
-              {
-                title: "Your numbered board",
-                body: "Key in a customer / scout number. Type reports by hand or from AI. Lock them for draft day.",
-                href: "/lockgm/reports",
-              },
-              {
-                title: "Beat the pick",
-                body: "On draft day, lock your call before the team on the clock. Right name, early lock — you beat the room.",
-                href: "/lockgm/draft",
-              },
-            ].map((item) => (
+            {content.features.map((item, index) => (
               <li
                 key={item.title}
                 className="border-t border-[color:var(--lg-line)] pt-5"
@@ -99,7 +85,7 @@ export default function LockgmHomePage() {
                   {item.body}
                 </p>
                 <Link
-                  href={item.href}
+                  href={index === 2 ? "/lockgm/draft" : "/lockgm/reports"}
                   className="mt-4 inline-flex text-sm font-bold text-[color:var(--lg-text)] hover:text-[color:var(--lg-accent)]"
                 >
                   Open →
@@ -116,11 +102,10 @@ export default function LockgmHomePage() {
             FRONT OFFICE
           </p>
           <h2 className="mt-3 max-w-xl lockgm-display text-3xl font-extrabold sm:text-4xl">
-            Needs, assets, wage ceilings.
+            {content.frontOffice.headline}
           </h2>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-            Sit in the GM office, stress-test the budget desk, and follow the
-            pipeline — the same tools a professional front office lives in.
+            {content.frontOffice.body}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
