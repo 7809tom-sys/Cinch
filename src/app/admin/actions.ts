@@ -20,7 +20,7 @@ import {
   listActiveSessions,
   listCustomers,
 } from "@/lib/customers";
-import { CINCH_SEED_DOMAIN, seedHostHostname } from "@/lib/domain";
+import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/domain";
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import {
   listCreditLedger,
@@ -197,6 +197,21 @@ export async function getAdminSnapshot() {
     providers: PROVIDER_ACCOUNTS,
     domain: CINCH_SEED_DOMAIN,
     launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
+    platformProducts: [
+      {
+        id: "lockgm",
+        name: "LockGM",
+        description:
+          "Shadow-GM draft & scouting platform, built directly into Cinch Seed. Not a customer Seed — no build agents, no portal.",
+        urls: [
+          `${CINCH_SEED_ORIGIN}/lockgm`,
+          ...(settings.lockgmDomain?.hostname
+            ? [`https://${settings.lockgmDomain.hostname}`]
+            : []),
+        ],
+        customDomain: settings.lockgmDomain,
+      },
+    ],
   };
 }
 

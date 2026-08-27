@@ -77,6 +77,7 @@ export default async function AdminPage() {
     freeAdminEmails,
     launchMode,
     domain,
+    platformProducts,
   } = snap;
 
   const configuredCount = metrics.keysConfigured;
@@ -202,6 +203,67 @@ export default async function AdminPage() {
               value={String(metrics.connectedDomainCount)}
               hint={`${metrics.connectedDomainVerifiedCount} seamlessly hosting`}
             />
+          </div>
+
+          <div className="mt-10 border-t border-brand/15 pt-6">
+            <p className="text-[11px] font-bold tracking-[0.16em] text-muted uppercase">
+              Platform products
+            </p>
+            <p className="mt-1 max-w-2xl text-sm text-muted">
+              Built directly into Cinch Seed&apos;s own codebase — not
+              customer Seeds, so they never appear in the Seeds list below
+              and are never touched by build agents.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {platformProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="rounded-lg border border-brand/15 bg-foam/60 p-4"
+                >
+                  <p className="font-[family-name:var(--font-display)] text-base font-extrabold text-brand-deep">
+                    {product.name}
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    {product.description}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {product.urls.map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-md border border-brand/20 px-2.5 py-1 font-mono text-xs font-semibold text-brand-deep hover:bg-mist/50"
+                      >
+                        {url.replace(/^https?:\/\//, "")}
+                      </a>
+                    ))}
+                  </div>
+                  {product.customDomain ? (
+                    <p className="mt-3 text-xs text-muted">
+                      Custom domain:{" "}
+                      <span
+                        className={
+                          product.customDomain.status === "verified"
+                            ? "font-bold text-leaf"
+                            : "font-bold text-amber-600"
+                        }
+                      >
+                        {product.customDomain.status}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-xs text-muted">
+                      No custom domain connected —{" "}
+                      <a href="#domains" className="underline">
+                        connect one below
+                      </a>
+                      .
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
