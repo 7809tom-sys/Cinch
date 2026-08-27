@@ -1,13 +1,25 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { createHash, randomBytes, randomUUID } from "crypto";
+import {
+  createHash,
+  randomBytes,
+  randomUUID,
+  scrypt as scryptCallback,
+  timingSafeEqual,
+} from "crypto";
+import { promisify } from "util";
+
+const scrypt = promisify(scryptCallback);
 
 export type CustomerAccount = {
   id: string;
   email: string;
   name: string;
-  /** Short code emailed / shown at purchase — used with email to log in */
+  /** Short code from purchase / admin — optional legacy login */
   accessCode: string;
+  /** scrypt password hash (hex); set on email signup / first password login */
+  passwordHash?: string;
+  passwordSalt?: string;
   projectIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -30,6 +42,7 @@ const DATA_DIR =
     ? path.join("/tmp", "cinch-seed-data")
     : path.join(process.cwd(), ".data");
 const CUSTOMERS_PATH = path.join(DATA_DIR, "customers.json");
+const MIN_PASSWORD_LENGTH = 8;
 
 let memory: CustomerStore | null = null;
 
@@ -39,6 +52,10 @@ function now() {
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 }
 
 export function generateAccessCode(): string {
@@ -53,6 +70,22 @@ export function generateAccessCode(): string {
 
 export function hashSessionToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const derived = (await scrypt(password, salt, 64)) as Buffer;
+  return derived.toString("hex");
+}
+
+async function passwordsMatch(
+  password: string,
+  hash: string,
+  salt: string,
+): Promise<boolean> {
+  const next = await hashPassword(password, salt);
+  const a = Buffer.from(next);
+  const b = Buffer.from(hash);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 async function ensureCustomers(): Promise<CustomerStore> {
@@ -188,6 +221,91 @@ export async function verifyCustomerLogin(
   const code = accessCode.trim().toUpperCase();
   if (account.accessCode !== code) return null;
   return account;
+}
+
+/**
+ * Sign up or sign in with email + password.
+ * New emails get an account automatically. Existing accounts without a
+ * password (legacy Seed orders) get this password set on first success.
+ */
+export async function registerOrLoginWithPassword(input: {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  name?: string;
+}): Promise<
+  | { ok: true; customer: CustomerAccount; isNew: boolean }
+  | { ok: false; error: string }
+> {
+  const email = normalizeEmail(input.email);
+  const password = input.password;
+  const confirmPassword = input.confirmPassword;
+
+  if (!isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return {
+      ok: false,
+      error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+    };
+  }
+  if (password !== confirmPassword) {
+    return {
+      ok: false,
+      error: "Passwords do not match. Enter the same password twice.",
+    };
+  }
+
+  const store = await ensureCustomers();
+  let account = store.accounts.find((item) => item.email === email) ?? null;
+  const stamp = now();
+
+  if (!account) {
+    const salt = randomBytes(16).toString("hex");
+    const passwordHash = await hashPassword(password, salt);
+    account = {
+      id: randomUUID(),
+      email,
+      name:
+        (input.name ?? email.split("@")[0] ?? "Customer").trim() || "Customer",
+      accessCode: generateAccessCode(),
+      passwordHash,
+      passwordSalt: salt,
+      projectIds: [],
+      createdAt: stamp,
+      updatedAt: stamp,
+    };
+    store.accounts.unshift(account);
+    await writeCustomers(store);
+    return { ok: true, customer: account, isNew: true };
+  }
+
+  if (account.passwordHash && account.passwordSalt) {
+    const ok = await passwordsMatch(
+      password,
+      account.passwordHash,
+      account.passwordSalt,
+    );
+    if (!ok) {
+      return { ok: false, error: "Wrong password for that email." };
+    }
+    if (input.name?.trim() && input.name.trim() !== account.name) {
+      account.name = input.name.trim();
+      account.updatedAt = stamp;
+      await writeCustomers(store);
+    }
+    return { ok: true, customer: account, isNew: false };
+  }
+
+  // Legacy account (purchase / Google) — set password on first email login.
+  const salt = randomBytes(16).toString("hex");
+  account.passwordHash = await hashPassword(password, salt);
+  account.passwordSalt = salt;
+  account.updatedAt = stamp;
+  if (input.name?.trim()) account.name = input.name.trim();
+  await writeCustomers(store);
+  return { ok: true, customer: account, isNew: false };
 }
 
 export async function createCustomerSession(

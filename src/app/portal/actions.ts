@@ -11,6 +11,7 @@ import {
 } from "@/lib/customer-auth";
 import {
   getCustomerByEmail,
+  registerOrLoginWithPassword,
   upsertCustomer,
   verifyCustomerLogin,
 } from "@/lib/customers";
@@ -37,6 +38,32 @@ import {
 } from "@/lib/store";
 
 export async function loginCustomerAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+
+  const result = await registerOrLoginWithPassword({
+    email,
+    password,
+    confirmPassword,
+    name: name || undefined,
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false as const,
+      error: result.error,
+    };
+  }
+
+  await establishCustomerSession(result.customer.id);
+  revalidatePath("/portal");
+  redirect("/portal");
+}
+
+/** Legacy Seed-order login with email + access code. */
+export async function loginCustomerWithAccessCodeAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
   const accessCode = String(formData.get("accessCode") ?? "").trim();
 
