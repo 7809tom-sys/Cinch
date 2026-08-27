@@ -35,7 +35,14 @@ export default async function BrowsePage() {
               >
                 My Seeds
               </Link>
-            ) : null}
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-md bg-brand-deep px-3 py-1.5 text-foam transition-colors hover:bg-brand"
+              >
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
       </header>
