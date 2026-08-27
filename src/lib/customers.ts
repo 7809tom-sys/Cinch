@@ -11,6 +11,17 @@ import { promisify } from "util";
 
 const scrypt = promisify(scryptCallback);
 
+export type WebAuthnCredential = {
+  /** Base64url credential ID */
+  id: string;
+  /** Base64url COSE public key */
+  publicKey: string;
+  counter: number;
+  transports?: string[];
+  deviceLabel: string;
+  createdAt: string;
+};
+
 export type CustomerAccount = {
   id: string;
   email: string;
@@ -20,6 +31,8 @@ export type CustomerAccount = {
   /** scrypt password hash (hex); set on email signup / first password login */
   passwordHash?: string;
   passwordSalt?: string;
+  /** Face ID / Touch ID / fingerprint passkeys registered for one-tap sign-in */
+  webauthnCredentials?: WebAuthnCredential[];
   projectIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -224,33 +237,30 @@ export async function verifyCustomerLogin(
 }
 
 /**
- * True once this email already has a password set — the client uses this
- * to skip the "confirm password" field for returning users.
+ * True once this email already has a password set.
  */
 export async function accountHasPassword(email: string): Promise<boolean> {
   const account = await getCustomerByEmail(email);
   return Boolean(account?.passwordHash && account.passwordSalt);
 }
 
+type PasswordResult =
+  | { ok: true; customer: CustomerAccount; isNew: boolean }
+  | { ok: false; error: string };
+
 /**
- * Sign up or sign in with email + password.
- * New emails get an account automatically. Existing accounts without a
- * password (legacy Seed orders) get this password set on first success.
- * confirmPassword is only required — and only checked — when a password is
- * being set for the first time (new account, or legacy account with none).
- * Returning users with a password already set just need one field.
+ * Create a brand-new portal login (or finish setup for a legacy account
+ * that only had a Seed access code / Google sign-in so far). Fails if the
+ * email already has a password — that email should log in instead.
  */
-export async function registerOrLoginWithPassword(input: {
+export async function signUpWithPassword(input: {
   email: string;
   password: string;
-  confirmPassword?: string;
+  confirmPassword: string;
   name?: string;
-}): Promise<
-  | { ok: true; customer: CustomerAccount; isNew: boolean }
-  | { ok: false; error: string }
-> {
+}): Promise<PasswordResult> {
   const email = normalizeEmail(input.email);
-  const password = input.password;
+  const { password, confirmPassword } = input;
 
   if (!isValidEmail(email)) {
     return { ok: false, error: "Enter a valid email address." };
@@ -261,36 +271,21 @@ export async function registerOrLoginWithPassword(input: {
       error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
     };
   }
+  if (password !== confirmPassword) {
+    return {
+      ok: false,
+      error: "Passwords do not match. Enter the same password twice.",
+    };
+  }
 
   const store = await ensureCustomers();
   let account = store.accounts.find((item) => item.email === email) ?? null;
   const stamp = now();
 
-  // Verifying an existing password does not need confirmPassword at all.
   if (account?.passwordHash && account.passwordSalt) {
-    const ok = await passwordsMatch(
-      password,
-      account.passwordHash,
-      account.passwordSalt,
-    );
-    if (!ok) {
-      return { ok: false, error: "Wrong password for that email." };
-    }
-    if (input.name?.trim() && input.name.trim() !== account.name) {
-      account.name = input.name.trim();
-      account.updatedAt = stamp;
-      await writeCustomers(store);
-    }
-    return { ok: true, customer: account, isNew: false };
-  }
-
-  // Setting a password for the first time (new account, or legacy account
-  // without one) — require the confirm field to match.
-  const confirmPassword = input.confirmPassword ?? "";
-  if (password !== confirmPassword) {
     return {
       ok: false,
-      error: "Passwords do not match. Enter the same password twice.",
+      error: "An account already exists for this email — log in instead.",
     };
   }
 
@@ -305,6 +300,7 @@ export async function registerOrLoginWithPassword(input: {
       accessCode: generateAccessCode(),
       passwordHash,
       passwordSalt: salt,
+      webauthnCredentials: [],
       projectIds: [],
       createdAt: stamp,
       updatedAt: stamp,
@@ -314,13 +310,45 @@ export async function registerOrLoginWithPassword(input: {
     return { ok: true, customer: account, isNew: true };
   }
 
-  // Legacy account (purchase / Google) — set password on first email login.
+  // Legacy account (purchase / Google) finishing password setup.
   const salt = randomBytes(16).toString("hex");
   account.passwordHash = await hashPassword(password, salt);
   account.passwordSalt = salt;
   account.updatedAt = stamp;
   if (input.name?.trim()) account.name = input.name.trim();
   await writeCustomers(store);
+  return { ok: true, customer: account, isNew: false };
+}
+
+/**
+ * Log in with an email + password that was already set up. Does not create
+ * accounts — points people without a password yet to sign up instead.
+ */
+export async function logInWithPassword(input: {
+  email: string;
+  password: string;
+}): Promise<PasswordResult> {
+  const email = normalizeEmail(input.email);
+  if (!isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+
+  const account = await getCustomerByEmail(email);
+  if (!account?.passwordHash || !account.passwordSalt) {
+    return {
+      ok: false,
+      error: "No account found for this email yet — sign up first.",
+    };
+  }
+
+  const ok = await passwordsMatch(
+    input.password,
+    account.passwordHash,
+    account.passwordSalt,
+  );
+  if (!ok) {
+    return { ok: false, error: "Wrong password for that email." };
+  }
   return { ok: true, customer: account, isNew: false };
 }
 
@@ -337,6 +365,75 @@ export async function verifyCustomerPassword(
     account.passwordSalt,
   );
   return ok ? account : null;
+}
+
+/** Passkeys (Face ID / Touch ID / fingerprint) registered for a customer. */
+export async function listWebAuthnCredentials(
+  customerId: string,
+): Promise<WebAuthnCredential[]> {
+  const account = await getCustomerById(customerId);
+  return account?.webauthnCredentials ?? [];
+}
+
+export async function findCustomerByCredentialId(
+  credentialId: string,
+): Promise<{ customer: CustomerAccount; credential: WebAuthnCredential } | null> {
+  const store = await ensureCustomers();
+  for (const account of store.accounts) {
+    const credential = (account.webauthnCredentials ?? []).find(
+      (item) => item.id === credentialId,
+    );
+    if (credential) return { customer: account, credential };
+  }
+  return null;
+}
+
+export async function addWebAuthnCredential(
+  customerId: string,
+  credential: WebAuthnCredential,
+): Promise<CustomerAccount | null> {
+  const store = await ensureCustomers();
+  const account = store.accounts.find((item) => item.id === customerId);
+  if (!account) return null;
+  account.webauthnCredentials = [
+    ...(account.webauthnCredentials ?? []).filter(
+      (item) => item.id !== credential.id,
+    ),
+    credential,
+  ];
+  account.updatedAt = now();
+  await writeCustomers(store);
+  return account;
+}
+
+export async function removeWebAuthnCredential(
+  customerId: string,
+  credentialId: string,
+): Promise<CustomerAccount | null> {
+  const store = await ensureCustomers();
+  const account = store.accounts.find((item) => item.id === customerId);
+  if (!account) return null;
+  account.webauthnCredentials = (account.webauthnCredentials ?? []).filter(
+    (item) => item.id !== credentialId,
+  );
+  account.updatedAt = now();
+  await writeCustomers(store);
+  return account;
+}
+
+export async function updateWebAuthnCounter(
+  customerId: string,
+  credentialId: string,
+  counter: number,
+): Promise<void> {
+  const store = await ensureCustomers();
+  const account = store.accounts.find((item) => item.id === customerId);
+  const credential = account?.webauthnCredentials?.find(
+    (item) => item.id === credentialId,
+  );
+  if (!credential) return;
+  credential.counter = counter;
+  await writeCustomers(store);
 }
 
 export async function createCustomerSession(

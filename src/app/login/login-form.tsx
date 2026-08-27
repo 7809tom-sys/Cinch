@@ -1,11 +1,12 @@
 "use client";
 
+import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, useTransition } from "react";
+import { useId, useState, useSyncExternalStore, useTransition } from "react";
 import {
-  checkCustomerNeedsConfirmAction,
-  loginCustomerAction,
+  logInCustomerAction,
   loginCustomerWithAccessCodeAction,
+  signUpCustomerAction,
 } from "@/app/portal/actions";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -48,6 +49,37 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
+function FaceIdIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 8V6a2 2 0 0 1 2-2h2" />
+      <path d="M4 16v2a2 2 0 0 0 2 2h2" />
+      <path d="M20 8V6a2 2 0 0 0-2-2h-2" />
+      <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
+      <circle cx="9" cy="10" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="10" r="0.8" fill="currentColor" stroke="none" />
+      <path d="M9 15c1 1 5 1 6 0" />
+    </svg>
+  );
+}
+
+/**
+ * Text inputs must be 16px+ or iOS/Android auto-zoom the page on focus,
+ * which is what causes the "content shifted / cut off" look on phones.
+ */
+const FIELD_CLASS =
+  "mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-base text-brand-deep outline-none ring-brand/30 focus:ring-2";
+
 function PasswordField({
   name,
   label,
@@ -74,7 +106,7 @@ function PasswordField({
           minLength={8}
           autoComplete={autoComplete}
           placeholder={placeholder}
-          className="w-full rounded-md border border-brand/15 bg-foam px-4 py-3 pr-12 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+          className={`${FIELD_CLASS} mt-0 pr-12`}
         />
         <button
           type="button"
@@ -90,105 +122,282 @@ function PasswordField({
   );
 }
 
-export function LoginForm() {
+function isWebAuthnSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.PublicKeyCredential !== "undefined"
+  );
+}
+
+const noopSubscribe = () => () => {};
+
+/** Reads a browser-only capability without the hydration-effect dance. */
+function useWebAuthnSupported(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    isWebAuthnSupported,
+    () => false,
+  );
+}
+
+function BiometricSignInButton({
+  getEmail,
+  onError,
+}: {
+  getEmail: () => string;
+  onError: (message: string | null) => void;
+}) {
+  const supported = useWebAuthnSupported();
+  const [busy, setBusy] = useState(false);
+
+  if (!supported) return null;
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        const email = getEmail().trim();
+        if (!email) {
+          onError("Enter your email above first.");
+          return;
+        }
+        onError(null);
+        setBusy(true);
+        try {
+          const optionsRes = await fetch("/api/auth/webauthn/login-options", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          const optionsData = (await optionsRes.json().catch(() => ({}))) as {
+            ok?: boolean;
+            error?: string;
+            options?: Parameters<typeof startAuthentication>[0]["optionsJSON"];
+          };
+          if (!optionsRes.ok || !optionsData.ok || !optionsData.options) {
+            onError(optionsData.error || "Biometric sign-in is not set up yet.");
+            return;
+          }
+
+          const assertion = await startAuthentication({
+            optionsJSON: optionsData.options,
+          });
+
+          // A real form submission (not fetch) so the browser applies the
+          // new session cookie and follows the server's redirect as one
+          // atomic navigation — a separate fetch-then-navigate step left a
+          // timing window where the cookie wasn't always applied yet.
+          const form = document.createElement("form");
+          form.method = "POST";
+          form.action = "/api/auth/webauthn/login-verify";
+          form.style.display = "none";
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "payload";
+          input.value = JSON.stringify({ email, response: assertion });
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+          return;
+        } catch (err) {
+          if (err instanceof Error && err.name === "NotAllowedError") {
+            onError("Cancelled — try again when you're ready.");
+          } else {
+            onError("Biometric sign-in failed. Try your password instead.");
+          }
+        } finally {
+          setBusy(false);
+        }
+      }}
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-brand/20 px-5 text-sm font-semibold text-brand-deep transition-colors hover:bg-mist/40 disabled:opacity-60"
+    >
+      <FaceIdIcon />
+      {busy ? "Checking…" : "Sign in with Face ID / Touch ID"}
+    </button>
+  );
+}
+
+type Mode = "login" | "signup";
+
+export function LoginForm({
+  initialError,
+}: {
+  initialError?: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState<string | null>(initialError || null);
   const [legacyError, setLegacyError] = useState<string | null>(null);
-  // Default to true (signup) until we know this email already has a
-  // password — returning users then only see one password field.
-  const [needsConfirm, setNeedsConfirm] = useState(true);
-  const [checkedEmail, setCheckedEmail] = useState("");
-  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const checkEmail = (value: string) => {
-    const email = value.trim();
-    if (checkTimer.current) clearTimeout(checkTimer.current);
-    if (!email || !email.includes("@")) {
-      setNeedsConfirm(true);
-      setCheckedEmail("");
-      return;
-    }
-    checkTimer.current = setTimeout(() => {
-      startTransition(async () => {
-        const result = await checkCustomerNeedsConfirmAction(email);
-        setNeedsConfirm(result.needsConfirm);
-        setCheckedEmail(email);
-      });
-    }, 350);
-  };
 
   return (
     <div className="space-y-6">
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const formData = new FormData(event.currentTarget);
-          setError(null);
-          startTransition(async () => {
-            const result = await loginCustomerAction(formData);
-            if (result && !result.ok) {
-              setError(result.error);
-              return;
-            }
-            router.refresh();
-          });
-        }}
+      <div
+        role="tablist"
+        aria-label="Sign in or create an account"
+        className="grid grid-cols-2 gap-1 rounded-md bg-mist/60 p-1"
       >
-        <label className="block">
-          <span className="text-sm font-medium text-brand-deep">Email</span>
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@business.com"
-            onChange={(event) => checkEmail(event.target.value)}
-            onBlur={(event) => checkEmail(event.target.value)}
-            className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "login"}
+          onClick={() => {
+            setMode("login");
+            setError(null);
+          }}
+          className={`h-10 rounded-md text-sm font-bold tracking-wide transition-colors ${
+            mode === "login"
+              ? "bg-foam text-brand-deep shadow-sm"
+              : "text-muted hover:text-brand-deep"
+          }`}
+        >
+          Log in
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "signup"}
+          onClick={() => {
+            setMode("signup");
+            setError(null);
+          }}
+          className={`h-10 rounded-md text-sm font-bold tracking-wide transition-colors ${
+            mode === "signup"
+              ? "bg-foam text-brand-deep shadow-sm"
+              : "text-muted hover:text-brand-deep"
+          }`}
+        >
+          Sign up
+        </button>
+      </div>
+
+      {mode === "login" ? (
+        <div className="space-y-4">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              setError(null);
+              startTransition(async () => {
+                const result = await logInCustomerAction(formData);
+                if (result && !result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                router.refresh();
+              });
+            }}
+          >
+            <label className="block">
+              <span className="text-sm font-medium text-brand-deep">Email</span>
+              <input
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@business.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </label>
+            <PasswordField
+              name="password"
+              label="Password"
+              placeholder="Your password"
+              autoComplete="current-password"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
+            >
+              {pending ? "Signing in…" : "Log in"}
+            </button>
+            {error ? (
+              <p className="text-sm text-accent-deep" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </form>
+
+          <BiometricSignInButton getEmail={() => email} onError={setError} />
+
+          <p className="text-xs leading-relaxed text-muted">
+            New here?{" "}
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className="font-semibold text-brand hover:text-brand-deep"
+            >
+              Sign up
+            </button>{" "}
+            instead.
+          </p>
+        </div>
+      ) : (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
+            setError(null);
+            startTransition(async () => {
+              const result = await signUpCustomerAction(formData);
+              if (result && !result.ok) {
+                setError(result.error);
+                return;
+              }
+              router.refresh();
+            });
+          }}
+        >
+          <label className="block">
+            <span className="text-sm font-medium text-brand-deep">Email</span>
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@business.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className={FIELD_CLASS}
+            />
+          </label>
+          <PasswordField
+            name="password"
+            label="Password"
+            placeholder="At least 8 characters"
+            autoComplete="new-password"
           />
-        </label>
-        <PasswordField
-          name="password"
-          label="Password"
-          placeholder={
-            needsConfirm ? "At least 8 characters" : "Your password"
-          }
-          autoComplete={needsConfirm ? "new-password" : "current-password"}
-        />
-        {needsConfirm ? (
           <PasswordField
             name="confirmPassword"
             label="Confirm password"
             placeholder="Enter the same password again"
             autoComplete="new-password"
           />
-        ) : null}
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
-        >
-          {pending
-            ? "Opening your Seed…"
-            : needsConfirm
-              ? "Create account"
-              : "Sign in"}
-        </button>
-        <p className="text-xs leading-relaxed text-muted">
-          {needsConfirm
-            ? "New here? We'll create your portal login with this email and password. Enter the password twice so it matches."
-            : checkedEmail
-              ? "We recognize this email — just enter your password once."
-              : "Returning? Enter your password — you won't need to confirm it again."}
-        </p>
-        {error ? (
-          <p className="text-sm text-accent-deep" role="alert">
-            {error}
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
+          >
+            {pending ? "Creating account…" : "Create account"}
+          </button>
+          <p className="text-xs leading-relaxed text-muted">
+            We&apos;ll create your portal login with this email and password.
+            Enter the password twice so it matches.
           </p>
-        ) : null}
-      </form>
+          {error ? (
+            <p className="text-sm text-accent-deep" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </form>
+      )}
 
       <details className="border-t border-brand/10 pt-5">
         <summary className="cursor-pointer text-sm font-semibold text-brand-deep">
@@ -218,7 +427,7 @@ export function LoginForm() {
               required
               autoComplete="email"
               placeholder="you@business.com"
-              className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+              className={FIELD_CLASS}
             />
           </label>
           <label className="block">
@@ -230,7 +439,7 @@ export function LoginForm() {
               required
               autoComplete="one-time-code"
               placeholder="ABC123"
-              className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm uppercase tracking-[0.2em] text-brand-deep outline-none ring-brand/30 focus:ring-2"
+              className={`${FIELD_CLASS} uppercase tracking-[0.2em]`}
             />
           </label>
           <button

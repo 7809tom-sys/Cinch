@@ -33,6 +33,19 @@
   box-sizing: border-box;
 }
 
+/*
+ * iOS/Android zoom the whole page in when a focused input's font-size is
+ * under 16px, which looks like the page has "shifted" or is cut off on the
+ * left. Force form fields to 16px on phones so focusing never triggers it.
+ */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 html {
   scroll-behavior: smooth;
 }

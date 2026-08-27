@@ -1,8 +1,6 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import {
-  CUSTOMER_SESSION_COOKIE,
-  establishCustomerSessionCookie,
-} from "@/lib/customer-auth";
+import { establishCustomerSessionCookie } from "@/lib/customer-auth";
 import { getCustomerByEmail, upsertCustomer } from "@/lib/customers";
 import { verifyGoogleIdToken } from "@/lib/google-auth";
 import {
@@ -41,21 +39,12 @@ export async function POST(request: Request) {
     email: identity.email,
     name: identity.name,
   });
-  const { token, cookieOptions } = await establishCustomerSessionCookie(
-    customer.id,
-  );
+  await establishCustomerSessionCookie(customer.id);
 
   const isAdmin = isMasterEmail(customer.email);
-  const response = NextResponse.json({
-    ok: true,
-    user: { email: customer.email, name: customer.name },
-    isNew: !existing,
-    isAdmin,
-    redirectTo: isAdmin ? "/admin" : "/portal",
-  });
-  response.cookies.set(CUSTOMER_SESSION_COOKIE, token, cookieOptions);
   if (isAdmin) {
-    response.cookies.set(
+    const jar = await cookies();
+    jar.set(
       MASTER_SESSION_COOKIE,
       encodeMasterSession({
         email: customer.email,
@@ -65,5 +54,11 @@ export async function POST(request: Request) {
       masterSessionCookieOptions(),
     );
   }
-  return response;
+  return NextResponse.json({
+    ok: true,
+    user: { email: customer.email, name: customer.name },
+    isNew: !existing,
+    isAdmin,
+    redirectTo: isAdmin ? "/admin" : "/portal",
+  });
 }
