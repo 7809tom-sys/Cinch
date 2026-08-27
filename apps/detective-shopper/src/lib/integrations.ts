@@ -36,7 +36,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: "Impact.com Affiliate",
     envKey: "IMPACT_API_KEY",
     role: "Tracks referral purchases and wraps outbound retailer links with publisher tracking.",
-    signupUrl: "https://app.impact.com/signup/create-new-account-flow.ihtml",
+    signupUrl: "https://app.impact.com/login.user",
     testUrl: "https://api.impact.com/Mediapartners",
   },
 ];
