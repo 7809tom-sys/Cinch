@@ -79,6 +79,7 @@ export default async function AdminPage() {
     launchMode,
     domain,
     platformProducts,
+    durableStoreConfigured,
   } = snap;
 
   const configuredCount = metrics.keysConfigured;
@@ -154,6 +155,30 @@ export default async function AdminPage() {
             Accounts, pricing rules, purchases, Seeds, library earnings,
             domains, and agents — the full business surface for Cinch Seed.
           </p>
+
+          {durableStoreConfigured ? (
+            <div className="mt-6 max-w-2xl rounded-md border border-leaf/30 bg-leaf/10 px-4 py-3 text-sm text-leaf">
+              <strong>Durable storage connected.</strong> Accounts, Seeds, and
+              settings are stored in Redis and survive deploys.
+            </div>
+          ) : (
+            <div className="mt-6 max-w-2xl rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent-deep">
+              <strong>Durable storage not connected.</strong> Accounts, Seeds,
+              access codes, and settings are only saved to a temporary file
+              and will be lost the next time this app is redeployed. Add an
+              Upstash for Redis database from your Vercel project&apos;s{" "}
+              <strong>Storage</strong> tab (or upstash.com), then set{" "}
+              <code className="rounded bg-black/5 px-1 py-0.5">
+                UPSTASH_REDIS_REST_URL
+              </code>{" "}
+              and{" "}
+              <code className="rounded bg-black/5 px-1 py-0.5">
+                UPSTASH_REDIS_REST_TOKEN
+              </code>{" "}
+              in your Vercel project&apos;s environment variables and
+              redeploy.
+            </div>
+          )}
 
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             <Metric

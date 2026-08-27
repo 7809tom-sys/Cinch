@@ -1,41 +1,32 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 
 /**
  * Short-lived WebAuthn challenges between "generate options" and "verify".
  * Keyed by a caller-chosen key (customer id for registration, normalized
  * email for authentication) since a browser session cookie isn't guaranteed
  * yet at authentication time.
+ *
+ * These only live for a few minutes, but the "generate options" and
+ * "verify" requests can land on two different serverless instances — so
+ * this still needs the shared, durable store rather than plain in-memory
+ * state, or verification would randomly fail whenever that happens.
  */
 type ChallengeEntry = { challenge: string; expiresAt: number };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const CHALLENGES_PATH = path.join(DATA_DIR, "webauthn-challenges.json");
+const STORE_KEY = "webauthn-challenges";
 const TTL_MS = 5 * 60 * 1000;
 
 let memory: Record<string, ChallengeEntry> | null = null;
 
 async function load(): Promise<Record<string, ChallengeEntry>> {
   if (memory) return memory;
-  try {
-    memory = JSON.parse(await fs.readFile(CHALLENGES_PATH, "utf8"));
-  } catch {
-    memory = {};
-  }
-  return memory as Record<string, ChallengeEntry>;
+  memory = await readJsonStore<Record<string, ChallengeEntry>>(STORE_KEY, {});
+  return memory;
 }
 
 async function save(map: Record<string, ChallengeEntry>): Promise<void> {
   memory = map;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CHALLENGES_PATH, JSON.stringify(map), "utf8");
-  } catch {
-    // memory-only
-  }
+  await writeJsonStore(STORE_KEY, map);
 }
 
 function prune(map: Record<string, ChallengeEntry>) {
