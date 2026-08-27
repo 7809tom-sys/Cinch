@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
 import {
   expectedDnsRecord,
@@ -7,6 +5,7 @@ import {
   normalizeHostname,
   verifyDnsForHostname,
 } from "./dns-verify";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
   domainFeeFromCloudflare,
   hostingFeeFromVercel,
@@ -67,11 +66,7 @@ export type SiteSettings = {
 
 export { hostingFeeFromVercel, domainFeeFromCloudflare };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const SETTINGS_PATH = path.join(DATA_DIR, "site-settings.json");
+const STORE_KEY = "site-settings";
 
 const DEFAULT_SETTINGS: SiteSettings = {
   gaMeasurementId: "",
@@ -101,55 +96,36 @@ function clampTokenMarkup(value: number): number {
 
 async function ensureSettings(): Promise<SiteSettings> {
   if (memorySettings) return memorySettings;
-  try {
-    const raw = await fs.readFile(SETTINGS_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Partial<SiteSettings> & {
-      hostingFeeUsd?: number;
-    };
-    memorySettings = {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      tokenMarkup: clampTokenMarkup(
-        typeof parsed.tokenMarkup === "number"
-          ? parsed.tokenMarkup
-          : DEFAULT_SETTINGS.tokenMarkup,
-      ),
-      card: { ...DEFAULT_SETTINGS.card, ...(parsed.card ?? {}) },
-      domainOrders: parsed.domainOrders ?? [],
-      lockgmDomain: parsed.lockgmDomain ?? null,
-    };
-    if (
-      typeof parsed.vercelCostUsd !== "number" &&
-      typeof parsed.hostingFeeUsd === "number"
-    ) {
-      memorySettings.vercelCostUsd =
-        Math.round((parsed.hostingFeeUsd / 2) * 100) / 100;
-    }
-    return memorySettings;
-  } catch {
-    memorySettings = structuredClone(DEFAULT_SETTINGS);
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(
-        SETTINGS_PATH,
-        JSON.stringify(memorySettings, null, 2),
-        "utf8",
-      );
-    } catch {
-      // memory-only on read-only hosts
-    }
-    return memorySettings;
+
+  const parsed = await readJsonStore<
+    Partial<SiteSettings> & { hostingFeeUsd?: number }
+  >(STORE_KEY, {});
+
+  memorySettings = {
+    ...DEFAULT_SETTINGS,
+    ...parsed,
+    tokenMarkup: clampTokenMarkup(
+      typeof parsed.tokenMarkup === "number"
+        ? parsed.tokenMarkup
+        : DEFAULT_SETTINGS.tokenMarkup,
+    ),
+    card: { ...DEFAULT_SETTINGS.card, ...(parsed.card ?? {}) },
+    domainOrders: parsed.domainOrders ?? [],
+    lockgmDomain: parsed.lockgmDomain ?? null,
+  };
+  if (
+    typeof parsed.vercelCostUsd !== "number" &&
+    typeof parsed.hostingFeeUsd === "number"
+  ) {
+    memorySettings.vercelCostUsd =
+      Math.round((parsed.hostingFeeUsd / 2) * 100) / 100;
   }
+  return memorySettings;
 }
 
 async function writeSettings(settings: SiteSettings): Promise<void> {
   memorySettings = settings;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf8");
-  } catch {
-    // keep memory copy
-  }
+  await writeJsonStore(STORE_KEY, settings);
 }
 
 export async function getSiteSettings(): Promise<SiteSettings> {

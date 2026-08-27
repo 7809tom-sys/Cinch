@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import path from "path";
 import {
   createHash,
   randomBytes,
@@ -8,6 +6,7 @@ import {
   timingSafeEqual,
 } from "crypto";
 import { promisify } from "util";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 
 const scrypt = promisify(scryptCallback);
 
@@ -50,11 +49,7 @@ type CustomerStore = {
   sessions: CustomerSession[];
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const CUSTOMERS_PATH = path.join(DATA_DIR, "customers.json");
+const STORE_KEY = "customers";
 const MIN_PASSWORD_LENGTH = 8;
 
 let memory: CustomerStore | null = null;
@@ -103,36 +98,20 @@ async function passwordsMatch(
 
 async function ensureCustomers(): Promise<CustomerStore> {
   if (memory) return memory;
-  try {
-    const raw = await fs.readFile(CUSTOMERS_PATH, "utf8");
-    memory = JSON.parse(raw) as CustomerStore;
-    memory.accounts = memory.accounts ?? [];
-    memory.sessions = memory.sessions ?? [];
-    return memory;
-  } catch {
-    memory = { accounts: [], sessions: [] };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(
-        CUSTOMERS_PATH,
-        JSON.stringify(memory, null, 2),
-        "utf8",
-      );
-    } catch {
-      // memory-only
-    }
-    return memory;
-  }
+  const loaded = await readJsonStore<CustomerStore>(STORE_KEY, {
+    accounts: [],
+    sessions: [],
+  });
+  memory = {
+    accounts: loaded.accounts ?? [],
+    sessions: loaded.sessions ?? [],
+  };
+  return memory;
 }
 
 async function writeCustomers(store: CustomerStore): Promise<void> {
   memory = store;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CUSTOMERS_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // memory-only
-  }
+  await writeJsonStore(STORE_KEY, store);
 }
 
 export async function listCustomers(): Promise<CustomerAccount[]> {
