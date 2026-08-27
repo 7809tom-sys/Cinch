@@ -79,6 +79,7 @@ export default async function AdminPage() {
     launchMode,
     domain,
     platformProducts,
+    aiGenerationConfigured,
     durableStoreConfigured,
   } = snap;
 
@@ -899,6 +900,7 @@ export default async function AdminPage() {
               platformProducts.find((product) => product.id === "lockgm")!
                 .content
             }
+            aiGenerationConfigured={aiGenerationConfigured}
           />
         </section>
 
