@@ -58,8 +58,8 @@ export default async function AdminLoginPage() {
               Cinch
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Staff only. Use email + password — Google is optional and not
-              required.
+              Staff only. Use email + password. Google stays hidden until you
+              set a working OAuth client and enable it in Vercel.
             </p>
           </div>
 

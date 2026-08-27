@@ -2,6 +2,10 @@
  * Shared Google Sign-In helpers.
  * One OAuth Web client ID powers both customer signup and master admin.
  * Customers: anyone with a Google account. Master: allowlisted emails only.
+ *
+ * Google is opt-in: a client ID that only *looks* valid still triggers
+ * Google's 401 invalid_client if the OAuth client is wrong or deleted.
+ * Require NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED=true after the Web client works.
  */
 
 export type GoogleIdentity = {
@@ -10,14 +14,24 @@ export type GoogleIdentity = {
   picture?: string;
 };
 
-/** Only treat as configured when the value looks like a real Google Web client. */
-export function isGoogleLoginConfigured(): boolean {
-  const id = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
+function googleLoginExplicitlyEnabled(): boolean {
+  const flag = process.env.NEXT_PUBLIC_GOOGLE_LOGIN_ENABLED?.trim().toLowerCase();
+  return flag === "1" || flag === "true" || flag === "yes" || flag === "on";
+}
+
+function looksLikeGoogleWebClientId(id: string): boolean {
   return (
     id.length > 20 &&
     id.includes("-") &&
     id.endsWith(".apps.googleusercontent.com")
   );
+}
+
+/** Only treat as configured when enabled AND the value looks like a real Google Web client. */
+export function isGoogleLoginConfigured(): boolean {
+  if (!googleLoginExplicitlyEnabled()) return false;
+  const id = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";
+  return looksLikeGoogleWebClientId(id);
 }
 
 export function googleClientId(): string | null {
