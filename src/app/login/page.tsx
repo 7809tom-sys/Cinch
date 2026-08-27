@@ -57,6 +57,8 @@ export default async function LoginPage() {
             </h1>
             <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
               Log in with the email and access code from your Seed order.
+              Google sign-in is optional and stays off until a working OAuth
+              client is configured.
             </p>
           </div>
           <div className="animate-sprout border border-brand/10 bg-foam/95 px-6 py-7 shadow-[0_20px_60px_rgba(11,46,42,0.08)]">
@@ -74,23 +76,23 @@ export default async function LoginPage() {
               .
             </p>
 
+            <div className="mt-6">
+              <LoginForm />
+            </div>
+
             {googleOk && clientId ? (
-              <div className="mt-6">
+              <div className="mt-8 border-t border-brand/10 pt-5">
+                <p className="mb-3 text-sm font-semibold text-brand-deep">
+                  Or continue with Google
+                </p>
                 <GoogleSignInButton
                   clientId={clientId}
                   endpoint="/api/auth/google/customer"
                   redirectTo="/portal"
                   buttonText="continue_with"
                 />
-                <p className="mt-4 text-center text-xs font-semibold uppercase tracking-wide text-muted">
-                  or
-                </p>
               </div>
             ) : null}
-
-            <div className="mt-6">
-              <LoginForm />
-            </div>
           </div>
         </div>
       </main>
