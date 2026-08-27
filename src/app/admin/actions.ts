@@ -23,6 +23,17 @@ import {
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/domain";
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import {
+  getLockgmContent,
+  resetLockgmContent,
+  updateLockgmContent,
+  type LockgmFeatureCard,
+  type LockgmHeroContent,
+  type LockgmFrontOfficeContent,
+  type LockgmSectionIntro,
+  type LockgmReportsContent,
+} from "@/lib/lockgm-content";
+import type { SubTierId } from "@/lib/lockgm/config";
+import {
   listCreditLedger,
   listLibraryModules,
 } from "@/lib/module-library";
@@ -87,6 +98,7 @@ export async function getAdminSnapshot() {
     modules,
     ledger,
     connectedDomains,
+    lockgmContent,
   ] = await Promise.all([
     listProjects(),
     Promise.resolve(listAgentsWithKeyStatus()),
@@ -99,6 +111,7 @@ export async function getAdminSnapshot() {
     listLibraryModules(),
     listCreditLedger(40),
     listConnectedCustomDomains(),
+    getLockgmContent(),
   ]);
 
   const purchaseRevenueUsd = purchases.reduce(
@@ -210,6 +223,7 @@ export async function getAdminSnapshot() {
             : []),
         ],
         customDomain: settings.lockgmDomain,
+        content: lockgmContent,
       },
     ],
   };
@@ -464,4 +478,42 @@ export async function disconnectLockgmDomainAction() {
   const settings = await disconnectLockgmDomain();
   revalidatePath("/admin");
   return { ok: true as const, settings };
+}
+
+/** Edit LockGM's marketing copy — a platform product, not a Seed. */
+export async function updateLockgmContentAction(input: {
+  hero: LockgmHeroContent;
+  features: LockgmFeatureCard[];
+  worldSports: { kicker: string; headline: string };
+  frontOffice: LockgmFrontOfficeContent;
+  pricingIntro: LockgmSectionIntro;
+  officeIntro: LockgmSectionIntro;
+  reportsIntro: LockgmReportsContent;
+  tiers: Record<SubTierId, { blurb: string; perks: string[]; cta: string }>;
+}) {
+  try {
+    const content = await updateLockgmContent(input);
+    revalidatePath("/admin");
+    revalidatePath("/lockgm");
+    revalidatePath("/lockgm/pricing");
+    revalidatePath("/lockgm/office");
+    revalidatePath("/lockgm/reports");
+    return { ok: true as const, content };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error ? error.message : "Could not save LockGM content.",
+    };
+  }
+}
+
+export async function resetLockgmContentAction() {
+  const content = await resetLockgmContent();
+  revalidatePath("/admin");
+  revalidatePath("/lockgm");
+  revalidatePath("/lockgm/pricing");
+  revalidatePath("/lockgm/office");
+  revalidatePath("/lockgm/reports");
+  return { ok: true as const, content };
 }
