@@ -1,5 +1,4 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { readJsonStore, writeJsonStore } from "@/lib/kv-store";
 import { SUB_TIERS, type SubTierId } from "@/lib/lockgm/config";
 
 /**
@@ -122,11 +121,7 @@ const DEFAULT_CONTENT: LockgmContent = {
   updatedAt: new Date(0).toISOString(),
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const CONTENT_PATH = path.join(DATA_DIR, "lockgm-content.json");
+const STORE_KEY = "lockgm-content";
 
 let memoryContent: LockgmContent | null = null;
 
@@ -156,57 +151,36 @@ function mergeTiers(
 
 async function ensureContent(): Promise<LockgmContent> {
   if (memoryContent) return memoryContent;
-  try {
-    const raw = await fs.readFile(CONTENT_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Partial<LockgmContent>;
-    memoryContent = {
-      hero: { ...DEFAULT_CONTENT.hero, ...(parsed.hero ?? {}) },
-      features:
-        Array.isArray(parsed.features) && parsed.features.length === 3
-          ? (parsed.features as LockgmFeatureCard[])
-          : structuredClone(DEFAULT_CONTENT.features),
-      worldSports: { ...DEFAULT_CONTENT.worldSports, ...(parsed.worldSports ?? {}) },
-      frontOffice: { ...DEFAULT_CONTENT.frontOffice, ...(parsed.frontOffice ?? {}) },
-      pricingIntro: {
-        ...DEFAULT_CONTENT.pricingIntro,
-        ...(parsed.pricingIntro ?? {}),
-      },
-      officeIntro: {
-        ...DEFAULT_CONTENT.officeIntro,
-        ...(parsed.officeIntro ?? {}),
-      },
-      reportsIntro: {
-        ...DEFAULT_CONTENT.reportsIntro,
-        ...(parsed.reportsIntro ?? {}),
-      },
-      tiers: mergeTiers(parsed.tiers),
-      updatedAt: parsed.updatedAt ?? DEFAULT_CONTENT.updatedAt,
-    };
-    return memoryContent;
-  } catch {
-    memoryContent = structuredClone(DEFAULT_CONTENT);
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(
-        CONTENT_PATH,
-        JSON.stringify(memoryContent, null, 2),
-        "utf8",
-      );
-    } catch {
-      // memory-only on read-only hosts
-    }
-    return memoryContent;
-  }
+  const parsed = await readJsonStore<Partial<LockgmContent>>(STORE_KEY, {});
+  memoryContent = {
+    hero: { ...DEFAULT_CONTENT.hero, ...(parsed.hero ?? {}) },
+    features:
+      Array.isArray(parsed.features) && parsed.features.length === 3
+        ? (parsed.features as LockgmFeatureCard[])
+        : structuredClone(DEFAULT_CONTENT.features),
+    worldSports: { ...DEFAULT_CONTENT.worldSports, ...(parsed.worldSports ?? {}) },
+    frontOffice: { ...DEFAULT_CONTENT.frontOffice, ...(parsed.frontOffice ?? {}) },
+    pricingIntro: {
+      ...DEFAULT_CONTENT.pricingIntro,
+      ...(parsed.pricingIntro ?? {}),
+    },
+    officeIntro: {
+      ...DEFAULT_CONTENT.officeIntro,
+      ...(parsed.officeIntro ?? {}),
+    },
+    reportsIntro: {
+      ...DEFAULT_CONTENT.reportsIntro,
+      ...(parsed.reportsIntro ?? {}),
+    },
+    tiers: mergeTiers(parsed.tiers),
+    updatedAt: parsed.updatedAt ?? DEFAULT_CONTENT.updatedAt,
+  };
+  return memoryContent;
 }
 
 async function writeContent(content: LockgmContent): Promise<void> {
   memoryContent = content;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CONTENT_PATH, JSON.stringify(content, null, 2), "utf8");
-  } catch {
-    // keep memory copy
-  }
+  await writeJsonStore(STORE_KEY, content);
 }
 
 export async function getLockgmContent(): Promise<LockgmContent> {

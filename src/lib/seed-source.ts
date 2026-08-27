@@ -1,6 +1,5 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 
 export type SourceFile = {
   id: string;
@@ -32,11 +31,7 @@ type SourceStore = {
   bundles: SourceBundle[];
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const SOURCE_PATH = path.join(DATA_DIR, "seed-source.json");
+const STORE_KEY = "seed-source";
 
 let memory: SourceStore | null = null;
 
@@ -46,31 +41,14 @@ function now() {
 
 async function ensureSource(): Promise<SourceStore> {
   if (memory) return memory;
-  try {
-    const raw = await fs.readFile(SOURCE_PATH, "utf8");
-    memory = JSON.parse(raw) as SourceStore;
-    memory.bundles = memory.bundles ?? [];
-    return memory;
-  } catch {
-    memory = { bundles: [] };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(SOURCE_PATH, JSON.stringify(memory, null, 2), "utf8");
-    } catch {
-      // memory-only
-    }
-    return memory;
-  }
+  const loaded = await readJsonStore<SourceStore>(STORE_KEY, { bundles: [] });
+  memory = { bundles: loaded.bundles ?? [] };
+  return memory;
 }
 
 async function writeSource(store: SourceStore): Promise<void> {
   memory = store;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(SOURCE_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // memory-only
-  }
+  await writeJsonStore(STORE_KEY, store);
 }
 
 function getOrCreateBundle(

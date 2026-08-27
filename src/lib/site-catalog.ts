@@ -1,6 +1,5 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 import { SEED_SITE_PRICE_USD } from "./site-url";
 
 export type CatalogSite = {
@@ -33,11 +32,7 @@ type CatalogStore = {
   purchases: SitePurchase[];
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const CATALOG_PATH = path.join(DATA_DIR, "site-catalog.json");
+const STORE_KEY = "site-catalog";
 
 export { SEED_SITE_PRICE_USD, normalizePreviewUrl } from "./site-url";
 
@@ -79,32 +74,20 @@ function now() {
 
 async function ensureCatalog(): Promise<CatalogStore> {
   if (memory) return memory;
-  try {
-    const raw = await fs.readFile(CATALOG_PATH, "utf8");
-    memory = JSON.parse(raw) as CatalogStore;
-    memory.sites = memory.sites?.length ? memory.sites : [...DEFAULT_SITES];
-    memory.purchases = memory.purchases ?? [];
-    return memory;
-  } catch {
-    memory = { sites: [...DEFAULT_SITES], purchases: [] };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(CATALOG_PATH, JSON.stringify(memory, null, 2), "utf8");
-    } catch {
-      // memory-only
-    }
-    return memory;
-  }
+  const loaded = await readJsonStore<CatalogStore>(STORE_KEY, {
+    sites: [...DEFAULT_SITES],
+    purchases: [],
+  });
+  memory = {
+    sites: loaded.sites?.length ? loaded.sites : [...DEFAULT_SITES],
+    purchases: loaded.purchases ?? [],
+  };
+  return memory;
 }
 
 async function writeCatalog(store: CatalogStore): Promise<void> {
   memory = store;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(CATALOG_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // memory-only
-  }
+  await writeJsonStore(STORE_KEY, store);
 }
 
 export async function listCatalogSites(): Promise<CatalogSite[]> {

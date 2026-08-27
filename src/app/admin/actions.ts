@@ -21,6 +21,7 @@ import {
   listCustomers,
 } from "@/lib/customers";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/domain";
+import { isDurableStoreConfigured } from "@/lib/kv-store";
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import {
   getLockgmContent,
@@ -210,6 +211,7 @@ export async function getAdminSnapshot() {
     providers: PROVIDER_ACCOUNTS,
     domain: CINCH_SEED_DOMAIN,
     launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
+    durableStoreConfigured: isDurableStoreConfigured(),
     platformProducts: [
       {
         id: "lockgm",

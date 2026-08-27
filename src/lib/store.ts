@@ -1,5 +1,3 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
 import { applyModuleReuse, listLibraryModules } from "./module-library";
@@ -10,6 +8,7 @@ import {
   normalizeHostname,
   verifyDnsForHostname,
 } from "./dns-verify";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 import { bootstrapSourceTree } from "./seed-source";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
@@ -79,60 +78,38 @@ type StoreShape = {
   projects: SeedProject[];
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const STORE_PATH = path.join(DATA_DIR, "seed-projects.json");
+const STORE_KEY = "seed-projects";
 
 let memoryStore: StoreShape | null = null;
 
 async function ensureStore(): Promise<StoreShape> {
   if (memoryStore) return memoryStore;
 
-  try {
-    const raw = await fs.readFile(STORE_PATH, "utf8");
-    memoryStore = JSON.parse(raw) as StoreShape;
-    let backfilled = false;
-    memoryStore.projects = (memoryStore.projects ?? []).map((project) => {
-      if (!project.connectKey) backfilled = true;
-      return {
-        ...project,
-        customerEmail: project.customerEmail ?? null,
-        customerName: project.customerName ?? null,
-        referenceUrl: project.referenceUrl ?? null,
-        customDomain: project.customDomain ?? null,
-        embedEnabled: project.embedEnabled ?? true,
-        connectKey: project.connectKey || generateConnectKey(),
-      };
-    });
-    if (backfilled) {
-      // Persist the newly-generated keys so they stay stable across restarts.
-      await fs
-        .writeFile(STORE_PATH, JSON.stringify(memoryStore, null, 2), "utf8")
-        .catch(() => {});
-    }
-    return memoryStore;
-  } catch {
-    memoryStore = { projects: [] };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(STORE_PATH, JSON.stringify(memoryStore, null, 2), "utf8");
-    } catch {
-      // Read-only hosts: keep working from memory for this instance.
-    }
-    return memoryStore;
+  const loaded = await readJsonStore<StoreShape>(STORE_KEY, { projects: [] });
+  memoryStore = loaded;
+  let backfilled = false;
+  memoryStore.projects = (memoryStore.projects ?? []).map((project) => {
+    if (!project.connectKey) backfilled = true;
+    return {
+      ...project,
+      customerEmail: project.customerEmail ?? null,
+      customerName: project.customerName ?? null,
+      referenceUrl: project.referenceUrl ?? null,
+      customDomain: project.customDomain ?? null,
+      embedEnabled: project.embedEnabled ?? true,
+      connectKey: project.connectKey || generateConnectKey(),
+    };
+  });
+  if (backfilled) {
+    // Persist the newly-generated keys so they stay stable across restarts.
+    await writeJsonStore(STORE_KEY, memoryStore).catch(() => {});
   }
+  return memoryStore;
 }
 
 async function writeStore(store: StoreShape): Promise<void> {
   memoryStore = store;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // Persist in memory only when the filesystem is not writable.
-  }
+  await writeJsonStore(STORE_KEY, store);
 }
 
 function now() {

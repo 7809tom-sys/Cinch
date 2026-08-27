@@ -1,7 +1,6 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
 import type { AgentSkill } from "./agents";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 import { moduleReuseFee } from "./pricing";
 
 export type LibraryModule = {
@@ -44,11 +43,7 @@ type LibraryStore = {
   creditLedger: CreatorCreditLedgerEntry[];
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const LIBRARY_PATH = path.join(DATA_DIR, "module-library.json");
+const STORE_KEY = "module-library";
 
 let memory: LibraryStore | null = null;
 
@@ -62,32 +57,20 @@ function slugify(title: string): string {
 
 async function ensureLibrary(): Promise<LibraryStore> {
   if (memory) return memory;
-  try {
-    const raw = await fs.readFile(LIBRARY_PATH, "utf8");
-    memory = JSON.parse(raw) as LibraryStore;
-    memory.modules = memory.modules ?? [];
-    memory.creditLedger = memory.creditLedger ?? [];
-    return memory;
-  } catch {
-    memory = { modules: [], creditLedger: [] };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(LIBRARY_PATH, JSON.stringify(memory, null, 2), "utf8");
-    } catch {
-      // memory-only
-    }
-    return memory;
-  }
+  const loaded = await readJsonStore<LibraryStore>(STORE_KEY, {
+    modules: [],
+    creditLedger: [],
+  });
+  memory = {
+    modules: loaded.modules ?? [],
+    creditLedger: loaded.creditLedger ?? [],
+  };
+  return memory;
 }
 
 async function writeLibrary(store: LibraryStore): Promise<void> {
   memory = store;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(LIBRARY_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // memory-only
-  }
+  await writeJsonStore(STORE_KEY, store);
 }
 
 export async function listLibraryModules(): Promise<LibraryModule[]> {

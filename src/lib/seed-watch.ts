@@ -1,6 +1,5 @@
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
+import { readJsonStore, writeJsonStore } from "./kv-store";
 import type { GrowthAxis } from "./seed-growth";
 
 export type WatchHeartbeat = {
@@ -47,42 +46,26 @@ type WatchStore = {
   improvements: SiteImprovement[];
 };
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
-    ? path.join("/tmp", "cinch-seed-data")
-    : path.join(process.cwd(), ".data");
-const WATCH_PATH = path.join(DATA_DIR, "seed-watch.json");
+const STORE_KEY = "seed-watch";
 
 let memory: WatchStore | null = null;
 
 async function ensureWatch(): Promise<WatchStore> {
   if (memory) return memory;
-  try {
-    const raw = await fs.readFile(WATCH_PATH, "utf8");
-    memory = JSON.parse(raw) as WatchStore;
-    memory.heartbeats = memory.heartbeats ?? [];
-    memory.improvements = memory.improvements ?? [];
-    return memory;
-  } catch {
-    memory = { heartbeats: [], improvements: [] };
-    try {
-      await fs.mkdir(DATA_DIR, { recursive: true });
-      await fs.writeFile(WATCH_PATH, JSON.stringify(memory, null, 2), "utf8");
-    } catch {
-      // memory-only
-    }
-    return memory;
-  }
+  const loaded = await readJsonStore<WatchStore>(STORE_KEY, {
+    heartbeats: [],
+    improvements: [],
+  });
+  memory = {
+    heartbeats: loaded.heartbeats ?? [],
+    improvements: loaded.improvements ?? [],
+  };
+  return memory;
 }
 
 async function writeWatch(store: WatchStore): Promise<void> {
   memory = store;
-  try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(WATCH_PATH, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // memory-only
-  }
+  await writeJsonStore(STORE_KEY, store);
 }
 
 export async function recordHeartbeat(input: {
