@@ -2,6 +2,12 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import {
+  expectedDnsRecord,
+  isValidHostname,
+  normalizeHostname,
+  verifyDnsForHostname,
+} from "./dns-verify";
+import {
   domainFeeFromCloudflare,
   hostingFeeFromVercel,
   TOKEN_MARKUP_MAX,
@@ -30,6 +36,20 @@ export type DomainOrder = {
   updatedAt: string;
 };
 
+export type PlatformDomainStatus = "pending" | "verified" | "failed";
+
+export type PlatformDomainConnection = {
+  hostname: string;
+  status: PlatformDomainStatus;
+  recordType: "A" | "CNAME";
+  recordName: string;
+  recordValue: string;
+  requestedAt: string;
+  updatedAt: string;
+  verifiedAt: string | null;
+  lastCheckDetail: string | null;
+};
+
 export type SiteSettings = {
   gaMeasurementId: string;
   /** Monthly Vercel cost estimate. Hosting fee charged = 2× (100% markup). */
@@ -41,6 +61,8 @@ export type SiteSettings = {
   tokenMarkup: number;
   card: BillingCard;
   domainOrders: DomainOrder[];
+  /** LockGM's own domain (separate product, served at its own root by middleware). */
+  lockgmDomain: PlatformDomainConnection | null;
 };
 
 export { hostingFeeFromVercel, domainFeeFromCloudflare };
@@ -64,6 +86,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
     updatedAt: null,
   },
   domainOrders: [],
+  lockgmDomain: null,
 };
 
 let memorySettings: SiteSettings | null = null;
@@ -93,6 +116,7 @@ async function ensureSettings(): Promise<SiteSettings> {
       ),
       card: { ...DEFAULT_SETTINGS.card, ...(parsed.card ?? {}) },
       domainOrders: parsed.domainOrders ?? [],
+      lockgmDomain: parsed.lockgmDomain ?? null,
     };
     if (
       typeof parsed.vercelCostUsd !== "number" &&
@@ -202,4 +226,64 @@ export async function addDomainOrder(input: {
   settings.domainOrders = settings.domainOrders.slice(0, 40);
   await writeSettings(settings);
   return order;
+}
+
+/**
+ * Point a domain you already own at LockGM specifically (not a customer
+ * Seed) — the same DNS pattern as any Vercel custom domain.
+ */
+export async function connectLockgmDomain(
+  hostnameInput: string,
+): Promise<{ settings: SiteSettings } | { error: string }> {
+  const hostname = normalizeHostname(hostnameInput);
+  if (!hostname || !isValidHostname(hostname)) {
+    return { error: "Enter a real domain, like lockgm.com or lock.gm." };
+  }
+
+  const settings = await ensureSettings();
+  const record = expectedDnsRecord(hostname);
+  const stamp = new Date().toISOString();
+  settings.lockgmDomain = {
+    hostname,
+    status: "pending",
+    recordType: record.type,
+    recordName: record.name,
+    recordValue: record.value,
+    requestedAt: stamp,
+    updatedAt: stamp,
+    verifiedAt: null,
+    lastCheckDetail: null,
+  };
+  await writeSettings(settings);
+  return { settings };
+}
+
+export async function checkLockgmDomainDns(): Promise<
+  { settings: SiteSettings } | { error: string }
+> {
+  const settings = await ensureSettings();
+  if (!settings.lockgmDomain) {
+    return { error: "No LockGM domain connected yet." };
+  }
+
+  const result = await verifyDnsForHostname(settings.lockgmDomain.hostname);
+  const stamp = new Date().toISOString();
+  settings.lockgmDomain.status = result.verified ? "verified" : "failed";
+  settings.lockgmDomain.updatedAt = stamp;
+  settings.lockgmDomain.verifiedAt = result.verified ? stamp : null;
+  settings.lockgmDomain.lastCheckDetail = result.error
+    ? result.error
+    : result.found.length
+      ? `Found ${result.recordType} → ${result.found.join(", ")}`
+      : "No matching DNS record found yet.";
+
+  await writeSettings(settings);
+  return { settings };
+}
+
+export async function disconnectLockgmDomain(): Promise<SiteSettings> {
+  const settings = await ensureSettings();
+  settings.lockgmDomain = null;
+  await writeSettings(settings);
+  return settings;
 }
