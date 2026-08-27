@@ -224,14 +224,26 @@ export async function verifyCustomerLogin(
 }
 
 /**
+ * True once this email already has a password set — the client uses this
+ * to skip the "confirm password" field for returning users.
+ */
+export async function accountHasPassword(email: string): Promise<boolean> {
+  const account = await getCustomerByEmail(email);
+  return Boolean(account?.passwordHash && account.passwordSalt);
+}
+
+/**
  * Sign up or sign in with email + password.
  * New emails get an account automatically. Existing accounts without a
  * password (legacy Seed orders) get this password set on first success.
+ * confirmPassword is only required — and only checked — when a password is
+ * being set for the first time (new account, or legacy account with none).
+ * Returning users with a password already set just need one field.
  */
 export async function registerOrLoginWithPassword(input: {
   email: string;
   password: string;
-  confirmPassword: string;
+  confirmPassword?: string;
   name?: string;
 }): Promise<
   | { ok: true; customer: CustomerAccount; isNew: boolean }
@@ -239,7 +251,6 @@ export async function registerOrLoginWithPassword(input: {
 > {
   const email = normalizeEmail(input.email);
   const password = input.password;
-  const confirmPassword = input.confirmPassword;
 
   if (!isValidEmail(email)) {
     return { ok: false, error: "Enter a valid email address." };
@@ -250,16 +261,38 @@ export async function registerOrLoginWithPassword(input: {
       error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
     };
   }
+
+  const store = await ensureCustomers();
+  let account = store.accounts.find((item) => item.email === email) ?? null;
+  const stamp = now();
+
+  // Verifying an existing password does not need confirmPassword at all.
+  if (account?.passwordHash && account.passwordSalt) {
+    const ok = await passwordsMatch(
+      password,
+      account.passwordHash,
+      account.passwordSalt,
+    );
+    if (!ok) {
+      return { ok: false, error: "Wrong password for that email." };
+    }
+    if (input.name?.trim() && input.name.trim() !== account.name) {
+      account.name = input.name.trim();
+      account.updatedAt = stamp;
+      await writeCustomers(store);
+    }
+    return { ok: true, customer: account, isNew: false };
+  }
+
+  // Setting a password for the first time (new account, or legacy account
+  // without one) — require the confirm field to match.
+  const confirmPassword = input.confirmPassword ?? "";
   if (password !== confirmPassword) {
     return {
       ok: false,
       error: "Passwords do not match. Enter the same password twice.",
     };
   }
-
-  const store = await ensureCustomers();
-  let account = store.accounts.find((item) => item.email === email) ?? null;
-  const stamp = now();
 
   if (!account) {
     const salt = randomBytes(16).toString("hex");
@@ -279,23 +312,6 @@ export async function registerOrLoginWithPassword(input: {
     store.accounts.unshift(account);
     await writeCustomers(store);
     return { ok: true, customer: account, isNew: true };
-  }
-
-  if (account.passwordHash && account.passwordSalt) {
-    const ok = await passwordsMatch(
-      password,
-      account.passwordHash,
-      account.passwordSalt,
-    );
-    if (!ok) {
-      return { ok: false, error: "Wrong password for that email." };
-    }
-    if (input.name?.trim() && input.name.trim() !== account.name) {
-      account.name = input.name.trim();
-      account.updatedAt = stamp;
-      await writeCustomers(store);
-    }
-    return { ok: true, customer: account, isNew: false };
   }
 
   // Legacy account (purchase / Google) — set password on first email login.

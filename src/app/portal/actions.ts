@@ -10,6 +10,7 @@ import {
   getCurrentCustomer,
 } from "@/lib/customer-auth";
 import {
+  accountHasPassword,
   getCustomerByEmail,
   registerOrLoginWithPassword,
   upsertCustomer,
@@ -48,6 +49,19 @@ async function maybeGrantMasterAdmin(email: string, name?: string) {
     email: email.trim().toLowerCase(),
     name: name?.trim() || email.split("@")[0] || email,
   });
+}
+
+/**
+ * Lets the login form know whether to show "confirm password" — only new
+ * signups (or legacy accounts with no password yet) need to type it twice.
+ */
+export async function checkCustomerNeedsConfirmAction(email: string) {
+  const trimmed = email.trim();
+  if (!trimmed || !trimmed.includes("@")) {
+    return { ok: true as const, needsConfirm: true };
+  }
+  const hasPassword = await accountHasPassword(trimmed);
+  return { ok: true as const, needsConfirm: !hasPassword };
 }
 
 export async function loginCustomerAction(formData: FormData) {

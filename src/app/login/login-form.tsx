@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useRef, useState, useTransition } from "react";
 import {
+  checkCustomerNeedsConfirmAction,
   loginCustomerAction,
   loginCustomerWithAccessCodeAction,
 } from "@/app/portal/actions";
@@ -94,6 +95,28 @@ export function LoginForm() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [legacyError, setLegacyError] = useState<string | null>(null);
+  // Default to true (signup) until we know this email already has a
+  // password — returning users then only see one password field.
+  const [needsConfirm, setNeedsConfirm] = useState(true);
+  const [checkedEmail, setCheckedEmail] = useState("");
+  const checkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const checkEmail = (value: string) => {
+    const email = value.trim();
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    if (!email || !email.includes("@")) {
+      setNeedsConfirm(true);
+      setCheckedEmail("");
+      return;
+    }
+    checkTimer.current = setTimeout(() => {
+      startTransition(async () => {
+        const result = await checkCustomerNeedsConfirmAction(email);
+        setNeedsConfirm(result.needsConfirm);
+        setCheckedEmail(email);
+      });
+    }, 350);
+  };
 
   return (
     <div className="space-y-6">
@@ -121,31 +144,44 @@ export function LoginForm() {
             required
             autoComplete="email"
             placeholder="you@business.com"
+            onChange={(event) => checkEmail(event.target.value)}
+            onBlur={(event) => checkEmail(event.target.value)}
             className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
           />
         </label>
         <PasswordField
           name="password"
           label="Password"
-          placeholder="At least 8 characters"
-          autoComplete="new-password"
+          placeholder={
+            needsConfirm ? "At least 8 characters" : "Your password"
+          }
+          autoComplete={needsConfirm ? "new-password" : "current-password"}
         />
-        <PasswordField
-          name="confirmPassword"
-          label="Confirm password"
-          placeholder="Enter the same password again"
-          autoComplete="new-password"
-        />
+        {needsConfirm ? (
+          <PasswordField
+            name="confirmPassword"
+            label="Confirm password"
+            placeholder="Enter the same password again"
+            autoComplete="new-password"
+          />
+        ) : null}
         <button
           type="submit"
           disabled={pending}
           className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
         >
-          {pending ? "Opening your Seed…" : "Sign in / create account"}
+          {pending
+            ? "Opening your Seed…"
+            : needsConfirm
+              ? "Create account"
+              : "Sign in"}
         </button>
         <p className="text-xs leading-relaxed text-muted">
-          New here? We&apos;ll create your portal login with this email and
-          password. Enter the password twice so it matches.
+          {needsConfirm
+            ? "New here? We'll create your portal login with this email and password. Enter the password twice so it matches."
+            : checkedEmail
+              ? "We recognize this email — just enter your password once."
+              : "Returning? Enter your password — you won't need to confirm it again."}
         </p>
         {error ? (
           <p className="text-sm text-accent-deep" role="alert">
