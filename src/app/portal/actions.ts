@@ -23,6 +23,11 @@ import {
   establishMasterSession,
   isMasterEmail,
 } from "@/lib/master-auth";
+import {
+  listMessagesForCustomer,
+  markThreadReadByCustomer,
+  sendMessage,
+} from "@/lib/messages";
 import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
@@ -153,6 +158,7 @@ export async function getPortalHomeSnapshot() {
       customer: null,
       projects: [] as Awaited<ReturnType<typeof listProjectsForCustomer>>,
       passkeys: [] as Awaited<ReturnType<typeof listWebAuthnCredentials>>,
+      messages: [] as Awaited<ReturnType<typeof listMessagesForCustomer>>,
     };
   const [projects, passkeys] = await Promise.all([
     listProjectsForCustomer(customer.email),
@@ -165,13 +171,42 @@ export async function getPortalHomeSnapshot() {
     const project = await getProject(projectId);
     if (project) byId.set(project.id, project);
   }
+
+  // The customer is actively viewing their portal home right now, so it's
+  // safe to mark admin replies as read as part of loading this snapshot.
+  await markThreadReadByCustomer(customer.id);
+  const messages = await listMessagesForCustomer(customer.id);
+
   return {
     customer,
     projects: [...byId.values()].sort((a, b) =>
       b.updatedAt.localeCompare(a.updatedAt),
     ),
     passkeys,
+    messages,
   };
+}
+
+/** Customer sends a message to Cinch Seed support (the admin). */
+export async function sendCustomerMessageAction(body: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in first." };
+  }
+
+  try {
+    await sendMessage({ customerId: customer.id, sender: "customer", body });
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Could not send message.",
+    };
+  }
+
+  const messages = await listMessagesForCustomer(customer.id);
+  revalidatePath("/portal");
+  revalidatePath("/admin");
+  return { ok: true as const, messages };
 }
 
 export async function removePasskeyAction(credentialId: string) {

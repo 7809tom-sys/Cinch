@@ -2,6 +2,7 @@ import { getAdminSnapshot } from "@/app/admin/actions";
 import { AdminAnalyticsForm } from "@/app/admin/admin-analytics-form";
 import { AdminBillingForm } from "@/app/admin/admin-billing-form";
 import { AdminDomainPanel } from "@/app/admin/admin-domain-panel";
+import { AdminMessagesPanel } from "@/app/admin/customer-messages-panel";
 import { CreateSeedForm } from "@/app/admin/create-seed-form";
 import { LockgmContentPanel } from "@/app/admin/lockgm-content-panel";
 import { LockgmDomainPanel } from "@/app/admin/lockgm-domain-panel";
@@ -64,6 +65,7 @@ export default async function AdminPage() {
     settings,
     library,
     customers,
+    messageThreads,
     sessions,
     purchases,
     catalog,
@@ -229,6 +231,15 @@ export default async function AdminPage() {
               label="Connected domains"
               value={String(metrics.connectedDomainCount)}
               hint={`${metrics.connectedDomainVerifiedCount} seamlessly hosting`}
+            />
+            <Metric
+              label="Messages"
+              value={String(metrics.totalUnreadMessages)}
+              hint={
+                metrics.totalUnreadMessages > 0
+                  ? "unread from customers"
+                  : "all caught up"
+              }
             />
           </div>
 
@@ -419,6 +430,15 @@ export default async function AdminPage() {
               </ul>
             </div>
           ) : null}
+
+          <AdminMessagesPanel
+            customers={customers.map((account) => ({
+              id: account.id,
+              name: account.name,
+              email: account.email,
+            }))}
+            threads={messageThreads}
+          />
         </section>
 
         {/* PRICING */}

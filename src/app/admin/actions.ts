@@ -22,12 +22,20 @@ import {
   searchDomains,
 } from "@/lib/cloudflare-registrar";
 import {
+  getCustomerById,
   listActiveSessions,
   listCustomers,
 } from "@/lib/customers";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/domain";
 import { isDurableStoreConfigured } from "@/lib/kv-store";
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
+import { getMasterSession } from "@/lib/master-auth";
+import {
+  listThreadSummaries,
+  listMessagesForCustomer,
+  markThreadReadByAdmin,
+  sendMessage,
+} from "@/lib/messages";
 import {
   getLockgmContent,
   lockgmContentDraftSchema,
@@ -107,6 +115,7 @@ export async function getAdminSnapshot() {
     ledger,
     connectedDomains,
     lockgmContent,
+    messageThreads,
   ] = await Promise.all([
     listProjects(),
     Promise.resolve(listAgentsWithKeyStatus()),
@@ -120,6 +129,7 @@ export async function getAdminSnapshot() {
     listCreditLedger(40),
     listConnectedCustomDomains(),
     getLockgmContent(),
+    listThreadSummaries(),
   ]);
 
   const purchaseRevenueUsd = purchases.reduce(
@@ -143,22 +153,38 @@ export async function getAdminSnapshot() {
   const sampleToken = tokenFeeRange(10);
   const freeAdmins = freeAdminEmails();
 
+  const enrichedCustomers = customers.map((account) => ({
+    ...account,
+    role: resolveAccessRole(account.email),
+    billingWaived: freeAdmins.includes(account.email),
+    hostHint: account.projectIds[0]
+      ? seedHostHostname(
+          projects.find((p) => p.id === account.projectIds[0])?.name ??
+            account.name,
+        )
+      : null,
+  }));
+
+  const messageThreadsWithCustomer = messageThreads.map((thread) => {
+    const customer = customers.find((c) => c.id === thread.customerId);
+    return {
+      ...thread,
+      customerName: customer?.name ?? "Deleted account",
+      customerEmail: customer?.email ?? "",
+    };
+  });
+  const totalUnreadMessages = messageThreadsWithCustomer.reduce(
+    (sum, thread) => sum + thread.unreadForAdmin,
+    0,
+  );
+
   return {
     projects,
     agents,
     settings,
     library,
-    customers: customers.map((account) => ({
-      ...account,
-      role: resolveAccessRole(account.email),
-      billingWaived: freeAdmins.includes(account.email),
-      hostHint: account.projectIds[0]
-        ? seedHostHostname(
-            projects.find((p) => p.id === account.projectIds[0])?.name ??
-              account.name,
-          )
-        : null,
-    })),
+    customers: enrichedCustomers,
+    messageThreads: messageThreadsWithCustomer,
     sessions,
     purchases,
     catalog,
@@ -183,6 +209,7 @@ export async function getAdminSnapshot() {
       connectedDomainVerifiedCount: connectedDomains.filter(
         (item) => item.customDomain.status === "verified",
       ).length,
+      totalUnreadMessages,
     },
     pricing: {
       seedPriceUsd: SEED_SITE_PRICE_USD,
@@ -617,4 +644,49 @@ export async function generateLockgmContentDraftAction(instruction: string) {
     provider: result.provider,
     model: result.model,
   };
+}
+
+/** Loads one customer's message thread and marks it read on the admin side. */
+export async function getMessageThreadAction(customerId: string) {
+  const master = await getMasterSession();
+  if (!master) return { ok: false as const, error: "Not authorized." };
+
+  const customer = await getCustomerById(customerId);
+  if (!customer) return { ok: false as const, error: "Account not found." };
+
+  await markThreadReadByAdmin(customerId);
+  const messages = await listMessagesForCustomer(customerId);
+  revalidatePath("/admin");
+  return {
+    ok: true as const,
+    messages,
+    customerName: customer.name,
+    customerEmail: customer.email,
+  };
+}
+
+/** Admin replies to a customer in their support thread. */
+export async function sendAdminMessageAction(
+  customerId: string,
+  body: string,
+) {
+  const master = await getMasterSession();
+  if (!master) return { ok: false as const, error: "Not authorized." };
+
+  const customer = await getCustomerById(customerId);
+  if (!customer) return { ok: false as const, error: "Account not found." };
+
+  try {
+    await sendMessage({ customerId, sender: "admin", body });
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Could not send message.",
+    };
+  }
+
+  const messages = await listMessagesForCustomer(customerId);
+  revalidatePath("/admin");
+  revalidatePath("/portal");
+  return { ok: true as const, messages };
 }
