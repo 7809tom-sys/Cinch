@@ -118,8 +118,7 @@ export function SearchCoupons({ canSave = false }: { canSave?: boolean }) {
           {result.alternatives.length > 0 ? (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-base font-bold text-foam">
-                Not set on {result.match.product.brand}? Cheaper{" "}
-                {result.match.product.category.toLowerCase()} options
+                Other matches for &ldquo;{result.query}&rdquo; — cheapest first
               </h3>
               <div className="mt-3 space-y-4">
                 {result.alternatives.map((alt) => {

@@ -8,13 +8,8 @@ import {
   SAVED_COOKIE,
   type SavedCoupon,
 } from "@/lib/saved";
-import {
-  searchProducts,
-  getAlternatives,
-  type Product,
-} from "@/lib/catalog";
-import { comparePrices } from "@/lib/pricing";
-import { findDeals, type Deal } from "@/lib/coupons";
+import { searchCatalog, type Product, type LookupResult } from "@/lib/catalog";
+import { findDeals, isCouponsConfigured, type Deal } from "@/lib/coupons";
 import { MEMBER_COOKIE } from "@/lib/membership";
 import { recordEvent } from "@/lib/metrics";
 
@@ -70,35 +65,32 @@ export type SearchCouponsResult = {
   alternatives: CouponHit[];
 };
 
-async function toHit(product: Product): Promise<CouponHit> {
-  const [prices, deals] = await Promise.all([
-    comparePrices(product),
-    findDeals(product),
-  ]);
-  const inStock = prices.filter((price) => price.inStock);
-  const pool = inStock.length > 0 ? inStock : prices;
-  const bestPriceUsd = pool.length
-    ? pool.reduce((min, price) => (price.priceUsd < min.priceUsd ? price : min))
-        .priceUsd
-    : product.referencePriceUsd;
-  return { product, deals, bestPriceUsd };
+async function toHit(result: LookupResult): Promise<CouponHit> {
+  const inStock = result.prices.find((price) => price.inStock);
+  const bestPriceUsd =
+    inStock?.priceUsd ??
+    result.prices[0]?.priceUsd ??
+    result.product.referencePriceUsd;
+  // Only real coupons (from a connected feed) — never fabricated ones.
+  const deals = isCouponsConfigured() ? await findDeals(result.product) : [];
+  return { product: result.product, deals, bestPriceUsd };
 }
 
 /**
- * Search coupons by name/brand ("Folgers coffee") and, for shoppers who aren't
- * brand-loyal, surface cheaper same-category alternatives.
+ * Search real products by name/brand ("Folgers coffee") via UPCitemdb and show
+ * their real prices; cheaper matches are surfaced as alternatives. No sample data.
  */
 export async function searchCoupons(query: string): Promise<SearchCouponsResult> {
   await recordEvent({ type: "search", term: query });
-  const matches = searchProducts(query);
-  if (matches.length === 0) {
+  const results = await searchCatalog(query);
+  if (results.length === 0) {
     return { query, match: null, alternatives: [] };
   }
 
-  const match = await toHit(matches[0]);
-  const alternatives = (
-    await Promise.all(getAlternatives(matches[0]).map(toHit))
-  ).sort((a, b) => a.bestPriceUsd - b.bestPriceUsd);
-
-  return { query, match, alternatives };
+  const hits = await Promise.all(results.map(toHit));
+  return {
+    query,
+    match: hits[0],
+    alternatives: hits.slice(1).sort((a, b) => a.bestPriceUsd - b.bestPriceUsd),
+  };
 }

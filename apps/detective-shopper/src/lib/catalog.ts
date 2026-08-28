@@ -214,6 +214,8 @@ function dropOutliers(prices: StorePrice[]): StorePrice[] {
  * error, returns an honest "unidentified" placeholder with no prices.
  */
 type UpcItem = {
+  upc?: string;
+  ean?: string;
   title?: string;
   brand?: string;
   category?: string;
@@ -227,6 +229,38 @@ type UpcItem = {
     availability?: string;
   }>;
 };
+
+/** Map a UPCitemdb item to a product + its real (outlier-trimmed) offer prices. */
+function itemToResult(item: UpcItem, upcHint?: string): LookupResult {
+  const upc = normalizeUpc(item.upc || item.ean || upcHint || "");
+  const product: Product = {
+    upc,
+    name: (item.title || "").trim(),
+    brand: item.brand?.trim() || "—",
+    category: item.category?.split(">").pop()?.trim() || "General",
+    size: item.size?.trim() || undefined,
+    referencePriceUsd:
+      item.highest_recorded_price || item.lowest_recorded_price || 0,
+    source: "catalog",
+  };
+  const mapped: StorePrice[] = (item.offers ?? [])
+    .filter((offer) => typeof offer.price === "number" && offer.price > 0)
+    .map((offer) => ({
+      store: offer.merchant?.trim() || "Merchant",
+      kind: "online" as const,
+      priceUsd: Math.round((offer.price as number) * 100) / 100,
+      inStock: offer.availability
+        ? /in.?stock|available/i.test(offer.availability)
+        : true,
+      url: offer.link,
+    }));
+  const prices = dropOutliers(mapped)
+    .sort(
+      (a, b) => Number(b.inStock) - Number(a.inStock) || a.priceUsd - b.priceUsd,
+    )
+    .slice(0, 10);
+  return { product, prices };
+}
 
 async function fetchUpcItem(
   upc: string,
@@ -264,40 +298,46 @@ export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
   let item = key ? await fetchUpcItem(upc, key) : null;
   if (!item) item = await fetchUpcItem(upc, undefined);
 
-  {
-    if (!item || !item.title?.trim()) {
-      return { product: demoProduct(upc), prices: [] };
-    }
-
-    const product: Product = {
-      upc,
-      name: item.title.trim(),
-      brand: item.brand?.trim() || "—",
-      category: item.category?.split(">").pop()?.trim() || "General",
-      size: item.size?.trim() || undefined,
-      referencePriceUsd:
-        item.highest_recorded_price || item.lowest_recorded_price || 0,
-      source: "catalog",
-    };
-
-    const mapped: StorePrice[] = (item.offers ?? [])
-      .filter((offer) => typeof offer.price === "number" && offer.price > 0)
-      .map((offer) => ({
-        store: offer.merchant?.trim() || "Merchant",
-        kind: "online" as const,
-        priceUsd: Math.round((offer.price as number) * 100) / 100,
-        inStock: offer.availability
-          ? /in.?stock|available/i.test(offer.availability)
-          : true,
-        url: offer.link,
-      }));
-
-    const prices = dropOutliers(mapped)
-      .sort(
-        (a, b) => Number(b.inStock) - Number(a.inStock) || a.priceUsd - b.priceUsd,
-      )
-      .slice(0, 10);
-
-    return { product, prices };
+  if (!item || !item.title?.trim()) {
+    return { product: demoProduct(upc), prices: [] };
   }
+  return itemToResult(item, upc);
+}
+
+async function fetchUpcSearch(
+  query: string,
+  key: string | undefined,
+): Promise<UpcItem[]> {
+  const endpoint = key
+    ? "https://api.upcitemdb.com/prod/v1/search"
+    : "https://api.upcitemdb.com/prod/trial/search";
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (key) {
+    headers.user_key = key;
+    headers.key_type = "3scale";
+  }
+  const url = new URL(endpoint);
+  url.searchParams.set("s", query);
+  try {
+    const response = await fetch(url, { headers, cache: "no-store" });
+    if (!response.ok) return [];
+    const data = (await response.json()) as { items?: UpcItem[] };
+    return data.items ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Search real products by name/brand via UPCitemdb (free or paid), returning
+ * each with its real offer prices. Never fabricated. */
+export async function searchCatalog(query: string): Promise<LookupResult[]> {
+  const q = query.trim();
+  if (!q) return [];
+  const key = process.env.UPC_DATABASE_KEY?.trim();
+  let items = key ? await fetchUpcSearch(q, key) : [];
+  if (items.length === 0) items = await fetchUpcSearch(q, undefined);
+  return items
+    .filter((item) => item.title?.trim())
+    .slice(0, 6)
+    .map((item) => itemToResult(item));
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/session";
-import { getFeaturedDeals } from "@/lib/coupons";
+import { getFeaturedDeals, isCouponsConfigured } from "@/lib/coupons";
 import { getSavedCoupons } from "@/lib/saved";
 import { isGoogleLoginConfigured, googleClientId } from "@/lib/auth";
 import {
@@ -26,9 +26,11 @@ export const metadata = {
 };
 
 export default async function CouponsPage() {
+  const couponsLive = isCouponsConfigured();
   const [user, featured, saved, member] = await Promise.all([
     getSessionUser(),
-    getFeaturedDeals(),
+    // Only real coupons from a connected feed — no fabricated deals.
+    couponsLive ? getFeaturedDeals() : Promise.resolve([]),
     getSavedCoupons(),
     isMember(),
   ]);
@@ -67,8 +69,11 @@ export default async function CouponsPage() {
           {user ? `Welcome back, ${user.name.split(" ")[0]}` : "Coupons & deals"}
         </h1>
         <p className="mt-3 max-w-xl text-base leading-relaxed text-mist">
-          {dealCount} live coupons and rebates right now. Search a brand, then
-          scan in-store to stack them into one out-of-pocket total.
+          {couponsLive
+            ? `${dealCount} live coupons and rebates right now. `
+            : ""}
+          Search a brand or product to compare real prices, then scan in-store
+          to find the best deal.
         </p>
 
         {/* Personalization: signed-in gets a savings meter + membership;
@@ -191,6 +196,17 @@ export default async function CouponsPage() {
         <h2 className="mt-8 font-[family-name:var(--font-display)] text-xl font-bold text-foam">
           Featured coupons
         </h2>
+        {!couponsLive ? (
+          <p className="mt-4 rounded-2xl border border-white/10 bg-panel px-5 py-5 text-sm text-mist">
+            No coupon feed is connected, so there are no live coupons to show
+            (we don&apos;t display sample coupons). Connect a coupon feed
+            (<code className="text-foam">COUPON_FEED_API_KEY</code>) in{" "}
+            <Link href="/admin" className="font-semibold text-brand hover:underline">
+              Admin
+            </Link>
+            . Meanwhile, use search above to compare real prices.
+          </p>
+        ) : null}
         <div className="mt-4 space-y-4">
           {featured.map((entry) => (
             <article
