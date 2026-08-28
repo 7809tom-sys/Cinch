@@ -197,6 +197,16 @@ function demoProduct(upc: string): Product {
  */
 export type LookupResult = { product: Product; prices: StorePrice[] };
 
+/** Drop stale/erroneous outlier offers (e.g. a $62 box of cereal) — anything
+ * priced more than 3× the median, which are almost always bad listings. */
+function dropOutliers(prices: StorePrice[]): StorePrice[] {
+  if (prices.length < 4) return prices;
+  const sorted = prices.map((p) => p.priceUsd).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  if (!median) return prices;
+  return prices.filter((p) => p.priceUsd <= median * 3);
+}
+
 /**
  * Look up a product by UPC using UPCitemdb. The FREE plan is keyless via
  * /prod/trial; a paid key uses /prod/v1 with user_key. Prices come from the
@@ -258,7 +268,7 @@ export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
       source: "catalog",
     };
 
-    const prices: StorePrice[] = (item.offers ?? [])
+    const mapped: StorePrice[] = (item.offers ?? [])
       .filter((offer) => typeof offer.price === "number" && offer.price > 0)
       .map((offer) => ({
         store: offer.merchant?.trim() || "Merchant",
@@ -268,10 +278,13 @@ export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
           ? /in.?stock|available/i.test(offer.availability)
           : true,
         url: offer.link,
-      }))
+      }));
+
+    const prices = dropOutliers(mapped)
       .sort(
         (a, b) => Number(b.inStock) - Number(a.inStock) || a.priceUsd - b.priceUsd,
-      );
+      )
+      .slice(0, 10);
 
     return { product, prices };
   } catch {

@@ -37,11 +37,13 @@ export function computeSavings(
       : null;
 
   const bestPriceUsd = bestStore?.priceUsd ?? product.referencePriceUsd;
-  const baselineUsd = Math.max(
-    product.referencePriceUsd,
-    ...prices.map((price) => price.priceUsd),
-    bestPriceUsd,
-  );
+  // "Typical price" = median of available prices (robust to outliers), so the
+  // savings shown are realistic rather than skewed by a single bad listing.
+  const poolPrices = pool.map((price) => price.priceUsd).sort((a, b) => a - b);
+  const medianUsd = poolPrices.length
+    ? poolPrices[Math.floor(poolPrices.length / 2)]
+    : bestPriceUsd;
+  const baselineUsd = Math.max(medianUsd, bestPriceUsd);
 
   const stackable = deals.filter((deal) => deal.stackable);
   const nonStackable = deals.filter((deal) => !deal.stackable);
