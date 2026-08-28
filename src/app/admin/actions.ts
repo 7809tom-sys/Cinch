@@ -27,7 +27,7 @@ import {
   listCustomers,
 } from "@/lib/customers";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/domain";
-import { isDurableStoreConfigured } from "@/lib/kv-store";
+import { checkDurableStoreHealth } from "@/lib/kv-store";
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import { getMasterSession } from "@/lib/master-auth";
 import {
@@ -116,6 +116,7 @@ export async function getAdminSnapshot() {
     connectedDomains,
     lockgmContent,
     messageThreads,
+    durableStoreHealth,
   ] = await Promise.all([
     listProjects(),
     Promise.resolve(listAgentsWithKeyStatus()),
@@ -130,6 +131,7 @@ export async function getAdminSnapshot() {
     listConnectedCustomDomains(),
     getLockgmContent(),
     listThreadSummaries(),
+    checkDurableStoreHealth(),
   ]);
 
   const purchaseRevenueUsd = purchases.reduce(
@@ -246,7 +248,7 @@ export async function getAdminSnapshot() {
     domain: CINCH_SEED_DOMAIN,
     launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
     aiGenerationConfigured: isAiGenerationConfigured(),
-    durableStoreConfigured: isDurableStoreConfigured(),
+    durableStoreHealth,
     platformProducts: [
       {
         id: "lockgm",
