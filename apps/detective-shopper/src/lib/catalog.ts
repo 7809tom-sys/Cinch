@@ -1,4 +1,5 @@
-import { seededUnit, normalizeUpc, isValidUpc } from "./format";
+import { normalizeUpc, isValidUpc } from "./format";
+import type { StorePrice } from "./pricing";
 
 export type Product = {
   upc: string;
@@ -178,16 +179,13 @@ function demoProduct(upc: string): Product {
     return { upc, source: "demo", ...known };
   }
 
-  // Unknown barcode: return an honest placeholder (not a fake brand name) with
-  // an estimated price so the flow still works, and the UI can prompt to
-  // connect the UPC database for real product details.
-  const reference = 2 + Math.round(seededUnit(upc, "ref") * 2200) / 100; // $2.00 - $24.00
+  // Unknown barcode: honest placeholder (no fake brand, no fake price).
   return {
     upc,
     name: `Scanned item ••${upc.slice(-4)}`,
     brand: "Unrecognized item",
     category: "Unidentified",
-    referencePriceUsd: reference,
+    referencePriceUsd: 0,
     source: "demo",
   };
 }
@@ -197,58 +195,109 @@ function demoProduct(upc: string): Product {
  * PRODUCT_CATALOG_API_KEY is set, otherwise returns deterministic demo data so
  * the full flow is usable without credentials.
  */
-export async function lookupProduct(rawUpc: string): Promise<Product | null> {
+export type LookupResult = { product: Product; prices: StorePrice[] };
+
+/** Drop stale/erroneous outlier offers (e.g. a $62 box of cereal) — anything
+ * priced more than 3× the median, which are almost always bad listings. */
+function dropOutliers(prices: StorePrice[]): StorePrice[] {
+  if (prices.length < 4) return prices;
+  const sorted = prices.map((p) => p.priceUsd).sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  if (!median) return prices;
+  return prices.filter((p) => p.priceUsd <= median * 3);
+}
+
+/**
+ * Look up a product by UPC using UPCitemdb. The FREE plan is keyless via
+ * /prod/trial; a paid key uses /prod/v1 with user_key. Prices come from the
+ * real merchant offers in the response — never fabricated. On a miss or API
+ * error, returns an honest "unidentified" placeholder with no prices.
+ */
+type UpcItem = {
+  title?: string;
+  brand?: string;
+  category?: string;
+  size?: string;
+  lowest_recorded_price?: number;
+  highest_recorded_price?: number;
+  offers?: Array<{
+    merchant?: string;
+    price?: number;
+    link?: string;
+    availability?: string;
+  }>;
+};
+
+async function fetchUpcItem(
+  upc: string,
+  key: string | undefined,
+): Promise<UpcItem | null> {
+  const endpoint = key
+    ? "https://api.upcitemdb.com/prod/v1/lookup"
+    : "https://api.upcitemdb.com/prod/trial/lookup";
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (key) {
+    headers.user_key = key;
+    headers.key_type = "3scale";
+  }
+  const url = new URL(endpoint);
+  url.searchParams.set("upc", upc);
+  try {
+    const response = await fetch(url, { headers, cache: "no-store" });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { items?: UpcItem[] };
+    return data.items?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
   const upc = normalizeUpc(rawUpc);
   if (!isValidUpc(upc)) {
     throw new Error("Enter a valid 8–14 digit barcode / UPC.");
   }
 
-  if (!isCatalogConfigured()) {
-    return demoProduct(upc);
-  }
+  const key = process.env.UPC_DATABASE_KEY?.trim();
+  // Try the paid endpoint when a key is set; if that fails (e.g. a free-tier
+  // key that only works keyless), fall back to the free /prod/trial endpoint.
+  let item = key ? await fetchUpcItem(upc, key) : null;
+  if (!item) item = await fetchUpcItem(upc, undefined);
 
-  const key = process.env.UPC_DATABASE_KEY!.trim();
-  const url = new URL("https://api.upcitemdb.com/prod/v1/lookup");
-  url.searchParams.set("upc", upc);
-
-  try {
-    const response = await fetch(url, {
-      headers: { Accept: "application/json", user_key: key, key_type: "3scale" },
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      // Rate limit, bad key, etc. — still return something usable.
-      return demoProduct(upc);
+  {
+    if (!item || !item.title?.trim()) {
+      return { product: demoProduct(upc), prices: [] };
     }
 
-    const data = (await response.json()) as {
-      items?: Array<{
-        title?: string;
-        brand?: string;
-        category?: string;
-        size?: string;
-        lowest_recorded_price?: number;
-        highest_recorded_price?: number;
-      }>;
-    };
-
-    const item = data.items?.[0];
-    // Not in the database — fall back to the placeholder instead of a dead end.
-    if (!item) return demoProduct(upc);
-
-    return {
+    const product: Product = {
       upc,
-      name: item.title?.trim() || "Unknown product",
+      name: item.title.trim(),
       brand: item.brand?.trim() || "—",
       category: item.category?.split(">").pop()?.trim() || "General",
       size: item.size?.trim() || undefined,
       referencePriceUsd:
-        item.highest_recorded_price ??
-        item.lowest_recorded_price ??
-        demoProduct(upc).referencePriceUsd,
+        item.highest_recorded_price || item.lowest_recorded_price || 0,
       source: "catalog",
     };
-  } catch {
-    return demoProduct(upc);
+
+    const mapped: StorePrice[] = (item.offers ?? [])
+      .filter((offer) => typeof offer.price === "number" && offer.price > 0)
+      .map((offer) => ({
+        store: offer.merchant?.trim() || "Merchant",
+        kind: "online" as const,
+        priceUsd: Math.round((offer.price as number) * 100) / 100,
+        inStock: offer.availability
+          ? /in.?stock|available/i.test(offer.availability)
+          : true,
+        url: offer.link,
+      }));
+
+    const prices = dropOutliers(mapped)
+      .sort(
+        (a, b) => Number(b.inStock) - Number(a.inStock) || a.priceUsd - b.priceUsd,
+      )
+      .slice(0, 10);
+
+    return { product, prices };
   }
 }

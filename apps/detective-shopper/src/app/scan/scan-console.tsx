@@ -133,19 +133,13 @@ export function ScanConsole() {
               <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
                 Price comparison
               </h3>
-              {!result.live.catalog ? (
-                <p className="mt-3 rounded-md border border-brand/30 bg-brand/10 px-3 py-2 text-sm text-foam">
-                  Live prices aren&apos;t connected, so no prices are shown — we
-                  never display sample numbers. Add a pricing source (
-                  <code className="text-foam">UPC_DATABASE_KEY</code>) in{" "}
-                  <a href="/admin" className="font-semibold text-brand hover:underline">
-                    Admin
-                  </a>{" "}
-                  to see real prices for this item.
-                </p>
-              ) : result.prices.length === 0 ? (
+              <p className="mt-1 text-xs text-mist">
+                Recorded online prices from retailers — always verify at
+                checkout.
+              </p>
+              {result.prices.length === 0 ? (
                 <p className="mt-3 text-sm text-mist">
-                  No live prices found for this item right now.
+                  No online prices are listed for this item right now.
                 </p>
               ) : (
                 <ul className="mt-4 space-y-2">
@@ -246,7 +240,7 @@ export function ScanConsole() {
             </section>
           </div>
 
-          {result.live.catalog && result.prices.length > 0 ? (
+          {result.prices.length > 0 ? (
             <MobileSavingsPanel savings={result.savings} />
           ) : null}
         </div>
