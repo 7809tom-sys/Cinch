@@ -82,7 +82,7 @@ export default async function AdminPage() {
     domain,
     platformProducts,
     aiGenerationConfigured,
-    durableStoreConfigured,
+    durableStoreHealth,
   } = snap;
 
   const configuredCount = metrics.keysConfigured;
@@ -159,10 +159,31 @@ export default async function AdminPage() {
             domains, and agents — the full business surface for Cinch Seed.
           </p>
 
-          {durableStoreConfigured ? (
+          {durableStoreHealth.healthy ? (
             <div className="mt-6 max-w-2xl rounded-md border border-leaf/30 bg-leaf/10 px-4 py-3 text-sm text-leaf">
-              <strong>Durable storage connected.</strong> Accounts, Seeds, and
-              settings are stored in Redis and survive deploys.
+              <strong>Durable storage connected and verified.</strong> Just
+              wrote and read back a real value from Redis (
+              {durableStoreHealth.envVarSource}) — accounts, Seeds, and
+              settings will survive deploys.
+            </div>
+          ) : durableStoreHealth.envVarSource ? (
+            <div className="mt-6 max-w-2xl rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent-deep">
+              <strong>Durable storage is configured but not working.</strong>{" "}
+              Found {durableStoreHealth.envVarSource}, but a real write/read
+              just failed, so everything is still falling back to a temporary
+              file that&apos;s wiped on every redeploy.
+              {durableStoreHealth.error ? (
+                <>
+                  {" "}
+                  Error: <code className="rounded bg-black/5 px-1 py-0.5">
+                    {durableStoreHealth.error}
+                  </code>
+                </>
+              ) : null}{" "}
+              Double check the URL/token are correct, the database isn&apos;t
+              paused, and that these env vars are set for the{" "}
+              <strong>Production</strong> environment in Vercel (adding them
+              requires a fresh deploy to take effect).
             </div>
           ) : (
             <div className="mt-6 max-w-2xl rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent-deep">
@@ -178,8 +199,17 @@ export default async function AdminPage() {
               <code className="rounded bg-black/5 px-1 py-0.5">
                 UPSTASH_REDIS_REST_TOKEN
               </code>{" "}
-              in your Vercel project&apos;s environment variables and
-              redeploy.
+              (or the Vercel-native{" "}
+              <code className="rounded bg-black/5 px-1 py-0.5">
+                KV_REST_API_URL
+              </code>{" "}
+              /{" "}
+              <code className="rounded bg-black/5 px-1 py-0.5">
+                KV_REST_API_TOKEN
+              </code>
+              ) in your Vercel project&apos;s environment variables — make
+              sure they&apos;re set for <strong>Production</strong>, not just
+              Preview — then redeploy.
             </div>
           )}
 
