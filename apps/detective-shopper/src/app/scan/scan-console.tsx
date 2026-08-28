@@ -36,9 +36,6 @@ export function ScanConsole() {
     });
   }
 
-  const demoMode =
-    result && !result.live.catalog && !result.live.coupons && !result.live.affiliate;
-
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-white/10 bg-panel px-5 py-6 sm:px-6">
@@ -120,14 +117,39 @@ export function ScanConsole() {
                   </p>
                 </div>
               </div>
+              {result.product.category === "Unidentified" ? (
+                <p className="mt-3 rounded-md border border-brand/30 bg-brand/10 px-3 py-2 text-sm text-foam">
+                  We couldn&apos;t identify this exact product. Connect a UPC
+                  database key in{" "}
+                  <a href="/admin" className="font-semibold text-brand hover:underline">
+                    Admin
+                  </a>{" "}
+                  for real product details.
+                </p>
+              ) : null}
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-panel px-5 py-5">
               <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
                 Price comparison
               </h3>
-              <ul className="mt-4 space-y-2">
-                {result.prices.map((price, i) => {
+              {!result.live.catalog ? (
+                <p className="mt-3 rounded-md border border-brand/30 bg-brand/10 px-3 py-2 text-sm text-foam">
+                  Live prices aren&apos;t connected, so no prices are shown — we
+                  never display sample numbers. Add a pricing source (
+                  <code className="text-foam">UPC_DATABASE_KEY</code>) in{" "}
+                  <a href="/admin" className="font-semibold text-brand hover:underline">
+                    Admin
+                  </a>{" "}
+                  to see real prices for this item.
+                </p>
+              ) : result.prices.length === 0 ? (
+                <p className="mt-3 text-sm text-mist">
+                  No live prices found for this item right now.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-2">
+                  {result.prices.map((price, i) => {
                   const best =
                     price.inStock &&
                     result.savings.bestStore != null &&
@@ -177,15 +199,25 @@ export function ScanConsole() {
                       </div>
                     </li>
                   );
-                })}
-              </ul>
+                  })}
+                </ul>
+              )}
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-panel px-5 py-5">
               <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-foam">
                 Coupons &amp; deals
               </h3>
-              {result.deals.length > 0 ? (
+              {!result.live.coupons ? (
+                <p className="mt-3 rounded-md border border-brand/30 bg-brand/10 px-3 py-2 text-sm text-foam">
+                  Connect a coupon feed (
+                  <code className="text-foam">COUPON_FEED_API_KEY</code>) in{" "}
+                  <a href="/admin" className="font-semibold text-brand hover:underline">
+                    Admin
+                  </a>{" "}
+                  to show real, verified coupons.
+                </p>
+              ) : result.deals.length > 0 ? (
                 <ul className="mt-4 space-y-2">
                   {result.deals.map((deal) => (
                     <li
@@ -214,17 +246,12 @@ export function ScanConsole() {
             </section>
           </div>
 
-          <MobileSavingsPanel savings={result.savings} />
+          {result.live.catalog && result.prices.length > 0 ? (
+            <MobileSavingsPanel savings={result.savings} />
+          ) : null}
         </div>
       ) : null}
 
-      {demoMode ? (
-        <p className="text-center text-xs text-mist">
-          Showing demo data. Add <code className="text-foam">UPC_DATABASE_KEY</code>,{" "}
-          <code className="text-foam">COUPON_FEED_API_KEY</code>, and{" "}
-          <code className="text-foam">IMPACT_API_KEY</code> in Admin to go live.
-        </p>
-      ) : null}
     </div>
   );
 }
