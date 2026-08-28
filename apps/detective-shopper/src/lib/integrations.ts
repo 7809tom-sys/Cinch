@@ -19,7 +19,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     id: "upc",
     name: "UPC / Barcode Lookup",
     envKey: "UPC_DATABASE_KEY",
-    role: "Matches scanned barcodes to product titles, images, and cross-retailer pricing.",
+    role: "Matches scanned barcodes to product titles, images, and cross-retailer pricing. Works on UPCitemdb's free plan with no key; add a paid key only for higher daily limits.",
     signupUrl: "https://www.upcitemdb.com/api",
     testUrl: "https://api.upcitemdb.com/prod/v1/lookup?upc=049000028911",
   },

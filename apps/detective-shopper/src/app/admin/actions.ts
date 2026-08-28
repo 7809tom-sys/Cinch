@@ -102,6 +102,61 @@ export async function testIntegration(id: string): Promise<TestResult> {
   }
 
   const key = process.env[def.envKey]?.trim();
+
+  // UPC lookup works on UPCitemdb's FREE keyless plan, so test that too — a
+  // free-tier key rejected on the paid endpoint should NOT show as a failure.
+  if (def.id === "upc") {
+    try {
+      if (key) {
+        const paid = await fetch(
+          "https://api.upcitemdb.com/prod/v1/lookup?upc=049000028911",
+          {
+            headers: { Accept: "application/json", user_key: key, key_type: "3scale" },
+            cache: "no-store",
+          },
+        );
+        if (paid.ok) {
+          return {
+            configured: true,
+            ok: true,
+            status: 200,
+            message: "Connected — paid key accepted (higher daily limits).",
+          };
+        }
+      }
+      const free = await fetch(
+        "https://api.upcitemdb.com/prod/trial/lookup?upc=049000028911",
+        { headers: { Accept: "application/json" }, cache: "no-store" },
+      );
+      if (free.ok) {
+        return {
+          configured: true,
+          ok: true,
+          status: 200,
+          message: key
+            ? "Product lookup works on the FREE plan. Your key isn't a valid paid key — it's not needed here (remove it, or add a real paid key for higher limits)."
+            : "Connected on the FREE plan — real product lookups work with no key needed.",
+        };
+      }
+      return {
+        configured: Boolean(key),
+        ok: false,
+        status: free.status,
+        message: `UPCitemdb returned ${free.status}.`,
+      };
+    } catch (error) {
+      return {
+        configured: Boolean(key),
+        ok: false,
+        status: null,
+        message:
+          error instanceof Error
+            ? `Could not reach UPCitemdb: ${error.message}`
+            : "Could not reach UPCitemdb.",
+      };
+    }
+  }
+
   if (!key) {
     return {
       configured: false,
@@ -113,10 +168,7 @@ export async function testIntegration(id: string): Promise<TestResult> {
 
   try {
     const headers: Record<string, string> = { Accept: "application/json" };
-    if (def.id === "upc") {
-      headers.user_key = key;
-      headers.key_type = "3scale";
-    } else if (def.id === "impact") {
+    if (def.id === "impact") {
       headers.Authorization = `Basic ${Buffer.from(`${key}:${key}`).toString("base64")}`;
     }
 
