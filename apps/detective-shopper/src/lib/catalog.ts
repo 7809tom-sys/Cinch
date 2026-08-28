@@ -213,13 +213,25 @@ function dropOutliers(prices: StorePrice[]): StorePrice[] {
  * real merchant offers in the response — never fabricated. On a miss or API
  * error, returns an honest "unidentified" placeholder with no prices.
  */
-export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
-  const upc = normalizeUpc(rawUpc);
-  if (!isValidUpc(upc)) {
-    throw new Error("Enter a valid 8–14 digit barcode / UPC.");
-  }
+type UpcItem = {
+  title?: string;
+  brand?: string;
+  category?: string;
+  size?: string;
+  lowest_recorded_price?: number;
+  highest_recorded_price?: number;
+  offers?: Array<{
+    merchant?: string;
+    price?: number;
+    link?: string;
+    availability?: string;
+  }>;
+};
 
-  const key = process.env.UPC_DATABASE_KEY?.trim();
+async function fetchUpcItem(
+  upc: string,
+  key: string | undefined,
+): Promise<UpcItem | null> {
   const endpoint = key
     ? "https://api.upcitemdb.com/prod/v1/lookup"
     : "https://api.upcitemdb.com/prod/trial/lookup";
@@ -230,29 +242,29 @@ export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
   }
   const url = new URL(endpoint);
   url.searchParams.set("upc", upc);
-
   try {
     const response = await fetch(url, { headers, cache: "no-store" });
-    if (!response.ok) return { product: demoProduct(upc), prices: [] };
+    if (!response.ok) return null;
+    const data = (await response.json()) as { items?: UpcItem[] };
+    return data.items?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
 
-    const data = (await response.json()) as {
-      items?: Array<{
-        title?: string;
-        brand?: string;
-        category?: string;
-        size?: string;
-        lowest_recorded_price?: number;
-        highest_recorded_price?: number;
-        offers?: Array<{
-          merchant?: string;
-          price?: number;
-          link?: string;
-          availability?: string;
-        }>;
-      }>;
-    };
+export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
+  const upc = normalizeUpc(rawUpc);
+  if (!isValidUpc(upc)) {
+    throw new Error("Enter a valid 8–14 digit barcode / UPC.");
+  }
 
-    const item = data.items?.[0];
+  const key = process.env.UPC_DATABASE_KEY?.trim();
+  // Try the paid endpoint when a key is set; if that fails (e.g. a free-tier
+  // key that only works keyless), fall back to the free /prod/trial endpoint.
+  let item = key ? await fetchUpcItem(upc, key) : null;
+  if (!item) item = await fetchUpcItem(upc, undefined);
+
+  {
     if (!item || !item.title?.trim()) {
       return { product: demoProduct(upc), prices: [] };
     }
@@ -287,7 +299,5 @@ export async function lookupProduct(rawUpc: string): Promise<LookupResult> {
       .slice(0, 10);
 
     return { product, prices };
-  } catch {
-    return { product: demoProduct(upc), prices: [] };
   }
 }
