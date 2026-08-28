@@ -86,15 +86,63 @@ const KNOWN_PRODUCTS: Record<string, Omit<Product, "upc" | "source">> = {
     size: "30.5 oz",
     referencePriceUsd: 6.62,
   },
+  "038000391033": {
+    name: "Rice Krispies Cereal",
+    brand: "Kellogg's",
+    category: "Breakfast",
+    size: "18 oz",
+    referencePriceUsd: 4.99,
+  },
+  "038000199554": {
+    name: "Froot Loops Cereal",
+    brand: "Kellogg's",
+    category: "Breakfast",
+    size: "19.4 oz",
+    referencePriceUsd: 5.49,
+  },
+  "030000010402": {
+    name: "Quaker Old Fashioned Oats",
+    brand: "Quaker",
+    category: "Breakfast",
+    size: "42 oz",
+    referencePriceUsd: 5.29,
+  },
+  "051500255162": {
+    name: "Jif Creamy Peanut Butter",
+    brand: "Jif",
+    category: "Pantry",
+    size: "40 oz",
+    referencePriceUsd: 7.48,
+  },
+  "013000006101": {
+    name: "Heinz Tomato Ketchup",
+    brand: "Heinz",
+    category: "Pantry",
+    size: "32 oz",
+    referencePriceUsd: 3.98,
+  },
+  "044000032029": {
+    name: "Oreo Chocolate Sandwich Cookies",
+    brand: "Nabisco",
+    category: "Snacks",
+    size: "14.3 oz",
+    referencePriceUsd: 4.29,
+  },
+  "028400642811": {
+    name: "Lay's Classic Potato Chips",
+    brand: "Lay's",
+    category: "Snacks",
+    size: "8 oz",
+    referencePriceUsd: 4.79,
+  },
+  "072250007504": {
+    name: "Wonder Classic White Bread",
+    brand: "Wonder",
+    category: "Bakery",
+    size: "20 oz",
+    referencePriceUsd: 2.98,
+  },
 };
-
-const DEMO_CATEGORIES = [
-  ["Snacks", "Crunch Co.", "Family Size"],
-  ["Beverages", "ClearSpring", "6 pk"],
-  ["Household", "PureHome", "Value Pack"],
-  ["Personal Care", "Everyday", "Twin Pack"],
-  ["Pantry", "Harvest Lane", "16 oz"],
-] as const;
 
 export function getFeaturedProducts(): Product[] {
   return Object.entries(KNOWN_PRODUCTS).map(([upc, data]) => ({
@@ -130,15 +178,15 @@ function demoProduct(upc: string): Product {
     return { upc, source: "demo", ...known };
   }
 
-  const pick = Math.floor(seededUnit(upc, "cat") * DEMO_CATEGORIES.length);
-  const [category, brand, size] = DEMO_CATEGORIES[pick];
+  // Unknown barcode: return an honest placeholder (not a fake brand name) with
+  // an estimated price so the flow still works, and the UI can prompt to
+  // connect the UPC database for real product details.
   const reference = 2 + Math.round(seededUnit(upc, "ref") * 2200) / 100; // $2.00 - $24.00
   return {
     upc,
-    name: `${brand} ${category} Item`,
-    brand,
-    category,
-    size,
+    name: `Scanned item ••${upc.slice(-4)}`,
+    brand: "Unrecognized item",
+    category: "Unidentified",
     referencePriceUsd: reference,
     source: "demo",
   };
@@ -163,38 +211,44 @@ export async function lookupProduct(rawUpc: string): Promise<Product | null> {
   const url = new URL("https://api.upcitemdb.com/prod/v1/lookup");
   url.searchParams.set("upc", upc);
 
-  const response = await fetch(url, {
-    headers: { Accept: "application/json", user_key: key, key_type: "3scale" },
-    cache: "no-store",
-  });
-  if (!response.ok) {
-    throw new Error(`Catalog lookup failed (${response.status}).`);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json", user_key: key, key_type: "3scale" },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      // Rate limit, bad key, etc. — still return something usable.
+      return demoProduct(upc);
+    }
+
+    const data = (await response.json()) as {
+      items?: Array<{
+        title?: string;
+        brand?: string;
+        category?: string;
+        size?: string;
+        lowest_recorded_price?: number;
+        highest_recorded_price?: number;
+      }>;
+    };
+
+    const item = data.items?.[0];
+    // Not in the database — fall back to the placeholder instead of a dead end.
+    if (!item) return demoProduct(upc);
+
+    return {
+      upc,
+      name: item.title?.trim() || "Unknown product",
+      brand: item.brand?.trim() || "—",
+      category: item.category?.split(">").pop()?.trim() || "General",
+      size: item.size?.trim() || undefined,
+      referencePriceUsd:
+        item.highest_recorded_price ??
+        item.lowest_recorded_price ??
+        demoProduct(upc).referencePriceUsd,
+      source: "catalog",
+    };
+  } catch {
+    return demoProduct(upc);
   }
-
-  const data = (await response.json()) as {
-    items?: Array<{
-      title?: string;
-      brand?: string;
-      category?: string;
-      size?: string;
-      lowest_recorded_price?: number;
-      highest_recorded_price?: number;
-    }>;
-  };
-
-  const item = data.items?.[0];
-  if (!item) return null;
-
-  return {
-    upc,
-    name: item.title?.trim() || "Unknown product",
-    brand: item.brand?.trim() || "—",
-    category: item.category?.split(">").pop()?.trim() || "General",
-    size: item.size?.trim() || undefined,
-    referencePriceUsd:
-      item.highest_recorded_price ??
-      item.lowest_recorded_price ??
-      demoProduct(upc).referencePriceUsd,
-    source: "catalog",
-  };
 }
