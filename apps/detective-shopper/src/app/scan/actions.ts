@@ -1,7 +1,7 @@
 "use server";
 
 import { lookupProduct, isCatalogConfigured, type Product } from "@/lib/catalog";
-import { comparePrices, type StorePrice } from "@/lib/pricing";
+import { type StorePrice } from "@/lib/pricing";
 import { findDeals, isCouponsConfigured, type Deal } from "@/lib/coupons";
 import { computeSavings, type SavingsBreakdown } from "@/lib/savings";
 import { wrapAffiliateLink, isAffiliateConfigured } from "@/lib/affiliate";
@@ -20,21 +20,16 @@ export type InvestigateResult =
 
 export async function investigate(rawUpc: string): Promise<InvestigateResult> {
   try {
-    const product = await lookupProduct(rawUpc);
-    if (!product) {
-      return { ok: false, error: "No product matched that barcode." };
-    }
+    // Real product + real merchant prices from UPCitemdb (free or paid).
+    const { product, prices: rawPrices } = await lookupProduct(rawUpc);
 
-    const [rawPrices, rawDeals] = await Promise.all([
-      comparePrices(product),
-      findDeals(product),
-    ]);
-
-    // Wrap outbound retailer + deal links with affiliate tracking.
     const prices = rawPrices.map((price) => ({
       ...price,
       url: wrapAffiliateLink(price.url, { subId: product.upc }),
     }));
+
+    // Only show coupons from a real feed — never fabricated ones.
+    const rawDeals = isCouponsConfigured() ? await findDeals(product) : [];
     const deals = rawDeals.map((deal) => ({
       ...deal,
       url: wrapAffiliateLink(deal.url, { subId: product.upc }),
