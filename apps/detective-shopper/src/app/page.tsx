@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  other: {
+    "Impact-Site-Verification": "add67608-3776-49c6-bee5-c6b4d4fb81fc",
+  },
+};
 
 export default function Home() {
   return (
