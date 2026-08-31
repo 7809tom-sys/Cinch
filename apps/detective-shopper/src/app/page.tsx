@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { SiteFooter } from "./site-footer";
 
 export const metadata: Metadata = {
   other: {
@@ -170,22 +171,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-white/10 bg-background px-6 py-8 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-3 text-sm text-mist sm:flex-row sm:items-center">
-          <p className="font-[family-name:var(--font-display)] font-semibold text-foam">
-            Detective Shopper
-          </p>
-          <div className="flex items-center gap-4">
-            <p>Investigate before you buy.</p>
-            <a href="/recipes" className="transition-colors hover:text-foam">
-              Recipes
-            </a>
-            <a href="/admin" className="transition-colors hover:text-foam">
-              Admin
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
