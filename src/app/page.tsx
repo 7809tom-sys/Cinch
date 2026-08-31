@@ -1,9 +1,21 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { AGENT_CATALOG } from "@/lib/agents";
 import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN } from "@/lib/domain";
+
+// Impact.com affiliate program site-verification tag. Impact asks for this
+// meta tag as early as possible in <head> — Next.js always emits its own
+// charset/viewport meta first (required for correct HTML parsing), so this
+// is placed as the very first *custom* entry in the metadata `other` map,
+// right after those.
+export const metadata: Metadata = {
+  other: {
+    "Impact-Site-Verification": "add67608-3776-49c6-bee5-c6b4d4fb81fc",
+  },
+};
 
 const AGENT_TEAM = AGENT_CATALOG.map((agent) => ({
   name: agent.name,
