@@ -2,9 +2,11 @@ import { randomUUID } from "crypto";
 import {
   customerFacingCta,
   customerFacingHeadline,
+  customerFacingHeroImage,
   customerFacingSupport,
   seedHomePageSource,
   seedLandingCopyJson,
+  seedResponsiveGlobalsCss,
 } from "./seed-site-copy";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
@@ -84,161 +86,6 @@ function languageForPath(filePath: string): string {
   if (filePath.endsWith(".html")) return "html";
   if (filePath.endsWith(".js")) return "javascript";
   return "text";
-}
-
-/** Baseline CSS every Seed ships — phone, tablet, laptop, and installable app. */
-export function seedResponsiveGlobalsCss(): string {
-  return `:root {
-  --brand-deep: #0b2e2a;
-  --foam: #fffaf2;
-  --accent: #e8a54b;
-  --muted: #5a635e;
-  --tap: 2.75rem; /* 44px minimum touch target */
-  --pad-inline: clamp(1rem, 4vw, 2.5rem);
-  --pad-block: clamp(1.25rem, 3vw, 3rem);
-  --content: min(72rem, 100%);
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-}
-
-body {
-  margin: 0;
-  min-width: 0;
-  overflow-x: clip;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: var(--foam);
-  color: var(--brand-deep);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-img,
-video,
-svg {
-  max-width: 100%;
-  height: auto;
-}
-
-a,
-button,
-.cta,
-[role="button"] {
-  min-height: var(--tap);
-  min-width: var(--tap);
-}
-
-/* Avoid iOS zoom-on-focus shifting the layout */
-@media (max-width: 768px) {
-  input,
-  select,
-  textarea {
-    font-size: 16px;
-  }
-}
-
-.seed-shell {
-  width: min(100%, var(--content));
-  margin-inline: auto;
-  padding-inline: var(--pad-inline);
-}
-
-.seed-home {
-  min-height: 100svh;
-  min-height: 100dvh;
-  display: grid;
-  align-content: center;
-  gap: 1rem;
-  padding: var(--pad-block) var(--pad-inline);
-  padding-bottom: calc(var(--pad-block) + env(safe-area-inset-bottom));
-}
-
-.seed-home .brand {
-  margin: 0;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-size: clamp(2rem, 8vw, 3.5rem);
-  overflow-wrap: anywhere;
-}
-
-.seed-home h1 {
-  margin: 0;
-  font-size: clamp(1.6rem, 5vw, 2.75rem);
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-}
-
-.seed-home .support {
-  margin: 0;
-  max-width: 36rem;
-  font-size: clamp(1rem, 2.4vw, 1.15rem);
-  line-height: 1.55;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-.seed-home .cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0.5rem;
-  padding: 0.85rem 1.4rem;
-  border-radius: 0.5rem;
-  background: var(--accent);
-  color: var(--brand-deep);
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.site-chrome header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.85rem var(--pad-inline);
-  padding-top: calc(0.85rem + env(safe-area-inset-top));
-  border-bottom: 1px solid color-mix(in srgb, var(--brand-deep) 12%, transparent);
-}
-
-.site-chrome nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-}
-
-.site-chrome a {
-  display: inline-flex;
-  align-items: center;
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-/* Phone → tablet → laptop rhythm */
-@media (min-width: 640px) {
-  .seed-home {
-    padding-inline: clamp(1.5rem, 6vw, 3rem);
-  }
-}
-
-@media (min-width: 1024px) {
-  .seed-home {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    align-items: center;
-  }
-}
-`;
 }
 
 function seedLayoutSource(projectName: string): string {
@@ -435,9 +282,10 @@ Do not ship desktop-only layouts.
     path: "app/page.tsx",
     content: seedHomePageSource({
       brand: input.projectName.replace(/\s+Seed$/i, "").trim() || input.projectName,
-      headline: customerFacingHeadline(input.projectName),
+      headline: customerFacingHeadline(input.projectName, input.brief),
       support: customerFacingSupport(input.brief),
       cta: customerFacingCta(input.brief),
+      heroImage: customerFacingHeroImage(input.brief),
     }),
     status: "draft",
     message: "Scaffolded customer home page",
@@ -448,9 +296,10 @@ Do not ship desktop-only layouts.
     path: "content/landing.copy.json",
     content: seedLandingCopyJson({
       brand: input.projectName.replace(/\s+Seed$/i, "").trim() || input.projectName,
-      headline: customerFacingHeadline(input.projectName),
+      headline: customerFacingHeadline(input.projectName, input.brief),
       support: customerFacingSupport(input.brief),
       cta: customerFacingCta(input.brief),
+      heroImage: customerFacingHeroImage(input.brief),
     }),
     status: "draft",
     message: "Scaffolded landing copy",
@@ -519,13 +368,15 @@ export async function applyTaskToSource(input: {
     // Keep the public landing on business copy if it drifted to task text.
     const identity = await projectIdentityFromSource(input.projectId);
     const brand = identity.name.replace(/\s+Seed$/i, "").trim() || identity.name;
-    const headline = customerFacingHeadline(identity.name);
-    const support = customerFacingSupport(identity.brief || input.taskDetail);
-    const cta = customerFacingCta(identity.brief || input.taskDetail);
+    const brief = identity.brief || input.taskDetail;
+    const headline = customerFacingHeadline(identity.name, brief);
+    const support = customerFacingSupport(brief);
+    const cta = customerFacingCta(brief);
+    const heroImage = customerFacingHeroImage(brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource({ brand, headline, support, cta }),
+      content: seedHomePageSource({ brand, headline, support, cta, heroImage }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -534,7 +385,7 @@ export async function applyTaskToSource(input: {
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",
-      content: seedLandingCopyJson({ brand, headline, support, cta }),
+      content: seedLandingCopyJson({ brand, headline, support, cta, heroImage }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -546,13 +397,15 @@ export async function applyTaskToSource(input: {
   if (title.includes("design") || title.includes("landing")) {
     const identity = await projectIdentityFromSource(input.projectId);
     const brand = identity.name.replace(/\s+Seed$/i, "").trim() || identity.name;
-    const headline = customerFacingHeadline(identity.name);
-    const support = customerFacingSupport(identity.brief || input.taskDetail);
-    const cta = customerFacingCta(identity.brief || input.taskDetail);
+    const brief = identity.brief || input.taskDetail;
+    const headline = customerFacingHeadline(identity.name, brief);
+    const support = customerFacingSupport(brief);
+    const cta = customerFacingCta(brief);
+    const heroImage = customerFacingHeroImage(brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource({ brand, headline, support, cta }),
+      content: seedHomePageSource({ brand, headline, support, cta, heroImage }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -561,7 +414,7 @@ export async function applyTaskToSource(input: {
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",
-      content: seedLandingCopyJson({ brand, headline, support, cta }),
+      content: seedLandingCopyJson({ brand, headline, support, cta, heroImage }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -582,13 +435,15 @@ export async function applyTaskToSource(input: {
   if (title.includes("copy")) {
     const identity = await projectIdentityFromSource(input.projectId);
     const brand = identity.name.replace(/\s+Seed$/i, "").trim() || identity.name;
-    const headline = customerFacingHeadline(identity.name);
-    const support = customerFacingSupport(identity.brief || input.taskDetail);
-    const cta = customerFacingCta(identity.brief || input.taskDetail);
+    const brief = identity.brief || input.taskDetail;
+    const headline = customerFacingHeadline(identity.name, brief);
+    const support = customerFacingSupport(brief);
+    const cta = customerFacingCta(brief);
+    const heroImage = customerFacingHeroImage(brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",
-      content: seedLandingCopyJson({ brand, headline, support, cta }),
+      content: seedLandingCopyJson({ brand, headline, support, cta, heroImage }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -597,7 +452,7 @@ export async function applyTaskToSource(input: {
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource({ brand, headline, support, cta }),
+      content: seedHomePageSource({ brand, headline, support, cta, heroImage }),
       authoredBy: input.agentId,
       agentName: agent,
       status,

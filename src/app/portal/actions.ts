@@ -557,34 +557,47 @@ export async function portalContinueGrowthAction(projectId: string) {
 
 
 
-/** Publish the Seed’s live website (hosted subdomain / custom domain). */
-export async function portalPublishWebsiteAction(projectId: string) {
+async function canManageSeedWebsite(projectId: string) {
   const customer = await getCurrentCustomer();
   if (!customer) {
     return { ok: false as const, error: "Sign in required." };
   }
-  if (!customerOwnsProject(customer, projectId)) {
+  const project = await getProject(projectId);
+  const owns =
+    project &&
+    (customerOwnsProject(customer, projectId) ||
+      project.customerEmail === customer.email ||
+      isMasterEmail(customer.email));
+  if (!project || !owns) {
     return { ok: false as const, error: "Not your Seed." };
+  }
+  return { ok: true as const, customer, project };
+}
+
+/** Publish the Seed’s live website (hosted subdomain / custom domain). */
+export async function portalPublishWebsiteAction(projectId: string) {
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) {
+    return { ok: false as const, error: access.error };
   }
   await publishSeedWebsite(projectId);
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
+  revalidatePath(`/site/${projectId}`);
   return { ok: true as const };
 }
 
 /** Opt-in: list this Seed in the library/marketplace to earn on template sales. */
 export async function portalListInLibraryAction(projectId: string) {
-  const customer = await getCurrentCustomer();
-  if (!customer) {
-    return { ok: false as const, error: "Sign in required." };
-  }
-  if (!customerOwnsProject(customer, projectId)) {
-    return { ok: false as const, error: "Not your Seed." };
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) {
+    return { ok: false as const, error: access.error };
   }
   const project = await listSeedInLibrary(projectId);
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
   revalidatePath("/browse");
+  revalidatePath(`/site/${projectId}`);
   return {
     ok: true as const,
     listingId: project.marketplaceListingId,
