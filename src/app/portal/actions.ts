@@ -360,7 +360,8 @@ export async function getPortalSourceSnapshot(projectId: string) {
   const owns =
     project &&
     (customerOwnsProject(customer, projectId) ||
-      project.customerEmail === customer.email);
+      project.customerEmail === customer.email ||
+      isMasterEmail(customer.email));
 
   if (!project || !owns) {
     return { customer, project: null, source: null, unauthorized: true };

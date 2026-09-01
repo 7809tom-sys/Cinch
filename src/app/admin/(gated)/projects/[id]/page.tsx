@@ -171,26 +171,25 @@ export default async function ProjectAdminPage({ params }: PageProps) {
         </section>
 
         <aside className="min-w-0 space-y-6">
-          {buildComplete ? (
-            <div className="min-w-0 border border-brand/10 bg-brand-deep px-4 py-5 text-foam sm:px-5">
-              <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
-                Published preview
-              </h2>
-              <p className="mt-2 text-sm text-mist [overflow-wrap:anywhere]">
-                Open the live Seed site anytime. If it&apos;s listed, jump to
-                the marketplace library from here too.
-              </p>
-              <div className="mt-4">
-                <SeedPreviewLinks
-                  websiteUrl={websiteUrl}
-                  projectName={project.name}
-                  listedInLibrary={listedInLibrary}
-                  showEmbed
-                  tone="on-dark"
-                />
-              </div>
+          <div className="min-w-0 border border-brand/10 bg-brand-deep px-4 py-5 text-foam sm:px-5">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
+              Website preview
+            </h2>
+            <p className="mt-2 text-sm text-mist [overflow-wrap:anywhere]">
+              {buildComplete
+                ? "Open the live Seed site anytime. Publish and Library controls are on the preview for owners."
+                : "The live page is available while agents still work — open it instead of only watching the source tree."}
+            </p>
+            <div className="mt-4">
+              <SeedPreviewLinks
+                websiteUrl={websiteUrl}
+                projectName={project.name}
+                listedInLibrary={listedInLibrary}
+                showEmbed
+                tone="on-dark"
+              />
             </div>
-          ) : null}
+          </div>
 
           {customer ? (
             <div className="min-w-0 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
@@ -211,6 +210,14 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 {customer.accessCode}
               </p>
               <div className="mt-4 flex flex-col gap-2">
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:text-brand-deep"
+                >
+                  Visit website →
+                </a>
                 <Link
                   href={`/portal/${project.id}`}
                   className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:text-brand-deep"
@@ -221,7 +228,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                   href={`/portal/${project.id}/source`}
                   className="inline-flex min-h-11 items-center text-sm font-semibold text-muted hover:text-brand-deep"
                 >
-                  Live source →
+                  Source tree (optional) →
                 </Link>
               </div>
             </div>
