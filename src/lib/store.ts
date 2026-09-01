@@ -561,12 +561,36 @@ export async function saveProject(project: SeedProject): Promise<void> {
   await writeStore(store);
 }
 
+/** Titles used for the single automatic polish / growth wave. */
+export const GROWTH_WAVE_TITLES = [
+  "Polish mobile layout and touch targets",
+  "Strengthen booking / contact conversion path",
+  "Add trust and service-area cues",
+  "Grow live-site health adaptations",
+] as const;
+
+/** Also match older wording so already-running Seeds can still complete. */
+const GROWTH_WAVE_MATCHERS = [
+  /polish mobile layout/i,
+  /strengthen booking/i,
+  /trust and service-area/i,
+  /live-site health/i,
+];
+
+export function projectHasGrowthWave(project: SeedProject): boolean {
+  return project.tasks.some((task) =>
+    GROWTH_WAVE_MATCHERS.some((matcher) => matcher.test(task.title)),
+  );
+}
+
 /**
- * When the first build wave is done, append the next growth tasks without
- * wiping finished work — so Seeds don’t look “stalled” after catch-up.
+ * After the first plan finishes, append one polish/growth wave — once.
+ * Auto-watch must not keep re-queuing the same titles forever.
+ * Pass `{ force: true }` for an explicit “Continue growing” tap.
  */
 export async function appendNextBuildWave(
   projectId: string,
+  options: { force?: boolean } = {},
 ): Promise<SeedProject> {
   const store = await ensureStore();
   const project = store.projects.find((item) => item.id === projectId);
@@ -575,36 +599,62 @@ export async function appendNextBuildWave(
   const open = project.tasks.some((task) => task.status !== "done");
   if (open) return project;
 
+  // Without force, only allow the first growth wave so Seeds can complete.
+  if (!options.force && projectHasGrowthWave(project)) {
+    return project;
+  }
+
   const pm = getProjectManager();
   const stamp = now();
-  const wave: Array<
+  const priorGrowthCount = project.tasks.filter((task) =>
+    GROWTH_WAVE_MATCHERS.some((matcher) => matcher.test(task.title)),
+  ).length;
+  const waveNumber =
+    priorGrowthCount > 0
+      ? Math.floor(priorGrowthCount / GROWTH_WAVE_TITLES.length) + 1
+      : 1;
+
+  const baseWave: Array<
     Omit<ProjectTask, "id" | "status" | "assigneeId" | "assignedBy" | "updatedAt">
   > = [
     {
-      title: "Polish mobile layout and touch targets",
-      detail: "Tighten spacing, wrapping, and tap sizes so the live site reads cleanly on phones.",
+      title: GROWTH_WAVE_TITLES[0],
+      detail:
+        "Tighten spacing, wrapping, and tap sizes so the live site reads cleanly on phones.",
       requiredSkills: ["ui", "frontend"],
       minSkillLevel: 3,
     },
     {
-      title: "Strengthen booking / contact conversion path",
-      detail: "Clarify the primary CTA and make it obvious how a visitor schedules service.",
+      title: GROWTH_WAVE_TITLES[1],
+      detail:
+        "Clarify the primary CTA and make it obvious how a visitor schedules service.",
       requiredSkills: ["copy"],
       minSkillLevel: 2,
     },
     {
-      title: "Add trust and service-area cues",
-      detail: "Surface GPS/service-area clarity, reviews, and care language for mobile detailing.",
+      title: GROWTH_WAVE_TITLES[2],
+      detail:
+        "Surface GPS/service-area clarity, reviews, and care language for mobile detailing.",
       requiredSkills: ["seo", "copy"],
       minSkillLevel: 2,
     },
     {
-      title: "Grow live-site health adaptations",
-      detail: "Queue embed-ready modulars across functionality, efficiency, and customer care.",
+      title: GROWTH_WAVE_TITLES[3],
+      detail:
+        "Queue embed-ready modulars across functionality, efficiency, and customer care.",
       requiredSkills: ["backend", "devops"],
       minSkillLevel: 3,
     },
   ];
+
+  const wave =
+    waveNumber > 1
+      ? baseWave.map((item) => ({
+          ...item,
+          title: `${item.title} (wave ${waveNumber})`,
+          detail: `${item.detail} (growth wave ${waveNumber})`,
+        }))
+      : baseWave;
 
   const additions = wave.map((item) => ({
     ...item,
@@ -618,7 +668,9 @@ export async function appendNextBuildWave(
   project.tasks.push(...additions);
   pushActivity(
     project,
-    `${pm.name} started the next growth wave — ${additions.length} new tasks queued. You can keep watching.`,
+    options.force
+      ? `${pm.name} started growth wave ${waveNumber} — ${additions.length} new tasks queued after your Continue growing tap.`
+      : `${pm.name} started the polish pass — ${additions.length} tasks queued. When these finish, the Seed is complete.`,
     pm.id,
   );
   await writeStore(store);

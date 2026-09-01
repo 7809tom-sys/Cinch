@@ -547,7 +547,7 @@ export async function portalContinueGrowthAction(projectId: string) {
   if (!customerOwnsProject(customer, projectId)) {
     return { ok: false as const, error: "Not your Seed." };
   }
-  await continueSeedGrowth(projectId);
+  await continueSeedGrowth(projectId, { force: true });
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
   return { ok: true as const };
