@@ -87,12 +87,16 @@ export function SiteOwnerChrome({
             </>
           ) : null}
           {portalHref ? (
-            <a className="seed-owner-btn" href={portalHref}>
+            <a className="seed-owner-btn" href={portalHref} target="_top">
               Portal
             </a>
           ) : null}
           {adminHref ? (
-            <a className="seed-owner-btn seed-owner-btn-admin" href={adminHref}>
+            <a
+              className="seed-owner-btn seed-owner-btn-admin"
+              href={adminHref}
+              target="_top"
+            >
               Admin
             </a>
           ) : null}
