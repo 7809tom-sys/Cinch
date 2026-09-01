@@ -14,12 +14,17 @@ export function PortalCompleteLaunch({
   sitePublished,
   listedInLibrary,
   developerRatePct,
+  buildComplete = true,
+  adminHref = null,
 }: {
   projectId: string;
   websiteUrl: string;
   sitePublished: boolean;
   listedInLibrary: boolean;
   developerRatePct: number;
+  /** When false, still show Visit/Publish/Library — just hide optional growth. */
+  buildComplete?: boolean;
+  adminHref?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -65,12 +70,13 @@ export function PortalCompleteLaunch({
     <div className="mt-4 min-w-0 space-y-4 border-t border-brand/10 pt-4">
       <div>
         <p className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
-          Your Seed is ready
+          {buildComplete ? "Your website is ready" : "See your website"}
         </p>
         <p className="mt-1 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
-          Visit the site, publish it when you&apos;re happy, and optionally list
-          it in our library so others can buy your template — you earn{" "}
-          {developerRatePct}% of each sale.
+          {buildComplete
+            ? "Open the live site — Publish and Library are right on the preview. Optionally list it so others can buy your template."
+            : "Your Seed already has a live page while agents work. Open it anytime — Publish and Library sit on the website itself."}{" "}
+          You earn {developerRatePct}% of each library sale.
         </p>
       </div>
 
@@ -93,7 +99,7 @@ export function PortalCompleteLaunch({
             ? "Published"
             : pending
               ? "Publishing…"
-              : "Publish website"}
+              : "Publish"}
         </button>
         <button
           type="button"
@@ -102,11 +108,19 @@ export function PortalCompleteLaunch({
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-accent/40 bg-accent/15 px-4 text-sm font-semibold text-brand-deep transition-colors hover:bg-accent/25 disabled:opacity-60"
         >
           {listed
-            ? "Listed in library"
+            ? "In library"
             : pending
               ? "Listing…"
-              : "List in library & earn"}
+              : "Library"}
         </button>
+        {adminHref ? (
+          <a
+            href={adminHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+          >
+            Admin
+          </a>
+        ) : null}
       </div>
 
       <p className="text-xs leading-relaxed text-muted [overflow-wrap:anywhere]">
@@ -126,9 +140,9 @@ export function PortalCompleteLaunch({
 
       <div className="overflow-hidden rounded-md border border-brand/15 bg-foam">
         <iframe
-          title="Published Seed preview"
+          title="Seed website preview"
           src={websiteUrl}
-          className="h-64 w-full bg-foam"
+          className="h-72 w-full bg-foam sm:h-80"
           loading="lazy"
         />
       </div>
@@ -139,26 +153,28 @@ export function PortalCompleteLaunch({
         </p>
       ) : null}
 
-      <div className="pt-1">
-        {showGrow ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => run("grow")}
-            className="text-sm font-semibold text-muted underline-offset-2 hover:text-brand-deep hover:underline disabled:opacity-60"
-          >
-            {pending ? "Starting another wave…" : "Continue growing (optional)"}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowGrow(true)}
-            className="text-xs font-medium text-muted/80 underline-offset-2 hover:text-muted hover:underline"
-          >
-            Need another growth wave?
-          </button>
-        )}
-      </div>
+      {buildComplete ? (
+        <div className="pt-1">
+          {showGrow ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run("grow")}
+              className="text-sm font-semibold text-muted underline-offset-2 hover:text-brand-deep hover:underline disabled:opacity-60"
+            >
+              {pending ? "Starting another wave…" : "Continue growing (optional)"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowGrow(true)}
+              className="text-xs font-medium text-muted/80 underline-offset-2 hover:text-muted hover:underline"
+            >
+              Need another growth wave?
+            </button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

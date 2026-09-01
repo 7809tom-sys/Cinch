@@ -52,11 +52,19 @@ export default async function PortalProjectPage({ params }: PageProps) {
           </Link>
           <div className="flex max-w-full flex-wrap items-center gap-2 sm:gap-3">
             <PortalRefreshButton />
-            <Link
-              href={`/portal/${project.id}/source`}
+            <a
+              href={websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
             >
-              Live source
+              Visit website
+            </a>
+            <Link
+              href={`/portal/${project.id}/source`}
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+            >
+              Source
             </Link>
             <form action={logoutCustomerAction}>
               <button
@@ -103,21 +111,20 @@ export default async function PortalProjectPage({ params }: PageProps) {
               projectId={project.id}
               complete={buildComplete}
             />
-            {buildComplete ? (
-              <PortalCompleteLaunch
-                projectId={project.id}
-                websiteUrl={websiteUrl}
-                sitePublished={Boolean(project.sitePublishedAt)}
-                listedInLibrary={Boolean(project.marketplaceListingId)}
-                developerRatePct={developerRatePct}
-              />
-            ) : null}
+            <PortalCompleteLaunch
+              projectId={project.id}
+              websiteUrl={websiteUrl}
+              sitePublished={Boolean(project.sitePublishedAt)}
+              listedInLibrary={Boolean(project.marketplaceListingId)}
+              developerRatePct={developerRatePct}
+              buildComplete={buildComplete}
+            />
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
                 {project.tasks.length === 0
-                  ? "Conductor is staffing and assigning work — you only need to watch."
+                  ? "Your website is already up — open Visit website above while Conductor staffs the crew."
                   : buildComplete
-                    ? "All planned tasks are done — your Seed build is complete. Visit your website, publish it, and optionally list it in the library to earn when others use your template."
+                    ? "All planned tasks are done. Open the website to Publish or list it in the library."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}
               </p>
             ) : (
@@ -181,41 +188,39 @@ export default async function PortalProjectPage({ params }: PageProps) {
         </section>
 
         <aside className="min-w-0 max-w-full space-y-6">
-          {buildComplete ? (
-            <div className="border border-brand/10 bg-foam px-5 py-5">
-              <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
-                Website
-              </h2>
-              <p className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">
-                {project.sitePublishedAt
-                  ? "Your site is published on cinchseed.com. Open it anytime, or share the link."
-                  : "Open your live Seed page on cinchseed.com, then publish when you’re ready."}
-              </p>
-              <a
-                href={websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-bold text-foam transition-transform hover:-translate-y-0.5"
-              >
-                Visit website
-              </a>
-              <p className="mt-3 text-xs text-muted [overflow-wrap:anywhere]">
-                {websiteUrl}
-              </p>
-            </div>
-          ) : null}
-
           <div className="border border-brand/10 bg-brand-deep px-5 py-5 text-foam">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
-              Live source
+              Website
             </h2>
             <p className="mt-2 text-sm text-mist [overflow-wrap:anywhere]">
-              Watch files appear and update as agents build — a real-time view
-              of the Seed source tree.
+              {project.sitePublishedAt
+                ? "Published on cinchseed.com — open it to manage Publish, Library, and Admin from the preview."
+                : "Your live Seed page is ready on cinchseed.com. Open it to Publish, list in the Library, or jump to Admin."}
+            </p>
+            <a
+              href={websiteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex h-11 items-center rounded-md bg-accent px-4 text-sm font-bold text-brand-deep transition-transform hover:-translate-y-0.5"
+            >
+              Visit website
+            </a>
+            <p className="mt-3 text-xs text-mist [overflow-wrap:anywhere]">
+              {websiteUrl}
+            </p>
+          </div>
+
+          <div className="border border-brand/10 bg-foam px-5 py-5">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              Source (optional)
+            </h2>
+            <p className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">
+              Peek at files as agents edit them — useful for debugging, not the
+              main way to see your site.
             </p>
             <Link
               href={`/portal/${project.id}/source`}
-              className="mt-4 inline-flex h-11 items-center rounded-md bg-accent px-4 text-sm font-bold text-brand-deep transition-transform hover:-translate-y-0.5"
+              className="mt-4 inline-flex h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
               Open source view
             </Link>
