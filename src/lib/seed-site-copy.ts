@@ -19,29 +19,35 @@ function firstSentences(brief: string, count = 2): string[] {
  * - Classify using the Seed name + brief together.
  * - Never match bare substrings like "car" inside "care", or bare "wash"
  *   (hair wash) as auto detailing.
- * - Specific verticals (salon/hair, food, retail, trades) win before detailing.
+ * - Specific verticals (salon/hair/barber, food, retail, trades) win before detailing.
+ * - Compound forms count: barbershop, hairstylist, hairdresser (not only
+ *   spaced “barber shop” / “hair stylist”).
  * - Auto detailing requires clear vehicle context (detailing, car wash,
  *   mobile detail, clean your car, etc.).
  * - Live repair must rewrite landing copy when a salon/hair Seed is still
- *   showing car hero, "Book a detail", or driveway/vehicle service copy.
+ *   showing car hero, "Book a detail", retail “Shop now”, or driveway copy.
  */
 function industryKey(brief: string, name = ""): string {
   const lower = `${name} ${brief}`.toLowerCase();
 
-  // Hair / beauty before auto — briefs often say "wash" (shampoo) which must
-  // not classify as car detailing.
+  // Hair / beauty / barber before retail+auto — briefs often say "wash"
+  // (shampoo) or compound words like barbershop / hairstylist.
   if (
-    /\b(salon|spa|barber|beauty|nail|stylist|colorist|blowout|coiffure)\b/.test(
+    /\b(salon|spa|barber(?:s|shop)?|beauty|nails?|stylists?|hairstylists?|hairdressers?|colorists?|blowouts?|coiffure|fades?|beards?)\b/.test(
       lower,
     ) ||
-    /\bhair\b/.test(lower)
+    /\bhair(?:\s*style|\s*cut|\s*care)?\b/.test(lower) ||
+    /barber\s*shop|hair\s*stylist|hair\s*dresser|beauty\s*salon|cuts?\s+and\s+(?:styles?|colors?|fades?)/.test(
+      lower,
+    )
   ) {
     return "salon";
   }
   if (/food|restaurant|menu|kitchen|cafe|bistro|dining/.test(lower)) {
     return "food";
   }
-  if (/shop|store|retail|boutique|florist/.test(lower)) return "retail";
+  // Word boundaries — do not let "shop" inside "barbershop" win as retail.
+  if (/\b(shop|store|retail|boutique|florist)\b/.test(lower)) return "retail";
   if (/plumb|hvac|electric|repair|handyman|\btrades?\b/.test(lower)) {
     return "trade";
   }
@@ -103,11 +109,15 @@ export function seedLandingCopyMismatchesIndustry(
       blob,
     );
   const looksLikeSalonCopy =
-    /book an appointment|cut & finish|blowout|colorist|your chair|appointments/.test(
+    /book an appointment|cut & finish|blowout|colorist|your chair|appointments|fade|barber/.test(
       blob,
     ) || /photo-1560066984/.test(copy.heroImage ?? "");
+  const looksLikeRetailCopy =
+    /shop now|browse the shelf|retail floor|product aisle/.test(blob) ||
+    /photo-1441986300917/.test(copy.heroImage ?? "");
 
   if (key === "salon" && looksLikeDetailCopy) return true;
+  if (key === "salon" && looksLikeRetailCopy) return true;
   if (key === "detail" && looksLikeSalonCopy) return true;
   if (key !== "detail" && looksLikeDetailCopy) return true;
   return false;

@@ -272,13 +272,20 @@ export async function repairCustomerLandingIfNeeded(
     !page.includes("seed-hero") ||
     !page.includes('id="services"') ||
     !page.includes('id="book"') ||
-    (/Book a detail|Express wash|Showroom polish|Details that travel/i.test(
+    (/Book a detail|Express wash|Showroom polish|Details that travel|Shop now/i.test(
       page,
     ) &&
       seedLandingCopyMismatchesIndustry(project.name, project.brief, {
-        cta: /Book a detail/i.test(page) ? "Book a detail" : undefined,
+        cta: /Book a detail/i.test(page)
+          ? "Book a detail"
+          : /Shop now/i.test(page)
+            ? "Shop now"
+            : undefined,
         servicesHeadline: /Details that travel/i.test(page)
           ? "Details that travel to your driveway"
+          : undefined,
+        heroImage: /photo-1441986300917/.test(page)
+          ? "https://images.unsplash.com/photo-1441986300917-64674bd600d8"
           : undefined,
       }));
 

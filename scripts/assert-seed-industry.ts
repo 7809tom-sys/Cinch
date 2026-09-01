@@ -29,6 +29,22 @@ assert(
   seedIndustryKey(salonName, "Wash and style appointments") === "salon",
   "name with Hair classifies as salon even if brief says wash",
 );
+assert(
+  seedIndustryKey("Fade Room", "barbershop hairstylist") === "salon",
+  "compound barbershop + hairstylist classifies as salon (not retail via shop)",
+);
+assert(
+  seedIndustryKey(
+    "Northside Cuts",
+    "Looking for a hairstylist and barbershop website",
+  ) === "salon",
+  "hairstylist + barbershop website brief is salon",
+);
+assert(
+  seedIndustryKey("Joe's Barber Shop", "Cuts and fades for the neighborhood") ===
+    "salon",
+  "barber shop + fades classifies as salon",
+);
 
 const salon = customerFacingSiteCopy(salonName, salonBrief);
 assert(salon.cta === "Book an appointment", `salon CTA is appointment (got ${salon.cta})`);
@@ -52,6 +68,30 @@ const wrongCarCopy = {
 assert(
   seedLandingCopyMismatchesIndustry(salonName, salonBrief, wrongCarCopy),
   "mismatch detector flags salon+car copy",
+);
+
+const wrongRetailCopy = {
+  cta: "Shop now",
+  heroImage:
+    "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1800&q=80",
+};
+assert(
+  seedLandingCopyMismatchesIndustry(
+    "Fade Room",
+    "barbershop hairstylist",
+    wrongRetailCopy,
+  ),
+  "mismatch detector flags barber brief stuck on retail Shop now",
+);
+
+const barber = customerFacingSiteCopy(
+  "Fade Room",
+  "barbershop hairstylist. Cuts and fades.",
+);
+assert(barber.cta === "Book an appointment", `barber CTA is appointment (got ${barber.cta})`);
+assert(
+  !barber.heroImage.includes("1441986300917"),
+  "barber hero is not the retail photo",
 );
 
 const detailing = customerFacingSiteCopy(
