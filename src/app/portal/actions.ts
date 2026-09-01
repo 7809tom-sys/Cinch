@@ -54,7 +54,11 @@ import {
   setEmbedEnabled,
   type SeedProject,
 } from "@/lib/store";
-import { bootstrapSeedProject, tickProjectWork } from "@/lib/project-manager";
+import {
+  bootstrapSeedProject,
+  continueSeedGrowth,
+  tickProjectWork,
+} from "@/lib/project-manager";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
   if (!isMasterEmail(email)) return;
@@ -532,5 +536,20 @@ export async function portalWatchTickAction(projectId: string) {
     stuck: result.stuck,
     complete: result.complete,
   };
+}
+
+/** Explicit “keep growing” when the first build wave is caught up. */
+export async function portalContinueGrowthAction(projectId: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in required." };
+  }
+  if (!customerOwnsProject(customer, projectId)) {
+    return { ok: false as const, error: "Not your Seed." };
+  }
+  await continueSeedGrowth(projectId);
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
+  return { ok: true as const };
 }
 

@@ -65,14 +65,14 @@ export default async function PortalProjectPage({ params }: PageProps) {
       </header>
 
       <main className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:gap-10 sm:px-8 sm:py-12 lg:grid-cols-[1.2fr_0.8fr]">
-        <section>
+        <section className="min-w-0">
           <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
             YOUR SEED
           </p>
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
+          <h1 className="mt-3 break-words font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
             {project.name}
           </h1>
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
+          <p className="mt-4 max-w-2xl break-words text-base leading-relaxed text-muted">
             {project.brief}
           </p>
           {project.referenceUrl ? (
@@ -89,7 +89,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
             </p>
           ) : null}
 
-          <div className="mt-8 border border-brand/10 bg-foam px-5 py-5">
+          <div className="mt-8 min-w-0 border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               What&apos;s being worked on
             </h2>
@@ -98,15 +98,15 @@ export default async function PortalProjectPage({ params }: PageProps) {
               complete={project.tasks.length > 0 && doneCount === project.tasks.length}
             />
             {activeTasks.length === 0 ? (
-              <p className="mt-3 text-sm text-muted">
+              <p className="mt-3 break-words text-sm leading-relaxed text-muted">
                 {project.tasks.length === 0
                   ? "Conductor is staffing and assigning work — you only need to watch."
                   : doneCount === project.tasks.length
-                    ? "All planned tasks are done. Watch Source for the finished tree, or check activity for the next growth push."
+                    ? "All planned tasks are done. The next growth wave starts automatically — or tap Continue growing. Watch Source for the finished tree."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}
               </p>
             ) : (
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-4 min-w-0 space-y-3">
                 {activeTasks.map((task) => {
                   const assignee = task.assigneeId
                     ? getAgent(task.assigneeId)
@@ -114,18 +114,20 @@ export default async function PortalProjectPage({ params }: PageProps) {
                   return (
                     <li
                       key={task.id}
-                      className="border-t border-brand/10 pt-3 first:border-t-0 first:pt-0"
+                      className="min-w-0 border-t border-brand/10 pt-3 first:border-t-0 first:pt-0"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-semibold text-brand-deep">
+                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                        <p className="min-w-0 break-words font-semibold text-brand-deep">
                           {task.title}
                         </p>
-                        <span className="text-xs font-bold tracking-wide text-accent-deep uppercase">
+                        <span className="shrink-0 text-xs font-bold tracking-wide text-accent-deep uppercase">
                           {task.status.replace("_", " ")}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm text-muted">{task.detail}</p>
-                      <p className="mt-2 text-xs text-muted">
+                      <p className="mt-1 break-words text-sm text-muted">
+                        {task.detail}
+                      </p>
+                      <p className="mt-2 break-words text-xs text-muted">
                         {assignee
                           ? `${assignee.name} · ${assignee.role}`
                           : "Awaiting assignee"}
@@ -137,7 +139,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
             )}
           </div>
 
-          <div className="mt-8">
+          <div className="mt-8 min-w-0">
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               Full task board
             </h2>
@@ -148,10 +150,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
                 {project.tasks.map((task) => (
                   <li
                     key={task.id}
-                    className="flex flex-wrap items-center justify-between gap-2 border-b border-brand/10 py-3 text-sm last:border-b-0"
+                    className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-brand/10 py-3 text-sm last:border-b-0"
                   >
-                    <span className="text-brand-deep">{task.title}</span>
-                    <span className="text-xs font-bold tracking-wide text-muted uppercase">
+                    <span className="min-w-0 break-words text-brand-deep">
+                      {task.title}
+                    </span>
+                    <span className="shrink-0 text-xs font-bold tracking-wide text-muted uppercase">
                       {task.status.replace("_", " ")}
                     </span>
                   </li>

@@ -3,6 +3,7 @@ import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
 import { upsertLibraryModule } from "./module-library";
 import { applyTaskToSource } from "./seed-source";
 import {
+  appendNextBuildWave,
   getProject,
   inviteAgent,
   now,
@@ -249,6 +250,18 @@ export async function restaffSeedProject(
   return runProjectManagerAssignment(projectId);
 }
 
+/**
+ * Keep a “caught up” Seed moving: restaff if needed, append the next build
+ * wave when every task is done, then assign the new work.
+ */
+export async function continueSeedGrowth(
+  projectId: string,
+): Promise<SeedProject> {
+  await ensureSpecialistsInvited(projectId);
+  await appendNextBuildWave(projectId);
+  return runProjectManagerAssignment(projectId);
+}
+
 export type WatchTickResult = {
   project: SeedProject;
   /** True when a task changed status this tick. */
@@ -331,6 +344,14 @@ export async function tickProjectWork(
     }
     project.modules = project.modules.slice(0, 30);
     await saveProject(project);
+    if (projectWorkComplete(project)) {
+      const beforeCount = project.tasks.length;
+      project = await continueSeedGrowth(projectId);
+      const grew =
+        project.tasks.length > beforeCount ||
+        project.tasks.some((task) => task.status !== "done");
+      return finishResult(project, grew || true);
+    }
     return finishResult(project, true);
   }
 
@@ -396,6 +417,16 @@ export async function tickProjectWork(
     }
     await saveProject(project);
     return finishResult(project, true);
+  }
+
+  // First wave finished — queue the next growth tasks so watch mode doesn’t stall.
+  if (projectWorkComplete(project) && project.tasks.length > 0) {
+    const beforeCount = project.tasks.length;
+    project = await continueSeedGrowth(projectId);
+    const progressed =
+      project.tasks.length > beforeCount ||
+      project.tasks.some((task) => task.status !== "done");
+    return finishResult(project, progressed);
   }
 
   return finishResult(project, false);
