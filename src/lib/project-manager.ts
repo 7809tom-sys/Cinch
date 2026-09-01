@@ -30,13 +30,40 @@ async function creatorAccountIdFor(project: SeedProject): Promise<string | undef
   return customer?.id;
 }
 
-/** List a finished Seed on the marketplace (once) so later buyers fund the developer. */
-async function maybePublishDevelopedSeed(
+/** Publish the Seed website so customers can visit it on the live host. */
+export async function publishSeedWebsite(
+  projectId: string,
+): Promise<SeedProject> {
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+  if (project.sitePublishedAt) return project;
+
+  const pm = getProjectManager();
+  project.sitePublishedAt = now();
+  project.embedEnabled = true;
+  pushActivity(
+    project,
+    `${pm.name} published the website. Visitors can open the live site anytime.`,
+    pm.id,
+  );
+  await saveProject(project);
+  return project;
+}
+
+/**
+ * Opt-in: list this developed Seed in the shared library / marketplace
+ * so later buyers can use it as a template and the developer earns commission.
+ */
+export async function listSeedInLibrary(
   projectId: string,
 ): Promise<SeedProject> {
   let project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
   if (project.marketplaceListingId) return project;
+
+  if (!project.sitePublishedAt) {
+    project = await publishSeedWebsite(projectId);
+  }
 
   const listing = await publishDevelopedSeedToMarketplace(project);
   if (!listing) return project;
@@ -46,7 +73,7 @@ async function maybePublishDevelopedSeed(
   const ratePct = Math.round(SEED_MARKETPLACE_DEVELOPER_RATE * 100);
   pushActivity(
     project,
-    `${pm.name} listed “${listing.title}” on the Seed marketplace. Future buyers get this developed starting point; ${ratePct}% of each sale goes to the original developer.`,
+    `${pm.name} listed “${listing.title}” in the Seed library. Future buyers get this developed starting point; ${ratePct}% of each sale goes to you.`,
     pm.id,
   );
   await saveProject(project);
@@ -304,7 +331,8 @@ export async function continueSeedGrowth(
 async function maybeAdvanceAfterComplete(
   projectId: string,
 ): Promise<{ project: SeedProject; progressed: boolean }> {
-  let project = await maybePublishDevelopedSeed(projectId);
+  let project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
 
   if (!projectHasGrowthWave(project)) {
     const beforeCount = project.tasks.length;
@@ -322,7 +350,7 @@ async function maybeAdvanceAfterComplete(
   if (!alreadyDone) {
     pushActivity(
       project,
-      `${pm.name} marked the Seed build complete. Tap Continue growing only if you want another wave — otherwise you’re done watching.`,
+      `${pm.name} marked the Seed build complete. Visit or publish your website next — list it in the library only if you want to earn when others use your template.`,
       pm.id,
     );
     await saveProject(project);

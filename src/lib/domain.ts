@@ -19,3 +19,15 @@ export function seedHostHostname(slug: string): string {
 export function seedHostOrigin(slug: string): string {
   return `https://${seedHostHostname(slug)}`;
 }
+
+/** Public URL for a Seed site — verified custom domain wins, else hosted subdomain. */
+export function liveWebsiteUrl(project: {
+  name: string;
+  customDomain: { hostname: string; status: string } | null;
+}): string {
+  const custom = project.customDomain;
+  if (custom && custom.status === "verified" && custom.hostname) {
+    return `https://${custom.hostname}`;
+  }
+  return seedHostOrigin(project.name);
+}

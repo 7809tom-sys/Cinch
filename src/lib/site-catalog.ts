@@ -7,6 +7,7 @@ import {
   seedMarketplaceDeveloperCommission,
 } from "./pricing";
 import { SEED_SITE_PRICE_USD } from "./site-url";
+import { liveWebsiteUrl } from "./domain";
 import type { SeedProject } from "./store";
 
 export type CatalogSite = {
@@ -214,8 +215,9 @@ export async function publishDevelopedSeedToMarketplace(
 
   const developer = await getCustomerByEmail(project.customerEmail);
   const previewUrl =
+    (project.sitePublishedAt ? liveWebsiteUrl(project) : null) ||
     project.referenceUrl?.trim() ||
-    `https://cinchseed.com/portal/${project.id}/source`;
+    liveWebsiteUrl(project);
   const summary =
     project.brief.trim().slice(0, 220) ||
     "A developed Cinch Seed ready for the next owner to grow.";

@@ -2,11 +2,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
-import { seedHostHostname } from "@/lib/domain";
+import { liveWebsiteUrl, seedHostHostname } from "@/lib/domain";
+import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
 import { PortalWatchTicker } from "./watch-ticker";
+import { PortalCompleteLaunch } from "./complete-launch";
 import { CustomDomainPanel } from "./custom-domain-panel";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,10 @@ export default async function PortalProjectPage({ params }: PageProps) {
     (task) => task.status === "in_progress" || task.status === "assigned",
   );
   const doneCount = project.tasks.filter((task) => task.status === "done").length;
+  const buildComplete =
+    project.tasks.length > 0 && doneCount === project.tasks.length;
+  const websiteUrl = liveWebsiteUrl(project);
+  const developerRatePct = Math.round(SEED_MARKETPLACE_DEVELOPER_RATE * 100);
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
@@ -95,14 +101,23 @@ export default async function PortalProjectPage({ params }: PageProps) {
             </h2>
             <PortalWatchTicker
               projectId={project.id}
-              complete={project.tasks.length > 0 && doneCount === project.tasks.length}
+              complete={buildComplete}
             />
+            {buildComplete ? (
+              <PortalCompleteLaunch
+                projectId={project.id}
+                websiteUrl={websiteUrl}
+                sitePublished={Boolean(project.sitePublishedAt)}
+                listedInLibrary={Boolean(project.marketplaceListingId)}
+                developerRatePct={developerRatePct}
+              />
+            ) : null}
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
                 {project.tasks.length === 0
                   ? "Conductor is staffing and assigning work — you only need to watch."
-                  : doneCount === project.tasks.length
-                    ? "All planned tasks are done — your Seed build is complete. Open Live source for the finished tree, or tap Continue growing only if you want another wave."
+                  : buildComplete
+                    ? "All planned tasks are done — your Seed build is complete. Visit your website, publish it, and optionally list it in the library to earn when others use your template."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}
               </p>
             ) : (
@@ -166,6 +181,30 @@ export default async function PortalProjectPage({ params }: PageProps) {
         </section>
 
         <aside className="min-w-0 max-w-full space-y-6">
+          {buildComplete ? (
+            <div className="border border-brand/10 bg-foam px-5 py-5">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+                Website
+              </h2>
+              <p className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">
+                {project.sitePublishedAt
+                  ? "Your site is published. Open it anytime, or share the link."
+                  : "Preview your Seed on its hosted URL, then publish when you’re ready."}
+              </p>
+              <a
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-bold text-foam transition-transform hover:-translate-y-0.5"
+              >
+                Visit website
+              </a>
+              <p className="mt-3 text-xs text-muted [overflow-wrap:anywhere]">
+                {websiteUrl}
+              </p>
+            </div>
+          ) : null}
+
           <div className="border border-brand/10 bg-brand-deep px-5 py-5 text-foam">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
               Live source

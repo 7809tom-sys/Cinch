@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  portalContinueGrowthAction,
-  portalWatchTickAction,
-} from "../actions";
+import { portalWatchTickAction } from "../actions";
 
 export function PortalWatchTicker({
   projectId,
@@ -24,18 +21,12 @@ export function PortalWatchTicker({
     setLocalComplete(complete);
   }, [complete]);
 
-  function refreshNow(options?: { advance?: boolean; grow?: boolean }) {
+  function refreshNow(options?: { advance?: boolean }) {
     if (busy.current) return;
     busy.current = true;
     startTransition(async () => {
       try {
-        if (options?.grow) {
-          const grown = await portalContinueGrowthAction(projectId);
-          if (grown.ok) {
-            setLocalComplete(false);
-            setStuck(false);
-          }
-        } else if (options?.advance !== false && !localComplete) {
+        if (options?.advance !== false && !localComplete) {
           const result = await portalWatchTickAction(projectId);
           if (result.ok && "stuck" in result) {
             setStuck(Boolean(result.stuck));
@@ -73,19 +64,6 @@ export function PortalWatchTicker({
               : "Watching live — tap Refresh anytime"}
       </p>
       <div className="flex min-w-0 flex-wrap gap-2">
-        {localComplete ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              setStuck(false);
-              refreshNow({ grow: true });
-            }}
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand disabled:opacity-60"
-          >
-            {pending ? "Growing…" : "Continue growing"}
-          </button>
-        ) : null}
         <button
           type="button"
           disabled={pending}
