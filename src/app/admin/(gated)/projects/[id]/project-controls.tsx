@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   queueGrowthCycleAction,
@@ -30,6 +30,7 @@ export function ProjectControls({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [stuck, setStuck] = useState(false);
   const ticking = useRef(false);
 
   const allDone =
@@ -42,14 +43,17 @@ export function ProjectControls({
   );
 
   useEffect(() => {
-    if (allDone || !hasOpenWork) return;
+    if (allDone || stuck || !hasOpenWork) return;
 
     const id = window.setInterval(() => {
       if (ticking.current) return;
       ticking.current = true;
       startTransition(async () => {
         try {
-          await watchTickAction(projectId);
+          const result = await watchTickAction(projectId);
+          if (result.ok && result.stuck) {
+            setStuck(true);
+          }
           router.refresh();
         } finally {
           ticking.current = false;
@@ -58,7 +62,7 @@ export function ProjectControls({
     }, 2600);
 
     return () => window.clearInterval(id);
-  }, [allDone, hasOpenWork, projectId, router]);
+  }, [allDone, stuck, hasOpenWork, projectId, router]);
 
   const crew = availableAgentIds.filter((agent) =>
     invitedAgentIds.includes(agent.id),
@@ -70,11 +74,13 @@ export function ProjectControls({
         className={`border px-4 py-4 sm:px-5 ${
           allDone
             ? "border-leaf/30 bg-leaf/10"
-            : "border-brand/15 bg-foam"
+            : stuck
+              ? "border-accent/40 bg-accent/10"
+              : "border-brand/15 bg-foam"
         }`}
       >
         <div className="flex flex-wrap items-center gap-3">
-          {!allDone ? (
+          {!allDone && !stuck ? (
             <span
               className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-accent animate-pulse"
               aria-hidden
@@ -84,16 +90,20 @@ export function ProjectControls({
             <p className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
               {allDone
                 ? "Build complete — you’re caught up"
-                : "Watch mode — Conductor assigns, agents work"}
+                : stuck
+                  ? "Watch paused — crew can’t cover remaining tasks"
+                  : "Watch mode — Conductor assigns, agents work"}
             </p>
             <p className="mt-1 text-sm text-muted">
               {allDone
                 ? "Modules landed in the library. Optional growth cycles stay available below."
-                : "You don’t assign tasks. The project manager staffs the crew, routes work by skill and cost, and advances it while you watch."}
+                : stuck
+                  ? "Assignment stopped so it won’t loop. Check activity for which skills are missing."
+                  : "You don’t assign tasks. The project manager routes work by skill and cost, then agents execute while you watch."}
             </p>
           </div>
         </div>
-        {pending && !allDone ? (
+        {pending && !allDone && !stuck ? (
           <p className="mt-3 text-xs font-semibold tracking-wide text-accent-deep uppercase">
             Updating activity…
           </p>
