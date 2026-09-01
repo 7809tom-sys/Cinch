@@ -92,11 +92,19 @@ function customerCopyFromProject(project: SeedProject): SeedSiteCopy {
 }
 
 function mergeStoredCopy(
+  projectName: string,
+  brief: string,
   fallback: SeedSiteCopy,
   raw: string,
 ): SeedSiteCopy {
   try {
     const copy = JSON.parse(raw) as Partial<SeedSiteCopy>;
+
+    // Never keep car/detailing (or other wrong-vertical) copy over a correct fallback.
+    if (seedLandingCopyMismatchesIndustry(projectName, brief, copy)) {
+      return fallback;
+    }
+
     const next = { ...fallback };
 
     if (
@@ -160,6 +168,11 @@ function mergeStoredCopy(
     if (next.headline.trim().toLowerCase() === next.brand.trim().toLowerCase()) {
       next.headline = fallback.headline;
     }
+
+    // Final guard after merge — stored fields can still combine into a mismatch.
+    if (seedLandingCopyMismatchesIndustry(projectName, brief, next)) {
+      return fallback;
+    }
     return next;
   } catch {
     return fallback;
@@ -174,7 +187,9 @@ export async function buildSeedSitePreview(
   const files = bundle?.files ?? [];
   const fallback = customerCopyFromProject(project);
   const copyRaw = fileContent(files, "content/landing.copy.json");
-  const copy = copyRaw ? mergeStoredCopy(fallback, copyRaw) : fallback;
+  const copy = copyRaw
+    ? mergeStoredCopy(project.name, project.brief, fallback, copyRaw)
+    : fallback;
   const css = fileContent(files, "app/globals.css") ?? seedPublicSiteCss();
 
   // Do not HTML-escape here — React text nodes escape safely on render.
