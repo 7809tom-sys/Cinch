@@ -46,7 +46,7 @@ export function ConnectApiControls({
             }
           });
         }}
-        className="inline-flex h-8 items-center justify-center rounded-md border border-foam/30 px-3 text-xs font-semibold text-foam hover:bg-foam/10 disabled:opacity-60"
+        className="inline-flex min-h-10 items-center justify-center rounded-md border border-foam/30 px-3 text-xs font-semibold text-foam hover:bg-foam/10 disabled:opacity-60"
       >
         {enabled ? "Disable" : "Enable"}
       </button>
@@ -65,7 +65,7 @@ export function ConnectApiControls({
             }
           });
         }}
-        className="inline-flex h-8 items-center justify-center rounded-md border border-foam/30 px-3 text-xs font-semibold text-foam hover:bg-foam/10 disabled:opacity-60"
+        className="inline-flex min-h-10 items-center justify-center rounded-md border border-foam/30 px-3 text-xs font-semibold text-foam hover:bg-foam/10 disabled:opacity-60"
       >
         Regenerate key
       </button>
