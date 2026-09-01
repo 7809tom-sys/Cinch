@@ -557,4 +557,68 @@ export async function saveProject(project: SeedProject): Promise<void> {
   await writeStore(store);
 }
 
+/**
+ * When the first build wave is done, append the next growth tasks without
+ * wiping finished work — so Seeds don’t look “stalled” after catch-up.
+ */
+export async function appendNextBuildWave(
+  projectId: string,
+): Promise<SeedProject> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const open = project.tasks.some((task) => task.status !== "done");
+  if (open) return project;
+
+  const pm = getProjectManager();
+  const stamp = now();
+  const wave: Array<
+    Omit<ProjectTask, "id" | "status" | "assigneeId" | "assignedBy" | "updatedAt">
+  > = [
+    {
+      title: "Polish mobile layout and touch targets",
+      detail: "Tighten spacing, wrapping, and tap sizes so the live site reads cleanly on phones.",
+      requiredSkills: ["ui", "frontend"],
+      minSkillLevel: 3,
+    },
+    {
+      title: "Strengthen booking / contact conversion path",
+      detail: "Clarify the primary CTA and make it obvious how a visitor schedules service.",
+      requiredSkills: ["copy"],
+      minSkillLevel: 2,
+    },
+    {
+      title: "Add trust and service-area cues",
+      detail: "Surface GPS/service-area clarity, reviews, and care language for mobile detailing.",
+      requiredSkills: ["seo", "copy"],
+      minSkillLevel: 2,
+    },
+    {
+      title: "Grow live-site health adaptations",
+      detail: "Queue embed-ready modulars across functionality, efficiency, and customer care.",
+      requiredSkills: ["backend", "devops"],
+      minSkillLevel: 3,
+    },
+  ];
+
+  const additions = wave.map((item) => ({
+    ...item,
+    id: randomUUID(),
+    status: "queued" as const,
+    assigneeId: null,
+    assignedBy: null,
+    updatedAt: stamp,
+  }));
+
+  project.tasks.push(...additions);
+  pushActivity(
+    project,
+    `${pm.name} started the next growth wave — ${additions.length} new tasks queued. You can keep watching.`,
+    pm.id,
+  );
+  await writeStore(store);
+  return project;
+}
+
 export { pushActivity, now };
