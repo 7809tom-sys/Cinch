@@ -8,6 +8,8 @@ import {
 } from "@/lib/master-auth";
 import {
   buildSeedSitePreview,
+  briefAsksForBusinessAdmin,
+  ensureBusinessAdminInSeed,
   repairCustomerLandingIfNeeded,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -42,6 +44,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   if (!project) notFound();
 
   await repairCustomerLandingIfNeeded(project);
+  if (briefAsksForBusinessAdmin(project.brief)) {
+    await ensureBusinessAdminInSeed(project);
+  }
   const preview = await buildSeedSitePreview(project);
 
   const [customer, master] = await Promise.all([
@@ -50,7 +55,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   ]);
 
   // Portal login for a master-email account may only set the customer cookie.
-  // Promote to a real master session so Admin → /admin/projects/{id} works.
+  // Promote to a real master session so Cinch build-room links still work.
   let masterSession = master;
   if (!masterSession && customer && isMasterEmail(customer.email)) {
     await establishMasterSession({
@@ -69,6 +74,10 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
         project.customerEmail === customer.email),
   );
   const showOwnerChrome = isOwner || isMaster;
+  const businessAdminHref =
+    (isOwner || isMaster) && briefAsksForBusinessAdmin(project.brief)
+      ? `/site/${project.id}/admin`
+      : null;
 
   return (
     <>
@@ -171,7 +180,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
           listedInLibrary={Boolean(project.marketplaceListingId)}
           showPublishControls={isOwner || isMaster}
           portalHref={isOwner || isMaster ? `/portal/${project.id}` : null}
-          adminHref={isMaster ? `/admin/projects/${project.id}` : null}
+          adminHref={businessAdminHref}
         />
       ) : null}
     </>

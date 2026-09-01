@@ -1,10 +1,15 @@
 import { getSourceBundle, upsertSourceFile } from "./seed-source";
 import {
+  briefAsksForBusinessAdmin,
+  customerFacingAdminCopy,
   customerFacingSiteCopy,
   looksLikeAgentTaskCopy,
+  seedAdminCopyJson,
+  seedAdminPageSource,
   seedHomePageSource,
   seedLandingCopyJson,
   seedPublicSiteCss,
+  type SeedAdminCopy,
   type SeedService,
   type SeedSiteCopy,
 } from "./seed-site-copy";
@@ -16,19 +21,23 @@ export type SeedSitePreview = SeedSiteCopy & {
 };
 
 export {
+  briefAsksForBusinessAdmin,
+  customerFacingAdminCopy,
   customerFacingCta,
   customerFacingHeadline,
   customerFacingHeroImage,
   customerFacingSiteCopy,
   customerFacingSupport,
   looksLikeAgentTaskCopy,
+  seedAdminCopyJson,
+  seedAdminPageSource,
   seedHomePageSource,
   seedLandingCopyJson,
   seedPublicSiteCss,
   seedResponsiveGlobalsCss,
 } from "./seed-site-copy";
 
-export type { SeedService, SeedSiteCopy };
+export type { SeedAdminCopy, SeedService, SeedSiteCopy };
 
 function escapeHtml(value: string): string {
   return value
@@ -252,5 +261,132 @@ export async function repairCustomerLandingIfNeeded(
     status: "ready",
     message: "Restored full customer site copy",
     agentName: "Conductor",
+  });
+}
+
+/**
+ * When the brief asked for admin/calendar/education, ensure those pages exist
+ * in the Seed source tree (grown into the Seed — not a separate Cinch product).
+ */
+export async function ensureBusinessAdminInSeed(
+  project: SeedProject,
+): Promise<SeedAdminCopy | null> {
+  if (!briefAsksForBusinessAdmin(project.brief)) return null;
+
+  const bundle = await getSourceBundle(project.id);
+  const copyRaw =
+    bundle?.files.find((file) => file.path === "content/admin.copy.json")
+      ?.content ?? "";
+  const page =
+    bundle?.files.find((file) => file.path === "app/admin/page.tsx")
+      ?.content ?? "";
+  const css =
+    bundle?.files.find((file) => file.path === "app/globals.css")?.content ??
+    "";
+
+  let existing: SeedAdminCopy | null = null;
+  if (copyRaw) {
+    try {
+      const parsed = JSON.parse(copyRaw) as SeedAdminCopy;
+      if (
+        parsed &&
+        typeof parsed.brand === "string" &&
+        Array.isArray(parsed.tips) &&
+        Array.isArray(parsed.appointments)
+      ) {
+        existing = parsed;
+      }
+    } catch {
+      existing = null;
+    }
+  }
+
+  const needsWrite =
+    !existing ||
+    !page ||
+    !page.includes("seed-admin") ||
+    !css.includes("seed-admin");
+
+  if (!needsWrite && existing) return existing;
+
+  const admin = existing ?? customerFacingAdminCopy(project.name, project.brief);
+
+  if (!css.includes("seed-admin")) {
+    await upsertSourceFile({
+      projectId: project.id,
+      path: "app/globals.css",
+      content: seedPublicSiteCss(),
+      status: "ready",
+      message: "Grew business admin styles into the Seed",
+      agentName: "Conductor",
+    });
+  }
+
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "app/admin/page.tsx",
+    content: seedAdminPageSource(admin),
+    status: "ready",
+    message: "Grew business admin into the Seed",
+    agentName: "Conductor",
+  });
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "content/admin.copy.json",
+    content: seedAdminCopyJson(admin),
+    status: "ready",
+    message: "Grew business admin copy into the Seed",
+    agentName: "Conductor",
+  });
+
+  return admin;
+}
+
+export async function buildSeedAdminPreview(
+  project: SeedProject,
+): Promise<(SeedAdminCopy & { css: string }) | null> {
+  const admin = await ensureBusinessAdminInSeed(project);
+  if (!admin) return null;
+
+  const bundle = await getSourceBundle(project.id);
+  const css =
+    bundle?.files.find((file) => file.path === "app/globals.css")?.content ??
+    seedPublicSiteCss();
+  const copyRaw =
+    bundle?.files.find((file) => file.path === "content/admin.copy.json")
+      ?.content ?? "";
+
+  let copy = admin;
+  if (copyRaw) {
+    try {
+      copy = { ...admin, ...(JSON.parse(copyRaw) as SeedAdminCopy) };
+    } catch {
+      /* keep admin */
+    }
+  }
+
+  return { ...copy, css };
+}
+
+/** Persist schedule / tips back into the Seed source tree. */
+export async function saveSeedAdminCopy(
+  projectId: string,
+  copy: SeedAdminCopy,
+): Promise<void> {
+  await upsertSourceFile({
+    projectId,
+    path: "content/admin.copy.json",
+    content: seedAdminCopyJson(copy),
+    status: "ready",
+    message: "Updated Seed business admin board",
+    agentName: "Owner",
+  });
+  await upsertSourceFile({
+    projectId,
+    path: "app/admin/page.tsx",
+    content: seedAdminPageSource(copy),
+    status: "ready",
+    message: "Synced Seed business admin page",
+    agentName: "Owner",
   });
 }

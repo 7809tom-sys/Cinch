@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 import {
+  briefAsksForBusinessAdmin,
+  customerFacingAdminCopy,
   customerFacingSiteCopy,
+  seedAdminCopyJson,
+  seedAdminPageSource,
   seedHomePageSource,
   seedLandingCopyJson,
   seedResponsiveGlobalsCss,
@@ -291,6 +295,25 @@ Do not ship desktop-only layouts.
     message: "Scaffolded website copy",
     agentName: "Conductor",
   });
+  if (briefAsksForBusinessAdmin(input.brief)) {
+    const admin = customerFacingAdminCopy(input.projectName, input.brief);
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/admin/page.tsx",
+      content: seedAdminPageSource(admin),
+      status: "draft",
+      message: "Scaffolded Seed business admin",
+      agentName: "Conductor",
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/admin.copy.json",
+      content: seedAdminCopyJson(admin),
+      status: "draft",
+      message: "Scaffolded business admin copy",
+      agentName: "Conductor",
+    });
+  }
   return (await getSourceBundle(input.projectId))!;
 }
 
@@ -322,14 +345,60 @@ export async function applyTaskToSource(input: {
     input.phase === "finished" ? "ready" : "building";
 
   if (title.includes("information architecture") || title.includes("architecture")) {
+    const identity = await projectIdentityFromSource(input.projectId);
+    const wantsAdmin = briefAsksForBusinessAdmin(
+      identity.brief || input.taskDetail,
+    );
+    const adminPages = wantsAdmin
+      ? "\n- Business admin (calendar / schedule / education)\n"
+      : "\n";
     await upsertSourceFile({
       projectId: input.projectId,
       path: "docs/ia.md",
-      content: `# Information architecture\n\n## Pages\n\n- Home\n- About\n- Services / Offer\n- Contact\n\n## Notes\n\n${input.taskDetail}\n\nStatus: ${input.phase}\nOwner: ${agent}\n`,
+      content: `# Information architecture\n\n## Pages\n\n- Home\n- About\n- Services / Offer\n- Contact${adminPages}\n## Notes\n\n${input.taskDetail}\n\nStatus: ${input.phase}\nOwner: ${agent}\n`,
       authoredBy: input.agentId,
       agentName: agent,
       status,
       message: `${agent} ${input.phase} IA blueprint`,
+    });
+    return;
+  }
+
+  if (
+    title.includes("business admin") ||
+    title.includes("admin panel") ||
+    (title.includes("calendar") && title.includes("schedule")) ||
+    (title.includes("schedule") && title.includes("educat"))
+  ) {
+    const identity = await projectIdentityFromSource(input.projectId);
+    const brief = identity.brief || input.taskDetail;
+    const admin = customerFacingAdminCopy(identity.name, brief);
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/admin/page.tsx",
+      content: seedAdminPageSource(admin),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} Seed business admin`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/admin.copy.json",
+      content: seedAdminCopyJson(admin),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} business admin copy`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/globals.css",
+      content: seedResponsiveGlobalsCss(),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} admin styles`,
     });
     return;
   }
@@ -441,10 +510,11 @@ export async function applyTaskToSource(input: {
     title.includes("app-friendly") ||
     title.includes("pwa")
   ) {
-    const bundle = await getSourceBundle(input.projectId);
-    const readme = bundle?.files.find((file) => file.path === "README.md")?.content;
-    const projectName =
-      readme?.match(/^#\s+(.+)$/m)?.[1]?.trim() || "Seed site";
+    const identity = await projectIdentityFromSource(input.projectId);
+    const projectName = identity.name || "Seed site";
+    const adminNav = briefAsksForBusinessAdmin(identity.brief)
+      ? `\n          <Link href="/admin">Admin</Link>`
+      : "";
 
     await upsertSourceFile({
       projectId: input.projectId,
@@ -465,7 +535,7 @@ export function SiteChrome({
         <nav aria-label="Primary">
           <Link href="/">Home</Link>
           <Link href="/about">About</Link>
-          <Link href="/contact">Contact</Link>
+          <Link href="/contact">Contact</Link>${adminNav}
         </nav>
       </header>
       <div className="seed-shell">{children}</div>

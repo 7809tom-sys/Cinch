@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
 import { liveWebsiteUrl, seedHostHostname } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
+import { briefAsksForBusinessAdmin } from "@/lib/seed-site-copy";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
@@ -116,6 +117,11 @@ export default async function PortalProjectPage({ params }: PageProps) {
               listedInLibrary={Boolean(project.marketplaceListingId)}
               developerRatePct={developerRatePct}
               buildComplete={buildComplete}
+              adminHref={
+                briefAsksForBusinessAdmin(project.brief)
+                  ? `/site/${project.id}/admin`
+                  : null
+              }
             />
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
