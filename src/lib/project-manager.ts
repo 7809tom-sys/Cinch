@@ -186,6 +186,34 @@ export function projectWorkComplete(project: SeedProject): boolean {
   );
 }
 
+
+async function ensureSpecialistsInvited(projectId: string): Promise<SeedProject> {
+  const specialists = AGENT_CATALOG.filter((agent) => !agent.isProjectManager);
+  let project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const missing = specialists.filter(
+    (agent) => !project!.invitedAgentIds.includes(agent.id),
+  );
+  if (missing.length === 0) return project;
+
+  for (const agent of missing) {
+    await inviteAgent(projectId, agent.id);
+  }
+
+  project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const pm = getProjectManager();
+  pushActivity(
+    project,
+    `${pm.name} invited ${missing.map((agent) => agent.name).join(", ")} onto the crew.`,
+    pm.id,
+  );
+  await saveProject(project);
+  return project;
+}
+
 /**
  * After a Seed is created, the PM staffs the crew, plans the build, and
  * assigns every assignable task. The human only watches.
@@ -194,28 +222,30 @@ export async function bootstrapSeedProject(
   projectId: string,
 ): Promise<SeedProject> {
   const pm = getProjectManager();
-  const specialists = AGENT_CATALOG.filter((agent) => !agent.isProjectManager);
-
-  for (const agent of specialists) {
-    await inviteAgent(projectId, agent.id);
-  }
-
-  let project = await getProject(projectId);
-  if (!project) throw new Error("Project not found.");
+  let project = await ensureSpecialistsInvited(projectId);
 
   pushActivity(
     project,
-    `${pm.name} staffed ${specialists.map((agent) => agent.name).join(", ")} and is assigning work. You watch — no action needed.`,
+    `${pm.name} staffed the specialist crew and is assigning work. You watch — no action needed.`,
     pm.id,
   );
   await saveProject(project);
 
+  project = (await getProject(projectId))!;
   if (project.tasks.length === 0) {
     await planBuild(projectId);
   }
 
   // Assign the backlog once. Watch ticks advance work from here — they do not
   // keep re-assigning the same tasks.
+  return runProjectManagerAssignment(projectId);
+}
+
+/** Invite any missing specialists and assign queued work (for stuck Seeds). */
+export async function restaffSeedProject(
+  projectId: string,
+): Promise<SeedProject> {
+  await ensureSpecialistsInvited(projectId);
   return runProjectManagerAssignment(projectId);
 }
 
@@ -306,6 +336,14 @@ export async function tickProjectWork(
 
   let assigned = project.tasks.find((task) => task.status === "assigned");
   if (!assigned && project.tasks.some((task) => task.status === "queued")) {
+    // Older Seeds may only have the PM invited — staff specialists first.
+    const specialistsOnCrew = project.invitedAgentIds.some((id) => {
+      const agent = getAgent(id);
+      return Boolean(agent && !agent.isProjectManager);
+    });
+    if (!specialistsOnCrew) {
+      project = await ensureSpecialistsInvited(projectId);
+    }
     // Assign a single queued task, then start it below — avoids assign spam.
     project = await runProjectManagerAssignment(projectId, {
       limit: 1,

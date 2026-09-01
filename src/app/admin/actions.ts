@@ -70,6 +70,7 @@ import {
   advanceAssignedWork,
   bootstrapSeedProject,
   runProjectManagerAssignment,
+  restaffSeedProject,
   tickProjectWork,
 } from "@/lib/project-manager";
 import {
@@ -402,6 +403,15 @@ export async function watchTickAction(projectId: string) {
     stuck: result.stuck,
     complete: result.complete,
   };
+}
+
+/** Invite missing specialists and assign queued work (unstick empty crews). */
+export async function restaffSeedAction(projectId: string) {
+  await restaffSeedProject(projectId);
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/admin");
+  revalidatePath(`/portal/${projectId}`);
+  return { ok: true as const };
 }
 
 export async function saveAnalyticsAction(formData: FormData) {
