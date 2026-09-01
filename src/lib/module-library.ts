@@ -81,6 +81,87 @@ export async function listLibraryModules(): Promise<LibraryModule[]> {
 }
 
 /**
+ * HARD BUILD RULE — modulars first:
+ * When deciding how to build a Seed site, go to the existing library modulars
+ * right away, adopt what fits, and only custom-build the gaps.
+ */
+export const SEED_BUILD_MODULARS_FIRST_RULE = {
+  summary:
+    "Survey existing library modulars first, adopt matches, then custom-build only what remains.",
+  steps: [
+    "Open the shared modular library before inventing new work.",
+    "Adopt every modular that fits the Seed brief (reuse fee, not a rebuild).",
+    "Custom-build only the gaps modulars do not cover.",
+  ],
+} as const;
+
+function scoreModuleForBrief(
+  module: LibraryModule,
+  brief: string,
+  projectName: string,
+): number {
+  const hay = `${projectName} ${brief}`.toLowerCase();
+  const parts = `${module.title} ${module.summary} ${module.skills.join(" ")}`
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length > 3);
+  let score = 0;
+  const seen = new Set<string>();
+  for (const token of parts) {
+    if (seen.has(token)) continue;
+    seen.add(token);
+    if (hay.includes(token)) score += 2;
+  }
+  // Universal site modulars — always useful when present.
+  if (
+    /responsive|cross-device|booking|contact|seo|trust|health|polish mobile|landing|shell|frontend/i.test(
+      module.title,
+    )
+  ) {
+    score += 3;
+  }
+  score += Math.min(3, module.timesUsed);
+  return score;
+}
+
+/**
+ * Pick library modulars for a Seed before any custom plan.
+ * Prefers brief matches; falls back to universal site modulars.
+ */
+export async function selectModulesForSeedBuild(input: {
+  brief: string;
+  projectName: string;
+  limit?: number;
+}): Promise<LibraryModule[]> {
+  const limit = input.limit ?? 8;
+  const all = await listLibraryModules();
+  if (all.length === 0) return [];
+
+  const scored = all
+    .map((module) => ({
+      module,
+      score: scoreModuleForBrief(module, input.brief, input.projectName),
+    }))
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.module.timesUsed - a.module.timesUsed ||
+        b.module.updatedAt.localeCompare(a.module.updatedAt),
+    );
+
+  const matched = scored.filter((item) => item.score > 0).map((item) => item.module);
+  if (matched.length > 0) return matched.slice(0, limit);
+
+  return all
+    .filter((module) =>
+      /responsive|booking|contact|seo|trust|health|landing|shell|polish mobile/i.test(
+        module.title,
+      ),
+    )
+    .slice(0, limit);
+}
+
+/**
  * Every finished modular automatically lands in the shared library.
  * Same title/slug updates the existing entry so future builds can reuse it.
  */

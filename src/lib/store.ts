@@ -1,6 +1,10 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
-import { applyModuleReuse, listLibraryModules } from "./module-library";
+import {
+  applyModuleReuse,
+  selectModulesForSeedBuild,
+  SEED_BUILD_MODULARS_FIRST_RULE,
+} from "./module-library";
 import { attachProjectToCustomer } from "./customers";
 import {
   expectedDnsRecord,
@@ -520,70 +524,111 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   const pm = getProjectManager();
   const stamp = now();
 
+  // HARD RULE: existing modulars first — never invent before surveying the library.
+  const adopted = await selectModulesForSeedBuild({
+    brief: project.brief,
+    projectName: project.name,
+    limit: 8,
+  });
+  const creditNotes: string[] = [];
+  for (const module of adopted) {
+    // Demo merge cost until live token metering is wired; quote still applies 85%/8%.
+    const reuse = await applyModuleReuse({
+      moduleId: module.id,
+      reuseProjectId: project.id,
+      aiMergeCostUsd: 5,
+    });
+    if (reuse) {
+      creditNotes.push(
+        `${module.title} (reuse ${reuse.feeUsd.toFixed(2)}, creator credit ${reuse.creatorCreditUsd.toFixed(2)})`,
+      );
+    }
+  }
+
+  const modularList =
+    adopted.length > 0
+      ? adopted.map((module) => `“${module.title}”`).join("; ")
+      : "(library empty for this brief — custom-build carefully, then publish finished work back as modulars)";
+  const modularsFirst =
+    `${SEED_BUILD_MODULARS_FIRST_RULE.summary} Adopted: ${modularList}. Custom-build ONLY gaps.`;
+
+  if (creditNotes.length > 0) {
+    pushActivity(
+      project,
+      `${pm.name} surveyed the library first and reused ${creditNotes.length} modular(s) at 85% of create+merge; creators earned 8% credit: ${creditNotes.join("; ")}.`,
+      pm.id,
+    );
+  } else {
+    pushActivity(
+      project,
+      `${pm.name} surveyed the modular library first (${SEED_BUILD_MODULARS_FIRST_RULE.summary}). No matching modulars yet — custom work must fill gaps only.`,
+      pm.id,
+    );
+  }
+
   const backlog: Array<
     Omit<ProjectTask, "id" | "status" | "assigneeId" | "assignedBy" | "updatedAt">
   > = [
     {
+      title: "Adopt existing library modulars",
+      detail: modularsFirst,
+      requiredSkills: ["architecture", "research"],
+      minSkillLevel: 3,
+    },
+    {
       title: "Shape information architecture",
-      detail:
-        "Define pages, navigation, and Seed blueprint structure that works on phone, tablet, and laptop.",
+      detail: `Define pages, navigation, and Seed blueprint for phone, tablet, and laptop. Prefer patterns already covered by adopted modulars; invent structure only for gaps. ${modularsFirst}`,
       requiredSkills: ["architecture", "research"],
       minSkillLevel: 3,
     },
     {
       title: "Design primary landing composition",
-      detail:
-        "Brand-first hero and one clear CTA that reflows cleanly from phone → tablet → laptop (no clipped text).",
+      detail: `Brand-first hero and one clear CTA that reflows phone → tablet → laptop. Reuse landing/UI modulars before drawing new composition. ${modularsFirst}`,
       requiredSkills: ["ui", "frontend"],
       minSkillLevel: 3,
     },
     {
       title: "Write Seed landing copy",
-      detail:
-        "Headline, support line, and signup narrative that stays readable on narrow screens.",
+      detail: `Headline, support line, and signup narrative for narrow screens. Pull copy patterns from adopted modulars; write original lines only where the brief needs them. ${modularsFirst}`,
       requiredSkills: ["copy"],
       minSkillLevel: 2,
     },
     {
       title: "Implement frontend shell",
-      detail:
-        "Stand up routes, layout, wrap-friendly nav, 44px touch targets, and safe-area padding.",
+      detail: `Routes, layout, wrap-friendly nav, 44px touch targets, safe-area padding. Merge shell modulars first; custom-code only missing pieces. ${modularsFirst}`,
       requiredSkills: ["frontend"],
       minSkillLevel: 3,
     },
     {
       title: "Ship cross-device responsive experience",
-      detail:
-        "Verify fluid layout, tablet columns, laptop hero, and installable app basics (viewport + manifest).",
+      detail: `Verify fluid layout, tablet columns, laptop hero, and installable app basics. Reuse responsive modulars before new CSS. ${modularsFirst}`,
       requiredSkills: ["ui", "frontend"],
       minSkillLevel: 3,
     },
     {
       title: "Wire Seed embed health script",
-      detail: "Publish snippet that can report uptime and unlock rebuild.",
+      detail: `Publish snippet that can report uptime and unlock rebuild. Prefer existing health/embed modulars. ${modularsFirst}`,
       requiredSkills: ["backend", "devops"],
       minSkillLevel: 4,
     },
     {
       title: "SEO and metadata pass",
-      detail: "Titles, descriptions, and crawl basics for the new site.",
+      detail: `Titles, descriptions, and crawl basics. Reuse SEO modulars; custom-write only industry-specific gaps. ${modularsFirst}`,
       requiredSkills: ["seo", "copy"],
       minSkillLevel: 2,
     },
     {
       title: "QA the build path",
-      detail:
-        "Verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA checklist.",
+      detail: `Verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA checklist. Confirm modulars were adopted before custom work. ${modularsFirst}`,
       requiredSkills: ["qa"],
       minSkillLevel: 3,
     },
   ];
 
   if (briefAsksForBusinessAdmin(project.brief)) {
-    backlog.splice(5, 0, {
+    backlog.splice(6, 0, {
       title: "Build business admin panel",
-      detail:
-        "Grow the Seed’s own admin: calendar/schedule for jobs and education tips (e.g. keeping the car clean). This is the business admin on the live site — not the Cinch build room.",
+      detail: `Grow the Seed’s own admin: calendar/schedule and education tips. Reuse any admin/schedule modulars first; custom-build only what the library lacks. ${modularsFirst}`,
       requiredSkills: ["frontend", "ui"],
       minSkillLevel: 3,
     });
@@ -592,7 +637,7 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   project.tasks = backlog.map((item) => ({
     ...item,
     id: randomUUID(),
-    status: "queued",
+    status: "queued" as const,
     assigneeId: null,
     assignedBy: null,
     updatedAt: stamp,
@@ -600,33 +645,9 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
 
   pushActivity(
     project,
-    `${pm.name} drafted ${project.tasks.length} build tasks from the Seed brief.`,
+    `${pm.name} drafted ${project.tasks.length} build tasks after modular survey (modulars first, then custom gaps).`,
     pm.id,
   );
-
-  const library = await listLibraryModules();
-  if (library.length > 0) {
-    const references = library.slice(0, 5);
-    const creditNotes: string[] = [];
-    for (const module of references) {
-      // Demo merge cost until live token metering is wired; quote still applies 85%/8%.
-      const reuse = await applyModuleReuse({
-        moduleId: module.id,
-        reuseProjectId: project.id,
-        aiMergeCostUsd: 5,
-      });
-      if (reuse) {
-        creditNotes.push(
-          `${module.title} (reuse ${reuse.feeUsd.toFixed(2)}, creator credit ${reuse.creatorCreditUsd.toFixed(2)})`,
-        );
-      }
-    }
-    pushActivity(
-      project,
-      `${pm.name} reused ${creditNotes.length} modular(s) from the shared library at 85% of create+merge; creators earned 8% credit: ${creditNotes.join("; ")}.`,
-      pm.id,
-    );
-  }
 
   await writeStore(store);
   return project;
@@ -699,28 +720,28 @@ export async function appendNextBuildWave(
     {
       title: GROWTH_WAVE_TITLES[0],
       detail:
-        "Verify phone, tablet, and laptop: no horizontal scroll, 44px taps, safe-area padding, and readable type. Keep the installable app manifest intact.",
+        "Verify phone, tablet, and laptop: no horizontal scroll, 44px taps, safe-area padding, and readable type. Prefer responsive modulars already in the library before new CSS. Keep the installable app manifest intact.",
       requiredSkills: ["ui", "frontend"],
       minSkillLevel: 3,
     },
     {
       title: GROWTH_WAVE_TITLES[1],
       detail:
-        "Clarify the primary CTA and make it obvious how a visitor schedules service.",
+        "Clarify the primary CTA and make it obvious how a visitor schedules service. Reuse booking/contact modulars first; custom-write only gaps.",
       requiredSkills: ["copy"],
       minSkillLevel: 2,
     },
     {
       title: GROWTH_WAVE_TITLES[2],
       detail:
-        "Surface GPS/service-area clarity, reviews, and care language for mobile detailing.",
+        "Surface service-area clarity, reviews, and care language for this Seed’s industry. Pull trust modulars from the library before inventing new blocks.",
       requiredSkills: ["seo", "copy"],
       minSkillLevel: 2,
     },
     {
       title: GROWTH_WAVE_TITLES[3],
       detail:
-        "Queue embed-ready modulars across functionality, efficiency, and customer care.",
+        "HARD RULE: survey existing library modulars first, adapt matches onto the live site, then custom-build only remaining gaps across functionality, efficiency, and customer care.",
       requiredSkills: ["backend", "devops"],
       minSkillLevel: 3,
     },

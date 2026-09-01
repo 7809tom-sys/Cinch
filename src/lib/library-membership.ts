@@ -11,7 +11,9 @@
  * back into their library account — so funding a modular can become
  * ongoing income as the network grows.
  *
- * Future members don't just consume the library — they can earn from it.
+ * HARD BUILD RULE: when deciding how to build a site, go to existing
+ * modulars right away, adopt what fits, then custom-build only the rest.
+ * See SEED_BUILD_MODULARS_FIRST_RULE / docs/seed-build-modulars-first.md.
  */
 
 import {
@@ -23,8 +25,11 @@ import {
 import {
   listCreatorCredits,
   listLibraryModules,
+  SEED_BUILD_MODULARS_FIRST_RULE,
   type LibraryModule,
 } from "./module-library";
+
+export { SEED_BUILD_MODULARS_FIRST_RULE };
 
 export const LIBRARY_MEMBER_EARN_RATE = MODULE_CREATOR_CREDIT_RATE;
 export const LIBRARY_REUSE_RATE = MODULE_REUSE_RATE;
@@ -43,7 +48,7 @@ export const LIBRARY_MEMBER_PITCH: LibraryMemberPitch = {
   feature:
     "Every modular you fund lands in the shared library under your member account.",
   advantage:
-    "When another Seed reuses it, they pay a reuse fee instead of funding a full rebuild.",
+    "When another Seed reuses it, they pay a reuse fee instead of funding a full rebuild. Builds always survey modulars first, then custom-build only gaps.",
   benefit:
     "You earn creator credit back into your library account — future income from work you already paid to create.",
   earnRateLabel: "Creator credit on every reuse",

@@ -9,6 +9,7 @@ import {
   seedLandingCopyJson,
   seedResponsiveGlobalsCss,
 } from "./seed-site-copy";
+import { SEED_BUILD_MODULARS_FIRST_RULE } from "./module-library";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
 export type SourceFile = {
@@ -463,6 +464,35 @@ export async function applyTaskToSource(input: {
   const agent = input.agentName ?? "Agent";
   const status: SourceFile["status"] =
     input.phase === "finished" ? "ready" : "building";
+
+  if (title.includes("adopt") && title.includes("modular")) {
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "docs/modulars-adopted.md",
+      content: `# Modulars first
+
+## Hard rule
+
+${SEED_BUILD_MODULARS_FIRST_RULE.summary}
+
+1. ${SEED_BUILD_MODULARS_FIRST_RULE.steps[0]}
+2. ${SEED_BUILD_MODULARS_FIRST_RULE.steps[1]}
+3. ${SEED_BUILD_MODULARS_FIRST_RULE.steps[2]}
+
+## This Seed
+
+${input.taskDetail}
+
+Status: ${input.phase}
+Owner: ${agent}
+`,
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} modular adoption (library first)`,
+    });
+    return;
+  }
 
   if (title.includes("information architecture") || title.includes("architecture")) {
     const identity = await projectIdentityFromSource(input.projectId);
