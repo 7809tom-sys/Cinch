@@ -45,25 +45,22 @@ export function chooseAssignee(
 
 export async function runProjectManagerAssignment(
   projectId: string,
+  options: { limit?: number; silentIfUnchanged?: boolean } = {},
 ): Promise<SeedProject> {
   const project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
 
   const pm = getProjectManager();
   let assigned = 0;
+  const limit = options.limit ?? Number.POSITIVE_INFINITY;
 
+  // Only touch queued work — never re-assign (or demote) tasks already in flight.
   for (const task of project.tasks) {
-    if (task.status === "done") continue;
-    if (task.status === "in_progress" && task.assigneeId) continue;
+    if (assigned >= limit) break;
+    if (task.status !== "queued") continue;
 
     const assigneeId = chooseAssignee(project, task);
-    if (!assigneeId) {
-      task.status = "queued";
-      task.assigneeId = null;
-      task.assignedBy = null;
-      task.updatedAt = now();
-      continue;
-    }
+    if (!assigneeId) continue;
 
     const agent = getAgent(assigneeId)!;
     task.assigneeId = assigneeId;
@@ -79,10 +76,14 @@ export async function runProjectManagerAssignment(
     );
   }
 
-  if (assigned === 0) {
+  const blockedQueued = project.tasks.filter(
+    (task) => task.status === "queued" && !chooseAssignee(project, task),
+  ).length;
+
+  if (assigned === 0 && !options.silentIfUnchanged && blockedQueued > 0) {
     pushActivity(
       project,
-      `${pm.name} found no new assignable tasks. Invite more specialists or plan the build.`,
+      `${pm.name} can’t cover ${blockedQueued} queued task${blockedQueued === 1 ? "" : "s"} with the current crew skills — staffing or skills need to change.`,
       pm.id,
     );
   }
@@ -107,14 +108,18 @@ export async function advanceAssignedWork(
       `${agent?.name ?? "Agent"} started “${task.title}”.`,
       task.assigneeId,
     );
-    await applyTaskToSource({
-      projectId: project.id,
-      taskTitle: task.title,
-      taskDetail: task.detail,
-      agentName: agent?.name ?? null,
-      agentId: task.assigneeId,
-      phase: "started",
-    });
+    try {
+      await applyTaskToSource({
+        projectId: project.id,
+        taskTitle: task.title,
+        taskDetail: task.detail,
+        agentName: agent?.name ?? null,
+        agentId: task.assigneeId,
+        phase: "started",
+      });
+    } catch {
+      // Keep status transition even if source write fails.
+    }
   }
 
   const inProgress = project.tasks.filter(
@@ -129,33 +134,38 @@ export async function advanceAssignedWork(
       `${agent?.name ?? "Agent"} finished “${task.title}” and saved a module to the library.`,
       task.assigneeId,
     );
-    await applyTaskToSource({
-      projectId: project.id,
-      taskTitle: task.title,
-      taskDetail: task.detail,
-      agentName: agent?.name ?? null,
-      agentId: task.assigneeId,
-      phase: "finished",
-    });
-    const moduleEntry = {
+    try {
+      await applyTaskToSource({
+        projectId: project.id,
+        taskTitle: task.title,
+        taskDetail: task.detail,
+        agentName: agent?.name ?? null,
+        agentId: task.assigneeId,
+        phase: "finished",
+      });
+    } catch {
+      // Keep status transition even if source write fails.
+    }
+    project.modules.unshift({
       id: randomUUID(),
       title: task.title,
       savedAt: now(),
       fromTaskId: task.id,
-    };
-    project.modules.unshift(moduleEntry);
-
-    // Shared library: every finished modular is available for future Seeds.
-    await upsertLibraryModule({
-      title: task.title,
-      summary: task.detail,
-      skills: task.requiredSkills,
-      sourceProjectId: project.id,
-      sourceProjectName: project.name,
-      sourceTaskId: task.id,
-      // First customer funds creation; later Seeds reuse at 85% of (cost + merge).
-      originalCostUsd: 0,
     });
+
+    try {
+      await upsertLibraryModule({
+        title: task.title,
+        summary: task.detail,
+        skills: task.requiredSkills,
+        sourceProjectId: project.id,
+        sourceProjectName: project.name,
+        sourceTaskId: task.id,
+        originalCostUsd: 0,
+      });
+    } catch {
+      // Library write is best-effort.
+    }
   }
 
   project.modules = project.modules.slice(0, 30);
@@ -204,18 +214,45 @@ export async function bootstrapSeedProject(
     await planBuild(projectId);
   }
 
+  // Assign the backlog once. Watch ticks advance work from here — they do not
+  // keep re-assigning the same tasks.
   return runProjectManagerAssignment(projectId);
 }
 
+export type WatchTickResult = {
+  project: SeedProject;
+  /** True when a task changed status this tick. */
+  progressed: boolean;
+  /** True when queued work remains but no crew member can take it. */
+  stuck: boolean;
+  complete: boolean;
+};
+
 /**
- * One watch-mode step: finish an in-progress task, start an assigned one,
- * or re-run PM assignment for anything still queued.
+ * One watch-mode step: finish in-progress work, start an assigned task,
+ * or assign at most one queued task and start it. Never re-assigns the same
+ * task over and over.
  */
 export async function tickProjectWork(
   projectId: string,
-): Promise<SeedProject> {
-  const project = await getProject(projectId);
+): Promise<WatchTickResult> {
+  let project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
+
+  const finishResult = (
+    next: SeedProject,
+    progressed: boolean,
+  ): WatchTickResult => {
+    const complete = projectWorkComplete(next);
+    const stuck =
+      !complete &&
+      !progressed &&
+      next.tasks.some((task) => task.status === "queued") &&
+      next.tasks
+        .filter((task) => task.status === "queued")
+        .every((task) => !chooseAssignee(next, task));
+    return { project: next, progressed, stuck, complete };
+  };
 
   const inProgress = project.tasks.find(
     (task) => task.status === "in_progress",
@@ -231,35 +268,73 @@ export async function tickProjectWork(
       `${agent?.name ?? "Agent"} finished “${inProgress.title}” and saved a module to the library.`,
       inProgress.assigneeId,
     );
-    await applyTaskToSource({
-      projectId: project.id,
-      taskTitle: inProgress.title,
-      taskDetail: inProgress.detail,
-      agentName: agent?.name ?? null,
-      agentId: inProgress.assigneeId,
-      phase: "finished",
-    });
+    try {
+      await applyTaskToSource({
+        projectId: project.id,
+        taskTitle: inProgress.title,
+        taskDetail: inProgress.detail,
+        agentName: agent?.name ?? null,
+        agentId: inProgress.assigneeId,
+        phase: "finished",
+      });
+    } catch {
+      // Status still advances even if source write fails.
+    }
     project.modules.unshift({
       id: randomUUID(),
       title: inProgress.title,
       savedAt: now(),
       fromTaskId: inProgress.id,
     });
-    await upsertLibraryModule({
-      title: inProgress.title,
-      summary: inProgress.detail,
-      skills: inProgress.requiredSkills,
-      sourceProjectId: project.id,
-      sourceProjectName: project.name,
-      sourceTaskId: inProgress.id,
-      originalCostUsd: 0,
-    });
+    try {
+      await upsertLibraryModule({
+        title: inProgress.title,
+        summary: inProgress.detail,
+        skills: inProgress.requiredSkills,
+        sourceProjectId: project.id,
+        sourceProjectName: project.name,
+        sourceTaskId: inProgress.id,
+        originalCostUsd: 0,
+      });
+    } catch {
+      // Library write is best-effort for watch mode.
+    }
     project.modules = project.modules.slice(0, 30);
     await saveProject(project);
-    return project;
+    return finishResult(project, true);
   }
 
-  const assigned = project.tasks.find((task) => task.status === "assigned");
+  let assigned = project.tasks.find((task) => task.status === "assigned");
+  if (!assigned && project.tasks.some((task) => task.status === "queued")) {
+    // Assign a single queued task, then start it below — avoids assign spam.
+    project = await runProjectManagerAssignment(projectId, {
+      limit: 1,
+      silentIfUnchanged: true,
+    });
+    assigned = project.tasks.find((task) => task.status === "assigned");
+    if (!assigned) {
+      const stuckResult = finishResult(project, false);
+      if (stuckResult.stuck) {
+        const pm = getProjectManager();
+        const blocked = project.tasks.filter(
+          (task) => task.status === "queued",
+        ).length;
+        const alreadyPaused = project.activity.some((event) =>
+          event.message.includes("paused —"),
+        );
+        if (!alreadyPaused) {
+          pushActivity(
+            project,
+            `${pm.name} paused — ${blocked} task${blocked === 1 ? "" : "s"} still queued with no matching specialist.`,
+            pm.id,
+          );
+          await saveProject(project);
+        }
+      }
+      return finishResult(project, false);
+    }
+  }
+
   if (assigned) {
     const agent = assigned.assigneeId ? getAgent(assigned.assigneeId) : null;
     assigned.status = "in_progress";
@@ -269,21 +344,21 @@ export async function tickProjectWork(
       `${agent?.name ?? "Agent"} started “${assigned.title}”.`,
       assigned.assigneeId,
     );
-    await applyTaskToSource({
-      projectId: project.id,
-      taskTitle: assigned.title,
-      taskDetail: assigned.detail,
-      agentName: agent?.name ?? null,
-      agentId: assigned.assigneeId,
-      phase: "started",
-    });
+    try {
+      await applyTaskToSource({
+        projectId: project.id,
+        taskTitle: assigned.title,
+        taskDetail: assigned.detail,
+        agentName: agent?.name ?? null,
+        agentId: assigned.assigneeId,
+        phase: "started",
+      });
+    } catch {
+      // Keep the status transition even if source write fails.
+    }
     await saveProject(project);
-    return project;
+    return finishResult(project, true);
   }
 
-  if (project.tasks.some((task) => task.status === "queued")) {
-    return runProjectManagerAssignment(projectId);
-  }
-
-  return project;
+  return finishResult(project, false);
 }

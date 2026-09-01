@@ -392,11 +392,16 @@ export async function advanceWorkAction(projectId: string) {
 
 /** Watch-mode tick: PM/agents advance one step while the human observes. */
 export async function watchTickAction(projectId: string) {
-  await tickProjectWork(projectId);
+  const result = await tickProjectWork(projectId);
   revalidatePath(`/admin/projects/${projectId}`);
   revalidatePath("/admin");
   revalidatePath(`/portal/${projectId}`);
-  return { ok: true as const };
+  return {
+    ok: true as const,
+    progressed: result.progressed,
+    stuck: result.stuck,
+    complete: result.complete,
+  };
 }
 
 export async function saveAnalyticsAction(formData: FormData) {

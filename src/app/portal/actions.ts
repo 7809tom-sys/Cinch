@@ -523,9 +523,14 @@ export async function portalWatchTickAction(projectId: string) {
   if (!customerOwnsProject(customer, projectId)) {
     return { ok: false as const, error: "Not your Seed." };
   }
-  await tickProjectWork(projectId);
+  const result = await tickProjectWork(projectId);
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
-  return { ok: true as const };
+  return {
+    ok: true as const,
+    progressed: result.progressed,
+    stuck: result.stuck,
+    complete: result.complete,
+  };
 }
 

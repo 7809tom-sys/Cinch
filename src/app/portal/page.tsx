@@ -6,6 +6,7 @@ import { isMasterEmail } from "@/lib/master-auth";
 import { logoutCustomerAction, getPortalHomeSnapshot } from "./actions";
 import { MessagesPanel } from "./messages-panel";
 import { PasskeyPanel } from "./passkey-panel";
+import { PortalRefreshButton } from "./refresh-button";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ export default async function PortalHomePage() {
               </Link>
             ) : null}
             <span className="hidden text-muted sm:inline">{customer.email}</span>
+            <PortalRefreshButton />
             <form action={logoutCustomerAction}>
               <button
                 type="submit"

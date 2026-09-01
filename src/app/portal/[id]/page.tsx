@@ -5,6 +5,7 @@ import { getAgent } from "@/lib/agents";
 import { seedHostHostname } from "@/lib/domain";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
 import { ConnectPanel } from "./connect-panel";
+import { PortalRefreshButton } from "../refresh-button";
 import { PortalWatchTicker } from "./watch-ticker";
 import { CustomDomainPanel } from "./custom-domain-panel";
 
@@ -43,10 +44,11 @@ export default async function PortalProjectPage({ params }: PageProps) {
           >
             ← My Seeds
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <PortalRefreshButton />
             <Link
               href={`/portal/${project.id}/source`}
-              className="rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
+              className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
             >
               Live source
             </Link>
