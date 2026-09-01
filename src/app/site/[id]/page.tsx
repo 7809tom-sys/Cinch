@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { buildSeedSitePreview } from "@/lib/seed-site";
+import {
+  buildSeedSitePreview,
+  repairCustomerLandingIfNeeded,
+} from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +34,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   const project = await getProject(id);
   if (!project) notFound();
 
+  await repairCustomerLandingIfNeeded(project);
   const preview = await buildSeedSitePreview(project);
 
   return (
@@ -47,8 +51,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
         </div>
         {!preview.published ? (
           <p className="support" style={{ marginTop: "2rem", fontSize: "0.85rem" }}>
-            Preview — publish from your portal when you&apos;re ready for the
-            public link.
+            Draft preview — publish from your portal to share the public link.
           </p>
         ) : null}
       </main>

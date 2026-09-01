@@ -1,4 +1,12 @@
-import { getSourceBundle } from "./seed-source";
+import { getSourceBundle, upsertSourceFile } from "./seed-source";
+import {
+  customerFacingCta,
+  customerFacingHeadline,
+  customerFacingSupport,
+  looksLikeAgentTaskCopy,
+  seedHomePageSource,
+  seedLandingCopyJson,
+} from "./seed-site-copy";
 import type { SeedProject } from "./store";
 
 export type SeedSitePreview = {
@@ -9,6 +17,15 @@ export type SeedSitePreview = {
   css: string;
   published: boolean;
 };
+
+export {
+  customerFacingCta,
+  customerFacingHeadline,
+  customerFacingSupport,
+  looksLikeAgentTaskCopy,
+  seedHomePageSource,
+  seedLandingCopyJson,
+} from "./seed-site-copy";
 
 function escapeHtml(value: string): string {
   return value
@@ -26,42 +43,43 @@ function fileContent(
   return files.find((file) => file.path === path)?.content ?? null;
 }
 
-/** Build a public preview model from the Seed project + source tree. */
+/** Build a public website preview from the Seed — customer copy only. */
 export async function buildSeedSitePreview(
   project: SeedProject,
 ): Promise<SeedSitePreview> {
   const bundle = await getSourceBundle(project.id);
   const files = bundle?.files ?? [];
 
-  let brand = project.name;
-  let headline = project.name;
-  let support = project.brief;
-  let cta = "Get started";
+  const brand = project.name.replace(/\s+Seed$/i, "").trim() || project.name;
+  let headline = customerFacingHeadline(project.name);
+  let support = customerFacingSupport(project.brief);
+  let cta = customerFacingCta(project.brief);
 
   const copyRaw = fileContent(files, "content/landing.copy.json");
   if (copyRaw) {
     try {
       const copy = JSON.parse(copyRaw) as {
+        brand?: string;
         headline?: string;
         support?: string;
         cta?: string;
       };
-      if (copy.headline?.trim()) headline = copy.headline.trim();
-      if (copy.support?.trim()) support = copy.support.trim();
-      if (copy.cta?.trim()) cta = copy.cta.trim();
+      if (
+        copy.headline?.trim() &&
+        !looksLikeAgentTaskCopy(copy.headline) &&
+        copy.headline.trim().toLowerCase() !== "cinch"
+      ) {
+        headline = copy.headline.trim();
+      }
+      if (copy.support?.trim() && !looksLikeAgentTaskCopy(copy.support)) {
+        support = customerFacingSupport(copy.support.trim());
+      }
+      if (copy.cta?.trim() && !looksLikeAgentTaskCopy(copy.cta)) {
+        cta = copy.cta.trim();
+      }
     } catch {
-      // Fall back to project fields when copy JSON is still drafting.
+      // Fall back to project fields.
     }
-  } else {
-    const page = fileContent(files, "app/page.tsx") ?? "";
-    const h1 = page.match(/<h1>([\s\S]*?)<\/h1>/)?.[1]?.trim();
-    const supportMatch = page.match(
-      /className="support">([\s\S]*?)<\/p>/,
-    )?.[1]?.trim();
-    const brandMatch = page.match(/className="brand">([\s\S]*?)<\/p>/)?.[1]?.trim();
-    if (brandMatch) brand = brandMatch;
-    if (h1) headline = h1;
-    if (supportMatch) support = supportMatch;
   }
 
   const css =
@@ -81,4 +99,57 @@ export async function buildSeedSitePreview(
     css,
     published: Boolean(project.sitePublishedAt),
   };
+}
+
+/** Rewrite landing files when agents overwrote them with task titles. */
+export async function repairCustomerLandingIfNeeded(
+  project: SeedProject,
+): Promise<void> {
+  const bundle = await getSourceBundle(project.id);
+  const page = bundle?.files.find((file) => file.path === "app/page.tsx")?.content ?? "";
+  const copyRaw =
+    bundle?.files.find((file) => file.path === "content/landing.copy.json")
+      ?.content ?? "";
+
+  let copyLooksBad = false;
+  if (copyRaw) {
+    try {
+      const copy = JSON.parse(copyRaw) as { headline?: string; support?: string };
+      copyLooksBad = Boolean(
+        (copy.headline && looksLikeAgentTaskCopy(copy.headline)) ||
+          (copy.support && looksLikeAgentTaskCopy(copy.support)),
+      );
+    } catch {
+      copyLooksBad = true;
+    }
+  }
+
+  const pageLooksBad =
+    !page ||
+    looksLikeAgentTaskCopy(page) ||
+    /className="brand">\s*Cinch\s*</i.test(page);
+
+  if (!pageLooksBad && !copyLooksBad && copyRaw) return;
+
+  const brand = project.name.replace(/\s+Seed$/i, "").trim() || project.name;
+  const headline = customerFacingHeadline(project.name);
+  const support = customerFacingSupport(project.brief);
+  const cta = customerFacingCta(project.brief);
+
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "app/page.tsx",
+    content: seedHomePageSource({ brand, headline, support, cta }),
+    status: "ready",
+    message: "Restored customer website landing",
+    agentName: "Conductor",
+  });
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "content/landing.copy.json",
+    content: seedLandingCopyJson({ brand, headline, support, cta }),
+    status: "ready",
+    message: "Restored customer landing copy",
+    agentName: "Conductor",
+  });
 }
