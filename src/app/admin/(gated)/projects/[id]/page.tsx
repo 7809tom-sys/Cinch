@@ -36,20 +36,20 @@ export default async function ProjectAdminPage({ params }: PageProps) {
   return (
     <div className="min-h-full bg-background text-foreground">
       <header className="border-b border-brand/10 bg-foam">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-8 sm:py-5">
           <Link
             href="/admin"
             className="text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
           >
             ← Administration
           </Link>
-          <p className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+          <p className="max-w-[55%] truncate text-right font-[family-name:var(--font-display)] text-base font-bold text-brand-deep sm:max-w-none sm:text-lg">
             {project.name}
           </p>
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-12 sm:px-8 lg:grid-cols-[1.15fr_0.85fr]">
+      <main className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:gap-10 sm:px-8 sm:py-12 lg:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-8">
           <div>
             <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
@@ -66,7 +66,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               <span className="font-semibold text-brand-deep">
                 {pm?.name ?? "Conductor"}
               </span>{" "}
-              assigns tasks by skill level and cost.
+              assigns every task by skill and cost — you only watch.
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
               {SEED_GROWTH_TAGLINE}
@@ -84,6 +84,10 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 role: agent.role,
                 configured: agent.configured,
               }))}
+            tasks={project.tasks.map((task) => ({
+              id: task.id,
+              status: task.status,
+            }))}
           />
 
           <div>
@@ -92,7 +96,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             </h2>
             {project.tasks.length === 0 ? (
               <p className="mt-3 text-sm text-muted">
-                No tasks yet. Run “PM: plan build tasks”.
+                Conductor is planning the build — hang tight.
               </p>
             ) : (
               <ul className="mt-4 space-y-3">

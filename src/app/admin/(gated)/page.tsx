@@ -90,7 +90,7 @@ export default async function AdminPage() {
   return (
     <div className="min-h-full bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-brand/10 bg-foam/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-6 py-4 sm:px-8">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/"
@@ -145,7 +145,7 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl space-y-16 px-6 py-10 sm:px-8">
+      <main className="mx-auto w-full max-w-7xl space-y-12 px-4 py-8 sm:space-y-16 sm:px-8 sm:py-10">
         {/* OVERVIEW */}
         <section id="overview">
           <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
@@ -729,7 +729,7 @@ export default async function AdminPage() {
                 New Seed
               </h3>
               <p className="mt-2 text-sm text-muted">
-                Attach a customer email to issue portal access automatically.
+                Create a Seed and watch — Conductor invites specialists and assigns every task.
               </p>
               <div className="mt-4">
                 <CreateSeedForm />
