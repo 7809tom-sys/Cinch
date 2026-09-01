@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "assert:seed-industry": "npx tsx scripts/assert-seed-industry.ts",
     "dev:detective-shopper": "npm run dev --prefix apps/detective-shopper",
     "build:detective-shopper": "npm run build --prefix apps/detective-shopper",
     "lint:detective-shopper": "npm run lint --prefix apps/detective-shopper",

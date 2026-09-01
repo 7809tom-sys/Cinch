@@ -14,16 +14,103 @@ function firstSentences(brief: string, count = 2): string[] {
   return matches.slice(0, count).map((s) => s.trim());
 }
 
+/**
+ * INDUSTRY COPY RULE (do not regress):
+ * - Classify using the Seed name + brief together.
+ * - Never match bare substrings like "car" inside "care", or bare "wash"
+ *   (hair wash) as auto detailing.
+ * - Specific verticals (salon/hair, food, retail, trades) win before detailing.
+ * - Auto detailing requires clear vehicle context (detailing, car wash,
+ *   mobile detail, clean your car, etc.).
+ * - Live repair must rewrite landing copy when a salon/hair Seed is still
+ *   showing car hero, "Book a detail", or driveway/vehicle service copy.
+ */
 function industryKey(brief: string, name = ""): string {
   const lower = `${name} ${brief}`.toLowerCase();
-  if (/detail|car wash|auto detail|clean your car|mobile detail|car|auto|wash/.test(lower)) {
+
+  // Hair / beauty before auto — briefs often say "wash" (shampoo) which must
+  // not classify as car detailing.
+  if (
+    /\b(salon|spa|barber|beauty|nail|stylist|colorist|blowout|coiffure)\b/.test(
+      lower,
+    ) ||
+    /\bhair\b/.test(lower)
+  ) {
+    return "salon";
+  }
+  if (/food|restaurant|menu|kitchen|cafe|bistro|dining/.test(lower)) {
+    return "food";
+  }
+  if (/shop|store|retail|boutique|florist/.test(lower)) return "retail";
+  if (/plumb|hvac|electric|repair|handyman|\btrades?\b/.test(lower)) {
+    return "trade";
+  }
+
+  // Auto detailing needs vehicle context — not bare "wash" / "car" / "auto".
+  if (
+    /mobile detail|auto detail|car wash|car detail|detailing|clean your car|vehicle detail/.test(
+      lower,
+    ) ||
+    (/\bdetail(?:ing|s)?\b/.test(lower) &&
+      /\b(car|auto|vehicle|truck|suv|driveway)\b/.test(lower))
+  ) {
     return "detail";
   }
-  if (/food|restaurant|menu|kitchen|cafe/.test(lower)) return "food";
-  if (/salon|spa|barber|beauty|nail/.test(lower)) return "salon";
-  if (/shop|store|retail|boutique/.test(lower)) return "retail";
-  if (/plumb|hvac|electric|repair|handyman/.test(lower)) return "trade";
+
   return "generic";
+}
+
+/** Public industry classifier — name + brief, never bare "car" inside "care". */
+export function seedIndustryKey(projectName: string, brief: string): string {
+  return industryKey(brief, projectName);
+}
+
+/**
+ * True when saved landing copy is the wrong vertical — e.g. a hair salon Seed
+ * still showing the car hero or "Book a detail".
+ */
+export function seedLandingCopyMismatchesIndustry(
+  projectName: string,
+  brief: string,
+  copy: {
+    cta?: string;
+    heroImage?: string;
+    services?: Array<{ title?: string; detail?: string }>;
+    aboutBody?: string;
+    support?: string;
+    footerNote?: string;
+    servicesHeadline?: string;
+  },
+): boolean {
+  const key = industryKey(brief, projectName);
+  const blob = [
+    copy.cta,
+    copy.heroImage,
+    copy.aboutBody,
+    copy.support,
+    copy.footerNote,
+    copy.servicesHeadline,
+    ...(copy.services ?? []).flatMap((item) => [item.title, item.detail]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const carHero = /photo-1601362840469/.test(copy.heroImage ?? "");
+  const looksLikeDetailCopy =
+    carHero ||
+    /book a detail|driveway|vehicle|clear coat|mobile detailing|car looking|showroom polish|interior reset|express wash|details that travel/.test(
+      blob,
+    );
+  const looksLikeSalonCopy =
+    /book an appointment|cut & finish|blowout|colorist|your chair|appointments/.test(
+      blob,
+    ) || /photo-1560066984/.test(copy.heroImage ?? "");
+
+  if (key === "salon" && looksLikeDetailCopy) return true;
+  if (key === "detail" && looksLikeSalonCopy) return true;
+  if (key !== "detail" && looksLikeDetailCopy) return true;
+  return false;
 }
 
 /** Benefit-first support line for visitors — not checklist dumps. */
@@ -67,7 +154,16 @@ export function customerFacingHeadline(
     return "Your car. Our care. On your schedule.";
   }
   if (key === "food") return "A table worth dressing up for.";
-  if (key === "salon") return "Look put-together. Feel taken care of.";
+  if (key === "salon") {
+    if (
+      /come to you|go to you|goto you|bye you|by you|mobile|your home|your place|house call/i.test(
+        `${projectName} ${brief}`,
+      )
+    ) {
+      return "Your chair. Your place.";
+    }
+    return "Look put-together. Feel taken care of.";
+  }
   if (key === "retail") return "Find what fits — without the noise.";
   if (key === "trade") return "Fixed right. On your time.";
 
@@ -75,8 +171,8 @@ export function customerFacingHeadline(
   return `Welcome to ${name}.`;
 }
 
-export function customerFacingCta(brief: string): string {
-  const key = industryKey(brief);
+export function customerFacingCta(brief: string, projectName = ""): string {
+  const key = industryKey(brief, projectName);
   if (key === "detail") return "Book a detail";
   if (key === "food") return "Reserve a table";
   if (key === "salon") return "Book an appointment";
@@ -86,8 +182,11 @@ export function customerFacingCta(brief: string): string {
 }
 
 /** Atmospheric hero image for the industry — real visual anchor. */
-export function customerFacingHeroImage(brief: string): string {
-  const key = industryKey(brief);
+export function customerFacingHeroImage(
+  brief: string,
+  projectName = "",
+): string {
+  const key = industryKey(brief, projectName);
   if (key === "detail") {
     return "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1800&q=80";
   }
@@ -99,6 +198,9 @@ export function customerFacingHeroImage(brief: string): string {
   }
   if (key === "retail") {
     return "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "trade") {
+    return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1800&q=80";
   }
   return "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1800&q=80";
 }
@@ -137,8 +239,8 @@ export function customerFacingSiteCopy(
   const key = industryKey(brief, projectName);
   const support = customerFacingSupport(brief);
   const headline = customerFacingHeadline(projectName, brief);
-  const cta = customerFacingCta(brief);
-  const heroImage = customerFacingHeroImage(brief);
+  const cta = customerFacingCta(brief, projectName);
+  const heroImage = customerFacingHeroImage(brief, projectName);
 
   if (key === "detail") {
     return {
