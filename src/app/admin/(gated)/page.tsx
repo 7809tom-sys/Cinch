@@ -10,6 +10,7 @@ import { logoutMasterAction } from "@/app/admin/master-actions";
 import Link from "next/link";
 import { providerForEnvKey } from "@/lib/agents";
 import { formatUsd } from "@/lib/pricing";
+import { liveWebsiteUrl } from "@/lib/domain";
 import { getMasterSession } from "@/lib/master-auth";
 
 export const dynamic = "force-dynamic";
@@ -698,11 +699,14 @@ export default async function AdminPage() {
                     const done = project.tasks.filter(
                       (t) => t.status === "done",
                     ).length;
+                    const complete =
+                      project.tasks.length > 0 && done === project.tasks.length;
+                    const websiteUrl = liveWebsiteUrl(project);
                     return (
-                      <li key={project.id}>
+                      <li key={project.id} className="border-t border-brand/15 pt-4">
                         <Link
                           href={`/admin/projects/${project.id}`}
-                          className="block border-t border-brand/15 pt-4 transition-colors hover:border-brand/40"
+                          className="block transition-colors hover:border-brand/40"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <p className="font-[family-name:var(--font-display)] text-xl font-extrabold text-brand-deep">
@@ -729,6 +733,30 @@ export default async function AdminPage() {
                               : ""}
                           </p>
                         </Link>
+                        {complete ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <a
+                              href={websiteUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
+                            >
+                              Visit website
+                            </a>
+                            {project.marketplaceListingId ? (
+                              <a
+                                href="/browse"
+                                className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
+                              >
+                                View in library
+                              </a>
+                            ) : (
+                              <span className="inline-flex min-h-10 items-center text-xs font-semibold text-muted">
+                                Not listed in marketplace yet
+                              </span>
+                            )}
+                          </div>
+                        ) : null}
                       </li>
                     );
                   })}
@@ -767,6 +795,52 @@ export default async function AdminPage() {
             <Metric label="Earned" value={formatUsd(library.earnedUsd)} />
             <Metric label="Balance" value={formatUsd(library.balanceUsd)} />
           </div>
+
+          {catalog.filter((site) => site.origin === "developed-seed").length > 0 ? (
+            <div className="mt-8 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
+              <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+                Developed Seeds in the marketplace library
+              </h3>
+              <p className="mt-2 text-sm text-muted">
+                Published previews from finished customer Seeds — open anytime.
+              </p>
+              <ul className="mt-4 space-y-3">
+                {catalog
+                  .filter((site) => site.origin === "developed-seed")
+                  .map((site) => (
+                    <li
+                      key={site.id}
+                      className="flex min-w-0 flex-col gap-2 border-t border-brand/10 pt-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold text-brand-deep">
+                          {site.title}
+                        </p>
+                        <p className="mt-1 text-xs text-muted [overflow-wrap:anywhere]">
+                          {site.developerName
+                            ? `Developer ${site.developerName} · `
+                            : ""}
+                          {site.previewUrl}
+                        </p>
+                      </div>
+                      <a
+                        href={site.previewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
+                      >
+                        Preview site
+                      </a>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="mt-6 text-sm text-muted">
+              No developed Seeds listed in the marketplace library yet. When a
+              customer lists a finished Seed, its published preview appears here.
+            </p>
+          )}
 
           {modules.length === 0 ? (
             <p className="mt-6 text-sm text-muted">

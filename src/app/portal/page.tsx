@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
+import { liveWebsiteUrl } from "@/lib/domain";
 import { isMasterEmail } from "@/lib/master-auth";
 import { logoutCustomerAction, getPortalHomeSnapshot } from "./actions";
 import { MessagesPanel } from "./messages-panel";
@@ -114,11 +115,14 @@ export default async function PortalHomePage() {
                 const working = active[0]
                   ? getAgent(active[0].assigneeId ?? "")?.name
                   : null;
+                const complete =
+                  project.tasks.length > 0 && done === project.tasks.length;
+                const websiteUrl = liveWebsiteUrl(project);
                 return (
-                  <li key={project.id}>
+                  <li key={project.id} className="border border-brand/10 bg-foam px-6 py-5">
                     <Link
                       href={`/portal/${project.id}`}
-                      className="block border border-brand/10 bg-foam px-6 py-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-brand/35"
+                      className="block transition-[border-color,transform] duration-200 hover:-translate-y-0.5"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
@@ -138,9 +142,31 @@ export default async function PortalHomePage() {
                           ? `In progress: ${active[0]?.title}${working ? ` · ${working}` : ""}`
                           : project.tasks.length === 0
                             ? "Waiting for the project manager to plan work"
-                            : "No active tasks — check Source for the latest files"}
+                            : complete
+                              ? "Build complete — visit the published preview anytime"
+                              : "No active tasks — check Source for the latest files"}
                       </p>
                     </Link>
+                    {complete ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <a
+                          href={websiteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
+                        >
+                          Visit website
+                        </a>
+                        {project.marketplaceListingId ? (
+                          <Link
+                            href="/browse"
+                            className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
+                          >
+                            View in library
+                          </Link>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}
