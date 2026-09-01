@@ -188,8 +188,8 @@ export default async function PortalProjectPage({ params }: PageProps) {
               </h2>
               <p className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">
                 {project.sitePublishedAt
-                  ? "Your site is published. Open it anytime, or share the link."
-                  : "Preview your Seed on its hosted URL, then publish when you’re ready."}
+                  ? "Your site is published on cinchseed.com. Open it anytime, or share the link."
+                  : "Open your live Seed page on cinchseed.com, then publish when you’re ready."}
               </p>
               <a
                 href={websiteUrl}
