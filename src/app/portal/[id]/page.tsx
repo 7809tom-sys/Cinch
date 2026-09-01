@@ -54,14 +54,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
             <PortalRefreshButton />
             <a
               href={websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
             >
               Visit website
             </a>
             <Link
-              href={`/portal/${project.id}/source`}
+              href={`/portal/${project.id}/source?files=1`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
               Source
@@ -199,8 +197,6 @@ export default async function PortalProjectPage({ params }: PageProps) {
             </p>
             <a
               href={websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className="mt-4 inline-flex h-11 items-center rounded-md bg-accent px-4 text-sm font-bold text-brand-deep transition-transform hover:-translate-y-0.5"
             >
               Visit website
@@ -219,7 +215,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
               main way to see your site.
             </p>
             <Link
-              href={`/portal/${project.id}/source`}
+              href={`/portal/${project.id}/source?files=1`}
               className="mt-4 inline-flex h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
               Open source view

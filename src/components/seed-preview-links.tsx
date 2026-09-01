@@ -32,8 +32,6 @@ export function SeedPreviewLinks({
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
         <a
           href={websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
           className={primary}
         >
           Visit website
@@ -53,8 +51,6 @@ export function SeedPreviewLinks({
         <span className={`font-semibold ${strong}`}>{projectName}</span>:{" "}
         <a
           href={websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
           className={`font-semibold underline-offset-2 hover:underline ${strong}`}
         >
           {websiteUrl}
