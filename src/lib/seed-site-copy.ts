@@ -768,6 +768,233 @@ button {
     animation: none;
   }
 }
+
+/* —— Seed-grown business admin (calendar + education) —— */
+.seed-admin {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(94, 234, 212, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(18, 26, 32, 0.9), transparent 50%),
+    var(--foam);
+  color: var(--ink);
+  padding: calc(1.25rem + env(safe-area-inset-top)) var(--pad-inline)
+    calc(2rem + env(safe-area-inset-bottom));
+}
+
+.seed-admin-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(100%, var(--content));
+  margin: 0 auto 2rem;
+}
+
+.seed-admin-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-admin-top h1 {
+  margin: 0;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.85rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.seed-admin-support {
+  margin: 0.65rem 0 0;
+  max-width: 36rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+
+.seed-admin-link,
+.seed-admin-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0.55rem 1rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line-dark);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.seed-admin-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.seed-admin-section {
+  width: min(100%, var(--content));
+  margin: 0 auto 2rem;
+  padding: 1.35rem 1.25rem 1.5rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.5rem;
+  background: #fff;
+  animation: seed-rise 520ms ease both;
+}
+
+.seed-admin-section .seed-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-admin-section h2 {
+  margin: 0 0 1rem;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.35rem, 3.5vw, 1.75rem);
+  font-weight: 700;
+}
+
+.seed-admin-form {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .seed-admin-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .seed-admin-span,
+  .seed-admin-form .cta {
+    grid-column: 1 / -1;
+  }
+}
+
+.seed-admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.seed-admin-form input,
+.seed-admin-form select {
+  min-height: var(--tap);
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.35rem;
+  background: var(--foam);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.seed-admin-form .cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin-top: 0.25rem;
+  padding: 0.85rem 1.35rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: var(--accent-ink);
+  color: var(--foam);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seed-admin-empty {
+  margin: 1rem 0 0;
+  font-size: 0.95rem;
+  color: var(--muted-strong);
+}
+
+.seed-admin-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.seed-admin-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line-dark);
+}
+
+.seed-admin-list-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.seed-admin-list-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted-strong);
+}
+
+.seed-admin-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.seed-admin-list-actions button {
+  min-height: 2.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line-dark);
+  background: var(--foam);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seed-admin-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.seed-admin-tips li h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.seed-admin-tips li p {
+  margin: 0;
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+
+.seed-admin-error {
+  margin: 0.75rem 0 0;
+  color: #9b1c1c;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
 `;
 }
 
@@ -883,4 +1110,185 @@ ${services}
 
 export function seedLandingCopyJson(input: SeedSiteCopy): string {
   return `${JSON.stringify(input, null, 2)}\n`;
+}
+
+/** Brief asks for a business admin (calendar / schedule / education), not Cinch. */
+export function briefAsksForBusinessAdmin(brief: string): boolean {
+  return /\b(admin(?:istration|istrator)?|calendar|schedule|educat\w*)\b/i.test(
+    brief,
+  );
+}
+
+export type SeedAdminAppointment = {
+  id: string;
+  at: string;
+  customerName: string;
+  contact: string;
+  service: string;
+  location: string;
+  notes: string;
+  status: "scheduled" | "done" | "canceled";
+};
+
+export type SeedAdminTip = {
+  id: string;
+  title: string;
+  body: string;
+};
+
+/** Copy + board data that lives in the Seed source tree (`content/admin.copy.json`). */
+export type SeedAdminCopy = {
+  brand: string;
+  title: string;
+  support: string;
+  scheduleEyebrow: string;
+  scheduleHeadline: string;
+  tipsEyebrow: string;
+  tipsHeadline: string;
+  services: string[];
+  appointments: SeedAdminAppointment[];
+  tips: SeedAdminTip[];
+};
+
+/** Business admin content grown into the Seed — calendar + education tips. */
+export function customerFacingAdminCopy(
+  projectName: string,
+  brief: string,
+): SeedAdminCopy {
+  const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const key = industryKey(brief, projectName);
+  const landing = customerFacingSiteCopy(projectName, brief);
+  const services = landing.services.map((service) => service.title);
+
+  const tips: SeedAdminTip[] =
+    key === "detail"
+      ? [
+          {
+            id: "tip-rinse",
+            title: "Rinse before you wipe",
+            body: "Knock off grit with water first so dry towels don’t scratch clear coat.",
+          },
+          {
+            id: "tip-shade",
+            title: "Shade beats sun",
+            body: "Park in shade when you can — hot paint flash-dries soap and leaves spots.",
+          },
+          {
+            id: "tip-buckets",
+            title: "Two-bucket habit",
+            body: "One bucket for soap, one for rinse. It keeps dirt out of your wash mitt.",
+          },
+          {
+            id: "tip-mats",
+            title: "Mats between visits",
+            body: "Shake or vacuum mats weekly if you haul dogs, tools, or kids.",
+          },
+        ]
+      : [
+          {
+            id: "tip-care",
+            title: "Between visits",
+            body: "Share a short tip customers can use until the next appointment.",
+          },
+        ];
+
+  return {
+    brand,
+    title: "Business admin",
+    support:
+      key === "detail"
+        ? "Calendar, jobs, and tips for keeping cars clean — part of your Seed website."
+        : "Schedule and customer-care tips for your business — part of your Seed website.",
+    scheduleEyebrow: "Calendar",
+    scheduleHeadline: "Schedule",
+    tipsEyebrow: "Educate",
+    tipsHeadline:
+      key === "detail" ? "Keeping the car clean" : "Customer care tips",
+    services,
+    appointments: [],
+    tips,
+  };
+}
+
+export function seedAdminCopyJson(input: SeedAdminCopy): string {
+  return `${JSON.stringify(input, null, 2)}\n`;
+}
+
+/** Seed-grown admin page source (mirrored in the source tree). */
+export function seedAdminPageSource(input: SeedAdminCopy): string {
+  const brand = esc(input.brand);
+  const tips = input.tips
+    .map(
+      (tip) => `          <li>
+            <h3>${esc(tip.title)}</h3>
+            <p>${esc(tip.body)}</p>
+          </li>`,
+    )
+    .join("\n");
+  const services = input.services
+    .map((service) => `              <option value="${esc(service)}">${esc(service)}</option>`)
+    .join("\n");
+
+  return `export default function AdminPage() {
+  return (
+    <main className="seed-admin">
+      <header className="seed-admin-top">
+        <div>
+          <p className="seed-admin-kicker">${esc(input.title)}</p>
+          <h1>${brand}</h1>
+          <p className="seed-admin-support">${esc(input.support)}</p>
+        </div>
+        <a className="seed-admin-link" href="/">
+          View website
+        </a>
+      </header>
+
+      <section className="seed-admin-section" id="schedule">
+        <p className="seed-eyebrow">${esc(input.scheduleEyebrow)}</p>
+        <h2>${esc(input.scheduleHeadline)}</h2>
+        <form className="seed-admin-form" action="#" method="post">
+          <label>
+            When
+            <input name="at" type="datetime-local" required />
+          </label>
+          <label>
+            Customer
+            <input name="customerName" type="text" required />
+          </label>
+          <label>
+            Phone or email
+            <input name="contact" type="text" required />
+          </label>
+          <label>
+            Service
+            <select name="service">
+${services}
+            </select>
+          </label>
+          <label className="seed-admin-span">
+            Location
+            <input name="location" type="text" placeholder="Driveway, lot, or pin" />
+          </label>
+          <label className="seed-admin-span">
+            Notes
+            <input name="notes" type="text" placeholder="Vehicle, gate code…" />
+          </label>
+          <button className="cta" type="submit">
+            Add appointment
+          </button>
+        </form>
+        <p className="seed-admin-empty">No jobs on the calendar yet.</p>
+      </section>
+
+      <section className="seed-admin-section" id="educate">
+        <p className="seed-eyebrow">${esc(input.tipsEyebrow)}</p>
+        <h2>${esc(input.tipsHeadline)}</h2>
+        <ul className="seed-admin-tips">
+${tips}
+        </ul>
+      </section>
+    </main>
+  );
+}
+`;
 }

@@ -116,7 +116,7 @@ export function PortalCompleteLaunch({
             href={adminHref}
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
           >
-            Admin
+            Business admin
           </a>
         ) : null}
       </div>

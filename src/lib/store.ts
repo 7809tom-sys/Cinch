@@ -10,6 +10,7 @@ import {
 } from "./dns-verify";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import { bootstrapSourceTree } from "./seed-source";
+import { briefAsksForBusinessAdmin } from "./seed-site-copy";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
 
@@ -526,6 +527,16 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
       minSkillLevel: 3,
     },
   ];
+
+  if (briefAsksForBusinessAdmin(project.brief)) {
+    backlog.splice(5, 0, {
+      title: "Build business admin panel",
+      detail:
+        "Grow the Seed’s own admin: calendar/schedule for jobs and education tips (e.g. keeping the car clean). This is the business admin on the live site — not the Cinch build room.",
+      requiredSkills: ["frontend", "ui"],
+      minSkillLevel: 3,
+    });
+  }
 
   project.tasks = backlog.map((item) => ({
     ...item,
