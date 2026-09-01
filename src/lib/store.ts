@@ -81,6 +81,13 @@ export type SeedProject = {
   sitePublishedAt: string | null;
   /** Marketplace listing id once this developed Seed is listed in the library */
   marketplaceListingId: string | null;
+  /**
+   * When Conductor (PM) first contacted the owner: got the Seed, working tasks.
+   * Set once so portal opens don’t spam greetings.
+   */
+  pmIntroSentAt: string | null;
+  /** Exact PM intro body shown in the Seed portal (set with pmIntroSentAt). */
+  pmIntroBody: string | null;
 };
 
 type StoreShape = {
@@ -109,6 +116,8 @@ async function ensureStore(): Promise<StoreShape> {
       connectKey: project.connectKey || generateConnectKey(),
       sitePublishedAt: project.sitePublishedAt ?? null,
       marketplaceListingId: project.marketplaceListingId ?? null,
+      pmIntroSentAt: project.pmIntroSentAt ?? null,
+      pmIntroBody: project.pmIntroBody ?? null,
     };
   });
   if (backfilled) {
@@ -264,6 +273,8 @@ export async function createProject(input: {
     customDomain: null,
     sitePublishedAt: null,
     marketplaceListingId: null,
+    pmIntroSentAt: null,
+    pmIntroBody: null,
   };
 
   pushActivity(

@@ -28,7 +28,8 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PortalProjectPage({ params }: PageProps) {
   const { id } = await params;
-  const { customer, project, watch, agents } = await getPortalProjectSnapshot(id);
+  const { customer, project, watch, agents, pmContact } =
+    await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
   if (!project) notFound();
 
@@ -40,6 +41,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
     project.tasks.length > 0 && doneCount === project.tasks.length;
   const websiteUrl = liveWebsiteUrl(project);
   const developerRatePct = Math.round(SEED_MARKETPLACE_DEVELOPER_RATE * 100);
+  const workingOn = activeTasks[0]?.title ?? null;
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
@@ -110,6 +112,23 @@ export default async function PortalProjectPage({ params }: PageProps) {
             </p>
           ) : null}
 
+          {pmContact ? (
+            <div className="mt-8 min-w-0 max-w-full border border-accent/30 bg-accent/10 px-4 py-5 sm:px-5">
+              <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+                Project manager
+              </p>
+              <h2 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+                {pmContact.pmName} checked in
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-brand-deep [overflow-wrap:anywhere]">
+                {pmContact.body}
+              </p>
+              <p className="mt-2 text-xs text-muted">
+                {new Date(pmContact.sentAt).toLocaleString()}
+              </p>
+            </div>
+          ) : null}
+
           <div className="mt-8 min-w-0 max-w-full border border-brand/10 bg-foam px-4 py-5 sm:px-5">
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               What&apos;s being worked on
@@ -117,6 +136,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
             <PortalWatchTicker
               projectId={project.id}
               complete={buildComplete}
+              initialWorkingOn={workingOn}
             />
             <PortalCompleteLaunch
               projectId={project.id}

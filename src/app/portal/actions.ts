@@ -60,6 +60,7 @@ import { refreshDevelopedSeedPreview } from "@/lib/site-catalog";
 import {
   bootstrapSeedProject,
   continueSeedGrowth,
+  ensureProjectManagerSeedContact,
   tickProjectWork,
   listSeedInLibrary,
   publishSeedWebsite,
@@ -230,7 +231,15 @@ export async function removePasskeyAction(credentialId: string) {
 
 export async function getPortalProjectSnapshot(projectId: string) {
   const customer = await getCurrentCustomer();
-  if (!customer) return { customer: null, project: null, watch: null, agents: [] as string[] };
+  if (!customer) {
+    return {
+      customer: null,
+      project: null,
+      watch: null,
+      agents: [] as string[],
+      pmContact: null,
+    };
+  }
 
   const project = await getProject(projectId);
   const owns =
@@ -239,15 +248,25 @@ export async function getPortalProjectSnapshot(projectId: string) {
       project.customerEmail === customer.email ||
       isMasterEmail(customer.email));
   if (!project || !owns) {
-    return { customer, project: null, watch: null, agents: [] as string[] };
+    return {
+      customer,
+      project: null,
+      watch: null,
+      agents: [] as string[],
+      pmContact: null,
+    };
   }
 
-  const watch = await getSeedWatchSnapshot(project.id);
-  const agents = project.invitedAgentIds
+  // Heading into the Seed: PM acknowledges receipt and that work is underway.
+  const pmContact = await ensureProjectManagerSeedContact(project.id);
+  const refreshed = (await getProject(project.id)) ?? project;
+
+  const watch = await getSeedWatchSnapshot(refreshed.id);
+  const agents = refreshed.invitedAgentIds
     .map((id) => getAgent(id)?.name)
     .filter((name): name is string => Boolean(name));
 
-  return { customer, project, watch, agents };
+  return { customer, project: refreshed, watch, agents, pmContact };
 }
 
 async function requireOwnedProject(
@@ -543,6 +562,9 @@ export async function portalWatchTickAction(projectId: string) {
     progressed: result.progressed,
     stuck: result.stuck,
     complete: result.complete,
+    statusLine: result.statusLine,
+    workingOn: result.workingOn,
+    updatedTask: result.updatedTask,
   };
 }
 
