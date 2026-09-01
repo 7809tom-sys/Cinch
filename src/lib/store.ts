@@ -72,7 +72,9 @@ export type SeedProject = {
   referenceUrl: string | null;
   /** Customer's own domain (bought elsewhere) pointed at this Seed */
   customDomain: CustomDomainConnection | null;
-  /** Marketplace listing id once this developed Seed is published */
+  /** When the customer published the live website */
+  sitePublishedAt: string | null;
+  /** Marketplace listing id once this developed Seed is listed in the library */
   marketplaceListingId: string | null;
 };
 
@@ -100,6 +102,7 @@ async function ensureStore(): Promise<StoreShape> {
       customDomain: project.customDomain ?? null,
       embedEnabled: project.embedEnabled ?? true,
       connectKey: project.connectKey || generateConnectKey(),
+      sitePublishedAt: project.sitePublishedAt ?? null,
       marketplaceListingId: project.marketplaceListingId ?? null,
     };
   });
@@ -254,6 +257,7 @@ export async function createProject(input: {
     customerName,
     referenceUrl,
     customDomain: null,
+    sitePublishedAt: null,
     marketplaceListingId: null,
   };
 

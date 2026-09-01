@@ -58,6 +58,8 @@ import {
   bootstrapSeedProject,
   continueSeedGrowth,
   tickProjectWork,
+  listSeedInLibrary,
+  publishSeedWebsite,
 } from "@/lib/project-manager";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
@@ -553,3 +555,38 @@ export async function portalContinueGrowthAction(projectId: string) {
   return { ok: true as const };
 }
 
+
+
+/** Publish the Seed’s live website (hosted subdomain / custom domain). */
+export async function portalPublishWebsiteAction(projectId: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in required." };
+  }
+  if (!customerOwnsProject(customer, projectId)) {
+    return { ok: false as const, error: "Not your Seed." };
+  }
+  await publishSeedWebsite(projectId);
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
+  return { ok: true as const };
+}
+
+/** Opt-in: list this Seed in the library/marketplace to earn on template sales. */
+export async function portalListInLibraryAction(projectId: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in required." };
+  }
+  if (!customerOwnsProject(customer, projectId)) {
+    return { ok: false as const, error: "Not your Seed." };
+  }
+  const project = await listSeedInLibrary(projectId);
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
+  revalidatePath("/browse");
+  return {
+    ok: true as const,
+    listingId: project.marketplaceListingId,
+  };
+}
