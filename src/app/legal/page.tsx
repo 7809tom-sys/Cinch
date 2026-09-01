@@ -102,9 +102,12 @@ export default function LegalPage() {
           </p>
           <p className="text-base leading-relaxed text-muted">
             Library membership may credit creators when modulars are reused.
-            Credits and fees are described in Admin and may change as the
-            network grows. Paid plans (including Seed at the stated price) are
-            billed according to the checkout or invoice path you complete.
+            Developed Seeds also list on the marketplace; when someone buys a
+            Seed you grew, an 8% commission of that sale price is credited to
+            the original developer. Credits and fees are described in Admin and
+            may change as the network grows. Paid plans (including Seed at the
+            stated price) are billed according to the checkout or invoice path
+            you complete.
           </p>
           <p className="text-base leading-relaxed text-muted">
             The service is provided as available. We work hard for small
