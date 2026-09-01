@@ -8,6 +8,7 @@ import {
   seedAdminPageSource,
   seedHomePageSource,
   seedLandingCopyJson,
+  seedLandingCopyMismatchesIndustry,
   seedPublicSiteCss,
   type SeedAdminCopy,
   type SeedService,
@@ -33,6 +34,8 @@ export {
   seedAdminPageSource,
   seedHomePageSource,
   seedLandingCopyJson,
+  seedLandingCopyMismatchesIndustry,
+  seedIndustryKey,
   seedPublicSiteCss,
   seedResponsiveGlobalsCss,
 } from "./seed-site-copy";
@@ -206,6 +209,10 @@ export async function repairCustomerLandingIfNeeded(
         support?: string;
         brand?: string;
         heroImage?: string;
+        cta?: string;
+        aboutBody?: string;
+        footerNote?: string;
+        servicesHeadline?: string;
         services?: SeedService[];
       };
       const brand = brandFromProject(project);
@@ -216,7 +223,8 @@ export async function repairCustomerLandingIfNeeded(
             copy.headline.trim().toLowerCase() === brand.toLowerCase()) ||
           !copy.heroImage ||
           !Array.isArray(copy.services) ||
-          copy.services.length < 2,
+          copy.services.length < 2 ||
+          seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
       );
     } catch {
       copyLooksBad = true;
@@ -229,7 +237,16 @@ export async function repairCustomerLandingIfNeeded(
     /className="brand">\s*Cinch\s*</i.test(page) ||
     !page.includes("seed-hero") ||
     !page.includes('id="services"') ||
-    !page.includes('id="book"');
+    !page.includes('id="book"') ||
+    (/Book a detail|Express wash|Showroom polish|Details that travel/i.test(
+      page,
+    ) &&
+      seedLandingCopyMismatchesIndustry(project.name, project.brief, {
+        cta: /Book a detail/i.test(page) ? "Book a detail" : undefined,
+        servicesHeadline: /Details that travel/i.test(page)
+          ? "Details that travel to your driveway"
+          : undefined,
+      }));
 
   const cssLooksBad =
     !css || !css.includes("seed-hero") || !css.includes("seed-services");
