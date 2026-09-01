@@ -68,7 +68,7 @@ export default async function PortalHomePage() {
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted">
           {isAdmin
             ? "You’re signed in as the platform owner. Open Admin for the command center, or manage Seeds here."
-            : "Your Seeds live here. Open one to see what is being worked on, then switch to Source for a live view of the code as agents write it."}
+            : "Your Seeds live here. Open one to see progress, or Visit website to open the live page with Publish and Library."}
         </p>
 
         {isAdmin ? (
@@ -141,32 +141,28 @@ export default async function PortalHomePage() {
                         {active.length > 0
                           ? `In progress: ${active[0]?.title}${working ? ` · ${working}` : ""}`
                           : project.tasks.length === 0
-                            ? "Waiting for the project manager to plan work"
+                            ? "Website is ready — Visit anytime while the crew plans work"
                             : complete
                               ? "Build complete — visit the published preview anytime"
-                              : "No active tasks — check Source for the latest files"}
+                              : "Agents between tasks — Visit website to see the live page"}
                       </p>
                     </Link>
-                    {complete ? (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <a
-                          href={websiteUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <a
+                        href={websiteUrl}
+                        className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
+                      >
+                        Visit website
+                      </a>
+                      {project.marketplaceListingId ? (
+                        <Link
+                          href="/browse"
+                          className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
                         >
-                          Visit website
-                        </a>
-                        {project.marketplaceListingId ? (
-                          <Link
-                            href="/browse"
-                            className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
-                          >
-                            View in library
-                          </Link>
-                        ) : null}
-                      </div>
-                    ) : null}
+                          View in library
+                        </Link>
+                      ) : null}
+                    </div>
                   </li>
                 );
               })}
