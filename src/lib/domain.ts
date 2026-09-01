@@ -20,8 +20,14 @@ export function seedHostOrigin(slug: string): string {
   return `https://${seedHostHostname(slug)}`;
 }
 
-/** Public URL for a Seed site — verified custom domain wins, else hosted subdomain. */
+/**
+ * Public URL for a Seed site.
+ * Verified custom domains win. Otherwise use the apex path
+ * `/site/{id}` — wildcard `*.cinchseed.com` DNS is not live yet, so
+ * subdomain URLs currently NXDOMAIN in browsers.
+ */
 export function liveWebsiteUrl(project: {
+  id: string;
   name: string;
   customDomain: { hostname: string; status: string } | null;
 }): string {
@@ -29,5 +35,10 @@ export function liveWebsiteUrl(project: {
   if (custom && custom.status === "verified" && custom.hostname) {
     return `https://${custom.hostname}`;
   }
-  return seedHostOrigin(project.name);
+  return `${CINCH_SEED_ORIGIN}/site/${project.id}`;
+}
+
+/** Intended vanity host once wildcard DNS for *.cinchseed.com is configured. */
+export function plannedSeedHostOrigin(slug: string): string {
+  return seedHostOrigin(slug);
 }
