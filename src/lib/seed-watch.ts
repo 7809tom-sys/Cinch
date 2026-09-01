@@ -229,11 +229,11 @@ export async function queueGrowthCycle(input: {
   };
   const payloads: Record<GrowthAxis, string> = {
     functionality:
-      "Review critical tools and ship the next modular adaptation that adds or restores capability.",
+      "HARD RULE: survey existing library modulars first, adopt a match that adds or restores capability, then custom-build only the gap.",
     efficiency:
-      "Find friction on the live path and adapt a leaner modular from the library.",
+      "HARD RULE: find friction on the live path and adapt a leaner modular from the library before writing new code.",
     customer_service:
-      "Clarify help, trust, and support cues so visitors feel guided.",
+      "HARD RULE: pull trust/help modulars from the library first; custom-write only cues the brief still needs.",
   };
 
   const queued: SiteImprovement[] = [];
