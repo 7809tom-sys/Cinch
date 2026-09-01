@@ -11,6 +11,7 @@ import {
   inviteAgent,
   now,
   planBuild,
+  projectHasGrowthWave,
   pushActivity,
   saveProject,
   type ProjectTask,
@@ -284,15 +285,49 @@ export async function restaffSeedProject(
 }
 
 /**
- * Keep a “caught up” Seed moving: restaff if needed, append the next build
- * wave when every task is done, then assign the new work.
+ * Optional growth: restaff, append a polish wave, assign.
+ * Auto-watch only gets one free wave; `{ force: true }` is for Continue growing.
  */
 export async function continueSeedGrowth(
   projectId: string,
+  options: { force?: boolean } = {},
 ): Promise<SeedProject> {
   await ensureSpecialistsInvited(projectId);
-  await appendNextBuildWave(projectId);
+  await appendNextBuildWave(projectId, options);
   return runProjectManagerAssignment(projectId);
+}
+
+/**
+ * After the planned build (and one automatic polish wave) finishes, stop.
+ * Further growth is opt-in via Continue growing — not an endless loop.
+ */
+async function maybeAdvanceAfterComplete(
+  projectId: string,
+): Promise<{ project: SeedProject; progressed: boolean }> {
+  let project = await maybePublishDevelopedSeed(projectId);
+
+  if (!projectHasGrowthWave(project)) {
+    const beforeCount = project.tasks.length;
+    project = await continueSeedGrowth(projectId);
+    const progressed =
+      project.tasks.length > beforeCount ||
+      project.tasks.some((task) => task.status !== "done");
+    return { project, progressed };
+  }
+
+  const pm = getProjectManager();
+  const alreadyDone = project.activity.some((event) =>
+    event.message.includes("Seed build is complete"),
+  );
+  if (!alreadyDone) {
+    pushActivity(
+      project,
+      `${pm.name} marked the Seed build complete. Tap Continue growing only if you want another wave — otherwise you’re done watching.`,
+      pm.id,
+    );
+    await saveProject(project);
+  }
+  return { project, progressed: false };
 }
 
 export type WatchTickResult = {
@@ -379,13 +414,8 @@ export async function tickProjectWork(
     project.modules = project.modules.slice(0, 30);
     await saveProject(project);
     if (projectWorkComplete(project)) {
-      await maybePublishDevelopedSeed(projectId);
-      const beforeCount = project.tasks.length;
-      project = await continueSeedGrowth(projectId);
-      const grew =
-        project.tasks.length > beforeCount ||
-        project.tasks.some((task) => task.status !== "done");
-      return finishResult(project, grew || true);
+      const advanced = await maybeAdvanceAfterComplete(projectId);
+      return finishResult(advanced.project, advanced.progressed || true);
     }
     return finishResult(project, true);
   }
@@ -454,15 +484,10 @@ export async function tickProjectWork(
     return finishResult(project, true);
   }
 
-  // First wave finished — list on the marketplace, then queue growth work.
+  // First plan finished — one polish wave max, then the Seed completes.
   if (projectWorkComplete(project) && project.tasks.length > 0) {
-    await maybePublishDevelopedSeed(projectId);
-    const beforeCount = project.tasks.length;
-    project = await continueSeedGrowth(projectId);
-    const progressed =
-      project.tasks.length > beforeCount ||
-      project.tasks.some((task) => task.status !== "done");
-    return finishResult(project, progressed);
+    const advanced = await maybeAdvanceAfterComplete(projectId);
+    return finishResult(advanced.project, advanced.progressed);
   }
 
   return finishResult(project, false);

@@ -35,7 +35,7 @@ export function PortalWatchTicker({
             setLocalComplete(false);
             setStuck(false);
           }
-        } else if (options?.advance !== false) {
+        } else if (options?.advance !== false && !localComplete) {
           const result = await portalWatchTickAction(projectId);
           if (result.ok && "stuck" in result) {
             setStuck(Boolean(result.stuck));
@@ -50,22 +50,22 @@ export function PortalWatchTicker({
   }
 
   useEffect(() => {
-    if (stuck) return;
+    // Stop auto-ticking when complete — Seeds should finish, not loop forever.
+    if (stuck || localComplete) return;
 
     const id = window.setInterval(() => {
-      // Ticks also start the next growth wave when the board is caught up.
       refreshNow({ advance: true });
     }, 2800);
 
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional watch loop
-  }, [stuck, projectId]);
+  }, [stuck, localComplete, projectId]);
 
   return (
     <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <p className="min-w-0 break-words text-xs font-semibold tracking-wide text-accent-deep uppercase">
         {localComplete
-          ? "Build caught up — starting next growth wave"
+          ? "Build complete"
           : stuck
             ? "Paused — crew can’t cover remaining tasks"
             : pending
@@ -91,7 +91,9 @@ export function PortalWatchTicker({
           disabled={pending}
           onClick={() => {
             setStuck(false);
-            refreshNow({ advance: true });
+            refreshNow({
+              advance: !localComplete,
+            });
           }}
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40 disabled:opacity-60"
         >

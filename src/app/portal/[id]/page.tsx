@@ -102,7 +102,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
                 {project.tasks.length === 0
                   ? "Conductor is staffing and assigning work — you only need to watch."
                   : doneCount === project.tasks.length
-                    ? "All planned tasks are done. The next growth wave starts automatically — or tap Continue growing. Watch Source for the finished tree."
+                    ? "All planned tasks are done — your Seed build is complete. Open Live source for the finished tree, or tap Continue growing only if you want another wave."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}
               </p>
             ) : (
