@@ -88,6 +88,14 @@ export default async function PortalProjectPage({ params }: PageProps) {
           <p className="mt-4 max-w-2xl wrap-break-word text-base leading-relaxed text-muted [overflow-wrap:anywhere]">
             {project.brief}
           </p>
+          <div className="mt-4">
+            <Link
+              href={`/portal/${project.id}/edit`}
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+            >
+              Edit Seed
+            </Link>
+          </div>
           {project.referenceUrl ? (
             <p className="mt-3 text-sm text-muted">
               Reference site:{" "}
@@ -122,6 +130,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
                   ? `/site/${project.id}/admin`
                   : null
               }
+              editHref={`/portal/${project.id}/edit`}
             />
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">

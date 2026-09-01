@@ -104,6 +104,7 @@ export default async function PortalSourcePage({
             developerRatePct={developerRatePct}
             buildComplete={buildComplete}
             adminHref={businessAdminHref}
+            editHref={`/portal/${project.id}/edit`}
           />
         </div>
 

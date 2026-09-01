@@ -13,6 +13,7 @@ export function SiteOwnerChrome({
   listedInLibrary,
   adminHref,
   portalHref,
+  editHref,
   showPublishControls,
 }: {
   projectId: string;
@@ -20,6 +21,7 @@ export function SiteOwnerChrome({
   listedInLibrary: boolean;
   adminHref: string | null;
   portalHref: string | null;
+  editHref: string | null;
   /** Owners (and masters) can publish / list from the live preview. */
   showPublishControls: boolean;
 }) {
@@ -85,6 +87,11 @@ export function SiteOwnerChrome({
                     : "Library"}
               </button>
             </>
+          ) : null}
+          {editHref ? (
+            <a className="seed-owner-btn" href={editHref} target="_top">
+              Edit Seed
+            </a>
           ) : null}
           {portalHref ? (
             <a className="seed-owner-btn" href={portalHref} target="_top">
