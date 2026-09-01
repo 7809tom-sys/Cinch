@@ -231,11 +231,13 @@ export async function getPortalProjectSnapshot(projectId: string) {
   if (!customer) return { customer: null, project: null, watch: null, agents: [] as string[] };
 
   const project = await getProject(projectId);
-  if (!project || !customerOwnsProject(customer, projectId)) {
-    // Allow ownership via email match for older attaches
-    if (!project || project.customerEmail !== customer.email) {
-      return { customer, project: null, watch: null, agents: [] as string[] };
-    }
+  const owns =
+    project &&
+    (customerOwnsProject(customer, projectId) ||
+      project.customerEmail === customer.email ||
+      isMasterEmail(customer.email));
+  if (!project || !owns) {
+    return { customer, project: null, watch: null, agents: [] as string[] };
   }
 
   const watch = await getSeedWatchSnapshot(project.id);

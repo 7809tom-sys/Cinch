@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { customerOwnsProject, getCurrentCustomer } from "@/lib/customer-auth";
-import { getMasterSession, isMasterEmail } from "@/lib/master-auth";
+import {
+  establishMasterSession,
+  getMasterSession,
+  isMasterEmail,
+} from "@/lib/master-auth";
 import {
   buildSeedSitePreview,
   repairCustomerLandingIfNeeded,
@@ -44,8 +48,20 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
     getCurrentCustomer(),
     getMasterSession(),
   ]);
+
+  // Portal login for a master-email account may only set the customer cookie.
+  // Promote to a real master session so Admin → /admin/projects/{id} works.
+  let masterSession = master;
+  if (!masterSession && customer && isMasterEmail(customer.email)) {
+    await establishMasterSession({
+      email: customer.email,
+      name: customer.name || customer.email.split("@")[0] || customer.email,
+    });
+    masterSession = await getMasterSession();
+  }
+
   const isMaster = Boolean(
-    master || (customer && isMasterEmail(customer.email)),
+    masterSession || (customer && isMasterEmail(customer.email)),
   );
   const isOwner = Boolean(
     customer &&
