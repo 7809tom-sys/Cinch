@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
 import { getCustomerByEmail } from "./customers";
+import { sendMessage } from "./messages";
 import { upsertLibraryModule } from "./module-library";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "./pricing";
 import {
@@ -304,7 +305,70 @@ export async function bootstrapSeedProject(
 
   // Assign the backlog once. Watch ticks advance work from here — they do not
   // keep re-assigning the same tasks.
-  return runProjectManagerAssignment(projectId);
+  project = await runProjectManagerAssignment(projectId);
+  await ensureProjectManagerSeedContact(projectId);
+  return (await getProject(projectId))!;
+}
+
+/**
+ * Conductor (PM) contacts the owner: we got the Seed and we're working the
+ * tasks. Runs once per Seed (on bootstrap and when they head into the portal).
+ */
+export async function ensureProjectManagerSeedContact(
+  projectId: string,
+): Promise<{
+  body: string;
+  pmName: string;
+  sentAt: string;
+  justSent: boolean;
+} | null> {
+  const project = await getProject(projectId);
+  if (!project) return null;
+
+  const pm = getProjectManager();
+
+  if (project.pmIntroSentAt && project.pmIntroBody) {
+    return {
+      body: project.pmIntroBody,
+      pmName: pm.name,
+      sentAt: project.pmIntroSentAt,
+      justSent: false,
+    };
+  }
+
+  const activeTask =
+    project.tasks.find(
+      (task) => task.status === "in_progress" || task.status === "assigned",
+    ) ??
+    project.tasks.find((task) => task.status === "queued") ??
+    null;
+
+  const body = activeTask
+    ? `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffed and working the build now (up next: ${activeTask.title}). Open this Seed anytime to watch progress — no action needed from you.`
+    : `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffing and we’ll work through the task board. Open this Seed anytime to watch progress — no action needed from you.`;
+
+  if (project.customerEmail) {
+    const customer = await getCustomerByEmail(project.customerEmail);
+    if (customer) {
+      await sendMessage({
+        customerId: customer.id,
+        sender: "admin",
+        body,
+      });
+    }
+  }
+
+  pushActivity(
+    project,
+    `${pm.name} contacted you: got the Seed and working the tasks.`,
+    pm.id,
+  );
+  const sentAt = now();
+  project.pmIntroSentAt = sentAt;
+  project.pmIntroBody = body;
+  await saveProject(project);
+
+  return { body, pmName: pm.name, sentAt, justSent: true };
 }
 
 /** Invite any missing specialists and assign queued work (for stuck Seeds). */
@@ -369,7 +433,86 @@ export type WatchTickResult = {
   /** True when queued work remains but no crew member can take it. */
   stuck: boolean;
   complete: boolean;
+  /** Clear Refresh-status line: what’s being worked on, or what just updated. */
+  statusLine: string;
+  /** Current active task title, if any. */
+  workingOn: string | null;
+  /** Task that finished or otherwise changed this tick. */
+  updatedTask: string | null;
 };
+
+function watchStatusFromProject(
+  project: SeedProject,
+  options: {
+    progressed: boolean;
+    stuck: boolean;
+    complete: boolean;
+    updatedTask?: string | null;
+    updateKind?: "finished" | "started" | null;
+  },
+): Pick<WatchTickResult, "statusLine" | "workingOn" | "updatedTask"> {
+  const working =
+    project.tasks.find((task) => task.status === "in_progress") ??
+    project.tasks.find((task) => task.status === "assigned") ??
+    null;
+  const workingOn = working?.title ?? null;
+  const updatedTask = options.updatedTask ?? null;
+  const kind = options.updateKind ?? null;
+
+  if (options.complete) {
+    return {
+      statusLine: updatedTask
+        ? `Updated — finished “${updatedTask}”. Build complete.`
+        : "Build complete",
+      workingOn: null,
+      updatedTask,
+    };
+  }
+  if (options.stuck) {
+    return {
+      statusLine: "Paused — crew can’t cover remaining tasks",
+      workingOn,
+      updatedTask,
+    };
+  }
+  if (kind === "finished" && updatedTask) {
+    return {
+      statusLine: workingOn
+        ? `Updated — finished “${updatedTask}”. Now working on “${workingOn}”.`
+        : `Updated — finished “${updatedTask}”.`,
+      workingOn,
+      updatedTask,
+    };
+  }
+  if (kind === "started" && updatedTask) {
+    return {
+      statusLine: `Updated — now working on “${updatedTask}”.`,
+      workingOn: updatedTask,
+      updatedTask,
+    };
+  }
+  if (workingOn) {
+    return {
+      statusLine: options.progressed
+        ? `Updated — now working on “${workingOn}”.`
+        : `Working on “${workingOn}”.`,
+      workingOn,
+      updatedTask,
+    };
+  }
+  if (project.tasks.some((task) => task.status === "queued")) {
+    return {
+      statusLine: "Queued work waiting for the next assignment",
+      workingOn: null,
+      updatedTask,
+    };
+  }
+  return {
+    statusLine: options.progressed ? "Updated" : "No active tasks right now",
+    workingOn: null,
+    updatedTask,
+  };
+}
 
 /**
  * One watch-mode step: finish in-progress work, start an assigned task,
@@ -385,6 +528,8 @@ export async function tickProjectWork(
   const finishResult = (
     next: SeedProject,
     progressed: boolean,
+    updatedTask: string | null = null,
+    updateKind: "finished" | "started" | null = null,
   ): WatchTickResult => {
     const complete = projectWorkComplete(next);
     const stuck =
@@ -394,13 +539,21 @@ export async function tickProjectWork(
       next.tasks
         .filter((task) => task.status === "queued")
         .every((task) => !chooseAssignee(next, task));
-    return { project: next, progressed, stuck, complete };
+    const status = watchStatusFromProject(next, {
+      progressed,
+      stuck,
+      complete,
+      updatedTask,
+      updateKind,
+    });
+    return { project: next, progressed, stuck, complete, ...status };
   };
 
   const inProgress = project.tasks.find(
     (task) => task.status === "in_progress",
   );
   if (inProgress) {
+    const finishedTitle = inProgress.title;
     const agent = inProgress.assigneeId
       ? getAgent(inProgress.assigneeId)
       : null;
@@ -447,9 +600,14 @@ export async function tickProjectWork(
     await saveProject(project);
     if (projectWorkComplete(project)) {
       const advanced = await maybeAdvanceAfterComplete(projectId);
-      return finishResult(advanced.project, advanced.progressed || true);
+      return finishResult(
+        advanced.project,
+        advanced.progressed || true,
+        finishedTitle,
+        "finished",
+      );
     }
-    return finishResult(project, true);
+    return finishResult(project, true, finishedTitle, "finished");
   }
 
   let assigned = project.tasks.find((task) => task.status === "assigned");
@@ -493,6 +651,7 @@ export async function tickProjectWork(
 
   if (assigned) {
     const agent = assigned.assigneeId ? getAgent(assigned.assigneeId) : null;
+    const startedTitle = assigned.title;
     assigned.status = "in_progress";
     assigned.updatedAt = now();
     pushActivity(
@@ -513,7 +672,7 @@ export async function tickProjectWork(
       // Keep the status transition even if source write fails.
     }
     await saveProject(project);
-    return finishResult(project, true);
+    return finishResult(project, true, startedTitle, "started");
   }
 
   // First plan finished — one polish wave max, then the Seed completes.
