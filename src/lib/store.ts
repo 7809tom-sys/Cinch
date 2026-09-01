@@ -14,7 +14,7 @@ import {
 } from "./dns-verify";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import { bootstrapSourceTree, applySeedIdentityEdit } from "./seed-source";
-import { briefAsksForBusinessAdmin } from "./seed-site-copy";
+import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "./seed-site-copy";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
 
@@ -625,11 +625,26 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     },
   ];
 
-  if (briefAsksForBusinessAdmin(project.brief)) {
+  if (seedNeedsBusinessAdmin(project.brief) && !briefAsksForEcommerce(project.brief)) {
     backlog.splice(6, 0, {
       title: "Build business admin panel",
       detail: `Grow the Seed’s own admin: calendar/schedule and education tips. Reuse any admin/schedule modulars first; custom-build only what the library lacks. ${modularsFirst}`,
       requiredSkills: ["frontend", "ui"],
+      minSkillLevel: 3,
+    });
+  }
+
+  if (briefAsksForEcommerce(project.brief)) {
+    backlog.splice(6, 0, {
+      title: "Build Seed shop e-commerce",
+      detail: `HARD RULE: the Seed grows e-commerce — not a separate Cinch platform checkout. Survey shop/cart modulars first, then custom-build product catalog + cart into Seed source (content/shop.copy.json, app/shop/page.tsx). ${modularsFirst}`,
+      requiredSkills: ["frontend", "ui"],
+      minSkillLevel: 3,
+    });
+    backlog.splice(7, 0, {
+      title: "Grow commerce ops into Seed admin",
+      detail: `HARD RULE: inventory, UPS parcel shipping, LTL freight, and sales tax live in the Seed business admin (content/admin.copy.json) — not a Cinch platform module. Wire stock levels, ship-from ZIP, parcel vs LTL modes, nexus tax, and open orders into /admin. Reuse modulars first. ${modularsFirst}`,
+      requiredSkills: ["frontend", "ui", "backend"],
       minSkillLevel: 3,
     });
   }

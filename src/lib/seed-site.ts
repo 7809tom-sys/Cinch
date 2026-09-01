@@ -1,17 +1,24 @@
 import { getSourceBundle, upsertSourceFile } from "./seed-source";
 import {
   briefAsksForBusinessAdmin,
+  briefAsksForEcommerce,
   customerFacingAdminCopy,
+  customerFacingShopCopy,
   customerFacingSiteCopy,
   looksLikeAgentTaskCopy,
   seedAdminCopyJson,
   seedAdminPageSource,
+  seedCommerceAdminBoard,
   seedHomePageSource,
   seedLandingCopyJson,
   seedLandingCopyMismatchesIndustry,
+  seedNeedsBusinessAdmin,
   seedPublicSiteCss,
+  seedShopCopyJson,
+  seedShopPageSource,
   type SeedAdminCopy,
   type SeedService,
+  type SeedShopCopy,
   type SeedSiteCopy,
 } from "./seed-site-copy";
 import type { SeedProject } from "./store";
@@ -23,24 +30,36 @@ export type SeedSitePreview = SeedSiteCopy & {
 
 export {
   briefAsksForBusinessAdmin,
+  briefAsksForEcommerce,
   customerFacingAdminCopy,
   customerFacingCta,
   customerFacingHeadline,
   customerFacingHeroImage,
+  customerFacingShopCopy,
   customerFacingSiteCopy,
   customerFacingSupport,
   looksLikeAgentTaskCopy,
   seedAdminCopyJson,
   seedAdminPageSource,
+  seedCommerceAdminBoard,
   seedHomePageSource,
   seedLandingCopyJson,
   seedLandingCopyMismatchesIndustry,
   seedIndustryKey,
+  seedNeedsBusinessAdmin,
   seedPublicSiteCss,
   seedResponsiveGlobalsCss,
+  seedShopCopyJson,
+  seedShopPageSource,
 } from "./seed-site-copy";
 
-export type { SeedAdminCopy, SeedService, SeedSiteCopy };
+export type {
+  SeedAdminCommerce,
+  SeedAdminCopy,
+  SeedService,
+  SeedShopCopy,
+  SeedSiteCopy,
+} from "./seed-site-copy";
 
 function escapeHtml(value: string): string {
   return value
@@ -281,7 +300,10 @@ export async function repairCustomerLandingIfNeeded(
   await upsertSourceFile({
     projectId: project.id,
     path: "app/page.tsx",
-    content: seedHomePageSource(copy),
+    content: seedHomePageSource({
+      ...copy,
+      includeShop: briefAsksForEcommerce(project.brief),
+    }),
     status: "ready",
     message: "Restored full customer website",
     agentName: "Conductor",
@@ -297,14 +319,16 @@ export async function repairCustomerLandingIfNeeded(
 }
 
 /**
- * When the brief asked for admin/calendar/education, ensure those pages exist
- * in the Seed source tree (grown into the Seed — not a separate Cinch product).
+ * When the brief asked for admin/calendar/education or e-commerce, ensure
+ * admin pages exist in the Seed source (grown into the Seed — not Cinch).
+ * E-commerce also grows inventory, UPS/LTL shipping, and sales tax into admin.
  */
 export async function ensureBusinessAdminInSeed(
   project: SeedProject,
 ): Promise<SeedAdminCopy | null> {
-  if (!briefAsksForBusinessAdmin(project.brief)) return null;
+  if (!seedNeedsBusinessAdmin(project.brief)) return null;
 
+  const wantsCommerce = briefAsksForEcommerce(project.brief);
   const bundle = await getSourceBundle(project.id);
   const copyRaw =
     bundle?.files.find((file) => file.path === "content/admin.copy.json")
@@ -326,22 +350,49 @@ export async function ensureBusinessAdminInSeed(
         Array.isArray(parsed.tips) &&
         Array.isArray(parsed.appointments)
       ) {
-        existing = parsed;
+        existing = {
+          ...parsed,
+          commerce: parsed.commerce ?? null,
+        };
       }
     } catch {
       existing = null;
     }
   }
 
+  const missingCommerce =
+    wantsCommerce &&
+    (!existing?.commerce ||
+      !Array.isArray(existing.commerce.shippingModes) ||
+      !Array.isArray(existing.commerce.inventory) ||
+      !existing.commerce.salesTax);
+
   const needsWrite =
     !existing ||
     !page ||
     !page.includes("seed-admin") ||
-    !css.includes("seed-admin");
+    !css.includes("seed-admin") ||
+    missingCommerce ||
+    (wantsCommerce && !page.includes("id=\"shipping\""));
 
   if (!needsWrite && existing) return existing;
 
-  const admin = existing ?? customerFacingAdminCopy(project.name, project.brief);
+  let admin = existing ?? customerFacingAdminCopy(project.name, project.brief);
+  if (wantsCommerce) {
+    const fresh = customerFacingAdminCopy(project.name, project.brief);
+    admin = {
+      ...admin,
+      title: fresh.title,
+      support: fresh.support,
+      tipsEyebrow: admin.tipsEyebrow || fresh.tipsEyebrow,
+      tipsHeadline: admin.tipsHeadline || fresh.tipsHeadline,
+      tips: admin.tips.length > 0 ? admin.tips : fresh.tips,
+      commerce:
+        missingCommerce || !admin.commerce
+          ? seedCommerceAdminBoard(project.name, project.brief)
+          : admin.commerce,
+    };
+  }
 
   if (!css.includes("seed-admin")) {
     await upsertSourceFile({
@@ -359,7 +410,9 @@ export async function ensureBusinessAdminInSeed(
     path: "app/admin/page.tsx",
     content: seedAdminPageSource(admin),
     status: "ready",
-    message: "Grew business admin into the Seed",
+    message: wantsCommerce
+      ? "Grew Seed admin with commerce ops (inventory, UPS/LTL, tax)"
+      : "Grew business admin into the Seed",
     agentName: "Conductor",
   });
   await upsertSourceFile({
@@ -367,7 +420,9 @@ export async function ensureBusinessAdminInSeed(
     path: "content/admin.copy.json",
     content: seedAdminCopyJson(admin),
     status: "ready",
-    message: "Grew business admin copy into the Seed",
+    message: wantsCommerce
+      ? "Grew Seed admin commerce board into the source tree"
+      : "Grew business admin copy into the Seed",
     agentName: "Conductor",
   });
 
@@ -420,5 +475,191 @@ export async function saveSeedAdminCopy(
     status: "ready",
     message: "Synced Seed business admin page",
     agentName: "Owner",
+  });
+}
+
+/**
+ * When the brief asks for e-commerce, ensure shop files exist in the Seed
+ * source (grown by the Seed — not a separate Cinch platform checkout).
+ */
+function normalizeShopCopy(
+  project: SeedProject,
+  raw: Partial<SeedShopCopy> | null,
+): SeedShopCopy {
+  const fresh = customerFacingShopCopy(project.name, project.brief);
+  if (!raw) return fresh;
+
+  const products: SeedShopCopy["products"] = (raw.products ?? fresh.products).map(
+    (product, index) => {
+      const fallback = fresh.products[index] ?? fresh.products[0]!;
+      return {
+        id: product.id || fallback.id,
+        title: product.title || fallback.title,
+        detail: product.detail || fallback.detail,
+        priceUsd: Number(product.priceUsd) || fallback.priceUsd,
+        sku: product.sku || fallback.sku,
+        stockQty:
+          typeof product.stockQty === "number"
+            ? product.stockQty
+            : fallback.stockQty,
+        weightLb:
+          typeof product.weightLb === "number"
+            ? product.weightLb
+            : fallback.weightLb,
+        shipClass: (product.shipClass === "ltl" ? "ltl" : "parcel") as
+          | "parcel"
+          | "ltl",
+      };
+    },
+  );
+
+  return {
+    brand: raw.brand || fresh.brand,
+    title: raw.title || fresh.title,
+    support: raw.support || fresh.support,
+    cta: raw.cta || fresh.cta,
+    products,
+    orders: Array.isArray(raw.orders) ? raw.orders : [],
+    originZip: raw.originZip || fresh.originZip,
+    shippingModes:
+      Array.isArray(raw.shippingModes) && raw.shippingModes.length > 0
+        ? raw.shippingModes
+        : fresh.shippingModes,
+    salesTax: raw.salesTax ?? fresh.salesTax,
+  };
+}
+
+export async function ensureShopInSeed(
+  project: SeedProject,
+): Promise<SeedShopCopy | null> {
+  if (!briefAsksForEcommerce(project.brief)) return null;
+
+  // E-commerce always grows commerce ops into Seed admin (shipping / tax / stock).
+  await ensureBusinessAdminInSeed(project);
+
+  const bundle = await getSourceBundle(project.id);
+  const copyRaw =
+    bundle?.files.find((file) => file.path === "content/shop.copy.json")
+      ?.content ?? "";
+  const page =
+    bundle?.files.find((file) => file.path === "app/shop/page.tsx")?.content ??
+    "";
+  const css =
+    bundle?.files.find((file) => file.path === "app/globals.css")?.content ??
+    "";
+
+  let parsed: Partial<SeedShopCopy> | null = null;
+  if (copyRaw) {
+    try {
+      parsed = JSON.parse(copyRaw) as SeedShopCopy;
+    } catch {
+      parsed = null;
+    }
+  }
+
+  const existing = parsed ? normalizeShopCopy(project, parsed) : null;
+  const home =
+    bundle?.files.find((file) => file.path === "app/page.tsx")?.content ?? "";
+
+  const needsWrite =
+    !existing ||
+    !page ||
+    !page.includes("seed-shop") ||
+    !css.includes("seed-shop") ||
+    !home.includes('href="/shop"') ||
+    !existing.shippingModes?.length ||
+    !existing.salesTax ||
+    existing.products.some((product) => !product.sku);
+
+  if (!needsWrite && existing) return existing;
+
+  const shop = existing ?? customerFacingShopCopy(project.name, project.brief);
+
+  if (!css.includes("seed-shop")) {
+    await upsertSourceFile({
+      projectId: project.id,
+      path: "app/globals.css",
+      content: seedPublicSiteCss(),
+      status: "ready",
+      message: "Grew shop styles into the Seed",
+      agentName: "Conductor",
+    });
+  }
+
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "app/shop/page.tsx",
+    content: seedShopPageSource(shop),
+    status: "ready",
+    message: "Grew Seed shop e-commerce into the source tree",
+    agentName: "Conductor",
+  });
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "content/shop.copy.json",
+    content: seedShopCopyJson(shop),
+    status: "ready",
+    message: "Grew Seed shop catalog into the source tree",
+    agentName: "Conductor",
+  });
+  const landing = customerFacingSiteCopy(project.name, project.brief);
+  await upsertSourceFile({
+    projectId: project.id,
+    path: "app/page.tsx",
+    content: seedHomePageSource({ ...landing, includeShop: true }),
+    status: "ready",
+    message: "Linked Shop in Seed home nav",
+    agentName: "Conductor",
+  });
+
+  return shop;
+}
+
+export async function buildSeedShopPreview(
+  project: SeedProject,
+): Promise<(SeedShopCopy & { css: string }) | null> {
+  const shop = await ensureShopInSeed(project);
+  if (!shop) return null;
+
+  const bundle = await getSourceBundle(project.id);
+  const css =
+    bundle?.files.find((file) => file.path === "app/globals.css")?.content ??
+    seedPublicSiteCss();
+  const copyRaw =
+    bundle?.files.find((file) => file.path === "content/shop.copy.json")
+      ?.content ?? "";
+
+  let copy = shop;
+  if (copyRaw) {
+    try {
+      copy = { ...shop, ...(JSON.parse(copyRaw) as SeedShopCopy) };
+    } catch {
+      /* keep shop */
+    }
+  }
+
+  return { ...copy, css };
+}
+
+/** Persist cart orders back into the Seed source tree. */
+export async function saveSeedShopCopy(
+  projectId: string,
+  copy: SeedShopCopy,
+): Promise<void> {
+  await upsertSourceFile({
+    projectId,
+    path: "content/shop.copy.json",
+    content: seedShopCopyJson(copy),
+    status: "ready",
+    message: "Updated Seed shop orders",
+    agentName: "Customer",
+  });
+  await upsertSourceFile({
+    projectId,
+    path: "app/shop/page.tsx",
+    content: seedShopPageSource(copy),
+    status: "ready",
+    message: "Synced Seed shop page",
+    agentName: "Customer",
   });
 }

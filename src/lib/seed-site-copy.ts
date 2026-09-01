@@ -1097,6 +1097,204 @@ button {
   font-weight: 600;
   font-size: 0.9rem;
 }
+
+.seed-admin-inv-row {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 0.9rem 1rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.4rem;
+  background: var(--foam);
+}
+
+.seed-admin-inv-row legend {
+  padding: 0 0.25rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 640px) {
+  .seed-admin-inv-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* —— Seed-grown shop / e-commerce —— */
+.seed-shop {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 70% 45% at 90% -10%, rgba(94, 234, 212, 0.14), transparent 55%),
+    var(--foam);
+  color: var(--ink);
+  padding: calc(1.25rem + env(safe-area-inset-top)) var(--pad-inline)
+    calc(2rem + env(safe-area-inset-bottom));
+}
+
+.seed-shop-top {
+  width: min(100%, var(--content));
+  margin: 0 auto 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.seed-shop-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-shop-top h1 {
+  margin: 0;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.85rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.seed-shop-support {
+  margin: 0.65rem 0 0;
+  max-width: 36rem;
+  color: var(--muted-strong);
+  line-height: 1.5;
+}
+
+.seed-shop-grid {
+  width: min(100%, var(--content));
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .seed-shop-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 960px) {
+  .seed-shop-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+.seed-shop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1.1rem 1rem 1.15rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.5rem;
+  background: #fff;
+  animation: seed-rise 520ms ease both;
+}
+
+.seed-shop-card h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.seed-shop-card p {
+  margin: 0;
+  color: var(--muted-strong);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.seed-shop-price {
+  margin: 0;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.seed-shop-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted-strong);
+}
+
+.seed-shop-card .cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 0.75rem 1.15rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: var(--accent-ink);
+  color: var(--foam);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seed-shop-cart {
+  width: min(100%, var(--content));
+  margin: 2rem auto 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.seed-shop-cart h2 {
+  margin: 0 0 0.75rem;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 1.35rem;
+}
+
+.seed-shop-cart-empty {
+  margin: 0;
+  color: var(--muted-strong);
+}
+
+.seed-shop-cart ul {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.seed-shop-cart li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--line-dark);
+}
+
+.seed-shop-checkout {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.seed-shop-checkout label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.seed-shop-checkout input {
+  min-height: var(--tap);
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.35rem;
+  background: var(--foam);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
 `;
 }
 
@@ -1110,12 +1308,20 @@ function esc(value: string): string {
 }
 
 /** Customer-facing landing page source — full site, not hero-only. */
-export function seedHomePageSource(input: SeedSiteCopy): string {
+export function seedHomePageSource(
+  input: SeedSiteCopy & { includeShop?: boolean },
+): string {
   const brand = esc(input.brand);
   const headline = esc(input.headline);
   const support = esc(input.support);
   const cta = esc(input.cta);
   const heroImage = esc(input.heroImage);
+  const shopNav = input.includeShop
+    ? `
+          <li>
+            <a href="/shop">Shop</a>
+          </li>`
+    : "";
   const services = input.services
     .map(
       (service) => `          <li>
@@ -1138,7 +1344,7 @@ export function seedHomePageSource(input: SeedSiteCopy): string {
           </li>
           <li>
             <a href="#about">About</a>
-          </li>
+          </li>${shopNav}
           <li>
             <a href="#book">${esc(input.cta)}</a>
           </li>
@@ -1221,6 +1427,21 @@ export function briefAsksForBusinessAdmin(brief: string): boolean {
   );
 }
 
+/** Brief asks for Seed-grown shop / e-commerce (not Cinch platform checkout). */
+export function briefAsksForEcommerce(brief: string): boolean {
+  return /\b(e-?commerce|ecommerce|online shop|web shop|storefront|shopping cart|\bcart\b|checkout|sell products|product catalog|online store|buy online|shop online)\b/i.test(
+    brief,
+  );
+}
+
+/**
+ * Seed needs its own admin surface: schedule/education brief, or e-commerce
+ * (inventory / shipping / sales tax live in that admin — not a Cinch product).
+ */
+export function seedNeedsBusinessAdmin(brief: string): boolean {
+  return briefAsksForBusinessAdmin(brief) || briefAsksForEcommerce(brief);
+}
+
 export type SeedAdminAppointment = {
   id: string;
   at: string;
@@ -1238,6 +1459,53 @@ export type SeedAdminTip = {
   body: string;
 };
 
+/** Parcel (UPS-style) vs LTL freight — grown into Seed admin with e-commerce. */
+export type SeedShippingMode = {
+  id: string;
+  label: string;
+  kind: "parcel" | "ltl";
+  carrier: string;
+  notes: string;
+  baseRateUsd: number;
+};
+
+export type SeedSalesTaxSettings = {
+  enabled: boolean;
+  ratePct: number;
+  taxInclusive: boolean;
+  nexusStates: string[];
+  notes: string;
+};
+
+export type SeedInventoryRow = {
+  productId: string;
+  sku: string;
+  title: string;
+  onHand: number;
+  reorderAt: number;
+  shipClass: "parcel" | "ltl";
+  weightLb: number;
+};
+
+/** Commerce ops board inside Seed business admin (not a Cinch platform module). */
+export type SeedAdminCommerce = {
+  eyebrow: string;
+  headline: string;
+  support: string;
+  inventoryEyebrow: string;
+  inventoryHeadline: string;
+  shippingEyebrow: string;
+  shippingHeadline: string;
+  taxEyebrow: string;
+  taxHeadline: string;
+  ordersEyebrow: string;
+  ordersHeadline: string;
+  originZip: string;
+  shippingModes: SeedShippingMode[];
+  salesTax: SeedSalesTaxSettings;
+  inventory: SeedInventoryRow[];
+};
+
 /** Copy + board data that lives in the Seed source tree (`content/admin.copy.json`). */
 export type SeedAdminCopy = {
   brand: string;
@@ -1250,7 +1518,74 @@ export type SeedAdminCopy = {
   services: string[];
   appointments: SeedAdminAppointment[];
   tips: SeedAdminTip[];
+  /** Present when the Seed grew e-commerce — shipping, tax, inventory. */
+  commerce: SeedAdminCommerce | null;
 };
+
+/** Default UPS parcel + LTL + tax + inventory for Seed-grown e-commerce admin. */
+export function seedCommerceAdminBoard(
+  projectName: string,
+  brief: string,
+): SeedAdminCommerce {
+  const shop = customerFacingShopCopy(projectName, brief);
+  return {
+    eyebrow: "Commerce",
+    headline: "Shop operations",
+    support:
+      "Inventory, UPS parcel and LTL shipping, sales tax, and fulfillment — grown into this Seed’s admin, not a separate Cinch product.",
+    inventoryEyebrow: "Stock",
+    inventoryHeadline: "Inventory",
+    shippingEyebrow: "Fulfillment",
+    shippingHeadline: "Shipping",
+    taxEyebrow: "Compliance",
+    taxHeadline: "Sales tax",
+    ordersEyebrow: "Orders",
+    ordersHeadline: "Open orders",
+    originZip: "10001",
+    shippingModes: [
+      {
+        id: "ship-ups-ground",
+        label: "UPS Ground",
+        kind: "parcel",
+        carrier: "UPS",
+        notes: "Packages under parcel limits — tracking on the label.",
+        baseRateUsd: 9.5,
+      },
+      {
+        id: "ship-ups-2day",
+        label: "UPS 2nd Day Air",
+        kind: "parcel",
+        carrier: "UPS",
+        notes: "Faster parcel when the customer pays for speed.",
+        baseRateUsd: 18,
+      },
+      {
+        id: "ship-ltl",
+        label: "LTL freight",
+        kind: "ltl",
+        carrier: "LTL partner",
+        notes: "Pallet / oversize — quote class and liftgate as needed.",
+        baseRateUsd: 85,
+      },
+    ],
+    salesTax: {
+      enabled: true,
+      ratePct: 8.25,
+      taxInclusive: false,
+      nexusStates: ["NY", "NJ", "CT"],
+      notes: "Collect on taxable ship-to addresses in nexus states.",
+    },
+    inventory: shop.products.map((product) => ({
+      productId: product.id,
+      sku: product.sku,
+      title: product.title,
+      onHand: product.stockQty,
+      reorderAt: Math.max(2, Math.floor(product.stockQty / 5)),
+      shipClass: product.shipClass,
+      weightLb: product.weightLb,
+    })),
+  };
+}
 
 /** Business admin content grown into the Seed — calendar + education tips. */
 export function customerFacingAdminCopy(
@@ -1261,6 +1596,7 @@ export function customerFacingAdminCopy(
   const key = industryKey(brief, projectName);
   const landing = customerFacingSiteCopy(projectName, brief);
   const services = landing.services.map((service) => service.title);
+  const wantsShop = briefAsksForEcommerce(brief);
 
   const tips: SeedAdminTip[] =
     key === "detail"
@@ -1286,29 +1622,52 @@ export function customerFacingAdminCopy(
             body: "Shake or vacuum mats weekly if you haul dogs, tools, or kids.",
           },
         ]
-      : [
-          {
-            id: "tip-care",
-            title: "Between visits",
-            body: "Share a short tip customers can use until the next appointment.",
-          },
-        ];
+      : wantsShop
+        ? [
+            {
+              id: "tip-pack",
+              title: "Pack before you print",
+              body: "Confirm on-hand qty and ship class (parcel vs LTL) before buying a UPS label.",
+            },
+            {
+              id: "tip-tax",
+              title: "Tax on ship-to",
+              body: "Apply nexus sales tax to the taxable subtotal before shipping.",
+            },
+            {
+              id: "tip-ltl",
+              title: "When it’s LTL",
+              body: "Pallet freight needs class, weight, and liftgate notes — not a small-parcel label.",
+            },
+          ]
+        : [
+            {
+              id: "tip-care",
+              title: "Between visits",
+              body: "Share a short tip customers can use until the next appointment.",
+            },
+          ];
 
   return {
     brand,
-    title: "Business admin",
-    support:
-      key === "detail"
+    title: wantsShop ? "Business admin · Commerce" : "Business admin",
+    support: wantsShop
+      ? "Schedule plus inventory, UPS/LTL shipping, and sales tax — part of your Seed website."
+      : key === "detail"
         ? "Calendar, jobs, and tips for keeping cars clean — part of your Seed website."
         : "Schedule and customer-care tips for your business — part of your Seed website.",
     scheduleEyebrow: "Calendar",
     scheduleHeadline: "Schedule",
     tipsEyebrow: "Educate",
-    tipsHeadline:
-      key === "detail" ? "Keeping the car clean" : "Customer care tips",
+    tipsHeadline: wantsShop
+      ? "Fulfillment tips"
+      : key === "detail"
+        ? "Keeping the car clean"
+        : "Customer care tips",
     services,
     appointments: [],
     tips,
+    commerce: wantsShop ? seedCommerceAdminBoard(projectName, brief) : null,
   };
 }
 
@@ -1330,6 +1689,60 @@ export function seedAdminPageSource(input: SeedAdminCopy): string {
   const services = input.services
     .map((service) => `              <option value="${esc(service)}">${esc(service)}</option>`)
     .join("\n");
+
+  const commerce = input.commerce;
+  const commerceBlock = commerce
+    ? `
+      <section className="seed-admin-section" id="commerce">
+        <p className="seed-eyebrow">${esc(commerce.eyebrow)}</p>
+        <h2>${esc(commerce.headline)}</h2>
+        <p className="seed-admin-support">${esc(commerce.support)}</p>
+      </section>
+
+      <section className="seed-admin-section" id="inventory">
+        <p className="seed-eyebrow">${esc(commerce.inventoryEyebrow)}</p>
+        <h2>${esc(commerce.inventoryHeadline)}</h2>
+        <ul className="seed-admin-list">
+${commerce.inventory
+  .map(
+    (row) => `          <li>
+            <div>
+              <p className="seed-admin-list-title">${esc(row.title)} · ${esc(row.sku)}</p>
+              <p className="seed-admin-list-meta">${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb</p>
+            </div>
+          </li>`,
+  )
+  .join("\n")}
+        </ul>
+      </section>
+
+      <section className="seed-admin-section" id="shipping">
+        <p className="seed-eyebrow">${esc(commerce.shippingEyebrow)}</p>
+        <h2>${esc(commerce.shippingHeadline)}</h2>
+        <p className="seed-admin-list-meta">Ship-from ZIP ${esc(commerce.originZip)}</p>
+        <ul className="seed-admin-list">
+${commerce.shippingModes
+  .map(
+    (mode) => `          <li>
+            <div>
+              <p className="seed-admin-list-title">${esc(mode.label)} · ${esc(mode.carrier)}</p>
+              <p className="seed-admin-list-meta">${mode.kind.toUpperCase()} · from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}</p>
+            </div>
+          </li>`,
+  )
+  .join("\n")}
+        </ul>
+      </section>
+
+      <section className="seed-admin-section" id="sales-tax">
+        <p className="seed-eyebrow">${esc(commerce.taxEyebrow)}</p>
+        <h2>${esc(commerce.taxHeadline)}</h2>
+        <p className="seed-admin-list-meta">
+          ${commerce.salesTax.enabled ? "Collecting" : "Off"} · ${commerce.salesTax.ratePct}%${commerce.salesTax.taxInclusive ? " inclusive" : ""} · nexus ${esc(commerce.salesTax.nexusStates.join(", "))}
+        </p>
+        <p className="seed-admin-support">${esc(commerce.salesTax.notes)}</p>
+      </section>`
+    : "";
 
   return `export default function AdminPage() {
   return (
@@ -1381,6 +1794,7 @@ ${services}
         </form>
         <p className="seed-admin-empty">No jobs on the calendar yet.</p>
       </section>
+${commerceBlock}
 
       <section className="seed-admin-section" id="educate">
         <p className="seed-eyebrow">${esc(input.tipsEyebrow)}</p>
@@ -1388,6 +1802,276 @@ ${services}
         <ul className="seed-admin-tips">
 ${tips}
         </ul>
+      </section>
+    </main>
+  );
+}
+`;
+}
+
+export type SeedShopProduct = {
+  id: string;
+  title: string;
+  detail: string;
+  priceUsd: number;
+  sku: string;
+  stockQty: number;
+  weightLb: number;
+  shipClass: "parcel" | "ltl";
+};
+
+export type SeedShopOrder = {
+  id: string;
+  customerName: string;
+  contact: string;
+  shipToState: string;
+  shipToZip: string;
+  shippingModeId: string;
+  shippingLabel: string;
+  shippingKind: "parcel" | "ltl";
+  subtotalUsd: number;
+  taxUsd: number;
+  shippingUsd: number;
+  items: Array<{
+    productId: string;
+    title: string;
+    priceUsd: number;
+    qty: number;
+  }>;
+  totalUsd: number;
+  createdAt: string;
+  status: "new" | "paid" | "fulfilled";
+};
+
+/** Shop catalog that lives in the Seed source tree (`content/shop.copy.json`). */
+export type SeedShopCopy = {
+  brand: string;
+  title: string;
+  support: string;
+  cta: string;
+  products: SeedShopProduct[];
+  orders: SeedShopOrder[];
+  /** Checkout pulls rates/tax from Seed admin commerce settings. */
+  originZip: string;
+  shippingModes: SeedShippingMode[];
+  salesTax: SeedSalesTaxSettings;
+};
+
+function withInventory(
+  product: Omit<SeedShopProduct, "sku" | "stockQty" | "weightLb" | "shipClass"> &
+    Partial<Pick<SeedShopProduct, "sku" | "stockQty" | "weightLb" | "shipClass">>,
+): SeedShopProduct {
+  const sku =
+    product.sku ??
+    product.id.replace(/^prod-/, "SKU-").toUpperCase();
+  return {
+    ...product,
+    sku,
+    stockQty: product.stockQty ?? 24,
+    weightLb: product.weightLb ?? 2,
+    shipClass: product.shipClass ?? "parcel",
+  };
+}
+
+/** Seed-grown shop content — products + cart board for this business. */
+export function customerFacingShopCopy(
+  projectName: string,
+  brief: string,
+): SeedShopCopy {
+  const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const key = industryKey(brief, projectName);
+  const commerce = {
+    originZip: "10001",
+    shippingModes: [
+      {
+        id: "ship-ups-ground",
+        label: "UPS Ground",
+        kind: "parcel" as const,
+        carrier: "UPS",
+        notes: "Packages under parcel limits — tracking on the label.",
+        baseRateUsd: 9.5,
+      },
+      {
+        id: "ship-ups-2day",
+        label: "UPS 2nd Day Air",
+        kind: "parcel" as const,
+        carrier: "UPS",
+        notes: "Faster parcel when the customer pays for speed.",
+        baseRateUsd: 18,
+      },
+      {
+        id: "ship-ltl",
+        label: "LTL freight",
+        kind: "ltl" as const,
+        carrier: "LTL partner",
+        notes: "Pallet / oversize — quote class and liftgate as needed.",
+        baseRateUsd: 85,
+      },
+    ],
+    salesTax: {
+      enabled: true,
+      ratePct: 8.25,
+      taxInclusive: false,
+      nexusStates: ["NY", "NJ", "CT"],
+      notes: "Collect on taxable ship-to addresses in nexus states.",
+    },
+  };
+
+  const products: SeedShopProduct[] =
+    key === "salon"
+      ? [
+          withInventory({
+            id: "prod-serum",
+            title: "Daily shine serum",
+            detail: "Lightweight finish for between-appointment gloss.",
+            priceUsd: 28,
+            stockQty: 40,
+            weightLb: 0.6,
+          }),
+          withInventory({
+            id: "prod-mask",
+            title: "Repair mask",
+            detail: "Weekly deep care when color or heat has been hard on hair.",
+            priceUsd: 34,
+            stockQty: 28,
+            weightLb: 1.2,
+          }),
+          withInventory({
+            id: "prod-brush",
+            title: "Studio paddle brush",
+            detail: "The brush we reach for in the chair — now for home.",
+            priceUsd: 22,
+            stockQty: 18,
+            weightLb: 0.8,
+          }),
+        ]
+      : key === "detail"
+        ? [
+            withInventory({
+              id: "prod-spray",
+              title: "Detail spray",
+              detail: "Quick wipe-down between full visits.",
+              priceUsd: 18,
+              stockQty: 36,
+              weightLb: 1,
+            }),
+            withInventory({
+              id: "prod-towel",
+              title: "Microfiber set",
+              detail: "Soft towels that won’t haze clear coat.",
+              priceUsd: 24,
+              stockQty: 30,
+              weightLb: 1.5,
+            }),
+            withInventory({
+              id: "prod-kit",
+              title: "Driveway kit",
+              detail: "Foam, mitt, and dry towel for a light touch-up.",
+              priceUsd: 49,
+              stockQty: 12,
+              weightLb: 8,
+              shipClass: "parcel",
+            }),
+          ]
+        : [
+            withInventory({
+              id: "prod-one",
+              title: "Signature item",
+              detail: "What customers ask for most.",
+              priceUsd: 29,
+              stockQty: 32,
+              weightLb: 2,
+            }),
+            withInventory({
+              id: "prod-two",
+              title: "Everyday essential",
+              detail: "A reliable pick for repeat buyers.",
+              priceUsd: 19,
+              stockQty: 48,
+              weightLb: 1,
+            }),
+            withInventory({
+              id: "prod-three",
+              title: "Gift set",
+              detail: "Ready to wrap — or ship.",
+              priceUsd: 45,
+              stockQty: 16,
+              weightLb: 5,
+            }),
+            withInventory({
+              id: "prod-pallet",
+              title: "Wholesale case",
+              detail: "Bulk case for retailers — ships LTL.",
+              priceUsd: 320,
+              stockQty: 6,
+              weightLb: 110,
+              shipClass: "ltl",
+            }),
+          ];
+
+  return {
+    brand,
+    title: "Shop",
+    support:
+      "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
+    cta: "Add to cart",
+    products,
+    orders: [],
+    ...commerce,
+  };
+}
+
+export function seedShopCopyJson(input: SeedShopCopy): string {
+  return `${JSON.stringify(input, null, 2)}\n`;
+}
+
+/** Seed-grown shop page source (mirrored in the source tree). */
+export function seedShopPageSource(input: SeedShopCopy): string {
+  const products = input.products
+    .map(
+      (product) => `        <article className="seed-shop-card">
+          <h3>${esc(product.title)}</h3>
+          <p>${esc(product.detail)}</p>
+          <p className="seed-shop-price">$${product.priceUsd.toFixed(2)}</p>
+          <p className="seed-shop-meta">${esc(product.sku)} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb</p>
+          <button type="button" className="cta">${esc(input.cta)}</button>
+        </article>`,
+    )
+    .join("\n");
+
+  const modes = (input.shippingModes ?? [])
+    .map(
+      (mode) =>
+        `            <option value="${esc(mode.id)}">${esc(mode.label)} (${mode.kind}) · $${mode.baseRateUsd.toFixed(2)}</option>`,
+    )
+    .join("\n");
+
+  return `export default function ShopPage() {
+  return (
+    <main className="seed-shop">
+      <header className="seed-shop-top">
+        <div>
+          <p className="seed-shop-kicker">${esc(input.title)}</p>
+          <h1>${esc(input.brand)}</h1>
+          <p className="seed-shop-support">${esc(input.support)}</p>
+        </div>
+        <a className="seed-admin-link" href="/">
+          View website
+        </a>
+      </header>
+      <div className="seed-shop-grid">
+${products}
+      </div>
+      <section className="seed-shop-cart" id="cart">
+        <h2>Cart</h2>
+        <p className="seed-shop-cart-empty">Your cart is empty.</p>
+        <p className="seed-shop-meta">Ship-from ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · UPS parcel + LTL in Seed admin.</p>
+        <label>
+          Shipping
+          <select name="shippingModeId">
+${modes}
+          </select>
+        </label>
       </section>
     </main>
   );

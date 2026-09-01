@@ -26,3 +26,4 @@ Never start from a blank custom plan and sprinkle modulars on afterward.
 - Drafting a full custom backlog, then optionally reusing 5 random modulars
 - Rebuilding booking, responsive, SEO, or trust blocks that already exist as modulars
 - Skipping the library survey because the brief feels “unique”
+- Inventing a separate Cinch platform checkout when the brief asks for e-commerce — the Seed grows shop into its own source (see `docs/seed-grown-ecommerce.md`)
