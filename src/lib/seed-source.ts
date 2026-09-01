@@ -1,9 +1,6 @@
 import { randomUUID } from "crypto";
 import {
-  customerFacingCta,
-  customerFacingHeadline,
-  customerFacingHeroImage,
-  customerFacingSupport,
+  customerFacingSiteCopy,
   seedHomePageSource,
   seedLandingCopyJson,
   seedResponsiveGlobalsCss,
@@ -277,32 +274,21 @@ Do not ship desktop-only layouts.
     message: "Scaffolded web app manifest",
     agentName: "Conductor",
   });
+  const landing = customerFacingSiteCopy(input.projectName, input.brief);
   await upsertSourceFile({
     projectId: input.projectId,
     path: "app/page.tsx",
-    content: seedHomePageSource({
-      brand: input.projectName.replace(/\s+Seed$/i, "").trim() || input.projectName,
-      headline: customerFacingHeadline(input.projectName, input.brief),
-      support: customerFacingSupport(input.brief),
-      cta: customerFacingCta(input.brief),
-      heroImage: customerFacingHeroImage(input.brief),
-    }),
+    content: seedHomePageSource(landing),
     status: "draft",
-    message: "Scaffolded customer home page",
+    message: "Scaffolded customer website",
     agentName: "Conductor",
   });
   await upsertSourceFile({
     projectId: input.projectId,
     path: "content/landing.copy.json",
-    content: seedLandingCopyJson({
-      brand: input.projectName.replace(/\s+Seed$/i, "").trim() || input.projectName,
-      headline: customerFacingHeadline(input.projectName, input.brief),
-      support: customerFacingSupport(input.brief),
-      cta: customerFacingCta(input.brief),
-      heroImage: customerFacingHeroImage(input.brief),
-    }),
+    content: seedLandingCopyJson(landing),
     status: "draft",
-    message: "Scaffolded landing copy",
+    message: "Scaffolded website copy",
     agentName: "Conductor",
   });
   return (await getSourceBundle(input.projectId))!;
@@ -367,16 +353,12 @@ export async function applyTaskToSource(input: {
     });
     // Keep the public landing on business copy if it drifted to task text.
     const identity = await projectIdentityFromSource(input.projectId);
-    const brand = identity.name.replace(/\s+Seed$/i, "").trim() || identity.name;
     const brief = identity.brief || input.taskDetail;
-    const headline = customerFacingHeadline(identity.name, brief);
-    const support = customerFacingSupport(brief);
-    const cta = customerFacingCta(brief);
-    const heroImage = customerFacingHeroImage(brief);
+    const landing = customerFacingSiteCopy(identity.name, brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource({ brand, headline, support, cta, heroImage }),
+      content: seedHomePageSource(landing),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -385,7 +367,7 @@ export async function applyTaskToSource(input: {
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",
-      content: seedLandingCopyJson({ brand, headline, support, cta, heroImage }),
+      content: seedLandingCopyJson(landing),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -396,16 +378,12 @@ export async function applyTaskToSource(input: {
 
   if (title.includes("design") || title.includes("landing")) {
     const identity = await projectIdentityFromSource(input.projectId);
-    const brand = identity.name.replace(/\s+Seed$/i, "").trim() || identity.name;
     const brief = identity.brief || input.taskDetail;
-    const headline = customerFacingHeadline(identity.name, brief);
-    const support = customerFacingSupport(brief);
-    const cta = customerFacingCta(brief);
-    const heroImage = customerFacingHeroImage(brief);
+    const landing = customerFacingSiteCopy(identity.name, brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource({ brand, headline, support, cta, heroImage }),
+      content: seedHomePageSource(landing),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -414,7 +392,7 @@ export async function applyTaskToSource(input: {
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",
-      content: seedLandingCopyJson({ brand, headline, support, cta, heroImage }),
+      content: seedLandingCopyJson(landing),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -434,16 +412,12 @@ export async function applyTaskToSource(input: {
 
   if (title.includes("copy")) {
     const identity = await projectIdentityFromSource(input.projectId);
-    const brand = identity.name.replace(/\s+Seed$/i, "").trim() || identity.name;
     const brief = identity.brief || input.taskDetail;
-    const headline = customerFacingHeadline(identity.name, brief);
-    const support = customerFacingSupport(brief);
-    const cta = customerFacingCta(brief);
-    const heroImage = customerFacingHeroImage(brief);
+    const landing = customerFacingSiteCopy(identity.name, brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",
-      content: seedLandingCopyJson({ brand, headline, support, cta, heroImage }),
+      content: seedLandingCopyJson(landing),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -452,7 +426,7 @@ export async function applyTaskToSource(input: {
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource({ brand, headline, support, cta, heroImage }),
+      content: seedHomePageSource(landing),
       authoredBy: input.agentId,
       agentName: agent,
       status,
