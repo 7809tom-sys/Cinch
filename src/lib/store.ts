@@ -464,51 +464,64 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   const pm = getProjectManager();
   const stamp = now();
 
-  const backlog: Array<Omit<ProjectTask, "id" | "status" | "assigneeId" | "assignedBy" | "updatedAt">> =
-    [
-      {
-        title: "Shape information architecture",
-        detail: "Define pages, navigation, and Seed blueprint structure.",
-        requiredSkills: ["architecture", "research"],
-        minSkillLevel: 3,
-      },
-      {
-        title: "Design primary landing composition",
-        detail: "Brand-first hero and one clear CTA path.",
-        requiredSkills: ["ui", "frontend"],
-        minSkillLevel: 3,
-      },
-      {
-        title: "Write Seed landing copy",
-        detail: "Headline, support line, and signup narrative for Cinch Seed.",
-        requiredSkills: ["copy"],
-        minSkillLevel: 2,
-      },
-      {
-        title: "Implement frontend shell",
-        detail: "Stand up routes, layout, and admin visibility for agent work.",
-        requiredSkills: ["frontend"],
-        minSkillLevel: 3,
-      },
-      {
-        title: "Wire Seed embed health script",
-        detail: "Publish snippet that can report uptime and unlock rebuild.",
-        requiredSkills: ["backend", "devops"],
-        minSkillLevel: 4,
-      },
-      {
-        title: "SEO and metadata pass",
-        detail: "Titles, descriptions, and crawl basics for the new site.",
-        requiredSkills: ["seo", "copy"],
-        minSkillLevel: 2,
-      },
-      {
-        title: "QA the build path",
-        detail: "Verify admin visibility, invites, and rebuild checklist.",
-        requiredSkills: ["qa"],
-        minSkillLevel: 3,
-      },
-    ];
+  const backlog: Array<
+    Omit<ProjectTask, "id" | "status" | "assigneeId" | "assignedBy" | "updatedAt">
+  > = [
+    {
+      title: "Shape information architecture",
+      detail:
+        "Define pages, navigation, and Seed blueprint structure that works on phone, tablet, and laptop.",
+      requiredSkills: ["architecture", "research"],
+      minSkillLevel: 3,
+    },
+    {
+      title: "Design primary landing composition",
+      detail:
+        "Brand-first hero and one clear CTA that reflows cleanly from phone → tablet → laptop (no clipped text).",
+      requiredSkills: ["ui", "frontend"],
+      minSkillLevel: 3,
+    },
+    {
+      title: "Write Seed landing copy",
+      detail:
+        "Headline, support line, and signup narrative that stays readable on narrow screens.",
+      requiredSkills: ["copy"],
+      minSkillLevel: 2,
+    },
+    {
+      title: "Implement frontend shell",
+      detail:
+        "Stand up routes, layout, wrap-friendly nav, 44px touch targets, and safe-area padding.",
+      requiredSkills: ["frontend"],
+      minSkillLevel: 3,
+    },
+    {
+      title: "Ship cross-device responsive experience",
+      detail:
+        "Verify fluid layout, tablet columns, laptop hero, and installable app basics (viewport + manifest).",
+      requiredSkills: ["ui", "frontend"],
+      minSkillLevel: 3,
+    },
+    {
+      title: "Wire Seed embed health script",
+      detail: "Publish snippet that can report uptime and unlock rebuild.",
+      requiredSkills: ["backend", "devops"],
+      minSkillLevel: 4,
+    },
+    {
+      title: "SEO and metadata pass",
+      detail: "Titles, descriptions, and crawl basics for the new site.",
+      requiredSkills: ["seo", "copy"],
+      minSkillLevel: 2,
+    },
+    {
+      title: "QA the build path",
+      detail:
+        "Verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA checklist.",
+      requiredSkills: ["qa"],
+      minSkillLevel: 3,
+    },
+  ];
 
   project.tasks = backlog.map((item) => ({
     ...item,
@@ -620,7 +633,7 @@ export async function appendNextBuildWave(
     {
       title: GROWTH_WAVE_TITLES[0],
       detail:
-        "Tighten spacing, wrapping, and tap sizes so the live site reads cleanly on phones.",
+        "Verify phone, tablet, and laptop: no horizontal scroll, 44px taps, safe-area padding, and readable type. Keep the installable app manifest intact.",
       requiredSkills: ["ui", "frontend"],
       minSkillLevel: 3,
     },
