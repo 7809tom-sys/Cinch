@@ -62,14 +62,14 @@ export default async function ProjectAdminPage({ params }: PageProps) {
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
       <header className="border-b border-brand/10 bg-foam">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-8 sm:py-5">
+        <div className="mx-auto flex w-full max-w-6xl items-start justify-between gap-3 px-4 py-4 sm:items-center sm:px-8 sm:py-5">
           <Link
             href="/admin"
-            className="shrink-0 text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
+            className="shrink-0 pt-0.5 text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
           >
             ← Admin
           </Link>
-          <p className="min-w-0 truncate text-right font-[family-name:var(--font-display)] text-base font-bold text-brand-deep sm:text-lg">
+          <p className="min-w-0 max-w-[70%] text-right font-[family-name:var(--font-display)] text-sm font-bold leading-snug break-words text-brand-deep sm:max-w-none sm:text-lg">
             {project.name}
           </p>
         </div>
