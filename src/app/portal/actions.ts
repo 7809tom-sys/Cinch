@@ -21,6 +21,7 @@ import {
 import {
   clearMasterSession,
   establishMasterSession,
+  getMasterSession,
   isMasterEmail,
 } from "@/lib/master-auth";
 import {
@@ -558,17 +559,25 @@ export async function portalContinueGrowthAction(projectId: string) {
 
 
 async function canManageSeedWebsite(projectId: string) {
-  const customer = await getCurrentCustomer();
-  if (!customer) {
+  const [customer, master] = await Promise.all([
+    getCurrentCustomer(),
+    getMasterSession(),
+  ]);
+  if (!customer && !master) {
     return { ok: false as const, error: "Sign in required." };
   }
   const project = await getProject(projectId);
-  const owns =
-    project &&
-    (customerOwnsProject(customer, projectId) ||
-      project.customerEmail === customer.email ||
-      isMasterEmail(customer.email));
-  if (!project || !owns) {
+  if (!project) {
+    return { ok: false as const, error: "Not your Seed." };
+  }
+  const ownsAsCustomer = Boolean(
+    customer &&
+      (customerOwnsProject(customer, projectId) ||
+        project.customerEmail === customer.email ||
+        isMasterEmail(customer.email)),
+  );
+  const ownsAsMaster = Boolean(master && isMasterEmail(master.email));
+  if (!ownsAsCustomer && !ownsAsMaster) {
     return { ok: false as const, error: "Not your Seed." };
   }
   return { ok: true as const, customer, project };

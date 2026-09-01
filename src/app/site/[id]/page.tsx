@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { customerOwnsProject, getCurrentCustomer } from "@/lib/customer-auth";
-import { isMasterEmail } from "@/lib/master-auth";
+import { getMasterSession, isMasterEmail } from "@/lib/master-auth";
 import {
   buildSeedSitePreview,
   repairCustomerLandingIfNeeded,
@@ -31,7 +31,7 @@ export async function generateMetadata({
 /**
  * Public live website for a Seed.
  * Served on cinchseed.com/site/{id} so Visit works without *.cinchseed.com DNS.
- * Owners see Publish / Library / Admin controls on the preview itself.
+ * Owners (and master admins) see Publish / Library / Admin on the preview.
  */
 export default async function PublicSeedSitePage({ params }: PageProps) {
   const { id } = await params;
@@ -41,8 +41,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   await repairCustomerLandingIfNeeded(project);
   const preview = await buildSeedSitePreview(project);
 
-  const customer = await getCurrentCustomer();
-  const isMaster = Boolean(customer && isMasterEmail(customer.email));
+  const [customer, master] = await Promise.all([
+    getCurrentCustomer(),
+    getMasterSession(),
+  ]);
+  const isMaster = Boolean(
+    master || (customer && isMasterEmail(customer.email)),
+  );
   const isOwner = Boolean(
     customer &&
       (customerOwnsProject(customer, project.id) ||
