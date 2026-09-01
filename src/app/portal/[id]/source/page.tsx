@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
-import { briefAsksForBusinessAdmin } from "@/lib/seed-site-copy";
+import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "@/lib/seed-site-copy";
 import { getPortalSourceSnapshot, logoutCustomerAction } from "../../actions";
 import { PortalCompleteLaunch } from "../complete-launch";
 import { LiveSourceViewer } from "./live-source-viewer";
@@ -51,7 +51,7 @@ export default async function PortalSourcePage({
     project.tasks.length > 0 &&
     project.tasks.every((task) => task.status === "done");
   const developerRatePct = Math.round(SEED_MARKETPLACE_DEVELOPER_RATE * 100);
-  const businessAdminHref = briefAsksForBusinessAdmin(project.brief)
+  const businessAdminHref = seedNeedsBusinessAdmin(project.brief)
     ? `/site/${project.id}/admin`
     : null;
 

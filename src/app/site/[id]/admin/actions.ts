@@ -9,10 +9,13 @@ import {
 import { getMasterSession, isMasterEmail } from "@/lib/master-auth";
 import {
   buildSeedAdminPreview,
+  buildSeedShopPreview,
   saveSeedAdminCopy,
+  saveSeedShopCopy,
   type SeedAdminCopy,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
+import type { SeedShopOrder } from "@/lib/seed-site-copy";
 
 async function requireBusinessAdmin(projectId: string) {
   const [customer, master] = await Promise.all([
@@ -115,5 +118,145 @@ export async function setSeedAdminAppointmentStatusAction(
   appointment.status = status;
   await saveSeedAdminCopy(projectId, board);
   revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+export async function saveSeedCommerceInventoryAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const board = await loadBoard(projectId);
+  if (!board?.commerce) {
+    return { ok: false as const, error: "Commerce ops are not in this Seed." };
+  }
+
+  board.commerce.inventory = board.commerce.inventory.map((row) => {
+    const onHand = Number(formData.get(`onHand-${row.productId}`));
+    const reorderAt = Number(formData.get(`reorderAt-${row.productId}`));
+    const weightLb = Number(formData.get(`weightLb-${row.productId}`));
+    const shipClassRaw = String(
+      formData.get(`shipClass-${row.productId}`) ?? row.shipClass,
+    );
+    const shipClass = shipClassRaw === "ltl" ? "ltl" : "parcel";
+    return {
+      ...row,
+      onHand: Number.isFinite(onHand) ? Math.max(0, Math.floor(onHand)) : row.onHand,
+      reorderAt: Number.isFinite(reorderAt)
+        ? Math.max(0, Math.floor(reorderAt))
+        : row.reorderAt,
+      weightLb: Number.isFinite(weightLb) ? Math.max(0.1, weightLb) : row.weightLb,
+      shipClass,
+    };
+  });
+
+  await saveSeedAdminCopy(projectId, board);
+
+  const shopPreview = await buildSeedShopPreview(access.project);
+  if (shopPreview) {
+    const { css: _css, ...shop } = shopPreview;
+    shop.products = shop.products.map((product) => {
+      const row = board.commerce!.inventory.find(
+        (item) => item.productId === product.id,
+      );
+      if (!row) return product;
+      return {
+        ...product,
+        stockQty: row.onHand,
+        weightLb: row.weightLb,
+        shipClass: row.shipClass,
+        sku: row.sku || product.sku,
+      };
+    });
+    await saveSeedShopCopy(projectId, shop);
+    revalidatePath(`/site/${projectId}/shop`);
+  }
+
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+export async function saveSeedCommerceShippingTaxAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const board = await loadBoard(projectId);
+  if (!board?.commerce) {
+    return { ok: false as const, error: "Commerce ops are not in this Seed." };
+  }
+
+  const originZip = String(formData.get("originZip") ?? "").trim();
+  const taxRatePct = Number(formData.get("taxRatePct"));
+  const nexusStates = String(formData.get("nexusStates") ?? "")
+    .split(",")
+    .map((part) => part.trim().toUpperCase())
+    .filter(Boolean);
+  const taxNotes = String(formData.get("taxNotes") ?? "").trim();
+
+  if (!originZip || !Number.isFinite(taxRatePct) || nexusStates.length === 0) {
+    return {
+      ok: false as const,
+      error: "Origin ZIP, tax rate, and nexus states are required.",
+    };
+  }
+
+  board.commerce.originZip = originZip;
+  board.commerce.salesTax = {
+    ...board.commerce.salesTax,
+    enabled: true,
+    ratePct: Math.max(0, taxRatePct),
+    nexusStates,
+    notes: taxNotes || board.commerce.salesTax.notes,
+  };
+  board.commerce.shippingModes = board.commerce.shippingModes.map((mode) => {
+    const rate = Number(formData.get(`shipRate-${mode.id}`));
+    return {
+      ...mode,
+      baseRateUsd: Number.isFinite(rate) ? Math.max(0, rate) : mode.baseRateUsd,
+    };
+  });
+
+  await saveSeedAdminCopy(projectId, board);
+
+  const shopPreview = await buildSeedShopPreview(access.project);
+  if (shopPreview) {
+    const { css: _css, ...shop } = shopPreview;
+    shop.originZip = board.commerce.originZip;
+    shop.salesTax = board.commerce.salesTax;
+    shop.shippingModes = board.commerce.shippingModes;
+    await saveSeedShopCopy(projectId, shop);
+    revalidatePath(`/site/${projectId}/shop`);
+  }
+
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+export async function setSeedShopOrderStatusAction(
+  projectId: string,
+  orderId: string,
+  status: SeedShopOrder["status"],
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const shopPreview = await buildSeedShopPreview(access.project);
+  if (!shopPreview) {
+    return { ok: false as const, error: "Shop is not in this Seed." };
+  }
+  const { css: _css, ...shop } = shopPreview;
+  const order = shop.orders.find((item) => item.id === orderId);
+  if (!order) {
+    return { ok: false as const, error: "Order not found." };
+  }
+  order.status = status;
+  await saveSeedShopCopy(projectId, shop);
+  revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
 }

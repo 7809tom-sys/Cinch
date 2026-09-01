@@ -1,13 +1,17 @@
 import { randomUUID } from "crypto";
 import {
-  briefAsksForBusinessAdmin,
+  briefAsksForEcommerce,
   customerFacingAdminCopy,
+  customerFacingShopCopy,
   customerFacingSiteCopy,
   seedAdminCopyJson,
   seedAdminPageSource,
   seedHomePageSource,
   seedLandingCopyJson,
+  seedNeedsBusinessAdmin,
   seedResponsiveGlobalsCss,
+  seedShopCopyJson,
+  seedShopPageSource,
 } from "./seed-site-copy";
 import { SEED_BUILD_MODULARS_FIRST_RULE } from "./module-library";
 import { readJsonStore, writeJsonStore } from "./kv-store";
@@ -283,7 +287,10 @@ Do not ship desktop-only layouts.
   await upsertSourceFile({
     projectId: input.projectId,
     path: "app/page.tsx",
-    content: seedHomePageSource(landing),
+    content: seedHomePageSource({
+      ...landing,
+      includeShop: briefAsksForEcommerce(input.brief),
+    }),
     status: "draft",
     message: "Scaffolded customer website",
     agentName: "Conductor",
@@ -296,14 +303,16 @@ Do not ship desktop-only layouts.
     message: "Scaffolded website copy",
     agentName: "Conductor",
   });
-  if (briefAsksForBusinessAdmin(input.brief)) {
+  if (seedNeedsBusinessAdmin(input.brief)) {
     const admin = customerFacingAdminCopy(input.projectName, input.brief);
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/admin/page.tsx",
       content: seedAdminPageSource(admin),
       status: "draft",
-      message: "Scaffolded Seed business admin",
+      message: briefAsksForEcommerce(input.brief)
+        ? "Scaffolded Seed admin with commerce ops"
+        : "Scaffolded Seed business admin",
       agentName: "Conductor",
     });
     await upsertSourceFile({
@@ -311,7 +320,28 @@ Do not ship desktop-only layouts.
       path: "content/admin.copy.json",
       content: seedAdminCopyJson(admin),
       status: "draft",
-      message: "Scaffolded business admin copy",
+      message: briefAsksForEcommerce(input.brief)
+        ? "Scaffolded inventory, UPS/LTL shipping, and sales tax"
+        : "Scaffolded business admin copy",
+      agentName: "Conductor",
+    });
+  }
+  if (briefAsksForEcommerce(input.brief)) {
+    const shop = customerFacingShopCopy(input.projectName, input.brief);
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/shop/page.tsx",
+      content: seedShopPageSource(shop),
+      status: "draft",
+      message: "Scaffolded Seed shop (e-commerce)",
+      agentName: "Conductor",
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/shop.copy.json",
+      content: seedShopCopyJson(shop),
+      status: "draft",
+      message: "Scaffolded Seed shop catalog",
       agentName: "Conductor",
     });
   }
@@ -375,7 +405,10 @@ Agents write into this tree as the build advances. Open **Source** in your porta
   await upsertSourceFile({
     projectId: input.projectId,
     path: "app/page.tsx",
-    content: seedHomePageSource(landing),
+    content: seedHomePageSource({
+      ...landing,
+      includeShop: briefAsksForEcommerce(input.brief),
+    }),
     status: "ready",
     message: "Refreshed website from edited brief",
     agentName: "Owner",
@@ -397,7 +430,7 @@ Agents write into this tree as the build advances. Open **Source** in your porta
     agentName: "Owner",
   });
 
-  if (briefAsksForBusinessAdmin(input.brief)) {
+  if (seedNeedsBusinessAdmin(input.brief)) {
     const admin = customerFacingAdminCopy(input.projectName, input.brief);
     const bundle = await getSourceBundle(input.projectId);
     const existingRaw =
@@ -409,12 +442,31 @@ Agents write into this tree as the build advances. Open **Source** in your porta
         const parsed = JSON.parse(existingRaw) as {
           appointments?: typeof admin.appointments;
           tips?: typeof admin.tips;
+          commerce?: typeof admin.commerce;
         };
         if (Array.isArray(parsed.appointments)) {
           adminCopy = { ...admin, appointments: parsed.appointments };
         }
         if (Array.isArray(parsed.tips) && parsed.tips.length > 0) {
           adminCopy = { ...adminCopy, tips: parsed.tips };
+        }
+        if (parsed.commerce && briefAsksForEcommerce(input.brief)) {
+          adminCopy = {
+            ...adminCopy,
+            commerce: {
+              ...admin.commerce!,
+              ...parsed.commerce,
+              inventory:
+                parsed.commerce.inventory?.length > 0
+                  ? parsed.commerce.inventory
+                  : admin.commerce?.inventory ?? [],
+              shippingModes:
+                parsed.commerce.shippingModes?.length > 0
+                  ? parsed.commerce.shippingModes
+                  : admin.commerce?.shippingModes ?? [],
+              salesTax: parsed.commerce.salesTax ?? admin.commerce!.salesTax,
+            },
+          };
         }
       } catch {
         /* use fresh admin */
@@ -434,6 +486,47 @@ Agents write into this tree as the build advances. Open **Source** in your porta
       content: seedAdminCopyJson(adminCopy),
       status: "ready",
       message: "Synced business admin copy with edited brief",
+      agentName: "Owner",
+    });
+  }
+
+  if (briefAsksForEcommerce(input.brief)) {
+    const shop = customerFacingShopCopy(input.projectName, input.brief);
+    const bundle = await getSourceBundle(input.projectId);
+    const existingRaw =
+      bundle?.files.find((file) => file.path === "content/shop.copy.json")
+        ?.content ?? "";
+    let shopCopy = shop;
+    if (existingRaw) {
+      try {
+        const parsed = JSON.parse(existingRaw) as {
+          products?: typeof shop.products;
+          orders?: typeof shop.orders;
+        };
+        if (Array.isArray(parsed.orders)) {
+          shopCopy = { ...shop, orders: parsed.orders };
+        }
+        if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+          shopCopy = { ...shopCopy, products: parsed.products };
+        }
+      } catch {
+        /* use fresh shop */
+      }
+    }
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/shop/page.tsx",
+      content: seedShopPageSource(shopCopy),
+      status: "ready",
+      message: "Synced Seed shop with edited brief",
+      agentName: "Owner",
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/shop.copy.json",
+      content: seedShopCopyJson(shopCopy),
+      status: "ready",
+      message: "Synced Seed shop catalog with edited brief",
       agentName: "Owner",
     });
   }
@@ -496,16 +589,24 @@ Owner: ${agent}
 
   if (title.includes("information architecture") || title.includes("architecture")) {
     const identity = await projectIdentityFromSource(input.projectId);
-    const wantsAdmin = briefAsksForBusinessAdmin(
-      identity.brief || input.taskDetail,
-    );
-    const adminPages = wantsAdmin
-      ? "\n- Business admin (calendar / schedule / education)\n"
-      : "\n";
+    const brief = identity.brief || input.taskDetail;
+    const wantsAdmin = seedNeedsBusinessAdmin(brief);
+    const wantsShop = briefAsksForEcommerce(brief);
+    const extraPages = [
+      wantsAdmin
+        ? wantsShop
+          ? "- Business admin (schedule + inventory + UPS/LTL shipping + sales tax)"
+          : "- Business admin (calendar / schedule / education)"
+        : "",
+      wantsShop ? "- Shop (Seed-grown e-commerce / products / cart)" : "",
+    ]
+      .filter(Boolean)
+      .map((line) => `\n${line}`)
+      .join("");
     await upsertSourceFile({
       projectId: input.projectId,
       path: "docs/ia.md",
-      content: `# Information architecture\n\n## Pages\n\n- Home\n- About\n- Services / Offer\n- Contact${adminPages}\n## Notes\n\n${input.taskDetail}\n\nStatus: ${input.phase}\nOwner: ${agent}\n`,
+      content: `# Information architecture\n\n## Pages\n\n- Home\n- About\n- Services / Offer\n- Contact${extraPages}\n\n## Build rule\n\n${SEED_BUILD_MODULARS_FIRST_RULE.summary}\n\n## Notes\n\n${input.taskDetail}\n\nStatus: ${input.phase}\nOwner: ${agent}\n`,
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -515,6 +616,58 @@ Owner: ${agent}
   }
 
   if (
+    title.includes("e-commerce") ||
+    title.includes("ecommerce") ||
+    (title.includes("shop") &&
+      (title.includes("seed") || title.includes("build") || title.includes("grow")))
+  ) {
+    const identity = await projectIdentityFromSource(input.projectId);
+    const brief = identity.brief || input.taskDetail;
+    const shop = customerFacingShopCopy(identity.name, brief);
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/shop/page.tsx",
+      content: seedShopPageSource(shop),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} Seed shop (e-commerce)`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/shop.copy.json",
+      content: seedShopCopyJson(shop),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} Seed shop catalog`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/globals.css",
+      content: seedResponsiveGlobalsCss(),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} shop styles`,
+    });
+    const landing = customerFacingSiteCopy(identity.name, brief);
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/page.tsx",
+      content: seedHomePageSource({ ...landing, includeShop: true }),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} linked Shop in Seed home nav`,
+    });
+    return;
+  }
+
+  if (
+    title.includes("commerce ops") ||
+    (title.includes("inventory") && title.includes("shipping")) ||
+    (title.includes("sales tax") && title.includes("admin")) ||
     title.includes("business admin") ||
     title.includes("admin panel") ||
     (title.includes("calendar") && title.includes("schedule")) ||
@@ -530,7 +683,9 @@ Owner: ${agent}
       authoredBy: input.agentId,
       agentName: agent,
       status,
-      message: `${agent} ${input.phase} Seed business admin`,
+      message: `${agent} ${input.phase} Seed business admin${
+        briefAsksForEcommerce(brief) ? " (commerce ops)" : ""
+      }`,
     });
     await upsertSourceFile({
       projectId: input.projectId,
@@ -539,7 +694,11 @@ Owner: ${agent}
       authoredBy: input.agentId,
       agentName: agent,
       status,
-      message: `${agent} ${input.phase} business admin copy`,
+      message: `${agent} ${input.phase} ${
+        briefAsksForEcommerce(brief)
+          ? "inventory, UPS/LTL shipping, sales tax"
+          : "business admin copy"
+      }`,
     });
     await upsertSourceFile({
       projectId: input.projectId,
@@ -577,7 +736,10 @@ Owner: ${agent}
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource(landing),
+      content: seedHomePageSource({
+        ...landing,
+        includeShop: briefAsksForEcommerce(brief),
+      }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -602,7 +764,10 @@ Owner: ${agent}
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource(landing),
+      content: seedHomePageSource({
+        ...landing,
+        includeShop: briefAsksForEcommerce(brief),
+      }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -645,7 +810,10 @@ Owner: ${agent}
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
-      content: seedHomePageSource(landing),
+      content: seedHomePageSource({
+        ...landing,
+        includeShop: briefAsksForEcommerce(brief),
+      }),
       authoredBy: input.agentId,
       agentName: agent,
       status,
@@ -662,7 +830,7 @@ Owner: ${agent}
   ) {
     const identity = await projectIdentityFromSource(input.projectId);
     const projectName = identity.name || "Seed site";
-    const adminNav = briefAsksForBusinessAdmin(identity.brief)
+    const adminNav = seedNeedsBusinessAdmin(identity.brief)
       ? `\n          <Link href="/admin">Admin</Link>`
       : "";
 

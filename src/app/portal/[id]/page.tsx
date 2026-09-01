@@ -4,7 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { getAgent } from "@/lib/agents";
 import { liveWebsiteUrl, seedHostHostname } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
-import { briefAsksForBusinessAdmin } from "@/lib/seed-site-copy";
+import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "@/lib/seed-site-copy";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
@@ -126,8 +126,13 @@ export default async function PortalProjectPage({ params }: PageProps) {
               developerRatePct={developerRatePct}
               buildComplete={buildComplete}
               adminHref={
-                briefAsksForBusinessAdmin(project.brief)
+                seedNeedsBusinessAdmin(project.brief)
                   ? `/site/${project.id}/admin`
+                  : null
+              }
+              shopHref={
+                briefAsksForEcommerce(project.brief)
+                  ? `/site/${project.id}/shop`
                   : null
               }
               editHref={`/portal/${project.id}/edit`}

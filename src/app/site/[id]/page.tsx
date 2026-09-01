@@ -8,9 +8,11 @@ import {
 } from "@/lib/master-auth";
 import {
   buildSeedSitePreview,
-  briefAsksForBusinessAdmin,
+  briefAsksForEcommerce,
   ensureBusinessAdminInSeed,
+  ensureShopInSeed,
   repairCustomerLandingIfNeeded,
+  seedNeedsBusinessAdmin,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
@@ -44,10 +46,14 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   if (!project) notFound();
 
   await repairCustomerLandingIfNeeded(project);
-  if (briefAsksForBusinessAdmin(project.brief)) {
+  if (seedNeedsBusinessAdmin(project.brief)) {
     await ensureBusinessAdminInSeed(project);
   }
+  if (briefAsksForEcommerce(project.brief)) {
+    await ensureShopInSeed(project);
+  }
   const preview = await buildSeedSitePreview(project);
+  const showShop = briefAsksForEcommerce(project.brief);
 
   const [customer, master] = await Promise.all([
     getCurrentCustomer(),
@@ -75,7 +81,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   );
   const showOwnerChrome = isOwner || isMaster;
   const businessAdminHref =
-    (isOwner || isMaster) && briefAsksForBusinessAdmin(project.brief)
+    (isOwner || isMaster) && seedNeedsBusinessAdmin(project.brief)
       ? `/site/${project.id}/admin`
       : null;
 
@@ -97,6 +103,11 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             <li>
               <a href="#about">About</a>
             </li>
+            {showShop ? (
+              <li>
+                <a href={`/site/${project.id}/shop`}>Shop</a>
+              </li>
+            ) : null}
             <li>
               <a href="#book">{preview.cta}</a>
             </li>

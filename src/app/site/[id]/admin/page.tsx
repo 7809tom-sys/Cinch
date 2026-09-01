@@ -9,9 +9,15 @@ import {
   getMasterSession,
   isMasterEmail,
 } from "@/lib/master-auth";
-import { briefAsksForBusinessAdmin, buildSeedAdminPreview } from "@/lib/seed-site";
+import {
+  briefAsksForEcommerce,
+  buildSeedAdminPreview,
+  buildSeedShopPreview,
+  seedNeedsBusinessAdmin,
+} from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 import { SeedAdminSchedule } from "./schedule-panel";
+import { SeedAdminCommerceOps } from "./commerce-ops";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +34,7 @@ export default async function SeedBusinessAdminPage({
   const project = await getProject(id);
   if (!project) notFound();
 
-  if (!briefAsksForBusinessAdmin(project.brief)) {
+  if (!seedNeedsBusinessAdmin(project.brief)) {
     redirect(`/site/${id}`);
   }
 
@@ -65,6 +71,11 @@ export default async function SeedBusinessAdminPage({
   const admin = await buildSeedAdminPreview(project);
   if (!admin) notFound();
 
+  const shop = briefAsksForEcommerce(project.brief)
+    ? await buildSeedShopPreview(project)
+    : null;
+  const orders = shop?.orders ?? [];
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: admin.css }} />
@@ -79,6 +90,15 @@ export default async function SeedBusinessAdminPage({
             <Link href={`/site/${id}`} className="seed-admin-link" target="_top">
               View website
             </Link>
+            {shop ? (
+              <Link
+                href={`/site/${id}/shop`}
+                className="seed-admin-link"
+                target="_top"
+              >
+                Shop
+              </Link>
+            ) : null}
             <Link
               href={`/portal/${id}`}
               className="seed-admin-link"
@@ -107,6 +127,14 @@ export default async function SeedBusinessAdminPage({
             serviceOptions={admin.services}
           />
         </section>
+
+        {admin.commerce ? (
+          <SeedAdminCommerceOps
+            projectId={id}
+            commerce={admin.commerce}
+            orders={orders}
+          />
+        ) : null}
 
         <section className="seed-admin-section" id="educate">
           <p className="seed-eyebrow">{admin.tipsEyebrow}</p>

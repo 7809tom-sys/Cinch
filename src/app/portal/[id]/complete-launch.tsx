@@ -16,6 +16,7 @@ export function PortalCompleteLaunch({
   developerRatePct,
   buildComplete = true,
   adminHref = null,
+  shopHref = null,
   editHref = null,
 }: {
   projectId: string;
@@ -26,6 +27,8 @@ export function PortalCompleteLaunch({
   /** When false, still show Visit/Publish/Library — just hide optional growth. */
   buildComplete?: boolean;
   adminHref?: string | null;
+  /** Seed-grown shop when the brief asked for e-commerce. */
+  shopHref?: string | null;
   editHref?: string | null;
 }) {
   const router = useRouter();
@@ -127,6 +130,14 @@ export function PortalCompleteLaunch({
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
           >
             Business admin
+          </a>
+        ) : null}
+        {shopHref ? (
+          <a
+            href={shopHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+          >
+            Shop
           </a>
         ) : null}
       </div>
