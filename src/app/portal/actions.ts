@@ -56,6 +56,7 @@ import {
   updateProjectDetails,
   type SeedProject,
 } from "@/lib/store";
+import { refreshDevelopedSeedPreview } from "@/lib/site-catalog";
 import {
   bootstrapSeedProject,
   continueSeedGrowth,
@@ -634,11 +635,19 @@ export async function portalUpdateSeedAction(
     return { ok: false as const, error: result.error };
   }
 
+  // Keep marketplace card in sync when this Seed is listed.
+  try {
+    await refreshDevelopedSeedPreview(result.project);
+  } catch {
+    /* listing may not exist */
+  }
+
   revalidatePath(`/portal/${projectId}`);
   revalidatePath(`/portal/${projectId}/edit`);
   revalidatePath("/portal");
   revalidatePath(`/site/${projectId}`);
   revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath("/browse");
   revalidatePath("/admin");
   return { ok: true as const, projectId: result.project.id };
 }

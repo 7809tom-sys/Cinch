@@ -254,7 +254,7 @@ export async function publishDevelopedSeedToMarketplace(
 }
 
 
-/** Keep marketplace preview URLs pointed at the live Seed site. */
+/** Keep marketplace card in sync with the live Seed after edits. */
 export async function refreshDevelopedSeedPreview(
   project: SeedProject,
 ): Promise<CatalogSite | null> {
@@ -264,6 +264,12 @@ export async function refreshDevelopedSeedPreview(
   );
   if (!existing) return null;
   existing.previewUrl = publicWebsiteUrl(project);
+  existing.title =
+    project.name.replace(/\s+Seed$/i, "").trim() || project.name;
+  existing.summary =
+    project.brief.trim().slice(0, 220) ||
+    existing.summary ||
+    "A developed Cinch Seed ready for the next owner to grow.";
   await writeCatalog(store);
   return existing;
 }

@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { portalUpdateSeedAction } from "@/app/portal/actions";
 
 export function EditSeedForm({
   projectId,
   initialName,
   initialBrief,
+  websiteUrl,
 }: {
   projectId: string;
   initialName: string;
   initialBrief: string;
+  /** After save, open the refreshed live site so the owner sees the fix. */
+  websiteUrl: string;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -30,8 +31,8 @@ export function EditSeedForm({
             setError(result.error);
             return;
           }
-          router.push(`/portal/${projectId}`);
-          router.refresh();
+          // Always land on the live site — Save refreshes it from the brief.
+          window.location.assign(websiteUrl);
         });
       }}
     >
@@ -56,8 +57,9 @@ export function EditSeedForm({
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
         <span className="mt-1.5 block text-xs leading-relaxed text-muted">
-          Saving refreshes your live website from this brief. Optional: use
-          Continue growing on the portal if you want another agent wave.
+          Save always rebuilds the live website from this brief (hero, CTA,
+          services) — even if you only tap Save to fix a wrong look. Optional:
+          Continue growing on the portal for another agent wave.
         </span>
       </label>
       <div className="flex flex-wrap gap-2 pt-1">
@@ -66,7 +68,7 @@ export function EditSeedForm({
           disabled={pending}
           className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand disabled:opacity-60"
         >
-          {pending ? "Saving…" : "Save Seed"}
+          {pending ? "Refreshing website…" : "Save & refresh website"}
         </button>
         <a
           href={`/portal/${projectId}`}

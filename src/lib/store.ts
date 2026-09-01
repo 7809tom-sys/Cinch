@@ -306,8 +306,9 @@ export async function createProject(input: {
 }
 
 /**
- * Owner edits to Seed name / brief. Syncs identity into the Seed source tree
- * so the live site and next growth wave follow the updated brief.
+ * Owner edits to Seed name / brief. Always refreshes the live site from the
+ * brief — even when text is unchanged — so Save can fix wrong-industry copy
+ * (e.g. a salon still showing car detailing).
  */
 export async function updateProjectDetails(
   projectId: string,
@@ -328,9 +329,6 @@ export async function updateProjectDetails(
 
   const nameChanged = name !== project.name;
   const briefChanged = brief !== project.brief;
-  if (!nameChanged && !briefChanged) {
-    return { project };
-  }
 
   const pm = getProjectManager();
   project.name = name;
@@ -339,10 +337,12 @@ export async function updateProjectDetails(
   pushActivity(
     project,
     nameChanged && briefChanged
-      ? `Owner updated the Seed name and brief.`
+      ? `Owner updated the Seed name and brief — live site refreshed.`
       : nameChanged
-        ? `Owner renamed the Seed to “${name}”.`
-        : `Owner updated the Seed brief.`,
+        ? `Owner renamed the Seed to “${name}” — live site refreshed.`
+        : briefChanged
+          ? `Owner updated the Seed brief — live site refreshed.`
+          : `Owner saved Edit Seed — live site refreshed from the brief.`,
     pm.id,
   );
   await writeStore(store);
