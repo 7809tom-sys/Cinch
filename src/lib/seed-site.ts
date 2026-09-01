@@ -165,8 +165,11 @@ export async function buildSeedSitePreview(
   const copy = copyRaw ? mergeStoredCopy(fallback, copyRaw) : fallback;
   const css = fileContent(files, "app/globals.css") ?? seedPublicSiteCss();
 
+  // Do not HTML-escape here — React text nodes escape safely on render.
+  // Escaping first caused visible "&amp;" in titles like "Express wash & wipe".
   return {
-    ...escapeCopy(copy),
+    ...copy,
+    heroImage: copy.heroImage.replace(/"/g, "%22"),
     css,
     published: Boolean(project.sitePublishedAt),
   };
