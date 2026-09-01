@@ -71,9 +71,9 @@ export function CreateSeedForm() {
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex h-11 items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
+        className="inline-flex h-12 w-full items-center justify-center rounded-md bg-brand px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60 sm:w-auto"
       >
-        {pending ? "Opening Seed…" : "Create Cinch Seed"}
+        {pending ? "Conductor is staffing…" : "Create Seed & watch"}
       </button>
       {error ? <p className="text-sm text-brand-deep">{error}</p> : null}
     </form>

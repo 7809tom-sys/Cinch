@@ -4,7 +4,9 @@ import { upsertLibraryModule } from "./module-library";
 import { applyTaskToSource } from "./seed-source";
 import {
   getProject,
+  inviteAgent,
   now,
+  planBuild,
   pushActivity,
   saveProject,
   type ProjectTask,
@@ -115,7 +117,9 @@ export async function advanceAssignedWork(
     });
   }
 
-  const inProgress = project.tasks.filter((task) => task.status === "in_progress");
+  const inProgress = project.tasks.filter(
+    (task) => task.status === "in_progress",
+  );
   for (const task of inProgress) {
     const agent = task.assigneeId ? getAgent(task.assigneeId) : null;
     task.status = "done";
@@ -163,4 +167,123 @@ export function describeCrew(project: SeedProject) {
   return project.invitedAgentIds
     .map((id) => AGENT_CATALOG.find((agent) => agent.id === id))
     .filter(Boolean);
+}
+
+export function projectWorkComplete(project: SeedProject): boolean {
+  return (
+    project.tasks.length > 0 &&
+    project.tasks.every((task) => task.status === "done")
+  );
+}
+
+/**
+ * After a Seed is created, the PM staffs the crew, plans the build, and
+ * assigns every assignable task. The human only watches.
+ */
+export async function bootstrapSeedProject(
+  projectId: string,
+): Promise<SeedProject> {
+  const pm = getProjectManager();
+  const specialists = AGENT_CATALOG.filter((agent) => !agent.isProjectManager);
+
+  for (const agent of specialists) {
+    await inviteAgent(projectId, agent.id);
+  }
+
+  let project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  pushActivity(
+    project,
+    `${pm.name} staffed ${specialists.map((agent) => agent.name).join(", ")} and is assigning work. You watch — no action needed.`,
+    pm.id,
+  );
+  await saveProject(project);
+
+  if (project.tasks.length === 0) {
+    await planBuild(projectId);
+  }
+
+  return runProjectManagerAssignment(projectId);
+}
+
+/**
+ * One watch-mode step: finish an in-progress task, start an assigned one,
+ * or re-run PM assignment for anything still queued.
+ */
+export async function tickProjectWork(
+  projectId: string,
+): Promise<SeedProject> {
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const inProgress = project.tasks.find(
+    (task) => task.status === "in_progress",
+  );
+  if (inProgress) {
+    const agent = inProgress.assigneeId
+      ? getAgent(inProgress.assigneeId)
+      : null;
+    inProgress.status = "done";
+    inProgress.updatedAt = now();
+    pushActivity(
+      project,
+      `${agent?.name ?? "Agent"} finished “${inProgress.title}” and saved a module to the library.`,
+      inProgress.assigneeId,
+    );
+    await applyTaskToSource({
+      projectId: project.id,
+      taskTitle: inProgress.title,
+      taskDetail: inProgress.detail,
+      agentName: agent?.name ?? null,
+      agentId: inProgress.assigneeId,
+      phase: "finished",
+    });
+    project.modules.unshift({
+      id: randomUUID(),
+      title: inProgress.title,
+      savedAt: now(),
+      fromTaskId: inProgress.id,
+    });
+    await upsertLibraryModule({
+      title: inProgress.title,
+      summary: inProgress.detail,
+      skills: inProgress.requiredSkills,
+      sourceProjectId: project.id,
+      sourceProjectName: project.name,
+      sourceTaskId: inProgress.id,
+      originalCostUsd: 0,
+    });
+    project.modules = project.modules.slice(0, 30);
+    await saveProject(project);
+    return project;
+  }
+
+  const assigned = project.tasks.find((task) => task.status === "assigned");
+  if (assigned) {
+    const agent = assigned.assigneeId ? getAgent(assigned.assigneeId) : null;
+    assigned.status = "in_progress";
+    assigned.updatedAt = now();
+    pushActivity(
+      project,
+      `${agent?.name ?? "Agent"} started “${assigned.title}”.`,
+      assigned.assigneeId,
+    );
+    await applyTaskToSource({
+      projectId: project.id,
+      taskTitle: assigned.title,
+      taskDetail: assigned.detail,
+      agentName: agent?.name ?? null,
+      agentId: assigned.assigneeId,
+      phase: "started",
+    });
+    await saveProject(project);
+    return project;
+  }
+
+  if (project.tasks.some((task) => task.status === "queued")) {
+    return runProjectManagerAssignment(projectId);
+  }
+
+  return project;
 }

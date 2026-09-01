@@ -68,7 +68,9 @@ import {
 } from "@/lib/pricing";
 import {
   advanceAssignedWork,
+  bootstrapSeedProject,
   runProjectManagerAssignment,
+  tickProjectWork,
 } from "@/lib/project-manager";
 import {
   getSeedWatchSnapshot,
@@ -341,6 +343,8 @@ export async function createSeedProjectAction(formData: FormData) {
     customerEmail: customerEmail || null,
     customerName: customerName || null,
   });
+  // PM staffs the crew, plans tasks, and assigns work — you only watch.
+  await bootstrapSeedProject(project.id);
   revalidatePath("/admin");
   revalidatePath(`/admin/projects/${project.id}`);
   revalidatePath("/portal");
@@ -383,6 +387,15 @@ export async function assignTasksAction(projectId: string) {
 export async function advanceWorkAction(projectId: string) {
   await advanceAssignedWork(projectId);
   revalidatePath(`/admin/projects/${projectId}`);
+  return { ok: true as const };
+}
+
+/** Watch-mode tick: PM/agents advance one step while the human observes. */
+export async function watchTickAction(projectId: string) {
+  await tickProjectWork(projectId);
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/admin");
+  revalidatePath(`/portal/${projectId}`);
   return { ok: true as const };
 }
 

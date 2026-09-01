@@ -1,19 +1,22 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useRef, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
-  advanceWorkAction,
-  assignTasksAction,
-  inviteAgentAction,
-  planBuildAction,
   queueGrowthCycleAction,
-  removeAgentAction,
+  watchTickAction,
 } from "@/app/admin/actions";
+
+type TaskSnapshot = {
+  id: string;
+  status: string;
+};
 
 export function ProjectControls({
   projectId,
   invitedAgentIds,
   availableAgentIds,
+  tasks,
 }: {
   projectId: string;
   invitedAgentIds: string[];
@@ -23,60 +26,91 @@ export function ProjectControls({
     role: string;
     configured: boolean;
   }>;
+  tasks: TaskSnapshot[];
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const ticking = useRef(false);
 
-  function run(action: () => Promise<unknown>) {
-    startTransition(() => {
-      void action();
-    });
-  }
+  const allDone =
+    tasks.length > 0 && tasks.every((task) => task.status === "done");
+  const hasOpenWork = tasks.some(
+    (task) =>
+      task.status === "queued" ||
+      task.status === "assigned" ||
+      task.status === "in_progress",
+  );
+
+  useEffect(() => {
+    if (allDone || !hasOpenWork) return;
+
+    const id = window.setInterval(() => {
+      if (ticking.current) return;
+      ticking.current = true;
+      startTransition(async () => {
+        try {
+          await watchTickAction(projectId);
+          router.refresh();
+        } finally {
+          ticking.current = false;
+        }
+      });
+    }, 2600);
+
+    return () => window.clearInterval(id);
+  }, [allDone, hasOpenWork, projectId, router]);
+
+  const crew = availableAgentIds.filter((agent) =>
+    invitedAgentIds.includes(agent.id),
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => planBuildAction(projectId))}
-          className="inline-flex h-10 items-center rounded-md bg-brand px-4 text-sm font-semibold text-foam disabled:opacity-60"
-        >
-          PM: plan build tasks
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => assignTasksAction(projectId))}
-          className="inline-flex h-10 items-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
-        >
-          PM: assign work
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => advanceWorkAction(projectId))}
-          className="inline-flex h-10 items-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
-        >
-          Advance assigned work
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run(() => queueGrowthCycleAction(projectId))}
-          className="inline-flex h-10 items-center rounded-md border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
-        >
-          Grow Seed (3 axes)
-        </button>
+      <div
+        className={`border px-4 py-4 sm:px-5 ${
+          allDone
+            ? "border-leaf/30 bg-leaf/10"
+            : "border-brand/15 bg-foam"
+        }`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          {!allDone ? (
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-accent animate-pulse"
+              aria-hidden
+            />
+          ) : null}
+          <div className="min-w-0">
+            <p className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              {allDone
+                ? "Build complete — you’re caught up"
+                : "Watch mode — Conductor assigns, agents work"}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {allDone
+                ? "Modules landed in the library. Optional growth cycles stay available below."
+                : "You don’t assign tasks. The project manager staffs the crew, routes work by skill and cost, and advances it while you watch."}
+            </p>
+          </div>
+        </div>
+        {pending && !allDone ? (
+          <p className="mt-3 text-xs font-semibold tracking-wide text-accent-deep uppercase">
+            Updating activity…
+          </p>
+        ) : null}
       </div>
 
       <div>
         <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-          Invite specialists
+          Crew on this Seed
         </h2>
         <ul className="mt-3 space-y-2">
-          {availableAgentIds.map((agent) => {
-            const invited = invitedAgentIds.includes(agent.id);
-            return (
+          {crew.length === 0 ? (
+            <li className="text-sm text-muted">
+              Conductor is staffing specialists…
+            </li>
+          ) : (
+            crew.map((agent) => (
               <li
                 key={agent.id}
                 className="flex flex-wrap items-center justify-between gap-3 border-b border-brand/10 py-2 last:border-b-0"
@@ -88,33 +122,30 @@ export function ProjectControls({
                     {agent.configured ? "" : " · no API key yet"}
                   </p>
                 </div>
-                {invited ? (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() =>
-                      run(() => removeAgentAction(projectId, agent.id))
-                    }
-                    className="text-sm font-semibold text-muted hover:text-brand-deep disabled:opacity-60"
-                  >
-                    Remove
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() =>
-                      run(() => inviteAgentAction(projectId, agent.id))
-                    }
-                    className="text-sm font-semibold text-brand hover:text-brand-deep disabled:opacity-60"
-                  >
-                    Invite
-                  </button>
-                )}
+                <span className="text-xs font-bold tracking-wide text-accent uppercase">
+                  On crew
+                </span>
               </li>
-            );
-          })}
+            ))
+          )}
         </ul>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(() => {
+              void queueGrowthCycleAction(projectId).then(() =>
+                router.refresh(),
+              );
+            })
+          }
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-accent/40 bg-accent/10 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60 sm:w-auto"
+        >
+          Grow Seed (3 axes)
+        </button>
       </div>
     </div>
   );

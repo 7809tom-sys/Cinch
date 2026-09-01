@@ -104,7 +104,7 @@ export const AGENT_CATALOG: AgentDefinition[] = [
     name: "Forge",
     role: "Backend Engineer",
     specialty: "APIs, auth, data models, and integrations",
-    skills: ["backend", "architecture", "devops"],
+    skills: ["backend", "architecture", "devops", "research"],
     skillLevel: 5,
     provider: "Anthropic",
     envKey: "ANTHROPIC_API_KEY",

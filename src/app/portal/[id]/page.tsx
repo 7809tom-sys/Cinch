@@ -5,6 +5,7 @@ import { getAgent } from "@/lib/agents";
 import { seedHostHostname } from "@/lib/domain";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
 import { ConnectPanel } from "./connect-panel";
+import { PortalWatchTicker } from "./watch-ticker";
 import { CustomDomainPanel } from "./custom-domain-panel";
 
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
   return (
     <div className="min-h-full bg-background text-foreground">
       <header className="border-b border-brand-deep/10 bg-foam">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-5 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-8 sm:py-5">
           <Link
             href="/portal"
             className="text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
@@ -61,7 +62,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-12 sm:px-8 lg:grid-cols-[1.2fr_0.8fr]">
+      <main className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 sm:gap-10 sm:px-8 sm:py-12 lg:grid-cols-[1.2fr_0.8fr]">
         <section>
           <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
             YOUR SEED
@@ -90,10 +91,14 @@ export default async function PortalProjectPage({ params }: PageProps) {
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               What&apos;s being worked on
             </h2>
+            <PortalWatchTicker
+              projectId={project.id}
+              complete={project.tasks.length > 0 && doneCount === project.tasks.length}
+            />
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm text-muted">
                 {project.tasks.length === 0
-                  ? "The project manager has not planned tasks yet."
+                  ? "Conductor is staffing and assigning work — you only need to watch."
                   : doneCount === project.tasks.length
                     ? "All planned tasks are done. Watch Source for the finished tree, or check activity for the next growth push."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}

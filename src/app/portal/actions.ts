@@ -49,12 +49,12 @@ import {
   createProject,
   getProject,
   listProjectsForCustomer,
-  planBuild,
   regenerateConnectKey,
   removeCustomDomain,
   setEmbedEnabled,
   type SeedProject,
 } from "@/lib/store";
+import { bootstrapSeedProject, tickProjectWork } from "@/lib/project-manager";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
   if (!isMasterEmail(email)) return;
@@ -474,7 +474,8 @@ export async function purchaseCatalogSiteAction(formData: FormData) {
     projectId: project.id,
   });
 
-  await planBuild(project.id);
+  // PM invites specialists, plans the build, and assigns tasks — customer watches.
+  await bootstrapSeedProject(project.id);
   await establishCustomerSession(customer.id);
 
   revalidatePath("/portal");
@@ -512,3 +513,19 @@ export async function lookupAccessHintAction(email: string) {
     accessCode: account.accessCode,
   };
 }
+
+/** Customer watch-mode: advance one PM/agent step while they observe. */
+export async function portalWatchTickAction(projectId: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in required." };
+  }
+  if (!customerOwnsProject(customer, projectId)) {
+    return { ok: false as const, error: "Not your Seed." };
+  }
+  await tickProjectWork(projectId);
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
+  return { ok: true as const };
+}
+
