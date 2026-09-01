@@ -317,6 +317,126 @@ Do not ship desktop-only layouts.
   return (await getSourceBundle(input.projectId))!;
 }
 
+/**
+ * After an owner edits name/brief, rewrite identity files in the Seed source
+ * so the live preview and agents stay aligned with the brief.
+ */
+export async function applySeedIdentityEdit(input: {
+  projectId: string;
+  projectName: string;
+  brief: string;
+}): Promise<void> {
+  const landing = customerFacingSiteCopy(input.projectName, input.brief);
+
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "README.md",
+    content: `# ${input.projectName}
+
+Living Seed for this site.
+
+## Brief
+
+${input.brief}
+
+## Device standard
+
+Every Seed ships **user-friendly on phone, tablet, laptop, and as an installable app**:
+
+- Fluid layout (no horizontal scroll)
+- Touch targets ≥ 44px
+- Safe-area padding for notched phones
+- 16px form fields on mobile (no iOS zoom jump)
+- Viewport + web app manifest for home-screen use
+
+Agents write into this tree as the build advances. Open **Source** in your portal to watch files appear in real time.
+`,
+    status: "ready",
+    message: "Updated Seed name and brief",
+    agentName: "Owner",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "app/layout.tsx",
+    content: seedLayoutSource(input.projectName),
+    status: "ready",
+    message: "Updated layout metadata for renamed Seed",
+    agentName: "Owner",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "public/manifest.webmanifest",
+    content: seedManifestSource(input.projectName),
+    status: "ready",
+    message: "Updated app manifest for renamed Seed",
+    agentName: "Owner",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "app/page.tsx",
+    content: seedHomePageSource(landing),
+    status: "ready",
+    message: "Refreshed website from edited brief",
+    agentName: "Owner",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "content/landing.copy.json",
+    content: seedLandingCopyJson(landing),
+    status: "ready",
+    message: "Refreshed website copy from edited brief",
+    agentName: "Owner",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "app/globals.css",
+    content: seedResponsiveGlobalsCss(),
+    status: "ready",
+    message: "Kept website styles current",
+    agentName: "Owner",
+  });
+
+  if (briefAsksForBusinessAdmin(input.brief)) {
+    const admin = customerFacingAdminCopy(input.projectName, input.brief);
+    const bundle = await getSourceBundle(input.projectId);
+    const existingRaw =
+      bundle?.files.find((file) => file.path === "content/admin.copy.json")
+        ?.content ?? "";
+    let adminCopy = admin;
+    if (existingRaw) {
+      try {
+        const parsed = JSON.parse(existingRaw) as {
+          appointments?: typeof admin.appointments;
+          tips?: typeof admin.tips;
+        };
+        if (Array.isArray(parsed.appointments)) {
+          adminCopy = { ...admin, appointments: parsed.appointments };
+        }
+        if (Array.isArray(parsed.tips) && parsed.tips.length > 0) {
+          adminCopy = { ...adminCopy, tips: parsed.tips };
+        }
+      } catch {
+        /* use fresh admin */
+      }
+    }
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/admin/page.tsx",
+      content: seedAdminPageSource(adminCopy),
+      status: "ready",
+      message: "Synced business admin with edited brief",
+      agentName: "Owner",
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/admin.copy.json",
+      content: seedAdminCopyJson(adminCopy),
+      status: "ready",
+      message: "Synced business admin copy with edited brief",
+      agentName: "Owner",
+    });
+  }
+}
 
 async function projectIdentityFromSource(projectId: string): Promise<{
   name: string;

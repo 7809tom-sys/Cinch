@@ -9,7 +9,7 @@ import {
   verifyDnsForHostname,
 } from "./dns-verify";
 import { readJsonStore, writeJsonStore } from "./kv-store";
-import { bootstrapSourceTree } from "./seed-source";
+import { bootstrapSourceTree, applySeedIdentityEdit } from "./seed-source";
 import { briefAsksForBusinessAdmin } from "./seed-site-copy";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
@@ -299,6 +299,57 @@ export async function createProject(input: {
   }
 
   return project;
+}
+
+/**
+ * Owner edits to Seed name / brief. Syncs identity into the Seed source tree
+ * so the live site and next growth wave follow the updated brief.
+ */
+export async function updateProjectDetails(
+  projectId: string,
+  input: { name: string; brief: string },
+): Promise<{ project: SeedProject } | { error: string }> {
+  const name = input.name.trim();
+  const brief = input.brief.trim();
+  if (!name) return { error: "Seed name is required." };
+  if (!brief) return { error: "Build brief is required." };
+  if (name.length > 120) return { error: "Keep the Seed name under 120 characters." };
+  if (brief.length > 4000) {
+    return { error: "Keep the brief under 4000 characters." };
+  }
+
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return { error: "Seed not found." };
+
+  const nameChanged = name !== project.name;
+  const briefChanged = brief !== project.brief;
+  if (!nameChanged && !briefChanged) {
+    return { project };
+  }
+
+  const pm = getProjectManager();
+  project.name = name;
+  project.brief = brief;
+  project.updatedAt = now();
+  pushActivity(
+    project,
+    nameChanged && briefChanged
+      ? `Owner updated the Seed name and brief.`
+      : nameChanged
+        ? `Owner renamed the Seed to “${name}”.`
+        : `Owner updated the Seed brief.`,
+    pm.id,
+  );
+  await writeStore(store);
+
+  await applySeedIdentityEdit({
+    projectId: project.id,
+    projectName: project.name,
+    brief: project.brief,
+  });
+
+  return { project };
 }
 
 /**

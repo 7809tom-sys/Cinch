@@ -16,6 +16,7 @@ export function PortalCompleteLaunch({
   developerRatePct,
   buildComplete = true,
   adminHref = null,
+  editHref = null,
 }: {
   projectId: string;
   websiteUrl: string;
@@ -25,6 +26,7 @@ export function PortalCompleteLaunch({
   /** When false, still show Visit/Publish/Library — just hide optional growth. */
   buildComplete?: boolean;
   adminHref?: string | null;
+  editHref?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -111,6 +113,14 @@ export function PortalCompleteLaunch({
               ? "Listing…"
               : "Library"}
         </button>
+        {editHref ? (
+          <a
+            href={editHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+          >
+            Edit Seed
+          </a>
+        ) : null}
         {adminHref ? (
           <a
             href={adminHref}

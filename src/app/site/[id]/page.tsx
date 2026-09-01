@@ -180,6 +180,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
           listedInLibrary={Boolean(project.marketplaceListingId)}
           showPublishControls={isOwner || isMaster}
           portalHref={isOwner || isMaster ? `/portal/${project.id}` : null}
+          editHref={isOwner || isMaster ? `/portal/${project.id}/edit` : null}
           adminHref={businessAdminHref}
         />
       ) : null}

@@ -53,6 +53,7 @@ import {
   regenerateConnectKey,
   removeCustomDomain,
   setEmbedEnabled,
+  updateProjectDetails,
   type SeedProject,
 } from "@/lib/store";
 import {
@@ -614,4 +615,30 @@ export async function portalListInLibraryAction(projectId: string) {
     ok: true as const,
     listingId: project.marketplaceListingId,
   };
+}
+
+/** Edit Seed name and brief — refreshes the live site from the updated brief. */
+export async function portalUpdateSeedAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) {
+    return { ok: false as const, error: access.error };
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const brief = String(formData.get("brief") ?? "").trim();
+  const result = await updateProjectDetails(projectId, { name, brief });
+  if ("error" in result) {
+    return { ok: false as const, error: result.error };
+  }
+
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath(`/portal/${projectId}/edit`);
+  revalidatePath("/portal");
+  revalidatePath(`/site/${projectId}`);
+  revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath("/admin");
+  return { ok: true as const, projectId: result.project.id };
 }
