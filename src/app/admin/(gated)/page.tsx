@@ -538,6 +538,12 @@ export default async function AdminPage() {
                     {Math.round(pricing.creatorCreditRate * 100)}%
                   </dd>
                 </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">Developer commission on Seed sale</dt>
+                  <dd className="font-bold text-brand-deep">
+                    {Math.round((pricing.seedMarketplaceDeveloperRate ?? pricing.creatorCreditRate) * 100)}%
+                  </dd>
+                </div>
               </dl>
 
               <div className="pt-2">
@@ -550,8 +556,13 @@ export default async function AdminPage() {
                       key={site.id}
                       className="flex justify-between gap-3 text-sm"
                     >
-                      <span className="text-brand-deep">{site.title}</span>
-                      <span className="font-semibold">
+                      <span className="min-w-0 text-brand-deep">
+                        {site.title}
+                        {site.origin === "developed-seed" && site.developerName
+                          ? ` · ${site.developerName}`
+                          : ""}
+                      </span>
+                      <span className="shrink-0 font-semibold">
                         {formatUsd(site.priceUsd)}
                       </span>
                     </li>

@@ -26,6 +26,12 @@ export const MODULE_REUSE_RATE = 0.85;
 /** Share of each reuse fee credited back to the original modular creator. */
 export const MODULE_CREATOR_CREDIT_RATE = 0.08; // 8%
 
+/**
+ * Share of a marketplace Seed sale credited to the original developer
+ * who grew that Seed (same 8% rate as modular creator credit).
+ */
+export const SEED_MARKETPLACE_DEVELOPER_RATE = MODULE_CREATOR_CREDIT_RATE;
+
 export function withMarkup(costUsd: number, markup: number): number {
   const cost = Math.max(0, Number(costUsd) || 0);
   return Math.round(cost * (1 + markup) * 100) / 100;
@@ -82,6 +88,25 @@ export function moduleReuseFee(input: {
     creatorCreditUsd,
     rate: MODULE_REUSE_RATE,
     creatorCreditRate: MODULE_CREATOR_CREDIT_RATE,
+  };
+}
+
+/**
+ * Commission owed to the original developer when their developed Seed
+ * sells again on the marketplace.
+ */
+export function seedMarketplaceDeveloperCommission(priceUsd: number): {
+  priceUsd: number;
+  commissionUsd: number;
+  rate: number;
+} {
+  const price = Math.max(0, Number(priceUsd) || 0);
+  const commissionUsd =
+    Math.round(price * SEED_MARKETPLACE_DEVELOPER_RATE * 100) / 100;
+  return {
+    priceUsd: price,
+    commissionUsd,
+    rate: SEED_MARKETPLACE_DEVELOPER_RATE,
   };
 }
 

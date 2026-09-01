@@ -72,6 +72,8 @@ export type SeedProject = {
   referenceUrl: string | null;
   /** Customer's own domain (bought elsewhere) pointed at this Seed */
   customDomain: CustomDomainConnection | null;
+  /** Marketplace listing id once this developed Seed is published */
+  marketplaceListingId: string | null;
 };
 
 type StoreShape = {
@@ -98,6 +100,7 @@ async function ensureStore(): Promise<StoreShape> {
       customDomain: project.customDomain ?? null,
       embedEnabled: project.embedEnabled ?? true,
       connectKey: project.connectKey || generateConnectKey(),
+      marketplaceListingId: project.marketplaceListingId ?? null,
     };
   });
   if (backfilled) {
@@ -251,6 +254,7 @@ export async function createProject(input: {
     customerName,
     referenceUrl,
     customDomain: null,
+    marketplaceListingId: null,
   };
 
   pushActivity(

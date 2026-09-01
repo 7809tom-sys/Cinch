@@ -1,6 +1,9 @@
 import { randomUUID } from "crypto";
 import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
+import { getCustomerByEmail } from "./customers";
 import { upsertLibraryModule } from "./module-library";
+import { SEED_MARKETPLACE_DEVELOPER_RATE } from "./pricing";
+import { publishDevelopedSeedToMarketplace } from "./site-catalog";
 import { applyTaskToSource } from "./seed-source";
 import {
   appendNextBuildWave,
@@ -18,6 +21,35 @@ function costRank(hint: "low" | "medium" | "high") {
   if (hint === "low") return 0;
   if (hint === "medium") return 1;
   return 2;
+}
+
+async function creatorAccountIdFor(project: SeedProject): Promise<string | undefined> {
+  if (!project.customerEmail) return undefined;
+  const customer = await getCustomerByEmail(project.customerEmail);
+  return customer?.id;
+}
+
+/** List a finished Seed on the marketplace (once) so later buyers fund the developer. */
+async function maybePublishDevelopedSeed(
+  projectId: string,
+): Promise<SeedProject> {
+  let project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+  if (project.marketplaceListingId) return project;
+
+  const listing = await publishDevelopedSeedToMarketplace(project);
+  if (!listing) return project;
+
+  project.marketplaceListingId = listing.id;
+  const pm = getProjectManager();
+  const ratePct = Math.round(SEED_MARKETPLACE_DEVELOPER_RATE * 100);
+  pushActivity(
+    project,
+    `${pm.name} listed “${listing.title}” on the Seed marketplace. Future buyers get this developed starting point; ${ratePct}% of each sale goes to the original developer.`,
+    pm.id,
+  );
+  await saveProject(project);
+  return project;
 }
 
 function canHandle(task: ProjectTask, agentId: string) {
@@ -163,6 +195,7 @@ export async function advanceAssignedWork(
         sourceProjectName: project.name,
         sourceTaskId: task.id,
         originalCostUsd: 0,
+        creatorAccountId: await creatorAccountIdFor(project),
       });
     } catch {
       // Library write is best-effort.
@@ -338,6 +371,7 @@ export async function tickProjectWork(
         sourceProjectName: project.name,
         sourceTaskId: inProgress.id,
         originalCostUsd: 0,
+        creatorAccountId: await creatorAccountIdFor(project),
       });
     } catch {
       // Library write is best-effort for watch mode.
@@ -345,6 +379,7 @@ export async function tickProjectWork(
     project.modules = project.modules.slice(0, 30);
     await saveProject(project);
     if (projectWorkComplete(project)) {
+      await maybePublishDevelopedSeed(projectId);
       const beforeCount = project.tasks.length;
       project = await continueSeedGrowth(projectId);
       const grew =
@@ -419,8 +454,9 @@ export async function tickProjectWork(
     return finishResult(project, true);
   }
 
-  // First wave finished — queue the next growth tasks so watch mode doesn’t stall.
+  // First wave finished — list on the marketplace, then queue growth work.
   if (projectWorkComplete(project) && project.tasks.length > 0) {
+    await maybePublishDevelopedSeed(projectId);
     const beforeCount = project.tasks.length;
     project = await continueSeedGrowth(projectId);
     const progressed =

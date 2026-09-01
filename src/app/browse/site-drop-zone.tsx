@@ -17,6 +17,8 @@ type CatalogSite = {
   priceUsd: number;
   tags: string[];
   accent: string;
+  developerName?: string | null;
+  origin?: "curated" | "developed-seed";
 };
 
 function severityClass(severity: SiteCritique["findings"][number]["severity"]) {
@@ -392,7 +394,16 @@ export function SiteDropZone({
                   </p>
                   <p className="mt-2 text-xs font-semibold tracking-wide text-accent-deep uppercase">
                     {site.tags.join(" · ")} · ${site.priceUsd}
+                    {site.origin === "developed-seed"
+                      ? " · developed Seed"
+                      : ""}
                   </p>
+                  {site.developerName ? (
+                    <p className="mt-1 text-xs text-muted">
+                      Original developer: {site.developerName} · 8% commission
+                      on each marketplace sale
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"
