@@ -124,6 +124,15 @@ export function PortalCompleteLaunch({
           : " · Library listing is optional — only turn it on if you want template sales."}
       </p>
 
+      <div className="overflow-hidden rounded-md border border-brand/15 bg-foam">
+        <iframe
+          title="Published Seed preview"
+          src={websiteUrl}
+          className="h-64 w-full bg-foam"
+          loading="lazy"
+        />
+      </div>
+
       {error ? (
         <p className="text-sm font-medium text-red-700" role="alert">
           {error}

@@ -3,7 +3,10 @@ import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
 import { getCustomerByEmail } from "./customers";
 import { upsertLibraryModule } from "./module-library";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "./pricing";
-import { publishDevelopedSeedToMarketplace } from "./site-catalog";
+import {
+  publishDevelopedSeedToMarketplace,
+  refreshDevelopedSeedPreview,
+} from "./site-catalog";
 import { applyTaskToSource } from "./seed-source";
 import {
   appendNextBuildWave,
@@ -47,6 +50,7 @@ export async function publishSeedWebsite(
     pm.id,
   );
   await saveProject(project);
+  await refreshDevelopedSeedPreview(project);
   return project;
 }
 

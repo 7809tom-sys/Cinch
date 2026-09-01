@@ -7,6 +7,7 @@ import {
   restaffSeedAction,
   watchTickAction,
 } from "@/app/admin/actions";
+import { SeedPreviewLinks } from "@/components/seed-preview-links";
 
 type TaskSnapshot = {
   id: string;
@@ -15,11 +16,17 @@ type TaskSnapshot = {
 
 export function ProjectControls({
   projectId,
+  projectName,
+  websiteUrl,
+  listedInLibrary,
   invitedAgentIds,
   availableAgentIds,
   tasks,
 }: {
   projectId: string;
+  projectName: string;
+  websiteUrl: string;
+  listedInLibrary: boolean;
   invitedAgentIds: string[];
   availableAgentIds: Array<{
     id: string;
@@ -116,7 +123,7 @@ export function ProjectControls({
               </p>
               <p className="mt-1 text-sm leading-relaxed break-words text-muted">
                 {allDone
-                  ? "Modules landed in the library. Optional growth cycles stay available below."
+                  ? "Modules landed in the library. Open the published preview below — optional growth cycles stay available too."
                   : needsCrew
                     ? "Tap Restaff crew so Conductor invites specialists and can assign work."
                     : stuck
@@ -125,6 +132,15 @@ export function ProjectControls({
               </p>
             </div>
           </div>
+
+          {allDone ? (
+            <SeedPreviewLinks
+              websiteUrl={websiteUrl}
+              projectName={projectName}
+              listedInLibrary={listedInLibrary}
+              showEmbed
+            />
+          ) : null}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button

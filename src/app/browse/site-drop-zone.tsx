@@ -405,13 +405,23 @@ export function SiteDropZone({
                     </p>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => applyUrl(site.previewUrl, site.id)}
-                  className="inline-flex h-11 shrink-0 items-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-transform hover:-translate-y-0.5"
-                >
-                  Critique & buy
-                </button>
+                <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                  <a
+                    href={site.previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-transform hover:-translate-y-0.5"
+                  >
+                    Preview site
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => applyUrl(site.previewUrl, site.id)}
+                    className="inline-flex h-11 shrink-0 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-transform hover:-translate-y-0.5"
+                  >
+                    Critique & buy
+                  </button>
+                </div>
               </div>
             </li>
           ))}

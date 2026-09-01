@@ -253,6 +253,21 @@ export async function publishDevelopedSeedToMarketplace(
   return site;
 }
 
+
+/** Keep marketplace preview URLs pointed at the live Seed site. */
+export async function refreshDevelopedSeedPreview(
+  project: SeedProject,
+): Promise<CatalogSite | null> {
+  const store = await ensureCatalog();
+  const existing = store.sites.find(
+    (site) => site.sourceProjectId === project.id,
+  );
+  if (!existing) return null;
+  existing.previewUrl = liveWebsiteUrl(project);
+  await writeCatalog(store);
+  return existing;
+}
+
 export async function recordSitePurchase(input: {
   catalogSiteId?: string | null;
   previewUrl: string;

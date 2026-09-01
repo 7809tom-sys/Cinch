@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAgent } from "@/lib/agents";
 import { getCustomerByEmail } from "@/lib/customers";
-import { seedEmbedSnippet } from "@/lib/domain";
+import { SeedPreviewLinks } from "@/components/seed-preview-links";
+import { liveWebsiteUrl, seedEmbedSnippet } from "@/lib/domain";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,11 @@ export default async function ProjectAdminPage({ params }: PageProps) {
     ? await getCustomerByEmail(project.customerEmail)
     : null;
   const activity = collapseActivity(project.activity).slice(0, 20);
+  const websiteUrl = liveWebsiteUrl(project);
+  const buildComplete =
+    project.tasks.length > 0 &&
+    project.tasks.every((task) => task.status === "done");
+  const listedInLibrary = Boolean(project.marketplaceListingId);
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
@@ -101,6 +107,9 @@ export default async function ProjectAdminPage({ params }: PageProps) {
 
           <ProjectControls
             projectId={project.id}
+            projectName={project.name}
+            websiteUrl={websiteUrl}
+            listedInLibrary={listedInLibrary}
             invitedAgentIds={project.invitedAgentIds}
             availableAgentIds={agents
               .filter((agent) => !agent.isProjectManager)
@@ -162,6 +171,27 @@ export default async function ProjectAdminPage({ params }: PageProps) {
         </section>
 
         <aside className="min-w-0 space-y-6">
+          {buildComplete ? (
+            <div className="min-w-0 border border-brand/10 bg-brand-deep px-4 py-5 text-foam sm:px-5">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
+                Published preview
+              </h2>
+              <p className="mt-2 text-sm text-mist [overflow-wrap:anywhere]">
+                Open the live Seed site anytime. If it&apos;s listed, jump to
+                the marketplace library from here too.
+              </p>
+              <div className="mt-4">
+                <SeedPreviewLinks
+                  websiteUrl={websiteUrl}
+                  projectName={project.name}
+                  listedInLibrary={listedInLibrary}
+                  showEmbed
+                  tone="on-dark"
+                />
+              </div>
+            </div>
+          ) : null}
+
           {customer ? (
             <div className="min-w-0 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
               <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
