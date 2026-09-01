@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getCustomerByEmail } from "./customers";
+import { publicWebsiteUrl } from "./domain";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
   MODULE_CREATOR_CREDIT_RATE,
@@ -7,7 +8,6 @@ import {
   seedMarketplaceDeveloperCommission,
 } from "./pricing";
 import { SEED_SITE_PRICE_USD } from "./site-url";
-import { liveWebsiteUrl } from "./domain";
 import type { SeedProject } from "./store";
 
 export type CatalogSite = {
@@ -215,9 +215,9 @@ export async function publishDevelopedSeedToMarketplace(
 
   const developer = await getCustomerByEmail(project.customerEmail);
   const previewUrl =
-    (project.sitePublishedAt ? liveWebsiteUrl(project) : null) ||
+    (project.sitePublishedAt ? publicWebsiteUrl(project) : null) ||
     project.referenceUrl?.trim() ||
-    liveWebsiteUrl(project);
+    publicWebsiteUrl(project);
   const summary =
     project.brief.trim().slice(0, 220) ||
     "A developed Cinch Seed ready for the next owner to grow.";
@@ -263,7 +263,7 @@ export async function refreshDevelopedSeedPreview(
     (site) => site.sourceProjectId === project.id,
   );
   if (!existing) return null;
-  existing.previewUrl = liveWebsiteUrl(project);
+  existing.previewUrl = publicWebsiteUrl(project);
   await writeCatalog(store);
   return existing;
 }

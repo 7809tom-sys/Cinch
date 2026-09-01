@@ -83,8 +83,6 @@ export function PortalCompleteLaunch({
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
         <a
           href={websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
           className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"
         >
           Visit website
@@ -127,8 +125,6 @@ export function PortalCompleteLaunch({
         Live URL:{" "}
         <a
           href={websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
           className="font-semibold text-brand hover:text-brand-deep"
         >
           {websiteUrl}

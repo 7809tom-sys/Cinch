@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ files?: string }>;
 };
 
 export async function generateMetadata({ params }: PageProps) {
@@ -24,14 +25,28 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-export default async function PortalSourcePage({ params }: PageProps) {
+/**
+ * Default: send people to the real website preview.
+ * Opt-in code tree only with ?files=1 — never the main “preview” path.
+ */
+export default async function PortalSourcePage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
+  const query = await searchParams;
   const snapshot = await getPortalSourceSnapshot(id);
   if (!snapshot.customer) redirect("/login");
   if (snapshot.unauthorized || !snapshot.project) notFound();
 
   const project = snapshot.project;
   const websiteUrl = liveWebsiteUrl(project);
+
+  // Preview means the website — not the agent file tree.
+  if (query.files !== "1") {
+    redirect(websiteUrl);
+  }
+
   const buildComplete =
     project.tasks.length > 0 &&
     project.tasks.every((task) => task.status === "done");
@@ -51,8 +66,6 @@ export default async function PortalSourcePage({ params }: PageProps) {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <a
               href={websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
             >
               Visit website
@@ -75,14 +88,11 @@ export default async function PortalSourcePage({ params }: PageProps) {
             YOUR WEBSITE
           </p>
           <h1 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight text-brand-deep sm:text-3xl">
-            {buildComplete
-              ? "The site is ready — open it to Publish"
-              : "See the website, not just the code"}
+            Preview is the live site — not this file tree
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-            Source below is a developer peek while agents work. The real product
-            is your live page — Publish, Library, and Admin sit right on that
-            preview.
+            You opted into the agent source view. Open Visit website for the
+            real page with Publish, Library, and Admin.
           </p>
           <PortalCompleteLaunch
             projectId={project.id}
@@ -103,8 +113,7 @@ export default async function PortalSourcePage({ params }: PageProps) {
             Code while it builds
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-            File updates stream in here. Use Visit website above when you want
-            the customer-facing result.
+            File updates stream in here. This is not the customer website.
           </p>
           <div className="mt-6">
             <LiveSourceViewer projectId={project.id} />

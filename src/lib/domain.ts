@@ -1,5 +1,6 @@
 export const CINCH_SEED_DOMAIN = "cinchseed.com";
-export const CINCH_SEED_ORIGIN = `https://${CINCH_SEED_DOMAIN}`;
+/** Canonical public origin (www — apex redirects here on Vercel). */
+export const CINCH_SEED_ORIGIN = `https://www.${CINCH_SEED_DOMAIN}`;
 export const CINCH_SEED_WATCH_SCRIPT = `${CINCH_SEED_ORIGIN}/v1/watch.js`;
 
 export function seedEmbedSnippet(seedId: string, connectKey: string): string {
@@ -21,12 +22,28 @@ export function seedHostOrigin(slug: string): string {
 }
 
 /**
- * Public URL for a Seed site.
- * Verified custom domains win. Otherwise use the apex path
- * `/site/{id}` — wildcard `*.cinchseed.com` DNS is not live yet, so
- * subdomain URLs currently NXDOMAIN in browsers.
+ * In-app Visit / iframe / preview URL for a Seed.
+ * Same-origin path so the preview always loads THIS deployment’s site
+ * (not a cross-host production URL that 404s for local data, and not the
+ * portal source/code tree).
  */
 export function liveWebsiteUrl(project: {
+  id: string;
+  name: string;
+  customDomain: { hostname: string; status: string } | null;
+}): string {
+  const custom = project.customDomain;
+  if (custom && custom.status === "verified" && custom.hostname) {
+    return `https://${custom.hostname}`;
+  }
+  return `/site/${project.id}`;
+}
+
+/**
+ * Absolute public URL for sharing, marketplace listings, and emails.
+ * Prefer liveWebsiteUrl() for buttons/iframes inside the app.
+ */
+export function publicWebsiteUrl(project: {
   id: string;
   name: string;
   customDomain: { hostname: string; status: string } | null;

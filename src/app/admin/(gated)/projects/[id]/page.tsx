@@ -225,7 +225,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                   Open customer view →
                 </Link>
                 <Link
-                  href={`/portal/${project.id}/source`}
+                  href={`/portal/${project.id}/source?files=1`}
                   className="inline-flex min-h-11 items-center text-sm font-semibold text-muted hover:text-brand-deep"
                 >
                   Source tree (optional) →
