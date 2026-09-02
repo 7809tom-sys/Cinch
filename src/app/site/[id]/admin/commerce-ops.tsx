@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   addSeedCommerceProductAction,
   clearSeedProductPhotoAction,
+  lookupSeedProductUpcAction,
   saveSeedCommerceInventoryAction,
   saveSeedCommerceShippingTaxAction,
   setSeedShopOrderStatusAction,
   uploadSeedProductPhotoAction,
 } from "./actions";
+import { ProductScanIntake } from "./product-barcode-scan";
 import { ProductPhotoUploader } from "./product-photo-uploader";
 import type {
   SeedAdminCommerce,
@@ -30,6 +32,11 @@ export function SeedAdminCommerceOps({
   const [error, setError] = useState<string | null>(null);
   const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
   const [newPhotoPreview, setNewPhotoPreview] = useState("");
+  const [catalogImageUrl, setCatalogImageUrl] = useState("");
+  const [scannedUpc, setScannedUpc] = useState("");
+  const [titleValue, setTitleValue] = useState("");
+  const [detailValue, setDetailValue] = useState("");
+  const [priceValue, setPriceValue] = useState("");
 
   function onInventory(formData: FormData) {
     setError(null);
@@ -48,6 +55,12 @@ export function SeedAdminCommerceOps({
     if (newPhotoFile) {
       formData.set("image", newPhotoFile);
     }
+    if (catalogImageUrl) {
+      formData.set("catalogImageUrl", catalogImageUrl);
+    }
+    if (scannedUpc) {
+      formData.set("newUpc", scannedUpc);
+    }
     startTransition(async () => {
       const result = await addSeedCommerceProductAction(projectId, formData);
       if (!result.ok) {
@@ -55,7 +68,15 @@ export function SeedAdminCommerceOps({
         return;
       }
       setNewPhotoFile(null);
+      if (newPhotoPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(newPhotoPreview);
+      }
       setNewPhotoPreview("");
+      setCatalogImageUrl("");
+      setScannedUpc("");
+      setTitleValue("");
+      setDetailValue("");
+      setPriceValue("");
       router.refresh();
     });
   }
@@ -120,6 +141,7 @@ export function SeedAdminCommerceOps({
   }
 
   const openOrders = orders.filter((order) => order.status !== "fulfilled");
+  const previewForAdd = newPhotoPreview || catalogImageUrl;
 
   return (
     <>
@@ -137,15 +159,37 @@ export function SeedAdminCommerceOps({
           className="seed-admin-form seed-admin-add-product"
           action={(formData) => onAddProduct(formData)}
         >
-          <p className="seed-admin-span seed-admin-list-meta">
-            Add a shop item the friendly way — upload a photo, then name and
-            price. It shows in admin and on the live shop.
-          </p>
+          <ProductScanIntake
+            disabled={pending}
+            lookup={(upc) => lookupSeedProductUpcAction(projectId, upc)}
+            onResolved={async (payload) => {
+              setScannedUpc(payload.upc);
+              setTitleValue(payload.title);
+              setDetailValue(payload.detail);
+              setCatalogImageUrl(payload.imageUrl);
+              if (newPhotoPreview.startsWith("blob:")) {
+                URL.revokeObjectURL(newPhotoPreview);
+              }
+              setNewPhotoFile(null);
+              setNewPhotoPreview("");
+              if (
+                payload.suggestedPriceUsd != null &&
+                payload.suggestedPriceUsd > 0 &&
+                !priceValue
+              ) {
+                setPriceValue(String(payload.suggestedPriceUsd));
+              }
+            }}
+          />
 
           <ProductPhotoUploader
-            label="Product photo"
-            required
-            previewUrl={newPhotoPreview}
+            label={
+              catalogImageUrl
+                ? "Product photo (from scan — replace if you want)"
+                : "Product photo (or scan a barcode above)"
+            }
+            required={!catalogImageUrl}
+            previewUrl={previewForAdd}
             disabled={pending}
             onFileReady={(file, preview) => {
               if (newPhotoPreview.startsWith("blob:")) {
@@ -153,6 +197,7 @@ export function SeedAdminCommerceOps({
               }
               setNewPhotoFile(file);
               setNewPhotoPreview(preview);
+              setCatalogImageUrl("");
             }}
             onClear={() => {
               if (newPhotoPreview.startsWith("blob:")) {
@@ -160,22 +205,35 @@ export function SeedAdminCommerceOps({
               }
               setNewPhotoFile(null);
               setNewPhotoPreview("");
+              setCatalogImageUrl("");
             }}
           />
 
+          <input type="hidden" name="newUpc" value={scannedUpc} />
+          <input type="hidden" name="catalogImageUrl" value={catalogImageUrl} />
+
           <label>
             Item name
-            <input name="newTitle" type="text" required placeholder="e.g. Shine serum" />
+            <input
+              name="newTitle"
+              type="text"
+              required
+              value={titleValue}
+              onChange={(event) => setTitleValue(event.target.value)}
+              placeholder="Filled from barcode scan"
+            />
           </label>
           <label>
-            Price (USD)
+            Your price (USD)
             <input
               name="newPriceUsd"
               type="number"
               min={0}
               step={0.01}
               required
-              placeholder="28.00"
+              value={priceValue}
+              onChange={(event) => setPriceValue(event.target.value)}
+              placeholder="What you charge"
             />
           </label>
           <label>
@@ -184,14 +242,20 @@ export function SeedAdminCommerceOps({
           </label>
           <label>
             SKU (optional)
-            <input name="newSku" type="text" placeholder="Auto if blank" />
+            <input
+              name="newSku"
+              type="text"
+              placeholder={scannedUpc || "Auto if blank"}
+            />
           </label>
           <label className="seed-admin-span">
-            Short description
+            Description
             <input
               name="newDetail"
               type="text"
-              placeholder="What customers should know"
+              value={detailValue}
+              onChange={(event) => setDetailValue(event.target.value)}
+              placeholder="Filled from manufacturer data"
             />
           </label>
           <button type="submit" className="cta" disabled={pending}>

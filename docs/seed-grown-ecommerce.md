@@ -27,17 +27,30 @@ An e-commerce Seed must grow these into the **business administration panel** (n
 
 Checkout on the shop reads those Seed admin settings (rates, tax nexus, stock, **product images**) and writes orders + inventory back into the Seed source tree.
 
-Admin can **add new items with a product photo upload** (tap, camera roll, or drag-and-drop — no URL typing). Photos are stored in the Seed source tree and shown on the live shop. Card checkout is a Seed-local “recorded as paid” stub — not a Cinch platform Stripe product.
+### HARD RULE — scan to catalog
+
+When the owner adds a product on an e-commerce Seed:
+
+1. They **scan the barcode** (camera) or type the UPC / EAN.
+2. Cinch looks up manufacturer data (title, description, images).
+3. Those fields **fill automatically** into the Seed catalog.
+4. The owner only enters **their sell price** and **on-hand inventory** (then saves).
+
+Photo upload remains available as a replace/fallback when a barcode is unrecognized or the owner wants a custom shot. Card checkout is a Seed-local “recorded as paid” stub — not a Cinch platform Stripe product.
+
+Optional env: `UPC_DATABASE_KEY` (UPCitemdb). Without it, the free trial lookup endpoint is used.
 
 ## What Cinch may do
 
 - Detect that the brief asks for shop.
 - Queue Seed build tasks and persist shop + admin commerce files into Seed source when the build applies them.
 - Mirror Seed shop / admin copy on the live routes so visitors and owners use what the Seed grew.
+- Provide barcode → manufacturer catalog lookup so Seed admin can fill title, description, and images.
 
 ## What Cinch must not do
 
 - Ship a standalone “Cinch e-commerce product” (platform Stripe checkout, platform cart APIs, platform shipping/tax engines) as the customer’s shop.
 - Treat shop, shipping, tax, or inventory as something only the cloud agent hand-builds outside the Seed task loop.
+- Make owners type manufacturer copy or image URLs by hand when a barcode scan can fill them.
 
 The Seed does the shop and the commerce admin. Cinch hosts what the Seed grew.
