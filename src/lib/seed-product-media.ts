@@ -71,6 +71,59 @@ export async function storeSeedProductPhoto(input: {
   return { ok: true, url, path };
 }
 
+/**
+ * Pull a manufacturer catalog image URL into Seed product media storage.
+ */
+export async function storeSeedProductPhotoFromUrl(input: {
+  projectId: string;
+  productId: string;
+  imageUrl: string;
+}): Promise<{ ok: true; url: string; path: string } | { ok: false; error: string }> {
+  const raw = input.imageUrl.trim();
+  if (!/^https?:\/\//i.test(raw)) {
+    return { ok: false, error: "Manufacturer image URL is not valid." };
+  }
+
+  try {
+    const response = await fetch(raw, {
+      cache: "no-store",
+      headers: { Accept: "image/*,*/*" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) {
+      return { ok: false, error: "Could not download the manufacturer image." };
+    }
+    const contentType = (response.headers.get("content-type") || "").split(";")[0]!.trim().toLowerCase();
+    const mime = ALLOWED.has(contentType)
+      ? contentType
+      : raw.toLowerCase().includes(".png")
+        ? "image/png"
+        : raw.toLowerCase().includes(".webp")
+          ? "image/webp"
+          : "image/jpeg";
+    if (!ALLOWED.has(mime)) {
+      return { ok: false, error: "Manufacturer image must be JPG, PNG, or WebP." };
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length <= 0 || buffer.length > MAX_BYTES) {
+      return {
+        ok: false,
+        error: "Manufacturer image is missing or too large (keep under ~2 MB).",
+      };
+    }
+    const blob = new Blob([new Uint8Array(buffer)], { type: mime });
+    return storeSeedProductPhoto({
+      projectId: input.projectId,
+      productId: input.productId,
+      file: blob,
+      fileName: `upc-${input.productId}.${extForMime(mime)}`,
+    });
+  } catch {
+    return { ok: false, error: "Could not download the manufacturer image." };
+  }
+}
+
 export async function readSeedProductPhoto(input: {
   projectId: string;
   filename: string;

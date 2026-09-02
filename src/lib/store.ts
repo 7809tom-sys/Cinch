@@ -665,7 +665,7 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     });
     backlog.splice(7, 0, {
       title: "Grow commerce ops into Seed admin",
-      detail: `HARD RULE: inventory, UPS parcel shipping, LTL freight, and sales tax live in the Seed business admin (content/admin.copy.json) — not a Cinch platform module. Wire stock levels, ship-from ZIP, parcel vs LTL modes, nexus tax, and open orders into /admin. Reuse modulars first. ${modularsFirst}`,
+      detail: `HARD RULE: inventory, UPS parcel shipping, LTL freight, and sales tax live in the Seed business admin (content/admin.copy.json) — not a Cinch platform module. HARD RULE: adding products is scan-first — barcode/UPC pulls manufacturer title, description, and images; the owner only enters sell price and on-hand qty. Wire stock levels, ship-from ZIP, parcel vs LTL modes, nexus tax, and open orders into /admin. Reuse modulars first. ${modularsFirst}`,
       requiredSkills: ["frontend", "ui", "backend"],
       minSkillLevel: 3,
     });

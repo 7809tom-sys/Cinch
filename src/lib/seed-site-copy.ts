@@ -1259,6 +1259,43 @@ button {
   color: var(--muted-strong);
 }
 
+.seed-scan-intake {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.35rem;
+}
+
+.seed-scan-camera {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.seed-scan-viewport {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.5rem;
+  background: #0b1210;
+}
+
+.seed-scan-video {
+  width: 100%;
+  min-height: 12rem;
+  max-height: 18rem;
+  object-fit: cover;
+  border-radius: 0.35rem;
+  background: #000;
+}
+
+.seed-scan-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e8efe9;
+}
+
 .seed-shop-photo-empty {
   display: grid;
   place-items: center;
@@ -1701,9 +1738,9 @@ export function seedCommerceAdminBoard(
     eyebrow: "Commerce",
     headline: "Shop operations",
     support:
-      "Inventory with photo upload, UPS parcel and LTL shipping, sales tax, and fulfillment — grown into this Seed’s admin, not a separate Cinch product.",
+      "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
     inventoryEyebrow: "Stock",
-    inventoryHeadline: "Inventory & product photos",
+    inventoryHeadline: "Inventory · scan to add",
     shippingEyebrow: "Fulfillment",
     shippingHeadline: "Shipping",
     taxEyebrow: "Compliance",

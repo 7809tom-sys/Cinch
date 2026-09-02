@@ -7,7 +7,8 @@ import {
   getCurrentCustomer,
 } from "@/lib/customer-auth";
 import { getMasterSession, isMasterEmail } from "@/lib/master-auth";
-import { storeSeedProductPhoto } from "@/lib/seed-product-media";
+import { storeSeedProductPhoto, storeSeedProductPhotoFromUrl } from "@/lib/seed-product-media";
+import { lookupSeedProductByUpc } from "@/lib/seed-upc-catalog";
 import {
   buildSeedAdminPreview,
   buildSeedShopPreview,
@@ -202,6 +203,8 @@ export async function addSeedCommerceProductAction(
   const priceUsd = Number(formData.get("newPriceUsd"));
   const onHand = Number(formData.get("newOnHand"));
   const skuRaw = String(formData.get("newSku") ?? "").trim();
+  const upc = String(formData.get("newUpc") ?? "").replace(/\D/g, "");
+  const catalogImageUrl = String(formData.get("catalogImageUrl") ?? "").trim();
   const image = formData.get("image");
 
   if (!title || !Number.isFinite(priceUsd) || priceUsd < 0) {
@@ -210,25 +213,42 @@ export async function addSeedCommerceProductAction(
       error: "Title and a valid price are required to add an item.",
     };
   }
-  if (!(image instanceof File) || image.size <= 0) {
+
+  const productId = `prod-${randomUUID().slice(0, 8)}`;
+  let imageUrl = "";
+
+  if (image instanceof File && image.size > 0) {
+    const stored = await storeSeedProductPhoto({
+      projectId,
+      productId,
+      file: image,
+      fileName: image.name,
+    });
+    if (!stored.ok) {
+      return { ok: false as const, error: stored.error };
+    }
+    imageUrl = stored.url;
+  } else if (catalogImageUrl) {
+    const stored = await storeSeedProductPhotoFromUrl({
+      projectId,
+      productId,
+      imageUrl: catalogImageUrl,
+    });
+    if (!stored.ok) {
+      return { ok: false as const, error: stored.error };
+    }
+    imageUrl = stored.url;
+  } else {
     return {
       ok: false as const,
-      error: "Add a product photo — tap Upload photo or drop an image.",
+      error:
+        "Scan a barcode for manufacturer images, or upload a product photo.",
     };
   }
 
-  const productId = `prod-${randomUUID().slice(0, 8)}`;
-  const stored = await storeSeedProductPhoto({
-    projectId,
-    productId,
-    file: image,
-    fileName: image.name,
-  });
-  if (!stored.ok) {
-    return { ok: false as const, error: stored.error };
-  }
-
-  const sku = skuRaw || `SKU-${productId.replace(/^prod-/, "").toUpperCase()}`;
+  const sku =
+    skuRaw ||
+    (upc ? upc : `SKU-${productId.replace(/^prod-/, "").toUpperCase()}`);
   const stock = Number.isFinite(onHand) ? Math.max(0, Math.floor(onHand)) : 0;
 
   board.commerce.inventory = [
@@ -240,7 +260,7 @@ export async function addSeedCommerceProductAction(
       reorderAt: Math.max(2, Math.floor(stock / 5) || 2),
       shipClass: "parcel",
       weightLb: 1,
-      imageUrl: stored.url,
+      imageUrl,
     },
     ...board.commerce.inventory,
   ];
@@ -260,7 +280,7 @@ export async function addSeedCommerceProductAction(
         stockQty: stock,
         weightLb: 1,
         shipClass: "parcel",
-        imageUrl: stored.url,
+        imageUrl,
       },
       ...shop.products,
     ];
@@ -270,6 +290,17 @@ export async function addSeedCommerceProductAction(
 
   revalidatePath(`/site/${projectId}/admin`);
   return { ok: true as const };
+}
+
+/** Scan / type a barcode → manufacturer title, description, images. */
+export async function lookupSeedProductUpcAction(
+  projectId: string,
+  rawUpc: string,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  return lookupSeedProductByUpc(rawUpc);
 }
 
 /** Replace a product photo from the admin uploader (immediate save). */
