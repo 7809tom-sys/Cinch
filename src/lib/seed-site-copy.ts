@@ -1130,6 +1130,148 @@ button {
   }
 }
 
+.seed-admin-add-product {
+  margin-bottom: 0.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--line-dark);
+}
+
+/* Product photo upload — tap / drop / preview (no URL fields) */
+.seed-photo-uploader {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.seed-photo-label {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted-strong);
+}
+
+.seed-photo-drop {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 11rem;
+  padding: 0.75rem;
+  border: 1.5px dashed color-mix(in srgb, var(--ink) 28%, transparent);
+  border-radius: 0.55rem;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--foam) 88%, #fff), #fff);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+  overflow: hidden;
+}
+
+.seed-photo-drop:hover,
+.seed-photo-drop:focus-visible {
+  border-color: color-mix(in srgb, var(--ink) 55%, transparent);
+  outline: none;
+}
+
+.seed-photo-drop.is-dragging {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--foam) 70%, #dbeafe);
+  transform: scale(1.01);
+}
+
+.seed-photo-drop.has-photo {
+  border-style: solid;
+  padding: 0;
+  min-height: 12rem;
+}
+
+.seed-photo-preview {
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+  object-fit: cover;
+  display: block;
+  animation: seed-rise 420ms ease both;
+}
+
+.seed-photo-empty {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  max-width: 18rem;
+}
+
+.seed-photo-empty-title {
+  font-weight: 750;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.seed-photo-empty-hint {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--muted-strong);
+}
+
+.seed-photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.seed-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.seed-photo-btn {
+  appearance: none;
+  border: 1px solid var(--line-dark);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.seed-photo-btn:hover:not(:disabled),
+.seed-photo-btn:focus-visible:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.seed-photo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.seed-photo-btn-muted {
+  background: transparent;
+  font-weight: 550;
+  color: var(--muted-strong);
+}
+
+.seed-shop-photo-empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 0.35rem;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--foam) 80%, #cbd5e1), var(--foam));
+  color: var(--muted-strong);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 /* —— Seed-grown shop / e-commerce —— */
 .seed-shop {
   min-height: 100dvh;
@@ -1510,7 +1652,7 @@ export type SeedInventoryRow = {
   reorderAt: number;
   shipClass: "parcel" | "ltl";
   weightLb: number;
-  /** Product photo URL entered in Seed admin (shown in the shop). */
+  /** Product photo served from Seed media after admin upload (shown in the shop). */
   imageUrl: string;
 };
 
@@ -1559,9 +1701,9 @@ export function seedCommerceAdminBoard(
     eyebrow: "Commerce",
     headline: "Shop operations",
     support:
-      "Inventory (with product images), UPS parcel and LTL shipping, sales tax, and fulfillment — grown into this Seed’s admin, not a separate Cinch product.",
+      "Inventory with photo upload, UPS parcel and LTL shipping, sales tax, and fulfillment — grown into this Seed’s admin, not a separate Cinch product.",
     inventoryEyebrow: "Stock",
-    inventoryHeadline: "Inventory & product images",
+    inventoryHeadline: "Inventory & product photos",
     shippingEyebrow: "Fulfillment",
     shippingHeadline: "Shipping",
     taxEyebrow: "Compliance",
@@ -2097,6 +2239,7 @@ export function seedShopPageSource(input: SeedShopCopy): string {
 ${
   product.imageUrl
     ? `          <img className="seed-shop-photo" src="${esc(product.imageUrl)}" alt="${esc(product.title)}" />\n`
+    : `          <div className="seed-shop-photo-empty" aria-hidden>Photo coming soon</div>\n`
     : ""
 }          <h3>${esc(product.title)}</h3>
           <p>${esc(product.detail)}</p>
