@@ -7,6 +7,7 @@ import {
   getCurrentCustomer,
 } from "@/lib/customer-auth";
 import { getMasterSession, isMasterEmail } from "@/lib/master-auth";
+import { storeSeedProductPhoto } from "@/lib/seed-product-media";
 import {
   buildSeedAdminPreview,
   buildSeedShopPreview,
@@ -138,9 +139,6 @@ export async function saveSeedCommerceInventoryAction(
     const reorderAt = Number(formData.get(`reorderAt-${row.productId}`));
     const weightLb = Number(formData.get(`weightLb-${row.productId}`));
     const title = String(formData.get(`title-${row.productId}`) ?? row.title).trim();
-    const imageUrl = String(
-      formData.get(`imageUrl-${row.productId}`) ?? row.imageUrl ?? "",
-    ).trim();
     const shipClassRaw = String(
       formData.get(`shipClass-${row.productId}`) ?? row.shipClass,
     );
@@ -148,7 +146,8 @@ export async function saveSeedCommerceInventoryAction(
     return {
       ...row,
       title: title || row.title,
-      imageUrl,
+      // Photos are uploaded via ProductPhotoUploader — keep stored media URL.
+      imageUrl: row.imageUrl || "",
       onHand: Number.isFinite(onHand) ? Math.max(0, Math.floor(onHand)) : row.onHand,
       reorderAt: Number.isFinite(reorderAt)
         ? Math.max(0, Math.floor(reorderAt))
@@ -200,18 +199,35 @@ export async function addSeedCommerceProductAction(
 
   const title = String(formData.get("newTitle") ?? "").trim();
   const detail = String(formData.get("newDetail") ?? "").trim();
-  const imageUrl = String(formData.get("newImageUrl") ?? "").trim();
   const priceUsd = Number(formData.get("newPriceUsd"));
   const onHand = Number(formData.get("newOnHand"));
   const skuRaw = String(formData.get("newSku") ?? "").trim();
+  const image = formData.get("image");
+
   if (!title || !Number.isFinite(priceUsd) || priceUsd < 0) {
     return {
       ok: false as const,
       error: "Title and a valid price are required to add an item.",
     };
   }
+  if (!(image instanceof File) || image.size <= 0) {
+    return {
+      ok: false as const,
+      error: "Add a product photo — tap Upload photo or drop an image.",
+    };
+  }
 
   const productId = `prod-${randomUUID().slice(0, 8)}`;
+  const stored = await storeSeedProductPhoto({
+    projectId,
+    productId,
+    file: image,
+    fileName: image.name,
+  });
+  if (!stored.ok) {
+    return { ok: false as const, error: stored.error };
+  }
+
   const sku = skuRaw || `SKU-${productId.replace(/^prod-/, "").toUpperCase()}`;
   const stock = Number.isFinite(onHand) ? Math.max(0, Math.floor(onHand)) : 0;
 
@@ -224,7 +240,7 @@ export async function addSeedCommerceProductAction(
       reorderAt: Math.max(2, Math.floor(stock / 5) || 2),
       shipClass: "parcel",
       weightLb: 1,
-      imageUrl,
+      imageUrl: stored.url,
     },
     ...board.commerce.inventory,
   ];
@@ -244,10 +260,97 @@ export async function addSeedCommerceProductAction(
         stockQty: stock,
         weightLb: 1,
         shipClass: "parcel",
-        imageUrl,
+        imageUrl: stored.url,
       },
       ...shop.products,
     ];
+    await saveSeedShopCopy(projectId, shop);
+    revalidatePath(`/site/${projectId}/shop`);
+  }
+
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+/** Replace a product photo from the admin uploader (immediate save). */
+export async function uploadSeedProductPhotoAction(
+  projectId: string,
+  productId: string,
+  formData: FormData,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const board = await loadBoard(projectId);
+  if (!board?.commerce) {
+    return { ok: false as const, error: "Commerce ops are not in this Seed." };
+  }
+
+  const image = formData.get("image");
+  if (!(image instanceof File) || image.size <= 0) {
+    return { ok: false as const, error: "Choose a photo to upload." };
+  }
+
+  const row = board.commerce.inventory.find((item) => item.productId === productId);
+  if (!row) {
+    return { ok: false as const, error: "Product not found." };
+  }
+
+  const stored = await storeSeedProductPhoto({
+    projectId,
+    productId,
+    file: image,
+    fileName: image.name,
+  });
+  if (!stored.ok) {
+    return { ok: false as const, error: stored.error };
+  }
+
+  row.imageUrl = stored.url;
+  await saveSeedAdminCopy(projectId, board);
+
+  const shopPreview = await buildSeedShopPreview(access.project);
+  if (shopPreview) {
+    const { css: _css, ...shop } = shopPreview;
+    shop.products = shop.products.map((product) =>
+      product.id === productId
+        ? { ...product, imageUrl: stored.url }
+        : product,
+    );
+    await saveSeedShopCopy(projectId, shop);
+    revalidatePath(`/site/${projectId}/shop`);
+  }
+
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const, url: stored.url };
+}
+
+export async function clearSeedProductPhotoAction(
+  projectId: string,
+  productId: string,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const board = await loadBoard(projectId);
+  if (!board?.commerce) {
+    return { ok: false as const, error: "Commerce ops are not in this Seed." };
+  }
+
+  const row = board.commerce.inventory.find((item) => item.productId === productId);
+  if (!row) {
+    return { ok: false as const, error: "Product not found." };
+  }
+
+  row.imageUrl = "";
+  await saveSeedAdminCopy(projectId, board);
+
+  const shopPreview = await buildSeedShopPreview(access.project);
+  if (shopPreview) {
+    const { css: _css, ...shop } = shopPreview;
+    shop.products = shop.products.map((product) =>
+      product.id === productId ? { ...product, imageUrl: "" } : product,
+    );
     await saveSeedShopCopy(projectId, shop);
     revalidatePath(`/site/${projectId}/shop`);
   }

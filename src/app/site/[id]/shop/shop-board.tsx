@@ -117,7 +117,11 @@ export function SeedShopBoard({
                 src={product.imageUrl}
                 alt={product.title}
               />
-            ) : null}
+            ) : (
+              <div className="seed-shop-photo-empty" aria-hidden>
+                Photo coming soon
+              </div>
+            )}
             <h3>{product.title}</h3>
             <p>{product.detail}</p>
             <p className="seed-shop-price">${product.priceUsd.toFixed(2)}</p>

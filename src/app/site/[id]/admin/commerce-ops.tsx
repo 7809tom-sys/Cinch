@@ -4,10 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   addSeedCommerceProductAction,
+  clearSeedProductPhotoAction,
   saveSeedCommerceInventoryAction,
   saveSeedCommerceShippingTaxAction,
   setSeedShopOrderStatusAction,
+  uploadSeedProductPhotoAction,
 } from "./actions";
+import { ProductPhotoUploader } from "./product-photo-uploader";
 import type {
   SeedAdminCommerce,
   SeedShopOrder,
@@ -25,6 +28,8 @@ export function SeedAdminCommerceOps({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [newPhotoFile, setNewPhotoFile] = useState<File | null>(null);
+  const [newPhotoPreview, setNewPhotoPreview] = useState("");
 
   function onInventory(formData: FormData) {
     setError(null);
@@ -40,12 +45,17 @@ export function SeedAdminCommerceOps({
 
   function onAddProduct(formData: FormData) {
     setError(null);
+    if (newPhotoFile) {
+      formData.set("image", newPhotoFile);
+    }
     startTransition(async () => {
       const result = await addSeedCommerceProductAction(projectId, formData);
       if (!result.ok) {
         setError(result.error);
         return;
       }
+      setNewPhotoFile(null);
+      setNewPhotoPreview("");
       router.refresh();
     });
   }
@@ -81,6 +91,34 @@ export function SeedAdminCommerceOps({
     });
   }
 
+  async function uploadExistingPhoto(productId: string, file: File) {
+    const formData = new FormData();
+    formData.set("image", file);
+    const result = await uploadSeedProductPhotoAction(
+      projectId,
+      productId,
+      formData,
+    );
+    if (!result.ok) {
+      setError(result.error);
+      return null;
+    }
+    router.refresh();
+    return result.url;
+  }
+
+  function clearExistingPhoto(productId: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await clearSeedProductPhotoAction(projectId, productId);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   const openOrders = orders.filter((order) => order.status !== "fulfilled");
 
   return (
@@ -94,17 +132,40 @@ export function SeedAdminCommerceOps({
       <section className="seed-admin-section" id="inventory">
         <p className="seed-eyebrow">{commerce.inventoryEyebrow}</p>
         <h2>{commerce.inventoryHeadline}</h2>
+
         <form
-          className="seed-admin-form"
+          className="seed-admin-form seed-admin-add-product"
           action={(formData) => onAddProduct(formData)}
         >
           <p className="seed-admin-span seed-admin-list-meta">
-            Enter a new shop item with an image URL — it appears in admin and
-            on the live shop.
+            Add a shop item the friendly way — upload a photo, then name and
+            price. It shows in admin and on the live shop.
           </p>
+
+          <ProductPhotoUploader
+            label="Product photo"
+            required
+            previewUrl={newPhotoPreview}
+            disabled={pending}
+            onFileReady={(file, preview) => {
+              if (newPhotoPreview.startsWith("blob:")) {
+                URL.revokeObjectURL(newPhotoPreview);
+              }
+              setNewPhotoFile(file);
+              setNewPhotoPreview(preview);
+            }}
+            onClear={() => {
+              if (newPhotoPreview.startsWith("blob:")) {
+                URL.revokeObjectURL(newPhotoPreview);
+              }
+              setNewPhotoFile(null);
+              setNewPhotoPreview("");
+            }}
+          />
+
           <label>
             Item name
-            <input name="newTitle" type="text" required />
+            <input name="newTitle" type="text" required placeholder="e.g. Shine serum" />
           </label>
           <label>
             Price (USD)
@@ -114,6 +175,7 @@ export function SeedAdminCommerceOps({
               min={0}
               step={0.01}
               required
+              placeholder="28.00"
             />
           </label>
           <label>
@@ -122,45 +184,52 @@ export function SeedAdminCommerceOps({
           </label>
           <label>
             SKU (optional)
-            <input name="newSku" type="text" />
+            <input name="newSku" type="text" placeholder="Auto if blank" />
           </label>
           <label className="seed-admin-span">
-            Detail
-            <input name="newDetail" type="text" placeholder="Short description" />
-          </label>
-          <label className="seed-admin-span">
-            Image URL
+            Short description
             <input
-              name="newImageUrl"
-              type="url"
-              placeholder="https://…"
-              required
+              name="newDetail"
+              type="text"
+              placeholder="What customers should know"
             />
           </label>
           <button type="submit" className="cta" disabled={pending}>
-            {pending ? "Adding…" : "Add item with image"}
+            {pending ? "Adding…" : "Add product"}
           </button>
         </form>
 
         <form
           className="seed-admin-form"
-          style={{ marginTop: "1.25rem" }}
+          style={{ marginTop: "1.5rem" }}
           action={(formData) => onInventory(formData)}
         >
+          {commerce.inventory.length === 0 ? (
+            <p className="seed-admin-empty seed-admin-span">
+              No products yet — add your first item above.
+            </p>
+          ) : null}
           {commerce.inventory.map((row) => (
-            <fieldset key={row.productId} className="seed-admin-span seed-admin-inv-row">
+            <fieldset
+              key={row.productId}
+              className="seed-admin-span seed-admin-inv-row"
+            >
               <legend>
                 {row.title} · {row.sku}
               </legend>
               <input type="hidden" name="productId" value={row.productId} />
-              {row.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  className="seed-shop-photo seed-admin-span"
-                  src={row.imageUrl}
-                  alt={row.title}
-                />
-              ) : null}
+
+              <ProductPhotoUploader
+                label="Product photo"
+                previewUrl={row.imageUrl}
+                disabled={pending}
+                onFileReady={async (file) => {
+                  setError(null);
+                  await uploadExistingPhoto(row.productId, file);
+                }}
+                onClear={() => clearExistingPhoto(row.productId)}
+              />
+
               <label className="seed-admin-span">
                 Title
                 <input
@@ -168,15 +237,6 @@ export function SeedAdminCommerceOps({
                   type="text"
                   defaultValue={row.title}
                   required
-                />
-              </label>
-              <label className="seed-admin-span">
-                Image URL
-                <input
-                  name={`imageUrl-${row.productId}`}
-                  type="url"
-                  defaultValue={row.imageUrl}
-                  placeholder="https://…"
                 />
               </label>
               <label>
@@ -222,9 +282,11 @@ export function SeedAdminCommerceOps({
               </label>
             </fieldset>
           ))}
-          <button type="submit" className="cta" disabled={pending}>
-            {pending ? "Saving…" : "Save inventory"}
-          </button>
+          {commerce.inventory.length > 0 ? (
+            <button type="submit" className="cta" disabled={pending}>
+              {pending ? "Saving…" : "Save inventory"}
+            </button>
+          ) : null}
         </form>
       </section>
 
@@ -274,7 +336,10 @@ export function SeedAdminCommerceOps({
           </label>
           <input type="hidden" name="taxEnabled" value="1" />
           {commerce.shippingModes.map((mode) => (
-            <fieldset key={mode.id} className="seed-admin-span seed-admin-inv-row">
+            <fieldset
+              key={mode.id}
+              className="seed-admin-span seed-admin-inv-row"
+            >
               <legend>
                 {mode.label} · {mode.kind.toUpperCase()} · {mode.carrier}
               </legend>
@@ -325,8 +390,9 @@ export function SeedAdminCommerceOps({
                   </p>
                   <p className="seed-admin-list-meta">
                     {order.shippingLabel} ({order.shippingKind}) · tax $
-                    {order.taxUsd.toFixed(2)} · ship ${order.shippingUsd.toFixed(2)}{" "}
-                    · {order.shipToState} {order.shipToZip} · {order.status}
+                    {order.taxUsd.toFixed(2)} · ship $
+                    {order.shippingUsd.toFixed(2)} · {order.shipToState}{" "}
+                    {order.shipToZip} · {order.status}
                   </p>
                 </div>
                 <div className="seed-admin-list-actions">
