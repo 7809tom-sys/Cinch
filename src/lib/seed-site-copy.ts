@@ -2240,7 +2240,6 @@ ${
   product.imageUrl
     ? `          <img className="seed-shop-photo" src="${esc(product.imageUrl)}" alt="${esc(product.title)}" />\n`
     : `          <div className="seed-shop-photo-empty" aria-hidden>Photo coming soon</div>\n`
-    : ""
 }          <h3>${esc(product.title)}</h3>
           <p>${esc(product.detail)}</p>
           <p className="seed-shop-price">$${product.priceUsd.toFixed(2)}</p>
