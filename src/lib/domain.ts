@@ -59,3 +59,9 @@ export function publicWebsiteUrl(project: {
 export function plannedSeedHostOrigin(slug: string): string {
   return seedHostOrigin(slug);
 }
+
+/** Absolute URL for a marketplace library listing (share with contacts). */
+export function libraryListingShareUrl(catalogSiteId: string): string {
+  const id = catalogSiteId.trim();
+  return `${CINCH_SEED_ORIGIN}/browse?share=${encodeURIComponent(id)}`;
+}

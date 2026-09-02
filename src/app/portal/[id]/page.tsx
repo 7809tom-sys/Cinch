@@ -140,9 +140,11 @@ export default async function PortalProjectPage({ params }: PageProps) {
             />
             <PortalCompleteLaunch
               projectId={project.id}
+              projectName={project.name}
               websiteUrl={websiteUrl}
               sitePublished={Boolean(project.sitePublishedAt)}
               listedInLibrary={Boolean(project.marketplaceListingId)}
+              marketplaceListingId={project.marketplaceListingId}
               developerRatePct={developerRatePct}
               buildComplete={buildComplete}
               adminHref={

@@ -110,6 +110,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             projectName={project.name}
             websiteUrl={websiteUrl}
             listedInLibrary={listedInLibrary}
+            marketplaceListingId={project.marketplaceListingId}
             invitedAgentIds={project.invitedAgentIds}
             availableAgentIds={agents
               .filter((agent) => !agent.isProjectManager)
@@ -185,6 +186,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 websiteUrl={websiteUrl}
                 projectName={project.name}
                 listedInLibrary={listedInLibrary}
+                marketplaceListingId={project.marketplaceListingId}
                 showEmbed
                 tone="on-dark"
               />

@@ -6,6 +6,8 @@ import {
   critiqueSiteAction,
   purchaseCatalogSiteAction,
 } from "@/app/portal/actions";
+import { ShareWithContactsButton } from "@/components/share-with-contacts";
+import { libraryListingShareUrl } from "@/lib/domain";
 import type { SiteCritique } from "@/lib/site-critique";
 import { normalizePreviewUrl } from "@/lib/site-url";
 
@@ -31,10 +33,13 @@ export function SiteDropZone({
   sites,
   defaultEmail,
   defaultName,
+  initialShareId = null,
 }: {
   sites: CatalogSite[];
   defaultEmail?: string;
   defaultName?: string;
+  /** From /browse?share= — opens that library listing for the visitor. */
+  initialShareId?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -55,6 +60,7 @@ export function SiteDropZone({
     estimateLabel: string | null;
   } | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+  const shareBootstrapped = useRef(false);
 
   function runCritique(normalized: string, catalogId: string | null) {
     setPreviewUrl(normalized);
@@ -86,6 +92,20 @@ export function SiteDropZone({
     setUrlInput(normalized);
     runCritique(normalized, catalogId);
   }
+
+  useEffect(() => {
+    if (shareBootstrapped.current || !initialShareId) return;
+    const shared = sites.find((site) => site.id === initialShareId);
+    if (!shared) return;
+    shareBootstrapped.current = true;
+    applyUrl(shared.previewUrl, shared.id);
+    // Scroll the matching library row into view after layout.
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`library-site-${shared.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [initialShareId, sites]);
 
   useEffect(() => {
     function onDragOver(event: DragEvent) {
@@ -380,7 +400,15 @@ export function SiteDropZone({
         </h2>
         <ul className="mt-8 divide-y divide-brand/10 border-t border-brand/10">
           {sites.map((site) => (
-            <li key={site.id} className="py-6">
+            <li
+              key={site.id}
+              id={`library-site-${site.id}`}
+              className={`py-6 ${
+                selectedCatalogId === site.id
+                  ? "rounded-md bg-mist/35 px-3 sm:px-4"
+                  : ""
+              }`}
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p
@@ -421,6 +449,12 @@ export function SiteDropZone({
                   >
                     Critique & buy
                   </button>
+                  <ShareWithContactsButton
+                    url={libraryListingShareUrl(site.id)}
+                    title={site.title}
+                    text={`I found “${site.title}” in the Cinch Seed library — take a look:`}
+                    label="Share with contacts"
+                  />
                 </div>
               </div>
             </li>

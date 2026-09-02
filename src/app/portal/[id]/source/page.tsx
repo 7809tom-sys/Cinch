@@ -98,9 +98,11 @@ export default async function PortalSourcePage({
           </p>
           <PortalCompleteLaunch
             projectId={project.id}
+            projectName={project.name}
             websiteUrl={websiteUrl}
             sitePublished={Boolean(project.sitePublishedAt)}
             listedInLibrary={Boolean(project.marketplaceListingId)}
+            marketplaceListingId={project.marketplaceListingId}
             developerRatePct={developerRatePct}
             buildComplete={buildComplete}
             adminHref={businessAdminHref}

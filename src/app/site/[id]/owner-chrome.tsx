@@ -6,19 +6,25 @@ import {
   portalListInLibraryAction,
   portalPublishWebsiteAction,
 } from "@/app/portal/actions";
+import { ShareWithContactsButton } from "@/components/share-with-contacts";
+import { CINCH_SEED_ORIGIN, libraryListingShareUrl } from "@/lib/domain";
 
 export function SiteOwnerChrome({
   projectId,
+  projectName,
   sitePublished,
   listedInLibrary,
+  marketplaceListingId = null,
   adminHref,
   portalHref,
   editHref,
   showPublishControls,
 }: {
   projectId: string;
+  projectName: string;
   sitePublished: boolean;
   listedInLibrary: boolean;
+  marketplaceListingId?: string | null;
   adminHref: string | null;
   portalHref: string | null;
   editHref: string | null;
@@ -30,6 +36,7 @@ export function SiteOwnerChrome({
   const [error, setError] = useState<string | null>(null);
   const [published, setPublished] = useState(sitePublished);
   const [listed, setListed] = useState(listedInLibrary);
+  const [listingId, setListingId] = useState(marketplaceListingId);
 
   function run(action: "publish" | "library") {
     setError(null);
@@ -50,6 +57,7 @@ export function SiteOwnerChrome({
           }
           setPublished(true);
           setListed(true);
+          if (result.listingId) setListingId(result.listingId);
         }
         router.refresh();
       } catch (err) {
@@ -57,6 +65,12 @@ export function SiteOwnerChrome({
       }
     });
   }
+
+  const shareUrl = listed
+    ? listingId
+      ? libraryListingShareUrl(listingId)
+      : `${CINCH_SEED_ORIGIN}/browse`
+    : null;
 
   return (
     <div className="seed-owner-chrome" role="region" aria-label="Seed owner controls">
@@ -87,6 +101,16 @@ export function SiteOwnerChrome({
                     : "Library"}
               </button>
             </>
+          ) : null}
+          {shareUrl ? (
+            <ShareWithContactsButton
+              url={shareUrl}
+              title={projectName}
+              text={`Check out “${projectName}” in the Cinch Seed library:`}
+              label="Share"
+              compact
+              className="seed-owner-btn"
+            />
           ) : null}
           {editHref ? (
             <a className="seed-owner-btn" href={editHref} target="_top">
@@ -156,6 +180,11 @@ const OWNER_CHROME_CSS = `
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  align-items: center;
+}
+
+.seed-owner-chrome-actions > div {
+  display: contents;
 }
 
 .seed-owner-btn {
