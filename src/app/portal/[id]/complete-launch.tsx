@@ -7,12 +7,16 @@ import {
   portalListInLibraryAction,
   portalPublishWebsiteAction,
 } from "../actions";
+import { ShareWithContactsButton } from "@/components/share-with-contacts";
+import { CINCH_SEED_ORIGIN, libraryListingShareUrl } from "@/lib/domain";
 
 export function PortalCompleteLaunch({
   projectId,
+  projectName,
   websiteUrl,
   sitePublished,
   listedInLibrary,
+  marketplaceListingId = null,
   developerRatePct,
   buildComplete = true,
   adminHref = null,
@@ -20,9 +24,11 @@ export function PortalCompleteLaunch({
   editHref = null,
 }: {
   projectId: string;
+  projectName: string;
   websiteUrl: string;
   sitePublished: boolean;
   listedInLibrary: boolean;
+  marketplaceListingId?: string | null;
   developerRatePct: number;
   /** When false, still show Visit/Publish/Library — just hide optional growth. */
   buildComplete?: boolean;
@@ -36,6 +42,7 @@ export function PortalCompleteLaunch({
   const [error, setError] = useState<string | null>(null);
   const [published, setPublished] = useState(sitePublished);
   const [listed, setListed] = useState(listedInLibrary);
+  const [listingId, setListingId] = useState(marketplaceListingId);
   const [showGrow, setShowGrow] = useState(false);
 
   function run(action: "publish" | "library" | "grow") {
@@ -57,6 +64,7 @@ export function PortalCompleteLaunch({
           }
           setPublished(true);
           setListed(true);
+          if (result.listingId) setListingId(result.listingId);
         } else {
           const result = await portalContinueGrowthAction(projectId);
           if (!result.ok) {
@@ -70,6 +78,12 @@ export function PortalCompleteLaunch({
       }
     });
   }
+
+  const shareUrl = listed
+    ? listingId
+      ? libraryListingShareUrl(listingId)
+      : `${CINCH_SEED_ORIGIN}/browse`
+    : null;
 
   return (
     <div className="mt-4 min-w-0 space-y-4 border-t border-brand/10 pt-4">
@@ -141,6 +155,15 @@ export function PortalCompleteLaunch({
           </a>
         ) : null}
       </div>
+
+      {shareUrl ? (
+        <ShareWithContactsButton
+          url={shareUrl}
+          title={projectName}
+          text={`Check out “${projectName}” in the Cinch Seed library:`}
+          label="Share with contacts"
+        />
+      ) : null}
 
       <p className="text-xs leading-relaxed text-muted [overflow-wrap:anywhere]">
         Live URL:{" "}

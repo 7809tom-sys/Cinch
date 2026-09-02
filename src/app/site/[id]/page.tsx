@@ -187,8 +187,10 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
       {showOwnerChrome ? (
         <SiteOwnerChrome
           projectId={project.id}
+          projectName={project.name}
           sitePublished={Boolean(project.sitePublishedAt)}
           listedInLibrary={Boolean(project.marketplaceListingId)}
+          marketplaceListingId={project.marketplaceListingId}
           showPublishControls={isOwner || isMaster}
           portalHref={isOwner || isMaster ? `/portal/${project.id}` : null}
           editHref={isOwner || isMaster ? `/portal/${project.id}/edit` : null}

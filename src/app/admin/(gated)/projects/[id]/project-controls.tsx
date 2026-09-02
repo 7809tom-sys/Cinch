@@ -19,6 +19,7 @@ export function ProjectControls({
   projectName,
   websiteUrl,
   listedInLibrary,
+  marketplaceListingId = null,
   invitedAgentIds,
   availableAgentIds,
   tasks,
@@ -27,6 +28,7 @@ export function ProjectControls({
   projectName: string;
   websiteUrl: string;
   listedInLibrary: boolean;
+  marketplaceListingId?: string | null;
   invitedAgentIds: string[];
   availableAgentIds: Array<{
     id: string;
@@ -138,6 +140,7 @@ export function ProjectControls({
               websiteUrl={websiteUrl}
               projectName={projectName}
               listedInLibrary={listedInLibrary}
+              marketplaceListingId={marketplaceListingId}
               showEmbed
             />
           ) : null}

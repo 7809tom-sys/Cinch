@@ -11,8 +11,16 @@ export const metadata = {
     "Drop an existing website into Cinch Seed, get a critique with time and build-cost estimates, then purchase an improved Seed.",
 };
 
-export default async function BrowsePage() {
-  const { sites, customer } = await getBrowseSnapshot();
+export default async function BrowsePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ share?: string }>;
+}) {
+  const [{ sites, customer }, params] = await Promise.all([
+    getBrowseSnapshot(),
+    searchParams,
+  ]);
+  const initialShareId = params.share?.trim() || null;
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -59,7 +67,8 @@ export default async function BrowsePage() {
           <p className="animate-rise-delay-2 mt-5 max-w-xl text-lg leading-relaxed text-muted">
             We review the live page, show time and build cost up front, then
             plant a Seed that improves on what you dropped — with portal status
-            and live source while agents work.
+            and live source while agents work. Share any Ready Seed with your
+            contacts in one tap.
           </p>
 
           <div className="mt-12">
@@ -67,6 +76,7 @@ export default async function BrowsePage() {
               sites={sites}
               defaultEmail={customer?.email}
               defaultName={customer?.name}
+              initialShareId={initialShareId}
             />
           </div>
         </div>

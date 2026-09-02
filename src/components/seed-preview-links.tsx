@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { ShareWithContactsButton } from "@/components/share-with-contacts";
+import { CINCH_SEED_ORIGIN, libraryListingShareUrl } from "@/lib/domain";
 
 /** Shared Visit / marketplace preview links for finished Seeds. */
 export function SeedPreviewLinks({
   websiteUrl,
   projectName,
   listedInLibrary,
+  marketplaceListingId = null,
   browseHref = "/browse",
   showEmbed = false,
   tone = "default",
@@ -12,6 +15,8 @@ export function SeedPreviewLinks({
   websiteUrl: string;
   projectName: string;
   listedInLibrary: boolean;
+  /** Catalog id used for /browse?share= deep links. */
+  marketplaceListingId?: string | null;
   browseHref?: string;
   showEmbed?: boolean;
   tone?: "default" | "on-dark";
@@ -26,14 +31,20 @@ export function SeedPreviewLinks({
       : "inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40";
   const muted = tone === "on-dark" ? "text-mist" : "text-muted";
   const strong = tone === "on-dark" ? "text-foam" : "text-brand-deep";
+  const shareClass =
+    tone === "on-dark"
+      ? "inline-flex h-11 shrink-0 items-center justify-center rounded-md border border-foam/30 px-4 text-sm font-semibold text-foam transition-colors hover:bg-foam/10 disabled:opacity-60"
+      : undefined;
+  const shareUrl = listedInLibrary
+    ? marketplaceListingId
+      ? libraryListingShareUrl(marketplaceListingId)
+      : `${CINCH_SEED_ORIGIN}/browse`
+    : null;
 
   return (
     <div className="min-w-0 space-y-3">
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <a
-          href={websiteUrl}
-          className={primary}
-        >
+        <a href={websiteUrl} className={primary}>
           Visit website
         </a>
         {listedInLibrary ? (
@@ -41,11 +52,22 @@ export function SeedPreviewLinks({
             View in library
           </Link>
         ) : (
-          <span className={`inline-flex min-h-11 items-center text-xs font-semibold ${muted}`}>
+          <span
+            className={`inline-flex min-h-11 items-center text-xs font-semibold ${muted}`}
+          >
             Not listed in the marketplace library yet
           </span>
         )}
       </div>
+      {shareUrl ? (
+        <ShareWithContactsButton
+          url={shareUrl}
+          title={projectName}
+          text={`Check out “${projectName}” in the Cinch Seed library:`}
+          label="Share with contacts"
+          className={shareClass}
+        />
+      ) : null}
       <p className={`text-xs leading-relaxed [overflow-wrap:anywhere] ${muted}`}>
         Live preview for{" "}
         <span className={`font-semibold ${strong}`}>{projectName}</span>:{" "}
