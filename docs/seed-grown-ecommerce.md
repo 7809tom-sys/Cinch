@@ -25,7 +25,9 @@ An e-commerce Seed must grow these into the **business administration panel** (n
 | **Sales tax** | Rate, nexus states, inclusive flag, notes |
 | **Orders** | Open orders with tax / ship totals; mark paid / fulfilled |
 
-Checkout on the shop reads those Seed admin settings (rates, tax nexus, stock) and writes orders + inventory back into the Seed source tree.
+Checkout on the shop reads those Seed admin settings (rates, tax nexus, stock, **product images**) and writes orders + inventory back into the Seed source tree.
+
+Admin can **enter new items with an image URL**; images show on the live shop. Card checkout is a Seed-local “recorded as paid” stub — not a Cinch platform Stripe product.
 
 ## What Cinch may do
 

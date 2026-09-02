@@ -372,7 +372,10 @@ export async function ensureBusinessAdminInSeed(
     (!existing?.commerce ||
       !Array.isArray(existing.commerce.shippingModes) ||
       !Array.isArray(existing.commerce.inventory) ||
-      !existing.commerce.salesTax);
+      !existing.commerce.salesTax ||
+      existing.commerce.inventory.some(
+        (row) => typeof (row as { imageUrl?: string }).imageUrl !== "string",
+      ));
 
   const needsWrite =
     !existing ||
@@ -387,6 +390,9 @@ export async function ensureBusinessAdminInSeed(
   let admin = existing ?? customerFacingAdminCopy(project.name, project.brief);
   if (wantsCommerce) {
     const fresh = customerFacingAdminCopy(project.name, project.brief);
+    const freshBoard =
+      fresh.commerce ?? seedCommerceAdminBoard(project.name, project.brief);
+    const prior = admin.commerce;
     admin = {
       ...admin,
       title: fresh.title,
@@ -394,10 +400,30 @@ export async function ensureBusinessAdminInSeed(
       tipsEyebrow: admin.tipsEyebrow || fresh.tipsEyebrow,
       tipsHeadline: admin.tipsHeadline || fresh.tipsHeadline,
       tips: admin.tips.length > 0 ? admin.tips : fresh.tips,
-      commerce:
-        missingCommerce || !admin.commerce
-          ? seedCommerceAdminBoard(project.name, project.brief)
-          : admin.commerce,
+      commerce: !prior
+        ? freshBoard
+        : {
+            ...freshBoard,
+            ...prior,
+            inventory: (prior.inventory?.length
+              ? prior.inventory
+              : freshBoard.inventory
+            ).map((row, index) => {
+              const fallback = freshBoard.inventory[index];
+              return {
+                ...row,
+                imageUrl:
+                  typeof row.imageUrl === "string"
+                    ? row.imageUrl
+                    : fallback?.imageUrl || "",
+              };
+            }),
+            shippingModes:
+              prior.shippingModes?.length > 0
+                ? prior.shippingModes
+                : freshBoard.shippingModes,
+            salesTax: prior.salesTax ?? freshBoard.salesTax,
+          },
     };
   }
 
@@ -516,6 +542,10 @@ function normalizeShopCopy(
         shipClass: (product.shipClass === "ltl" ? "ltl" : "parcel") as
           | "parcel"
           | "ltl",
+        imageUrl:
+          typeof product.imageUrl === "string" && product.imageUrl.trim()
+            ? product.imageUrl.trim()
+            : fallback.imageUrl || "",
       };
     },
   );
@@ -576,7 +606,8 @@ export async function ensureShopInSeed(
     !home.includes('href="/shop"') ||
     !existing.shippingModes?.length ||
     !existing.salesTax ||
-    existing.products.some((product) => !product.sku);
+    existing.products.some((product) => !product.sku) ||
+    existing.products.some((product) => typeof product.imageUrl !== "string");
 
   if (!needsWrite && existing) return existing;
 
