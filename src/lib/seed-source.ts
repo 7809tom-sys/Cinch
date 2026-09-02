@@ -502,17 +502,56 @@ Agents write into this tree as the build advances. Open **Source** in your porta
         const parsed = JSON.parse(existingRaw) as {
           products?: typeof shop.products;
           orders?: typeof shop.orders;
+          originZip?: string;
+          shippingModes?: typeof shop.shippingModes;
+          salesTax?: typeof shop.salesTax;
         };
         if (Array.isArray(parsed.orders)) {
           shopCopy = { ...shop, orders: parsed.orders };
         }
+        // Merge products field-by-field so Edit Seed can grow imageUrl etc.
         if (Array.isArray(parsed.products) && parsed.products.length > 0) {
-          shopCopy = { ...shopCopy, products: parsed.products };
+          shopCopy = {
+            ...shopCopy,
+            products: parsed.products.map((product, index) => {
+              const fallback = shop.products[index] ?? shop.products[0]!;
+              return {
+                id: product.id || fallback.id,
+                title: product.title || fallback.title,
+                detail: product.detail || fallback.detail,
+                priceUsd: Number(product.priceUsd) || fallback.priceUsd,
+                sku: product.sku || fallback.sku,
+                stockQty:
+                  typeof product.stockQty === "number"
+                    ? product.stockQty
+                    : fallback.stockQty,
+                weightLb:
+                  typeof product.weightLb === "number"
+                    ? product.weightLb
+                    : fallback.weightLb,
+                shipClass: product.shipClass === "ltl" ? "ltl" : "parcel",
+                imageUrl:
+                  typeof product.imageUrl === "string" && product.imageUrl.trim()
+                    ? product.imageUrl.trim()
+                    : fallback.imageUrl || "",
+              };
+            }),
+          };
+        }
+        if (parsed.originZip) shopCopy = { ...shopCopy, originZip: parsed.originZip };
+        if (parsed.shippingModes?.length) {
+          shopCopy = { ...shopCopy, shippingModes: parsed.shippingModes };
+        }
+        if (parsed.salesTax) {
+          shopCopy = { ...shopCopy, salesTax: parsed.salesTax };
         }
       } catch {
         /* use fresh shop */
       }
     }
+    // Always refresh brand from the edited Seed name (signature / business name).
+    shopCopy = { ...shopCopy, brand: shop.brand };
+
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/shop/page.tsx",
@@ -529,6 +568,74 @@ Agents write into this tree as the build advances. Open **Source** in your porta
       message: "Synced Seed shop catalog with edited brief",
       agentName: "Owner",
     });
+
+    // Keep admin inventory image fields aligned with the shop catalog.
+    if (seedNeedsBusinessAdmin(input.brief)) {
+      const adminRaw =
+        bundle?.files.find((file) => file.path === "content/admin.copy.json")
+          ?.content ?? "";
+      let adminCopy = customerFacingAdminCopy(input.projectName, input.brief);
+      if (adminRaw) {
+        try {
+          const parsed = JSON.parse(adminRaw) as typeof adminCopy;
+          adminCopy = {
+            ...adminCopy,
+            ...parsed,
+            brand: adminCopy.brand,
+            appointments: parsed.appointments ?? adminCopy.appointments,
+            tips:
+              parsed.tips?.length > 0 ? parsed.tips : adminCopy.tips,
+            commerce: adminCopy.commerce
+              ? {
+                  ...adminCopy.commerce,
+                  ...(parsed.commerce ?? {}),
+                  inventory: shopCopy.products.map((product) => {
+                    const existing = parsed.commerce?.inventory?.find(
+                      (row) => row.productId === product.id,
+                    );
+                    return {
+                      productId: product.id,
+                      sku: product.sku,
+                      title: product.title,
+                      onHand: existing?.onHand ?? product.stockQty,
+                      reorderAt:
+                        existing?.reorderAt ??
+                        Math.max(2, Math.floor(product.stockQty / 5)),
+                      shipClass: product.shipClass,
+                      weightLb: product.weightLb,
+                      imageUrl: product.imageUrl || existing?.imageUrl || "",
+                    };
+                  }),
+                  shippingModes:
+                    parsed.commerce?.shippingModes?.length
+                      ? parsed.commerce.shippingModes
+                      : adminCopy.commerce.shippingModes,
+                  salesTax:
+                    parsed.commerce?.salesTax ?? adminCopy.commerce.salesTax,
+                }
+              : null,
+          };
+        } catch {
+          /* fresh admin */
+        }
+      }
+      await upsertSourceFile({
+        projectId: input.projectId,
+        path: "app/admin/page.tsx",
+        content: seedAdminPageSource(adminCopy),
+        status: "ready",
+        message: "Synced Seed admin commerce with product images",
+        agentName: "Owner",
+      });
+      await upsertSourceFile({
+        projectId: input.projectId,
+        path: "content/admin.copy.json",
+        content: seedAdminCopyJson(adminCopy),
+        status: "ready",
+        message: "Synced Seed admin inventory images",
+        agentName: "Owner",
+      });
+    }
   }
 }
 

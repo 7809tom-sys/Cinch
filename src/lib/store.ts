@@ -364,6 +364,17 @@ export async function updateProjectDetails(
     brief: project.brief,
   });
 
+  // Grow/refresh shop + admin surfaces from the brief (images, commerce ops).
+  const { ensureBusinessAdminInSeed, ensureShopInSeed } = await import(
+    "./seed-site"
+  );
+  if (seedNeedsBusinessAdmin(project.brief)) {
+    await ensureBusinessAdminInSeed(project);
+  }
+  if (briefAsksForEcommerce(project.brief)) {
+    await ensureShopInSeed(project);
+  }
+
   return { project };
 }
 

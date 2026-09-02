@@ -39,6 +39,9 @@ export async function placeSeedShopOrderAction(
     .toUpperCase();
   const shipToZip = String(formData.get("shipToZip") ?? "").trim();
   const shippingModeId = String(formData.get("shippingModeId") ?? "").trim();
+  const paymentMethod = String(formData.get("paymentMethod") ?? "invoice")
+    .trim()
+    .toLowerCase();
   const cartRaw = String(formData.get("cartJson") ?? "").trim();
   if (!customerName || !contact || !shipToState || !shipToZip) {
     return {
@@ -135,7 +138,8 @@ export async function placeSeedShopOrderAction(
       items,
       totalUsd,
       createdAt: new Date().toISOString(),
-      status: "new" as const,
+      // Seed-grown card checkout stub — not a Cinch platform Stripe charge.
+      status: paymentMethod === "card" ? ("paid" as const) : ("new" as const),
     },
     ...shop.orders,
   ].slice(0, 100);

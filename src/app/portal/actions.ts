@@ -669,6 +669,7 @@ export async function portalUpdateSeedAction(
   revalidatePath("/portal");
   revalidatePath(`/site/${projectId}`);
   revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/shop`);
   revalidatePath("/browse");
   revalidatePath("/admin");
   return { ok: true as const, projectId: result.project.id };

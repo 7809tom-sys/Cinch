@@ -1206,6 +1206,14 @@ button {
   animation: seed-rise 520ms ease both;
 }
 
+.seed-shop-photo {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.35rem;
+  background: var(--foam);
+}
+
 .seed-shop-card h3 {
   margin: 0;
   font-size: 1.1rem;
@@ -1439,7 +1447,14 @@ export function briefAsksForBusinessAdmin(brief: string): boolean {
 
 /** Brief asks for Seed-grown shop / e-commerce (not Cinch platform checkout). */
 export function briefAsksForEcommerce(brief: string): boolean {
-  return /\b(e-?commerce|ecommerce|online shop|web shop|storefront|shopping cart|\bcart\b|checkout|sell products|product catalog|online store|buy online|shop online)\b/i.test(
+  return /\b(e-?commerce|ecommerce|online shop|web shop|storefront|shopping cart|\bcart\b|checkout|sell products|product catalog|online store|buy online|shop online|charge card|credit card|product images?|items with (an? )?image|enter items)\b/i.test(
+    brief,
+  );
+}
+
+/** Brief asks to enter catalog items with images in Seed admin. */
+export function briefAsksForProductImages(brief: string): boolean {
+  return /\b(product images?|items with (an? )?image|image in the admin|photo(?:s)? for products?|enter items)\b/i.test(
     brief,
   );
 }
@@ -1495,6 +1510,8 @@ export type SeedInventoryRow = {
   reorderAt: number;
   shipClass: "parcel" | "ltl";
   weightLb: number;
+  /** Product photo URL entered in Seed admin (shown in the shop). */
+  imageUrl: string;
 };
 
 /** Commerce ops board inside Seed business admin (not a Cinch platform module). */
@@ -1542,9 +1559,9 @@ export function seedCommerceAdminBoard(
     eyebrow: "Commerce",
     headline: "Shop operations",
     support:
-      "Inventory, UPS parcel and LTL shipping, sales tax, and fulfillment — grown into this Seed’s admin, not a separate Cinch product.",
+      "Inventory (with product images), UPS parcel and LTL shipping, sales tax, and fulfillment — grown into this Seed’s admin, not a separate Cinch product.",
     inventoryEyebrow: "Stock",
-    inventoryHeadline: "Inventory",
+    inventoryHeadline: "Inventory & product images",
     shippingEyebrow: "Fulfillment",
     shippingHeadline: "Shipping",
     taxEyebrow: "Compliance",
@@ -1593,6 +1610,7 @@ export function seedCommerceAdminBoard(
       reorderAt: Math.max(2, Math.floor(product.stockQty / 5)),
       shipClass: product.shipClass,
       weightLb: product.weightLb,
+      imageUrl: product.imageUrl,
     })),
   };
 }
@@ -1718,7 +1736,12 @@ ${commerce.inventory
     (row) => `          <li>
             <div>
               <p className="seed-admin-list-title">${esc(row.title)} · ${esc(row.sku)}</p>
-              <p className="seed-admin-list-meta">${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb</p>
+              <p className="seed-admin-list-meta">${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb${row.imageUrl ? " · photo set" : ""}</p>
+${
+  row.imageUrl
+    ? `            <img className="seed-shop-photo" src="${esc(row.imageUrl)}" alt="${esc(row.title)}" />`
+    : ""
+}
             </div>
           </li>`,
   )
@@ -1828,6 +1851,8 @@ export type SeedShopProduct = {
   stockQty: number;
   weightLb: number;
   shipClass: "parcel" | "ltl";
+  /** Product photo — enter/edit the URL in Seed admin inventory. */
+  imageUrl: string;
 };
 
 export type SeedShopOrder = {
@@ -1868,8 +1893,16 @@ export type SeedShopCopy = {
 };
 
 function withInventory(
-  product: Omit<SeedShopProduct, "sku" | "stockQty" | "weightLb" | "shipClass"> &
-    Partial<Pick<SeedShopProduct, "sku" | "stockQty" | "weightLb" | "shipClass">>,
+  product: Omit<
+    SeedShopProduct,
+    "sku" | "stockQty" | "weightLb" | "shipClass" | "imageUrl"
+  > &
+    Partial<
+      Pick<
+        SeedShopProduct,
+        "sku" | "stockQty" | "weightLb" | "shipClass" | "imageUrl"
+      >
+    >,
 ): SeedShopProduct {
   const sku =
     product.sku ??
@@ -1880,6 +1913,7 @@ function withInventory(
     stockQty: product.stockQty ?? 24,
     weightLb: product.weightLb ?? 2,
     shipClass: product.shipClass ?? "parcel",
+    imageUrl: product.imageUrl ?? "",
   };
 }
 
@@ -1937,6 +1971,8 @@ export function customerFacingShopCopy(
             priceUsd: 28,
             stockQty: 40,
             weightLb: 0.6,
+            imageUrl:
+              "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
           }),
           withInventory({
             id: "prod-mask",
@@ -1945,6 +1981,8 @@ export function customerFacingShopCopy(
             priceUsd: 34,
             stockQty: 28,
             weightLb: 1.2,
+            imageUrl:
+              "https://images.unsplash.com/photo-1571781926291-c77df8097c1f?auto=format&fit=crop&w=800&q=80",
           }),
           withInventory({
             id: "prod-brush",
@@ -1953,6 +1991,8 @@ export function customerFacingShopCopy(
             priceUsd: 22,
             stockQty: 18,
             weightLb: 0.8,
+            imageUrl:
+              "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=800&q=80",
           }),
         ]
       : key === "detail"
@@ -1964,6 +2004,8 @@ export function customerFacingShopCopy(
               priceUsd: 18,
               stockQty: 36,
               weightLb: 1,
+              imageUrl:
+                "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=800&q=80",
             }),
             withInventory({
               id: "prod-towel",
@@ -1972,6 +2014,8 @@ export function customerFacingShopCopy(
               priceUsd: 24,
               stockQty: 30,
               weightLb: 1.5,
+              imageUrl:
+                "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=800&q=80",
             }),
             withInventory({
               id: "prod-kit",
@@ -1981,6 +2025,8 @@ export function customerFacingShopCopy(
               stockQty: 12,
               weightLb: 8,
               shipClass: "parcel",
+              imageUrl:
+                "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=800&q=80",
             }),
           ]
         : [
@@ -1991,6 +2037,8 @@ export function customerFacingShopCopy(
               priceUsd: 29,
               stockQty: 32,
               weightLb: 2,
+              imageUrl:
+                "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80",
             }),
             withInventory({
               id: "prod-two",
@@ -1999,6 +2047,8 @@ export function customerFacingShopCopy(
               priceUsd: 19,
               stockQty: 48,
               weightLb: 1,
+              imageUrl:
+                "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=800&q=80",
             }),
             withInventory({
               id: "prod-three",
@@ -2007,6 +2057,8 @@ export function customerFacingShopCopy(
               priceUsd: 45,
               stockQty: 16,
               weightLb: 5,
+              imageUrl:
+                "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80",
             }),
             withInventory({
               id: "prod-pallet",
@@ -2016,6 +2068,8 @@ export function customerFacingShopCopy(
               stockQty: 6,
               weightLb: 110,
               shipClass: "ltl",
+              imageUrl:
+                "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80",
             }),
           ];
 
@@ -2040,7 +2094,11 @@ export function seedShopPageSource(input: SeedShopCopy): string {
   const products = input.products
     .map(
       (product) => `        <article className="seed-shop-card">
-          <h3>${esc(product.title)}</h3>
+${
+  product.imageUrl
+    ? `          <img className="seed-shop-photo" src="${esc(product.imageUrl)}" alt="${esc(product.title)}" />\n`
+    : ""
+}          <h3>${esc(product.title)}</h3>
           <p>${esc(product.detail)}</p>
           <p className="seed-shop-price">$${product.priceUsd.toFixed(2)}</p>
           <p className="seed-shop-meta">${esc(product.sku)} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb</p>

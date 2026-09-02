@@ -110,6 +110,14 @@ export function SeedShopBoard({
       <div className="seed-shop-grid">
         {products.map((product) => (
           <article key={product.id} className="seed-shop-card">
+            {product.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="seed-shop-photo"
+                src={product.imageUrl}
+                alt={product.title}
+              />
+            ) : null}
             <h3>{product.title}</h3>
             <p>{product.detail}</p>
             <p className="seed-shop-price">${product.priceUsd.toFixed(2)}</p>
@@ -203,6 +211,15 @@ export function SeedShopBoard({
                       {item.label} ({item.kind}) · ${item.baseRateUsd.toFixed(2)}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                Payment
+                <select name="paymentMethod" defaultValue="invoice">
+                  <option value="invoice">Pay later / invoice</option>
+                  <option value="card">
+                    Charge card (Seed checkout — recorded as paid)
+                  </option>
                 </select>
               </label>
               <button type="submit" className="cta" disabled={pending}>

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  addSeedCommerceProductAction,
   saveSeedCommerceInventoryAction,
   saveSeedCommerceShippingTaxAction,
   setSeedShopOrderStatusAction,
@@ -29,6 +30,18 @@ export function SeedAdminCommerceOps({
     setError(null);
     startTransition(async () => {
       const result = await saveSeedCommerceInventoryAction(projectId, formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function onAddProduct(formData: FormData) {
+    setError(null);
+    startTransition(async () => {
+      const result = await addSeedCommerceProductAction(projectId, formData);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -83,6 +96,55 @@ export function SeedAdminCommerceOps({
         <h2>{commerce.inventoryHeadline}</h2>
         <form
           className="seed-admin-form"
+          action={(formData) => onAddProduct(formData)}
+        >
+          <p className="seed-admin-span seed-admin-list-meta">
+            Enter a new shop item with an image URL — it appears in admin and
+            on the live shop.
+          </p>
+          <label>
+            Item name
+            <input name="newTitle" type="text" required />
+          </label>
+          <label>
+            Price (USD)
+            <input
+              name="newPriceUsd"
+              type="number"
+              min={0}
+              step={0.01}
+              required
+            />
+          </label>
+          <label>
+            On hand
+            <input name="newOnHand" type="number" min={0} defaultValue={12} />
+          </label>
+          <label>
+            SKU (optional)
+            <input name="newSku" type="text" />
+          </label>
+          <label className="seed-admin-span">
+            Detail
+            <input name="newDetail" type="text" placeholder="Short description" />
+          </label>
+          <label className="seed-admin-span">
+            Image URL
+            <input
+              name="newImageUrl"
+              type="url"
+              placeholder="https://…"
+              required
+            />
+          </label>
+          <button type="submit" className="cta" disabled={pending}>
+            {pending ? "Adding…" : "Add item with image"}
+          </button>
+        </form>
+
+        <form
+          className="seed-admin-form"
+          style={{ marginTop: "1.25rem" }}
           action={(formData) => onInventory(formData)}
         >
           {commerce.inventory.map((row) => (
@@ -91,6 +153,32 @@ export function SeedAdminCommerceOps({
                 {row.title} · {row.sku}
               </legend>
               <input type="hidden" name="productId" value={row.productId} />
+              {row.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="seed-shop-photo seed-admin-span"
+                  src={row.imageUrl}
+                  alt={row.title}
+                />
+              ) : null}
+              <label className="seed-admin-span">
+                Title
+                <input
+                  name={`title-${row.productId}`}
+                  type="text"
+                  defaultValue={row.title}
+                  required
+                />
+              </label>
+              <label className="seed-admin-span">
+                Image URL
+                <input
+                  name={`imageUrl-${row.productId}`}
+                  type="url"
+                  defaultValue={row.imageUrl}
+                  placeholder="https://…"
+                />
+              </label>
               <label>
                 On hand
                 <input

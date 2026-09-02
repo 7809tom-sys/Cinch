@@ -137,12 +137,18 @@ export async function saveSeedCommerceInventoryAction(
     const onHand = Number(formData.get(`onHand-${row.productId}`));
     const reorderAt = Number(formData.get(`reorderAt-${row.productId}`));
     const weightLb = Number(formData.get(`weightLb-${row.productId}`));
+    const title = String(formData.get(`title-${row.productId}`) ?? row.title).trim();
+    const imageUrl = String(
+      formData.get(`imageUrl-${row.productId}`) ?? row.imageUrl ?? "",
+    ).trim();
     const shipClassRaw = String(
       formData.get(`shipClass-${row.productId}`) ?? row.shipClass,
     );
     const shipClass = shipClassRaw === "ltl" ? "ltl" : "parcel";
     return {
       ...row,
+      title: title || row.title,
+      imageUrl,
       onHand: Number.isFinite(onHand) ? Math.max(0, Math.floor(onHand)) : row.onHand,
       reorderAt: Number.isFinite(reorderAt)
         ? Math.max(0, Math.floor(reorderAt))
@@ -164,12 +170,84 @@ export async function saveSeedCommerceInventoryAction(
       if (!row) return product;
       return {
         ...product,
+        title: row.title,
         stockQty: row.onHand,
         weightLb: row.weightLb,
         shipClass: row.shipClass,
         sku: row.sku || product.sku,
+        imageUrl: row.imageUrl || "",
       };
     });
+    await saveSeedShopCopy(projectId, shop);
+    revalidatePath(`/site/${projectId}/shop`);
+  }
+
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+export async function addSeedCommerceProductAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const board = await loadBoard(projectId);
+  if (!board?.commerce) {
+    return { ok: false as const, error: "Commerce ops are not in this Seed." };
+  }
+
+  const title = String(formData.get("newTitle") ?? "").trim();
+  const detail = String(formData.get("newDetail") ?? "").trim();
+  const imageUrl = String(formData.get("newImageUrl") ?? "").trim();
+  const priceUsd = Number(formData.get("newPriceUsd"));
+  const onHand = Number(formData.get("newOnHand"));
+  const skuRaw = String(formData.get("newSku") ?? "").trim();
+  if (!title || !Number.isFinite(priceUsd) || priceUsd < 0) {
+    return {
+      ok: false as const,
+      error: "Title and a valid price are required to add an item.",
+    };
+  }
+
+  const productId = `prod-${randomUUID().slice(0, 8)}`;
+  const sku = skuRaw || `SKU-${productId.replace(/^prod-/, "").toUpperCase()}`;
+  const stock = Number.isFinite(onHand) ? Math.max(0, Math.floor(onHand)) : 0;
+
+  board.commerce.inventory = [
+    {
+      productId,
+      sku,
+      title,
+      onHand: stock,
+      reorderAt: Math.max(2, Math.floor(stock / 5) || 2),
+      shipClass: "parcel",
+      weightLb: 1,
+      imageUrl,
+    },
+    ...board.commerce.inventory,
+  ];
+
+  await saveSeedAdminCopy(projectId, board);
+
+  const shopPreview = await buildSeedShopPreview(access.project);
+  if (shopPreview) {
+    const { css: _css, ...shop } = shopPreview;
+    shop.products = [
+      {
+        id: productId,
+        title,
+        detail: detail || title,
+        priceUsd: Math.round(priceUsd * 100) / 100,
+        sku,
+        stockQty: stock,
+        weightLb: 1,
+        shipClass: "parcel",
+        imageUrl,
+      },
+      ...shop.products,
+    ];
     await saveSeedShopCopy(projectId, shop);
     revalidatePath(`/site/${projectId}/shop`);
   }

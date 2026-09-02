@@ -57,9 +57,10 @@ export function EditSeedForm({
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
         <span className="mt-1.5 block text-xs leading-relaxed text-muted">
-          Save always rebuilds the live website from this brief (hero, CTA,
-          services) — even if you only tap Save to fix a wrong look. Optional:
-          Continue growing on the portal for another agent wave.
+          Save always rebuilds the live website from this brief — name/brand,
+          hero, CTA, services, and when you ask for them: admin, shop,
+          inventory with product images, shipping, and tax. Optional: Continue
+          growing on the portal for another agent wave.
         </span>
       </label>
       <div className="flex flex-wrap gap-2 pt-1">
