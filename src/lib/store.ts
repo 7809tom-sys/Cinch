@@ -14,6 +14,10 @@ import {
 } from "./dns-verify";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import { bootstrapSourceTree, applySeedIdentityEdit } from "./seed-source";
+import {
+  planReactionsToEditedBrief,
+  SEED_EDIT_MUST_REACT_RULE,
+} from "./seed-edit-rule";
 import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "./seed-site-copy";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
@@ -317,15 +321,19 @@ export async function createProject(input: {
 }
 
 /**
- * Owner edits to Seed name / brief. Always rebuilds the live site from the
- * brief — even when text is unchanged — so Save can fix wrong-industry copy
- * or a rename-only stock catalog (e.g. Pizza Man still showing salon SKUs).
- * Opening the site afterward must show the rebuilt pages, not a no-op visit.
+ * Owner edits to Seed name / brief.
+ *
+ * HARD RULE (docs/seed-edit-must-react.md): read the edit and react — rebuild
+ * the live site from the brief and queue any missing capability work. Never
+ * treat Save as a plain Visit or rename-only stamp.
  */
 export async function updateProjectDetails(
   projectId: string,
   input: { name: string; brief: string },
-): Promise<{ project: SeedProject } | { error: string }> {
+): Promise<
+  | { project: SeedProject; reactionTasksQueued: number }
+  | { error: string }
+> {
   const name = input.name.trim();
   const brief = input.brief.trim();
   if (!name) return { error: "Seed name is required." };
@@ -349,12 +357,12 @@ export async function updateProjectDetails(
   pushActivity(
     project,
     nameChanged && briefChanged
-      ? `Owner updated the Seed name and brief — live site refreshed.`
+      ? `Owner updated the Seed name and brief — HARD RULE: read the edit and react (${SEED_EDIT_MUST_REACT_RULE.summary})`
       : nameChanged
-        ? `Owner renamed the Seed to “${name}” — live site refreshed.`
+        ? `Owner renamed the Seed to “${name}” — HARD RULE: read the edit and react.`
         : briefChanged
-          ? `Owner updated the Seed brief — live site refreshed.`
-          : `Owner saved Edit Seed — live site refreshed from the brief.`,
+          ? `Owner updated the Seed brief — HARD RULE: read the edit and react.`
+          : `Owner saved Edit Seed — live site rebuilt from the brief (must react to edits).`,
     pm.id,
   );
   await writeStore(store);
@@ -376,7 +384,26 @@ export async function updateProjectDetails(
     await ensureShopInSeed(project);
   }
 
-  return { project };
+  // Queue agent work for anything the edited brief still needs.
+  const fresh = store.projects.find((item) => item.id === projectId);
+  if (!fresh) return { error: "Seed not found." };
+
+  const plan = planReactionsToEditedBrief(fresh, {
+    nameChanged,
+    briefChanged,
+  });
+  if (plan.tasks.length > 0) {
+    fresh.tasks.push(...(plan.tasks as ProjectTask[]));
+    fresh.updatedAt = now();
+    pushActivity(
+      fresh,
+      `${pm.name} queued ${plan.tasks.length} reaction task(s) after Edit Seed (${plan.reasons.join("; ")}).`,
+      pm.id,
+    );
+    await writeStore(store);
+  }
+
+  return { project: fresh, reactionTasksQueued: plan.tasks.length };
 }
 
 /**

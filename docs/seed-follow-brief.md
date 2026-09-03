@@ -37,9 +37,12 @@ Two failures made that feel like a rename of another project:
    the brief before opening the site. It must not re-merge salon/retail stock
    SKUs onto an owner-stocked / pizza catalog (that made Save look like a
    plain Visit).
+6. **HARD RULE:** every Edit Seed save must be read and reacted to — see
+   `docs/seed-edit-must-react.md` and `SEED_EDIT_MUST_REACT_RULE`.
 
 ## Guards
 
 - `npm run assert:seed-industry` — pizza + salon classification and mismatch.
+- `npm run assert:seed-edit-react` — Edit Seed reaction planning.
 - `docs/seed-grown-ecommerce.md` — empty catalog + never rename-only.
 - `docs/seed-industry-copy.md` — industry detection regressions.

@@ -15,6 +15,10 @@ import {
   seedShopPageSource,
 } from "./seed-site-copy";
 import { SEED_BUILD_MODULARS_FIRST_RULE } from "./module-library";
+import {
+  SEED_EDIT_MUST_REACT_RULE,
+  taskIsReactToEditedBrief,
+} from "./seed-edit-rule";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
 export type SourceFile = {
@@ -352,6 +356,9 @@ Do not ship desktop-only layouts.
 /**
  * After an owner edits name/brief, rewrite identity files in the Seed source
  * so the live preview and agents stay aligned with the brief.
+ *
+ * HARD RULE: Edit Seed must be read and reacted to
+ * (`SEED_EDIT_MUST_REACT_RULE` / docs/seed-edit-must-react.md).
  */
 export async function applySeedIdentityEdit(input: {
   projectId: string;
@@ -359,6 +366,34 @@ export async function applySeedIdentityEdit(input: {
   brief: string;
 }): Promise<void> {
   const landing = customerFacingSiteCopy(input.projectName, input.brief);
+
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "docs/brief-edit.md",
+    content: `# Edit Seed — must react
+
+## HARD RULE
+
+${SEED_EDIT_MUST_REACT_RULE.summary}
+
+1. ${SEED_EDIT_MUST_REACT_RULE.steps[0]}
+2. ${SEED_EDIT_MUST_REACT_RULE.steps[1]}
+3. ${SEED_EDIT_MUST_REACT_RULE.steps[2]}
+
+## Current name
+
+${input.projectName}
+
+## Current brief
+
+${input.brief}
+
+Updated: ${new Date().toISOString()}
+`,
+    status: "ready",
+    message: "Recorded Edit Seed brief for agents to read and react",
+    agentName: "Owner",
+  });
 
   await upsertSourceFile({
     projectId: input.projectId,
@@ -370,6 +405,10 @@ Living Seed for this site.
 ## Brief
 
 ${input.brief}
+
+## Edit Seed rule
+
+${SEED_EDIT_MUST_REACT_RULE.summary}
 
 ## Device standard
 
@@ -710,6 +749,43 @@ export async function applyTaskToSource(input: {
   const agent = input.agentName ?? "Agent";
   const status: SourceFile["status"] =
     input.phase === "finished" ? "ready" : "building";
+
+  // HARD RULE: Edit Seed must be read and reacted to.
+  if (taskIsReactToEditedBrief(input.taskTitle)) {
+    const identity = await projectIdentityFromSource(input.projectId);
+    const name = identity.name || "Seed site";
+    const brief = identity.brief || input.taskDetail;
+    await applySeedIdentityEdit({
+      projectId: input.projectId,
+      projectName: name,
+      brief,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "docs/brief-edit.md",
+      content: `# Edit Seed — reacted
+
+## HARD RULE
+
+${SEED_EDIT_MUST_REACT_RULE.summary}
+
+Agent **${agent}** ${input.phase} reacting to the owner edit.
+
+## Name
+
+${name}
+
+## Brief
+
+${brief}
+`,
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} reacting to edited brief`,
+    });
+    return;
+  }
 
   if (title.includes("adopt") && title.includes("modular")) {
     await upsertSourceFile({

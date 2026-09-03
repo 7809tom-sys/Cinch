@@ -283,6 +283,14 @@ async function ensureSpecialistsInvited(projectId: string): Promise<SeedProject>
   return project;
 }
 
+/** After Edit Seed queues reaction tasks, staff and assign so the edit is acted on. */
+export async function assignWorkAfterSeedEdit(
+  projectId: string,
+): Promise<SeedProject> {
+  await ensureSpecialistsInvited(projectId);
+  return runProjectManagerAssignment(projectId);
+}
+
 /**
  * After a Seed is created, the PM staffs the crew, plans the build, and
  * assigns every assignable task. The human only watches.

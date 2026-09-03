@@ -65,6 +65,7 @@ import {
   tickProjectWork,
   listSeedInLibrary,
   publishSeedWebsite,
+  assignWorkAfterSeedEdit,
 } from "@/lib/project-manager";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
@@ -641,7 +642,7 @@ export async function portalListInLibraryAction(projectId: string) {
   };
 }
 
-/** Edit Seed name and brief — rebuilds the live site from the brief, then returns its URL. */
+/** Edit Seed name and brief — HARD RULE: read the edit, rebuild, react. */
 export async function portalUpdateSeedAction(
   projectId: string,
   formData: FormData,
@@ -656,6 +657,15 @@ export async function portalUpdateSeedAction(
   const result = await updateProjectDetails(projectId, { name, brief });
   if ("error" in result) {
     return { ok: false as const, error: result.error };
+  }
+
+  // Assign reaction tasks so the edit is worked — not left unread.
+  if (result.reactionTasksQueued > 0) {
+    try {
+      await assignWorkAfterSeedEdit(projectId);
+    } catch {
+      /* assignment is best-effort; site already rebuilt */
+    }
   }
 
   // Keep marketplace card in sync when this Seed is listed.
@@ -681,5 +691,6 @@ export async function portalUpdateSeedAction(
     ok: true as const,
     projectId: result.project.id,
     websiteUrl: `${base}${sep}refreshed=${Date.now()}`,
+    reactionTasksQueued: result.reactionTasksQueued,
   };
 }

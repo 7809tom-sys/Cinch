@@ -61,10 +61,9 @@ export function EditSeedForm({
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
         <span className="mt-1.5 block text-xs leading-relaxed text-muted">
-          Save rebuilds the live website from this brief (brand, hero, CTA,
-          services, shop catalog, admin) — then opens it. Wrong-industry or
-          rename-only stock pages get replaced. Optional: Continue growing on
-          the portal for another agent wave.
+          Hard rule: Save reads this edit and reacts — rebuilds brand, hero,
+          CTA, services, shop, and admin from this brief, queues any missing
+          capability tasks, then opens the refreshed site.
         </span>
       </label>
       <div className="flex flex-wrap gap-2 pt-1">
