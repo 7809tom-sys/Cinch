@@ -67,9 +67,9 @@ export default async function EditSeedPage({ params }: PageProps) {
           Name and brief
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-          Update what this Seed is building. Save rebuilds the live site from
-          the brief (including fixing a wrong industry look or a rename-only
-          stock catalog), then opens that refreshed site.
+          Hard rule: when you edit, Cinch reads it and reacts — rebuilds the
+          live site from this brief and queues any missing work (shop, admin,
+          industry copy). Save is never a plain visit or rename-only.
         </p>
         <div className="mt-8 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
           <EditSeedForm

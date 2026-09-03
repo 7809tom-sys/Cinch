@@ -27,6 +27,12 @@ An e-commerce Seed must grow these into the **business administration panel** (n
 
 Checkout on the shop reads those Seed admin settings (rates, tax nexus, stock, **product images**) and writes orders + inventory back into the Seed source tree.
 
+### HARD RULE — Edit Seed must be read and reacted to
+
+When an owner uses **Edit Seed**, Cinch must **read** the new name/brief and
+**react**: rebuild the live site and queue any missing capability work. Never
+ignore an edit or treat Save as a plain Visit. See `docs/seed-edit-must-react.md`.
+
 ### HARD RULE — follow this brief (never rename-only)
 
 Finishing a Seed must implement **what the owner asked for**. Do not copy another
