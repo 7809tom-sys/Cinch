@@ -67,9 +67,9 @@ export default async function EditSeedPage({ params }: PageProps) {
           Name and brief
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted sm:text-base">
-          Update what this Seed is building. Save always refreshes the live
-          site from the brief — including fixing a wrong industry look (for
-          example a salon that still shows car detailing).
+          Update what this Seed is building. Save rebuilds the live site from
+          the brief (including fixing a wrong industry look or a rename-only
+          stock catalog), then opens that refreshed site.
         </p>
         <div className="mt-8 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
           <EditSeedForm

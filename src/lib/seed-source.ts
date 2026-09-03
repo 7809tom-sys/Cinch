@@ -10,6 +10,7 @@ import {
   seedLandingCopyJson,
   seedNeedsBusinessAdmin,
   seedResponsiveGlobalsCss,
+  seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
   seedShopPageSource,
 } from "./seed-site-copy";
@@ -509,12 +510,37 @@ Agents write into this tree as the build advances. Open **Source** in your porta
         if (Array.isArray(parsed.orders)) {
           shopCopy = { ...shop, orders: parsed.orders };
         }
-        // Merge products field-by-field so Edit Seed can grow imageUrl etc.
-        if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+        // Keep real owner-added products. Never re-merge renamed stock SKUs
+        // from another vertical (serum / Signature item) — that made Save
+        // look like it “only opened the website” without refreshing.
+        const keepProducts =
+          Array.isArray(parsed.products) &&
+          parsed.products.length > 0 &&
+          !seedShopCatalogMismatchesBrief(
+            input.projectName,
+            input.brief,
+            parsed.products,
+          );
+        if (keepProducts) {
           shopCopy = {
             ...shopCopy,
-            products: parsed.products.map((product, index) => {
-              const fallback = shop.products[index] ?? shop.products[0]!;
+            products: parsed.products!.map((product, index) => {
+              const fallback =
+                shop.products[index] ??
+                shop.products[0] ??
+                ({
+                  id: product.id || `prod-${index + 1}`,
+                  title: product.title || "Item",
+                  detail: product.detail || "",
+                  priceUsd: Number(product.priceUsd) || 0,
+                  sku: product.sku || `SKU-${index + 1}`,
+                  stockQty:
+                    typeof product.stockQty === "number" ? product.stockQty : 0,
+                  weightLb:
+                    typeof product.weightLb === "number" ? product.weightLb : 1,
+                  shipClass: "parcel" as const,
+                  imageUrl: "",
+                });
               return {
                 id: product.id || fallback.id,
                 title: product.title || fallback.title,
@@ -546,11 +572,18 @@ Agents write into this tree as the build advances. Open **Source** in your porta
           shopCopy = { ...shopCopy, salesTax: parsed.salesTax };
         }
       } catch {
-        /* use fresh shop */
+        /* use fresh shop from brief */
+        shopCopy = shop;
       }
     }
-    // Always refresh brand from the edited Seed name (signature / business name).
-    shopCopy = { ...shopCopy, brand: shop.brand };
+    // Always refresh customer-facing shop chrome from THIS brief (not rename-only).
+    shopCopy = {
+      ...shopCopy,
+      brand: shop.brand,
+      title: shop.title,
+      support: shop.support,
+      cta: shop.cta,
+    };
 
     await upsertSourceFile({
       projectId: input.projectId,

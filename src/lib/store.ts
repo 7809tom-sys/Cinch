@@ -317,9 +317,10 @@ export async function createProject(input: {
 }
 
 /**
- * Owner edits to Seed name / brief. Always refreshes the live site from the
+ * Owner edits to Seed name / brief. Always rebuilds the live site from the
  * brief — even when text is unchanged — so Save can fix wrong-industry copy
- * (e.g. a salon still showing car detailing).
+ * or a rename-only stock catalog (e.g. Pizza Man still showing salon SKUs).
+ * Opening the site afterward must show the rebuilt pages, not a no-op visit.
  */
 export async function updateProjectDetails(
   projectId: string,

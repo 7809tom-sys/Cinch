@@ -33,6 +33,10 @@ Two failures made that feel like a rename of another project:
 3. Owner-stocked / pizza / food e-com starts with an **empty** shop catalog.
 4. Live repair (`repairCustomerLandingIfNeeded`, `ensureShopInSeed`) must rewrite
    mismatched landing copy and stock-template catalogs.
+5. **Edit Seed → Save** (`applySeedIdentityEdit`) rebuilds landing + shop from
+   the brief before opening the site. It must not re-merge salon/retail stock
+   SKUs onto an owner-stocked / pizza catalog (that made Save look like a
+   plain Visit).
 
 ## Guards
 
