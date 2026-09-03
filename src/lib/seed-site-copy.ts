@@ -19,13 +19,17 @@ function firstSentences(brief: string, count = 2): string[] {
  * - Classify using the Seed name + brief together.
  * - Never match bare substrings like "car" inside "care", or bare "wash"
  *   (hair wash) as auto detailing.
- * - Specific verticals (salon/hair/barber, food, retail, trades) win before detailing.
+ * - Specific verticals (salon/hair/barber, food/pizza, retail, trades) win before detailing.
  * - Compound forms count: barbershop, hairstylist, hairdresser (not only
  *   spaced “barber shop” / “hair stylist”).
+ * - Pizza / pizzeria counts as food — never fall through to generic or salon.
  * - Auto detailing requires clear vehicle context (detailing, car wash,
  *   mobile detail, clean your car, etc.).
  * - Live repair must rewrite landing copy when a salon/hair Seed is still
  *   showing car hero, "Book a detail", retail “Shop now”, or driveway copy.
+ * - HARD RULE: never “rename another Seed” — copy must follow THIS brief.
+ *   E-commerce that asks the owner to enter/scan items starts with an empty
+ *   catalog (not stock serum/mask SKUs from a salon template).
  */
 function industryKey(brief: string, name = ""): string {
   const lower = `${name} ${brief}`.toLowerCase();
@@ -43,7 +47,18 @@ function industryKey(brief: string, name = ""): string {
   ) {
     return "salon";
   }
-  if (/food|restaurant|menu|kitchen|cafe|bistro|dining/.test(lower)) {
+  // Pizza before generic food so pies don’t get fine-dining “Reserve a table”.
+  if (
+    /\b(pizza|pizzerias?|pizzeria|neapolitan|pepperoni|calzones?)\b/.test(lower) ||
+    /\bpie\s*shop\b|\bslices?\b.*\b(pie|pizza)\b|\bpizza\s*man\b/.test(lower)
+  ) {
+    return "food";
+  }
+  if (
+    /\b(food|restaurant|menu|kitchen|cafe|bistro|dining|bakery|catering|takeout|take-out|delivery)\b/.test(
+      lower,
+    )
+  ) {
     return "food";
   }
   // Word boundaries — do not let "shop" inside "barbershop" win as retail.
@@ -64,6 +79,15 @@ function industryKey(brief: string, name = ""): string {
   }
 
   return "generic";
+}
+
+/** Pizza / pizzeria vertical inside food — name or brief. */
+export function briefIsPizza(projectName: string, brief: string): boolean {
+  const lower = `${projectName} ${brief}`.toLowerCase();
+  return (
+    /\b(pizza|pizzerias?|pizzeria|neapolitan|pepperoni|calzones?)\b/.test(lower) ||
+    /\bpie\s*shop\b|\bpizza\s*man\b/.test(lower)
+  );
 }
 
 /** Public industry classifier — name + brief, never bare "car" inside "care". */
@@ -115,11 +139,24 @@ export function seedLandingCopyMismatchesIndustry(
   const looksLikeRetailCopy =
     /shop now|browse the shelf|retail floor|product aisle/.test(blob) ||
     /photo-1441986300917/.test(copy.heroImage ?? "");
+  const looksLikeFineDiningCopy =
+    /reserve a table|dinner service|private gatherings|bar & small plates|a room worth dressing|a table worth dressing/.test(
+      blob,
+    );
+  const looksLikePizzaCopy =
+    /order pizza|order now|hot pies|delivery|pickup|specialty pies|pizza man|pizzeria/.test(
+      blob,
+    ) || /photo-1513104890138/.test(copy.heroImage ?? "");
 
   if (key === "salon" && looksLikeDetailCopy) return true;
   if (key === "salon" && looksLikeRetailCopy) return true;
   if (key === "detail" && looksLikeSalonCopy) return true;
   if (key !== "detail" && looksLikeDetailCopy) return true;
+  // Pizza Man / pizzeria stuck on salon, car, or fine-dining rename templates.
+  if (briefIsPizza(projectName, brief) && looksLikeSalonCopy) return true;
+  if (briefIsPizza(projectName, brief) && looksLikeFineDiningCopy) return true;
+  if (briefIsPizza(projectName, brief) && !looksLikePizzaCopy && looksLikeRetailCopy)
+    return true;
   return false;
 }
 
@@ -163,7 +200,12 @@ export function customerFacingHeadline(
     }
     return "Your car. Our care. On your schedule.";
   }
-  if (key === "food") return "A table worth dressing up for.";
+  if (key === "food") {
+    if (briefIsPizza(projectName, brief)) {
+      return "Hot pies. Ready when you are.";
+    }
+    return "A table worth dressing up for.";
+  }
   if (key === "salon") {
     if (
       /come to you|go to you|goto you|bye you|by you|mobile|your home|your place|house call/i.test(
@@ -184,7 +226,10 @@ export function customerFacingHeadline(
 export function customerFacingCta(brief: string, projectName = ""): string {
   const key = industryKey(brief, projectName);
   if (key === "detail") return "Book a detail";
-  if (key === "food") return "Reserve a table";
+  if (key === "food") {
+    if (briefIsPizza(projectName, brief)) return "Order pizza";
+    return "Reserve a table";
+  }
   if (key === "salon") return "Book an appointment";
   if (key === "retail") return "Shop now";
   if (key === "trade") return "Request service";
@@ -201,6 +246,9 @@ export function customerFacingHeroImage(
     return "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1800&q=80";
   }
   if (key === "food") {
+    if (briefIsPizza(projectName, brief)) {
+      return "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1800&q=80";
+    }
     return "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1800&q=80";
   }
   if (key === "salon") {
@@ -293,6 +341,41 @@ export function customerFacingSiteCopy(
   }
 
   if (key === "food") {
+    if (briefIsPizza(projectName, brief)) {
+      return {
+        brand,
+        headline,
+        support,
+        cta,
+        heroImage,
+        navLabel: "Menu",
+        servicesEyebrow: "The oven",
+        servicesHeadline: "Pies worth pulling over for",
+        services: [
+          {
+            title: "Classic pies",
+            detail: "Hand-tossed crust, real cheese, toppings that don’t skimp.",
+          },
+          {
+            title: "Specialty pies",
+            detail: "House favorites and builds you won’t find in a freezer aisle.",
+          },
+          {
+            title: "Pickup & delivery",
+            detail: "Hot out of the oven — grab it at the counter or get it to your door.",
+          },
+        ],
+        aboutEyebrow: "Kitchen",
+        aboutHeadline: "Dough. Fire. Done right.",
+        aboutBody: support,
+        bookEyebrow: "Order",
+        bookHeadline: "Get your pie going",
+        bookBody:
+          "Tell us the size, toppings, and pickup or delivery — we’ll fire the oven.",
+        bookNote: "Delivery windows open when the route allows.",
+        footerNote: `${brand} · Pizza · Pickup & delivery`,
+      };
+    }
     return {
       brand,
       headline,
@@ -2096,13 +2179,175 @@ function withInventory(
   };
 }
 
+/** Brief wants the owner to stock the catalog (scan / enter items) — not stock SKUs. */
+export function briefAsksForOwnerStockedCatalog(brief: string): boolean {
+  return (
+    briefAsksForProductImages(brief) ||
+    /\b(scan|barcode|upc|enter items|add items|my (?:own )?products|own catalog|charge card)\b/i.test(
+      brief,
+    )
+  );
+}
+
+/** True when this brief must start with an empty shop catalog (owner stocks it). */
+export function seedShopShouldStartEmpty(
+  projectName: string,
+  brief: string,
+): boolean {
+  if (!briefAsksForEcommerce(brief)) return false;
+  if (briefAsksForOwnerStockedCatalog(brief)) return true;
+  if (briefIsPizza(projectName, brief)) return true;
+  if (industryKey(brief, projectName) === "food") return true;
+  return false;
+}
+
+/**
+ * True when stored shop products look like a renamed stock template from
+ * another vertical (salon serum, “Signature item”, detailing spray, etc.)
+ * instead of this brief’s owner-stocked / pizza empty catalog.
+ */
+export function seedShopCatalogMismatchesBrief(
+  projectName: string,
+  brief: string,
+  products: Array<{ id?: string; title?: string; detail?: string }>,
+): boolean {
+  if (!seedShopShouldStartEmpty(projectName, brief)) return false;
+  if (!products.length) return false;
+
+  const blob = products
+    .map((p) => `${p.id ?? ""} ${p.title ?? ""} ${p.detail ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+
+  // Fingerprints of stock starter SKUs stamped by applyTaskToSource / templates.
+  return /prod-serum|prod-mask|prod-brush|prod-spray|prod-towel|prod-kit|prod-one|prod-two|prod-three|daily shine serum|repair mask|studio paddle|signature item|everyday essential|gift set|detail spray|microfiber set|driveway kit|between-appointment gloss|clear coat/.test(
+    blob,
+  );
+}
+
+/**
+ * HARD RULE: do not rename another Seed’s stock catalog onto this one.
+ * When the brief says the owner enters/scans items, start empty so they add
+ * real products — never ship salon serum/mask or “Signature item” fillers.
+ */
+export function seedStarterShopProducts(
+  projectName: string,
+  brief: string,
+): SeedShopProduct[] {
+  if (seedShopShouldStartEmpty(projectName, brief)) {
+    return [];
+  }
+
+  const key = industryKey(brief, projectName);
+  if (key === "salon") {
+    return [
+      withInventory({
+        id: "prod-serum",
+        title: "Daily shine serum",
+        detail: "Lightweight finish for between-appointment gloss.",
+        priceUsd: 28,
+        stockQty: 40,
+        weightLb: 0.6,
+        imageUrl:
+          "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "prod-mask",
+        title: "Repair mask",
+        detail: "Weekly deep care when color or heat has been hard on hair.",
+        priceUsd: 34,
+        stockQty: 28,
+        weightLb: 1.2,
+        imageUrl:
+          "https://images.unsplash.com/photo-1571781926291-c77df8097c1f?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "prod-brush",
+        title: "Studio paddle brush",
+        detail: "The brush we reach for in the chair — now for home.",
+        priceUsd: 22,
+        stockQty: 18,
+        weightLb: 0.8,
+        imageUrl:
+          "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=800&q=80",
+      }),
+    ];
+  }
+  if (key === "detail") {
+    return [
+      withInventory({
+        id: "prod-spray",
+        title: "Detail spray",
+        detail: "Quick wipe-down between full visits.",
+        priceUsd: 18,
+        stockQty: 36,
+        weightLb: 1,
+        imageUrl:
+          "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "prod-towel",
+        title: "Microfiber set",
+        detail: "Soft towels that won’t haze clear coat.",
+        priceUsd: 24,
+        stockQty: 30,
+        weightLb: 1.5,
+        imageUrl:
+          "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "prod-kit",
+        title: "Driveway kit",
+        detail: "Foam, mitt, and dry towel for a light touch-up.",
+        priceUsd: 49,
+        stockQty: 12,
+        weightLb: 8,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=800&q=80",
+      }),
+    ];
+  }
+  return [
+    withInventory({
+      id: "prod-one",
+      title: "Signature item",
+      detail: "What customers ask for most.",
+      priceUsd: 29,
+      stockQty: 32,
+      weightLb: 2,
+      imageUrl:
+        "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80",
+    }),
+    withInventory({
+      id: "prod-two",
+      title: "Everyday essential",
+      detail: "A reliable pick for repeat buyers.",
+      priceUsd: 19,
+      stockQty: 48,
+      weightLb: 1,
+      imageUrl:
+        "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=800&q=80",
+    }),
+    withInventory({
+      id: "prod-three",
+      title: "Gift set",
+      detail: "Ready to wrap — or ship.",
+      priceUsd: 45,
+      stockQty: 16,
+      weightLb: 5,
+      imageUrl:
+        "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80",
+    }),
+  ];
+}
+
 /** Seed-grown shop content — products + cart board for this business. */
 export function customerFacingShopCopy(
   projectName: string,
   brief: string,
 ): SeedShopCopy {
   const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
-  const key = industryKey(brief, projectName);
   const commerce = {
     originZip: "10001",
     shippingModes: [
@@ -2140,124 +2385,18 @@ export function customerFacingShopCopy(
     },
   };
 
-  const products: SeedShopProduct[] =
-    key === "salon"
-      ? [
-          withInventory({
-            id: "prod-serum",
-            title: "Daily shine serum",
-            detail: "Lightweight finish for between-appointment gloss.",
-            priceUsd: 28,
-            stockQty: 40,
-            weightLb: 0.6,
-            imageUrl:
-              "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=800&q=80",
-          }),
-          withInventory({
-            id: "prod-mask",
-            title: "Repair mask",
-            detail: "Weekly deep care when color or heat has been hard on hair.",
-            priceUsd: 34,
-            stockQty: 28,
-            weightLb: 1.2,
-            imageUrl:
-              "https://images.unsplash.com/photo-1571781926291-c77df8097c1f?auto=format&fit=crop&w=800&q=80",
-          }),
-          withInventory({
-            id: "prod-brush",
-            title: "Studio paddle brush",
-            detail: "The brush we reach for in the chair — now for home.",
-            priceUsd: 22,
-            stockQty: 18,
-            weightLb: 0.8,
-            imageUrl:
-              "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=800&q=80",
-          }),
-        ]
-      : key === "detail"
-        ? [
-            withInventory({
-              id: "prod-spray",
-              title: "Detail spray",
-              detail: "Quick wipe-down between full visits.",
-              priceUsd: 18,
-              stockQty: 36,
-              weightLb: 1,
-              imageUrl:
-                "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=800&q=80",
-            }),
-            withInventory({
-              id: "prod-towel",
-              title: "Microfiber set",
-              detail: "Soft towels that won’t haze clear coat.",
-              priceUsd: 24,
-              stockQty: 30,
-              weightLb: 1.5,
-              imageUrl:
-                "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=800&q=80",
-            }),
-            withInventory({
-              id: "prod-kit",
-              title: "Driveway kit",
-              detail: "Foam, mitt, and dry towel for a light touch-up.",
-              priceUsd: 49,
-              stockQty: 12,
-              weightLb: 8,
-              shipClass: "parcel",
-              imageUrl:
-                "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=800&q=80",
-            }),
-          ]
-        : [
-            withInventory({
-              id: "prod-one",
-              title: "Signature item",
-              detail: "What customers ask for most.",
-              priceUsd: 29,
-              stockQty: 32,
-              weightLb: 2,
-              imageUrl:
-                "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=800&q=80",
-            }),
-            withInventory({
-              id: "prod-two",
-              title: "Everyday essential",
-              detail: "A reliable pick for repeat buyers.",
-              priceUsd: 19,
-              stockQty: 48,
-              weightLb: 1,
-              imageUrl:
-                "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=800&q=80",
-            }),
-            withInventory({
-              id: "prod-three",
-              title: "Gift set",
-              detail: "Ready to wrap — or ship.",
-              priceUsd: 45,
-              stockQty: 16,
-              weightLb: 5,
-              imageUrl:
-                "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=800&q=80",
-            }),
-            withInventory({
-              id: "prod-pallet",
-              title: "Wholesale case",
-              detail: "Bulk case for retailers — ships LTL.",
-              priceUsd: 320,
-              stockQty: 6,
-              weightLb: 110,
-              shipClass: "ltl",
-              imageUrl:
-                "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=800&q=80",
-            }),
-          ];
+  const products = seedStarterShopProducts(projectName, brief);
+  const ownerStocks = products.length === 0;
 
   return {
     brand,
-    title: "Shop",
-    support:
-      "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
-    cta: "Add to cart",
+    title: briefIsPizza(projectName, brief) ? "Order" : "Shop",
+    support: ownerStocks
+      ? briefIsPizza(projectName, brief)
+        ? "Menu and pies are added in Seed admin — scan or enter items, set your price and on-hand qty."
+        : "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
+      : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
+    cta: briefIsPizza(projectName, brief) ? "Add to order" : "Add to cart",
     products,
     orders: [],
     ...commerce,

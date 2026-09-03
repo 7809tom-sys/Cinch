@@ -14,6 +14,7 @@ import {
   seedLandingCopyMismatchesIndustry,
   seedNeedsBusinessAdmin,
   seedPublicSiteCss,
+  seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
   seedShopPageSource,
   type SeedAdminCopy,
@@ -49,8 +50,12 @@ export {
   seedNeedsBusinessAdmin,
   seedPublicSiteCss,
   seedResponsiveGlobalsCss,
+  seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
   seedShopPageSource,
+  seedShopShouldStartEmpty,
+  seedStarterShopProducts,
+  briefIsPizza,
 } from "./seed-site-copy";
 
 export type {
@@ -272,7 +277,7 @@ export async function repairCustomerLandingIfNeeded(
     !page.includes("seed-hero") ||
     !page.includes('id="services"') ||
     !page.includes('id="book"') ||
-    (/Book a detail|Express wash|Showroom polish|Details that travel|Shop now/i.test(
+    (/Book a detail|Express wash|Showroom polish|Details that travel|Shop now|Reserve a table|Dinner service|Book an appointment/i.test(
       page,
     ) &&
       seedLandingCopyMismatchesIndustry(project.name, project.brief, {
@@ -280,13 +285,26 @@ export async function repairCustomerLandingIfNeeded(
           ? "Book a detail"
           : /Shop now/i.test(page)
             ? "Shop now"
-            : undefined,
+            : /Reserve a table/i.test(page)
+              ? "Reserve a table"
+              : /Book an appointment/i.test(page)
+                ? "Book an appointment"
+                : undefined,
         servicesHeadline: /Details that travel/i.test(page)
           ? "Details that travel to your driveway"
+          : /Dinner service|Private gatherings/i.test(page)
+            ? "What we’re known for"
+            : undefined,
+        aboutBody: /A room worth dressing/i.test(page)
+          ? "A room worth dressing up for"
           : undefined,
         heroImage: /photo-1441986300917/.test(page)
           ? "https://images.unsplash.com/photo-1441986300917-64674bd600d8"
-          : undefined,
+          : /photo-1560066984/.test(page)
+            ? "https://images.unsplash.com/photo-1560066984-138dadb4c035"
+            : /photo-1414235077428/.test(page)
+              ? "https://images.unsplash.com/photo-1414235077428-338989a2e8c0"
+              : undefined,
       }));
 
   const cssLooksBad =
@@ -522,9 +540,43 @@ function normalizeShopCopy(
   const fresh = customerFacingShopCopy(project.name, project.brief);
   if (!raw) return fresh;
 
-  const products: SeedShopCopy["products"] = (raw.products ?? fresh.products).map(
+  // Never keep renamed stock SKUs when this brief must start empty.
+  if (
+    seedShopCatalogMismatchesBrief(
+      project.name,
+      project.brief,
+      raw.products ?? [],
+    )
+  ) {
+    return {
+      ...fresh,
+      orders: Array.isArray(raw.orders) ? raw.orders : [],
+      originZip: raw.originZip || fresh.originZip,
+      shippingModes:
+        Array.isArray(raw.shippingModes) && raw.shippingModes.length > 0
+          ? raw.shippingModes
+          : fresh.shippingModes,
+      salesTax: raw.salesTax ?? fresh.salesTax,
+    };
+  }
+
+  const sourceProducts = raw.products ?? fresh.products;
+  const products: SeedShopCopy["products"] = sourceProducts.map(
     (product, index) => {
-      const fallback = fresh.products[index] ?? fresh.products[0]!;
+      const fallback =
+        fresh.products[index] ??
+        fresh.products[0] ??
+        ({
+          id: `prod-${index + 1}`,
+          title: "Item",
+          detail: "",
+          priceUsd: 0,
+          sku: `SKU-${index + 1}`,
+          stockQty: 0,
+          weightLb: 1,
+          shipClass: "parcel" as const,
+          imageUrl: "",
+        } satisfies SeedShopCopy["products"][number]);
       return {
         id: product.id || fallback.id,
         title: product.title || fallback.title,
@@ -598,8 +650,15 @@ export async function ensureShopInSeed(
   const home =
     bundle?.files.find((file) => file.path === "app/page.tsx")?.content ?? "";
 
+  const catalogMismatch = seedShopCatalogMismatchesBrief(
+    project.name,
+    project.brief,
+    parsed?.products ?? existing?.products ?? [],
+  );
+
   const needsWrite =
     !existing ||
+    catalogMismatch ||
     !page ||
     !page.includes("seed-shop") ||
     !css.includes("seed-shop") ||
@@ -611,7 +670,10 @@ export async function ensureShopInSeed(
 
   if (!needsWrite && existing) return existing;
 
-  const shop = existing ?? customerFacingShopCopy(project.name, project.brief);
+  // Prefer brief-derived empty/owner catalog when stock templates were stamped.
+  const shop = catalogMismatch
+    ? customerFacingShopCopy(project.name, project.brief)
+    : (existing ?? customerFacingShopCopy(project.name, project.brief));
 
   if (!css.includes("seed-shop")) {
     await upsertSourceFile({

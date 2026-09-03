@@ -27,6 +27,12 @@ An e-commerce Seed must grow these into the **business administration panel** (n
 
 Checkout on the shop reads those Seed admin settings (rates, tax nexus, stock, **product images**) and writes orders + inventory back into the Seed source tree.
 
+### HARD RULE — follow this brief (never rename-only)
+
+Finishing a Seed must implement **what the owner asked for**. Do not copy another
+project’s site and only change the brand name. Example failure: **Pizza Man**
+shipping salon stock products or fine-dining “Reserve a table” copy.
+
 ### HARD RULE — scan to catalog
 
 When the owner adds a product on an e-commerce Seed:
@@ -35,6 +41,9 @@ When the owner adds a product on an e-commerce Seed:
 2. Cinch looks up manufacturer data (title, description, images).
 3. Those fields **fill automatically** into the Seed catalog.
 4. The owner only enters **their sell price** and **on-hand inventory** (then saves).
+
+When the brief asks the owner to enter/scan items (or is pizza/food e-com), the
+starter shop catalog is **empty** — not stock Unsplash SKUs from another vertical.
 
 Photo upload remains available as a replace/fallback when a barcode is unrecognized or the owner wants a custom shot. Card checkout is a Seed-local “recorded as paid” stub — not a Cinch platform Stripe product.
 

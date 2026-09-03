@@ -1,11 +1,16 @@
 /**
  * Guard: hair/salon Seeds must never classify as auto detailing or ship car copy.
+ * Pizza Man must get pizza copy + empty owner catalog — never rename-only templates.
  * Run: npx tsx scripts/assert-seed-industry.ts
  */
 import {
+  briefIsPizza,
+  customerFacingShopCopy,
   customerFacingSiteCopy,
   seedIndustryKey,
   seedLandingCopyMismatchesIndustry,
+  seedShopCatalogMismatchesBrief,
+  seedStarterShopProducts,
 } from "../src/lib/seed-site-copy";
 
 function assert(condition: boolean, message: string) {
@@ -104,6 +109,67 @@ assert(
   "real detailing briefs still classify as detail",
 );
 assert(detailing.cta === "Book a detail", "detailing CTA unchanged");
+
+// --- Pizza Man: follow brief, never rename-only stock templates ---
+const pizzaName = "Pizza Man";
+const pizzaBrief =
+  "Neighborhood pizza. E-commerce shop so customers can order online. Owner enters and scans items, sets price, charges card.";
+
+assert(briefIsPizza(pizzaName, pizzaBrief), "Pizza Man name+brief is pizza");
+assert(
+  seedIndustryKey(pizzaName, pizzaBrief) === "food",
+  "Pizza Man classifies as food",
+);
+
+const pizza = customerFacingSiteCopy(pizzaName, pizzaBrief);
+assert(pizza.cta === "Order pizza", `pizza CTA is Order pizza (got ${pizza.cta})`);
+assert(
+  !/Reserve a table|Book an appointment|Book a detail|Shop now/i.test(pizza.cta),
+  "pizza CTA is not fine-dining / salon / retail rename",
+);
+assert(
+  /pie|pizza|oven|delivery|pickup/i.test(
+    `${pizza.servicesHeadline} ${pizza.services.map((s) => s.title).join(" ")}`,
+  ),
+  "pizza services talk about pies / oven / delivery",
+);
+
+assert(
+  seedLandingCopyMismatchesIndustry(pizzaName, pizzaBrief, {
+    cta: "Reserve a table",
+    servicesHeadline: "What we’re known for",
+    aboutBody: "A room worth dressing up for",
+  }),
+  "mismatch detector flags Pizza Man stuck on fine dining",
+);
+assert(
+  seedLandingCopyMismatchesIndustry(pizzaName, pizzaBrief, {
+    cta: "Book an appointment",
+    heroImage:
+      "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1800&q=80",
+  }),
+  "mismatch detector flags Pizza Man stuck on salon",
+);
+
+const pizzaProducts = seedStarterShopProducts(pizzaName, pizzaBrief);
+assert(
+  pizzaProducts.length === 0,
+  "Pizza Man e-com starter catalog is empty (owner stocks)",
+);
+
+const pizzaShop = customerFacingShopCopy(pizzaName, pizzaBrief);
+assert(pizzaShop.products.length === 0, "shop copy products empty for Pizza Man");
+assert(
+  seedShopCatalogMismatchesBrief(pizzaName, pizzaBrief, [
+    { id: "prod-serum", title: "Daily shine serum" },
+    { id: "prod-mask", title: "Repair mask" },
+  ]),
+  "shop mismatch flags salon stock SKUs on Pizza Man",
+);
+assert(
+  !seedShopCatalogMismatchesBrief(pizzaName, pizzaBrief, []),
+  "empty catalog is not a mismatch for Pizza Man",
+);
 
 if (process.exitCode) {
   console.error("\nIndustry copy guards failed.");
