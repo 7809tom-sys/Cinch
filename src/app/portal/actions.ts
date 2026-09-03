@@ -30,6 +30,7 @@ import {
   sendMessage,
 } from "@/lib/messages";
 import { formatUsd, priceForAccount } from "@/lib/pricing";
+import { liveWebsiteUrl } from "@/lib/domain";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
 import {
@@ -640,7 +641,7 @@ export async function portalListInLibraryAction(projectId: string) {
   };
 }
 
-/** Edit Seed name and brief — refreshes the live site from the updated brief. */
+/** Edit Seed name and brief — rebuilds the live site from the brief, then returns its URL. */
 export async function portalUpdateSeedAction(
   projectId: string,
   formData: FormData,
@@ -672,5 +673,13 @@ export async function portalUpdateSeedAction(
   revalidatePath(`/site/${projectId}/shop`);
   revalidatePath("/browse");
   revalidatePath("/admin");
-  return { ok: true as const, projectId: result.project.id };
+
+  // Cache-bust so Save never looks like a plain Visit of a stale page.
+  const base = liveWebsiteUrl(result.project);
+  const sep = base.includes("?") ? "&" : "?";
+  return {
+    ok: true as const,
+    projectId: result.project.id,
+    websiteUrl: `${base}${sep}refreshed=${Date.now()}`,
+  };
 }

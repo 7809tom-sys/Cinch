@@ -20,6 +20,10 @@
  * copied from another Seed — salon products or fine-dining “Reserve a table”.
  * See `docs/seed-follow-brief.md`.
  *
+ * ## What went wrong (Edit Seed refresh)
+ * Save opened the live site URL but `applySeedIdentityEdit` re-merged old
+ * stock shop products, so it felt like a plain Visit with no rebuild.
+ *
  * ## Hard rules (do not regress)
  * 1. Classify from **name + brief** together.
  * 2. Never match bare `car` / `auto` / `wash` without vehicle context.
@@ -34,6 +38,8 @@
  *    “Book a detail” / retail “Shop now” / pizza with “Reserve a table”),
  *    `repairCustomerLandingIfNeeded` must rewrite it.
  * 8. Owner-stocked / pizza / food e-com must not keep salon/retail stock SKUs.
+ * 9. Edit Seed → Save must rebuild from the brief before opening the site;
+ *    never re-merge renamed stock SKUs (`applySeedIdentityEdit`).
  *
  * Implementation: `src/lib/seed-site-copy.ts` (`industryKey`,
  * `seedLandingCopyMismatchesIndustry`, `seedShopCatalogMismatchesBrief`) and

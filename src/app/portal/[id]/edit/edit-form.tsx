@@ -12,7 +12,7 @@ export function EditSeedForm({
   projectId: string;
   initialName: string;
   initialBrief: string;
-  /** After save, open the refreshed live site so the owner sees the fix. */
+  /** Fallback live site URL; Save prefers the action’s rebuilt URL. */
   websiteUrl: string;
 }) {
   const [pending, startTransition] = useTransition();
@@ -31,8 +31,12 @@ export function EditSeedForm({
             setError(result.error);
             return;
           }
-          // Always land on the live site — Save refreshes it from the brief.
-          window.location.assign(websiteUrl);
+          // Open the site only after the brief rebuild finished (not a plain Visit).
+          const next =
+            "websiteUrl" in result && result.websiteUrl
+              ? result.websiteUrl
+              : `${websiteUrl}${websiteUrl.includes("?") ? "&" : "?"}refreshed=${Date.now()}`;
+          window.location.assign(next);
         });
       }}
     >
@@ -57,10 +61,10 @@ export function EditSeedForm({
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
         <span className="mt-1.5 block text-xs leading-relaxed text-muted">
-          Save always rebuilds the live website from this brief — name/brand,
-          hero, CTA, services, and when you ask for them: admin, shop,
-          inventory with product images, shipping, and tax. Optional: Continue
-          growing on the portal for another agent wave.
+          Save rebuilds the live website from this brief (brand, hero, CTA,
+          services, shop catalog, admin) — then opens it. Wrong-industry or
+          rename-only stock pages get replaced. Optional: Continue growing on
+          the portal for another agent wave.
         </span>
       </label>
       <div className="flex flex-wrap gap-2 pt-1">
@@ -69,7 +73,7 @@ export function EditSeedForm({
           disabled={pending}
           className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand disabled:opacity-60"
         >
-          {pending ? "Refreshing website…" : "Save & refresh website"}
+          {pending ? "Rebuilding website…" : "Save & refresh website"}
         </button>
         <a
           href={`/portal/${projectId}`}
