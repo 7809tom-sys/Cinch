@@ -624,14 +624,9 @@ export async function tickProjectWork(
 
   let assigned = project.tasks.find((task) => task.status === "assigned");
   if (!assigned && project.tasks.some((task) => task.status === "queued")) {
-    // Older Seeds may only have the PM invited — staff specialists first.
-    const specialistsOnCrew = project.invitedAgentIds.some((id) => {
-      const agent = getAgent(id);
-      return Boolean(agent && !agent.isProjectManager);
-    });
-    if (!specialistsOnCrew) {
-      project = await ensureSpecialistsInvited(projectId);
-    }
+    // Always fill missing specialists (e.g. Lumen/Sentry for SEO/QA) before
+    // assigning — partial crews were pausing watch even with Atlas/Pixel on.
+    project = await ensureSpecialistsInvited(projectId);
     // Assign a single queued task, then start it below — avoids assign spam.
     project = await runProjectManagerAssignment(projectId, {
       limit: 1,

@@ -66,6 +66,7 @@ import {
   listSeedInLibrary,
   publishSeedWebsite,
   assignWorkAfterSeedEdit,
+  restaffSeedProject,
 } from "@/lib/project-manager";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
@@ -580,6 +581,21 @@ export async function portalContinueGrowthAction(projectId: string) {
     return { ok: false as const, error: "Not your Seed." };
   }
   await continueSeedGrowth(projectId, { force: true });
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
+  return { ok: true as const };
+}
+
+/** Invite missing specialists (SEO/QA etc.) and assign queued work. */
+export async function portalRestaffAction(projectId: string) {
+  const customer = await getCurrentCustomer();
+  if (!customer) {
+    return { ok: false as const, error: "Sign in required." };
+  }
+  if (!customerOwnsProject(customer, projectId)) {
+    return { ok: false as const, error: "Not your Seed." };
+  }
+  await restaffSeedProject(projectId);
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
   return { ok: true as const };

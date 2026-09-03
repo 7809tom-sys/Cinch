@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { portalWatchTickAction } from "../actions";
+import { portalRestaffAction, portalWatchTickAction } from "../actions";
 
 export function PortalWatchTicker({
   projectId,
@@ -28,6 +28,7 @@ export function PortalWatchTicker({
   useEffect(() => {
     setLocalComplete(complete);
     if (complete) {
+      setStuck(false);
       setStatusLine((prev) =>
         prev.startsWith("Updated") || prev.startsWith("Build complete")
           ? prev
@@ -72,6 +73,31 @@ export function PortalWatchTicker({
     });
   }
 
+  function restaffNow() {
+    if (busy.current) return;
+    busy.current = true;
+    startTransition(async () => {
+      try {
+        const result = await portalRestaffAction(projectId);
+        if (result.ok) {
+          setStuck(false);
+          setStatusLine("Crew restaffed — assigning work…");
+          const tick = await portalWatchTickAction(projectId);
+          if (tick.ok) {
+            setStuck(Boolean(tick.stuck));
+            setLocalComplete(Boolean(tick.complete));
+            if ("statusLine" in tick && tick.statusLine) {
+              setStatusLine(tick.statusLine);
+            }
+          }
+        }
+        router.refresh();
+      } finally {
+        busy.current = false;
+      }
+    });
+  }
+
   useEffect(() => {
     // Stop auto-ticking when complete — Seeds should finish, not loop forever.
     if (stuck || localComplete) return;
@@ -85,24 +111,51 @@ export function PortalWatchTicker({
   }, [stuck, localComplete, projectId]);
 
   return (
-    <div className="mt-3 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-      <p className="min-w-0 break-words text-sm font-semibold leading-snug text-brand-deep">
-        {pending ? "Refreshing status…" : statusLine}
-      </p>
-      <div className="flex min-w-0 flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            setStuck(false);
-            refreshNow({
-              advance: !localComplete,
-            });
-          }}
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40 disabled:opacity-60"
-        >
-          {pending ? "Refreshing…" : "Refresh status"}
-        </button>
+    <div className="mt-3 flex min-w-0 flex-col gap-3">
+      {stuck && !localComplete ? (
+        <div className="min-w-0 border border-accent/40 bg-accent/10 px-4 py-3">
+          <p className="font-[family-name:var(--font-display)] text-sm font-bold text-brand-deep">
+            Watch paused — crew can’t cover remaining tasks
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-muted">
+            Assignment stopped so it won’t loop. Restaff invites missing
+            specialists (SEO, QA, etc.) and resumes work.
+          </p>
+        </div>
+      ) : null}
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <p className="min-w-0 break-words text-sm font-semibold leading-snug text-brand-deep">
+          {pending
+            ? "Refreshing status…"
+            : stuck && !localComplete
+              ? "Waiting for Restaff crew"
+              : statusLine}
+        </p>
+        <div className="flex min-w-0 flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              setStuck(false);
+              refreshNow({
+                advance: !localComplete,
+              });
+            }}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40 disabled:opacity-60"
+          >
+            {pending ? "Refreshing…" : "Refresh status"}
+          </button>
+          {stuck && !localComplete ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => restaffNow()}
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand-deep disabled:opacity-60"
+            >
+              {pending ? "Restaffing…" : "Restaff crew"}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
