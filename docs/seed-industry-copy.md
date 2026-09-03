@@ -14,6 +14,12 @@
  * **barbershop**, so barber Seeds got “Shop now” retail copy instead of
  * appointment salon copy.
  *
+ * ## What went wrong (Pizza Man)
+ * Pizza / “Pizza Man” did not force food + pizza landing. The PM stamped stock
+ * templates via `applyTaskToSource` (rename brand only), so the site looked
+ * copied from another Seed — salon products or fine-dining “Reserve a table”.
+ * See `docs/seed-follow-brief.md`.
+ *
  * ## Hard rules (do not regress)
  * 1. Classify from **name + brief** together.
  * 2. Never match bare `car` / `auto` / `wash` without vehicle context.
@@ -22,12 +28,15 @@
  * 4. Retail uses word boundaries — do not let `shop` inside `barbershop` win.
  * 5. Auto detailing requires clear vehicle context (detailing, car wash,
  *    mobile detail, clean your car, etc.).
- * 6. If stored landing copy is the wrong vertical (salon with car hero /
- *    “Book a detail” / retail “Shop now”), `repairCustomerLandingIfNeeded`
- *    must rewrite it.
+ * 6. Pizza / pizzeria / “Pizza Man” classify as food with pizza CTAs — never
+ *    fine-dining or salon rename templates.
+ * 7. If stored landing copy is the wrong vertical (salon with car hero /
+ *    “Book a detail” / retail “Shop now” / pizza with “Reserve a table”),
+ *    `repairCustomerLandingIfNeeded` must rewrite it.
+ * 8. Owner-stocked / pizza / food e-com must not keep salon/retail stock SKUs.
  *
  * Implementation: `src/lib/seed-site-copy.ts` (`industryKey`,
- * `seedLandingCopyMismatchesIndustry`) and `src/lib/seed-site.ts` repair.
- * Guard: `npm run assert:seed-industry`.
+ * `seedLandingCopyMismatchesIndustry`, `seedShopCatalogMismatchesBrief`) and
+ * `src/lib/seed-site.ts` repair. Guard: `npm run assert:seed-industry`.
  */
 export {};

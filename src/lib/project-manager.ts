@@ -195,6 +195,8 @@ export async function advanceAssignedWork(
     const agent = task.assigneeId ? getAgent(task.assigneeId) : null;
     task.status = "done";
     task.updatedAt = now();
+    // Finishing stamps brief-derived Seed source (applyTaskToSource) — never
+    // clones another project’s tree. See docs/seed-follow-brief.md.
     pushActivity(
       project,
       `${agent?.name ?? "Agent"} finished “${task.title}” and saved a module to the library.`,
@@ -559,6 +561,8 @@ export async function tickProjectWork(
       : null;
     inProgress.status = "done";
     inProgress.updatedAt = now();
+    // Stamps brief-derived templates via applyTaskToSource — not a clone.
+    // See docs/seed-follow-brief.md.
     pushActivity(
       project,
       `${agent?.name ?? "Agent"} finished “${inProgress.title}” and saved a module to the library.`,

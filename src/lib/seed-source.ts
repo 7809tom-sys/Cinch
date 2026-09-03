@@ -651,7 +651,20 @@ async function projectIdentityFromSource(projectId: string): Promise<{
   return { name, brief };
 }
 
-/** Map a finished / in-progress task onto concrete source edits. */
+/**
+ * Map a finished / in-progress task onto concrete source edits.
+ *
+ * ROOT CAUSE (rename-only “copies”): the PM auto-finishes tasks and calls
+ * this function. It does **not** clone another Seed’s file tree — it stamps
+ * stock industry templates via `customerFacingSiteCopy` / `ShopCopy` /
+ * `AdminCopy`, swapping in this Seed’s brand name. That felt like “it
+ * copied another project and only changed the name” when:
+ * 1. Industry detection missed the brief (e.g. Pizza Man → generic/salon), or
+ * 2. E-com stamped salon/retail stock SKUs instead of an empty owner catalog.
+ *
+ * HARD RULE: always derive copy from THIS name + brief. Never keep another
+ * vertical’s landing/catalog. See docs/seed-follow-brief.md.
+ */
 export async function applyTaskToSource(input: {
   projectId: string;
   taskTitle: string;
