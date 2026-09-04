@@ -268,6 +268,34 @@ export type SeedService = {
   detail: string;
 };
 
+export type SeedProcessStep = {
+  title: string;
+  detail: string;
+};
+
+export type SeedGalleryImage = {
+  src: string;
+  alt: string;
+};
+
+export type SeedProof = {
+  quote: string;
+  attribution: string;
+};
+
+/** Menu-board rows for food / pizza Seeds (chain-site density). */
+export type SeedMenuItem = {
+  category: string;
+  name: string;
+  detail: string;
+  priceLabel: string;
+};
+
+export type SeedSpecial = {
+  title: string;
+  detail: string;
+};
+
 export type SeedSiteCopy = {
   brand: string;
   headline: string;
@@ -278,15 +306,401 @@ export type SeedSiteCopy = {
   servicesEyebrow: string;
   servicesHeadline: string;
   services: SeedService[];
+  /** Atmosphere strip — real place / product visuals after services. */
+  galleryEyebrow: string;
+  galleryHeadline: string;
+  gallery: SeedGalleryImage[];
+  /** How working with this business actually goes. */
+  processEyebrow: string;
+  processHeadline: string;
+  process: SeedProcessStep[];
+  /** Optional menu board (pizza / restaurant) — not a thin 3-bullet stub. */
+  menuEyebrow?: string;
+  menuHeadline?: string;
+  menuSupport?: string;
+  menuItems?: SeedMenuItem[];
+  specialsEyebrow?: string;
+  specialsHeadline?: string;
+  specials?: SeedSpecial[];
   aboutEyebrow: string;
   aboutHeadline: string;
   aboutBody: string;
+  aboutImage: string;
+  /** One customer voice — denser than a stub landing. */
+  proofEyebrow: string;
+  proofHeadline: string;
+  proof: SeedProof;
+  /** Service area / hours / trust band. */
+  areaEyebrow: string;
+  areaHeadline: string;
+  areaBody: string;
   bookEyebrow: string;
   bookHeadline: string;
   bookBody: string;
   bookNote: string;
   footerNote: string;
 };
+
+type SeedSiteCopyCore = Omit<
+  SeedSiteCopy,
+  | "galleryEyebrow"
+  | "galleryHeadline"
+  | "gallery"
+  | "processEyebrow"
+  | "processHeadline"
+  | "process"
+  | "aboutImage"
+  | "proofEyebrow"
+  | "proofHeadline"
+  | "proof"
+  | "areaEyebrow"
+  | "areaHeadline"
+  | "areaBody"
+>;
+
+/** Extra sections so Seeds feel like full business sites — not hero stubs. */
+function withBusinessSiteDepth(
+  core: SeedSiteCopyCore,
+  key: string,
+): SeedSiteCopy {
+  const brand = core.brand;
+  if (key === "detail") {
+    return {
+      ...core,
+      galleryEyebrow: "Results",
+      galleryHeadline: "What the driveway looks like after",
+      gallery: [
+        {
+          src: "https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=1200&q=80",
+          alt: "Freshly detailed car exterior",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1200&q=80",
+          alt: "Clean cabin after interior detail",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1200&q=80",
+          alt: "Showroom gloss on clear coat",
+        },
+      ],
+      processEyebrow: "How it works",
+      processHeadline: "Booked in three moves",
+      process: [
+        {
+          title: "Share your spot",
+          detail: "Drop a pin or address — we plan the route around you.",
+        },
+        {
+          title: "Pick the package",
+          detail: "Express, interior, or full polish — priced before we roll.",
+        },
+        {
+          title: "We come to you",
+          detail: "Water, power, and product on our truck. You keep your day.",
+        },
+      ],
+      aboutImage:
+        "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1400&q=80",
+      proofEyebrow: "From the driveway",
+      proofHeadline: "Neighbors notice",
+      proof: {
+        quote:
+          "They finished before my meeting ended. Car looked better than the day I bought it.",
+        attribution: "Jordan · mobile detail client",
+      },
+      areaEyebrow: "Service area",
+      areaHeadline: "We roll where you are",
+      areaBody: `${brand} covers the metro and nearby suburbs. Same-day windows open when the route allows — ask when you book.`,
+    };
+  }
+  if (key === "food") {
+    const pizza = /pizza|pie|oven/i.test(
+      `${core.brand} ${core.servicesHeadline} ${core.footerNote}`,
+    );
+    return {
+      ...core,
+      galleryEyebrow: pizza ? "From the oven" : "The room",
+      galleryHeadline: pizza ? "Hot pies, real crust" : "A night worth dressing for",
+      gallery: pizza
+        ? [
+            {
+              src: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=80",
+              alt: "Fresh pizza from the oven",
+            },
+            {
+              src: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=1200&q=80",
+              alt: "Pizza with toppings",
+            },
+            {
+              src: "https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?auto=format&fit=crop&w=1200&q=80",
+              alt: "Slices ready for pickup",
+            },
+          ]
+        : [
+            {
+              src: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
+              alt: "Dining room table setting",
+            },
+            {
+              src: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+              alt: "Plated dinner service",
+            },
+            {
+              src: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+              alt: "Restaurant interior atmosphere",
+            },
+          ],
+      processEyebrow: pizza ? "Order flow" : "Your night",
+      processHeadline: pizza ? "Pie to door in three steps" : "From reserve to table",
+      process: pizza
+        ? [
+            {
+              title: "Build your order",
+              detail: "Size, toppings, pickup or delivery — plain language.",
+            },
+            {
+              title: "We fire the oven",
+              detail: "Dough and toppings start when your slot is confirmed.",
+            },
+            {
+              title: "Hot handoff",
+              detail: "Counter pickup or a driver who knows the neighborhood.",
+            },
+          ]
+        : [
+            {
+              title: "Reserve",
+              detail: "Night and party size — we hold the room.",
+            },
+            {
+              title: "Arrive",
+              detail: "Your table is ready; the kitchen already knows the count.",
+            },
+            {
+              title: "Stay awhile",
+              detail: "Dinner paced for conversation, not a rush ticket.",
+            },
+          ],
+      aboutImage: pizza
+        ? "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=1400&q=80"
+        : "https://images.unsplash.com/photo-1550963211-0af174ce5f0e?auto=format&fit=crop&w=1400&q=80",
+      proofEyebrow: pizza ? "Regulars say" : "Guests say",
+      proofHeadline: pizza ? "Worth the pull-over" : "We’ll be back",
+      proof: pizza
+        ? {
+            quote:
+              "Crust was right, cheese was right, and it was still hot at the door. That’s the whole job.",
+            attribution: "Sam · weekly pickup",
+          }
+        : {
+            quote:
+              "Quiet enough to talk, food careful enough that we lingered. Exactly what we wanted.",
+            attribution: "Alex · anniversary dinner",
+          },
+      areaEyebrow: pizza ? "Neighborhood" : "Find us",
+      areaHeadline: pizza
+        ? "Delivery and pickup nearby"
+        : "Reservations and walk-ins",
+      areaBody: pizza
+        ? `${brand} runs pickup at the counter and delivery on a local route. Ask for today’s windows when you order.`
+        : `${brand} takes reservations most evenings. Walk-ins when we have room — call ahead on weekends.`,
+    };
+  }
+  if (key === "salon") {
+    return {
+      ...core,
+      galleryEyebrow: "In the chair",
+      galleryHeadline: "Cuts, color, and finish",
+      gallery: [
+        {
+          src: "https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=1200&q=80",
+          alt: "Salon styling station",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80",
+          alt: "Hair color and finish",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=1200&q=80",
+          alt: "Blowout and style",
+        },
+      ],
+      processEyebrow: "Visit flow",
+      processHeadline: "From book to blowout",
+      process: [
+        {
+          title: "Book the chair",
+          detail: "Pick a service and time that fits your week.",
+        },
+        {
+          title: "Consult in person",
+          detail: "We match cut or color to how you actually live in it.",
+        },
+        {
+          title: "Leave ready",
+          detail: "Finish you can recreate — plus what to do at home.",
+        },
+      ],
+      aboutImage:
+        "https://images.unsplash.com/photo-1521590832167-7bcbfaaae1b0?auto=format&fit=crop&w=1400&q=80",
+      proofEyebrow: "Clients",
+      proofHeadline: "They keep the chair",
+      proof: {
+        quote:
+          "I stopped explaining what I want. They already know — and my hair finally matches my week.",
+        attribution: "Riley · color client",
+      },
+      areaEyebrow: "Studio",
+      areaHeadline: "Appointments first",
+      areaBody: `${brand} runs on booked chairs. New clients: arrive a few minutes early so we can start on time.`,
+    };
+  }
+  if (key === "retail") {
+    return {
+      ...core,
+      galleryEyebrow: "On the floor",
+      galleryHeadline: "What you’ll actually find",
+      gallery: [
+        {
+          src: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1200&q=80",
+          alt: "Retail floor display",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=1200&q=80",
+          alt: "Product shelves",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1513885535751-8b9238bd345a?auto=format&fit=crop&w=1200&q=80",
+          alt: "Gift and essentials table",
+        },
+      ],
+      processEyebrow: "Shopping here",
+      processHeadline: "Simple on purpose",
+      process: [
+        {
+          title: "Browse without noise",
+          detail: "Tight edits — not endless aisles of almost-the-same.",
+        },
+        {
+          title: "Ask the floor",
+          detail: "Staff picks are real recommendations, not scripts.",
+        },
+        {
+          title: "Take it home — or ship",
+          detail: "Hold at the counter or ship select items when it helps.",
+        },
+      ],
+      aboutImage:
+        "https://images.unsplash.com/photo-1555529902-5261145633bf?auto=format&fit=crop&w=1400&q=80",
+      proofEyebrow: "Regulars",
+      proofHeadline: "Why people come back",
+      proof: {
+        quote:
+          "I can be in and out in ten minutes and still leave with the right thing. That never happens at bigger stores.",
+        attribution: "Morgan · weekly shopper",
+      },
+      areaEyebrow: "Visit",
+      areaHeadline: "Hours that match the neighborhood",
+      areaBody: `${brand} is open for walk-ins most days. Message us if you want something held before you come by.`,
+    };
+  }
+  if (key === "trade") {
+    return {
+      ...core,
+      galleryEyebrow: "On the job",
+      galleryHeadline: "Clean work, clear sites",
+      gallery: [
+        {
+          src: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80",
+          alt: "Trade professional at work",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=1200&q=80",
+          alt: "Tools and repair in progress",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=1200&q=80",
+          alt: "Finished repair detail",
+        },
+      ],
+      processEyebrow: "Service path",
+      processHeadline: "Diagnose, fix, follow through",
+      process: [
+        {
+          title: "Tell us what’s wrong",
+          detail: "A short description and preferred window is enough to start.",
+        },
+        {
+          title: "We diagnose on site",
+          detail: "Real cause first — then a clear price before we tear in.",
+        },
+        {
+          title: "Fix that holds",
+          detail: "Clean workmanship and a reachable number after we leave.",
+        },
+      ],
+      aboutImage:
+        "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=1400&q=80",
+      proofEyebrow: "Homeowners",
+      proofHeadline: "They call us back",
+      proof: {
+        quote:
+          "Showed up when they said, fixed the real problem, and didn’t leave a mess. That’s rare.",
+        attribution: "Chris · service call",
+      },
+      areaEyebrow: "Coverage",
+      areaHeadline: "We work your schedule",
+      areaBody: `${brand} books diagnostics and repairs across the local area. Emergency slots when the board allows — ask when you request service.`,
+    };
+  }
+  return {
+    ...core,
+    galleryEyebrow: "Look closer",
+    galleryHeadline: "How the work shows up",
+    gallery: [
+      {
+        src: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80",
+        alt: "Workspace and meeting area",
+      },
+      {
+        src: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=80",
+        alt: "Team collaborating",
+      },
+      {
+        src: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=1200&q=80",
+        alt: "Customer conversation",
+      },
+    ],
+    processEyebrow: "Working with us",
+    processHeadline: "Clear from the first message",
+    process: [
+      {
+        title: "Tell us the goal",
+        detail: "What you need and how to reach you — no jargon required.",
+      },
+      {
+        title: "We map the path",
+        detail: "Next steps and timing before anything big starts.",
+      },
+      {
+        title: "Follow through",
+        detail: "We stay reachable after the first deliverable lands.",
+      },
+    ],
+    aboutImage:
+      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80",
+    proofEyebrow: "Clients",
+    proofHeadline: "Why they stay",
+    proof: {
+      quote:
+        "They explained the plan in plain language and actually did what they said. That’s the whole standard.",
+      attribution: "Taylor · returning client",
+    },
+    areaEyebrow: "Reach us",
+    areaHeadline: "Built for how you already work",
+    areaBody: `${brand} replies during business hours. Share what you need and the best way to follow up.`,
+  };
+}
 
 /** Industry-shaped services, about, and booking copy for a full site — not a hero stub. */
 export function customerFacingSiteCopy(
@@ -301,7 +715,8 @@ export function customerFacingSiteCopy(
   const heroImage = customerFacingHeroImage(brief, projectName);
 
   if (key === "detail") {
-    return {
+    return withBusinessSiteDepth(
+      {
       brand,
       headline,
       support,
@@ -337,58 +752,120 @@ export function customerFacingSiteCopy(
         "Tell us the vehicle, package, and where to meet you. We’ll confirm a window and come to you.",
       bookNote: "Same-day slots open when the route allows.",
       footerNote: `${brand} · Mobile detailing that comes to you`,
-    };
+      },
+      key,
+    );
   }
 
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
-      return {
+      return withBusinessSiteDepth(
+        {
         brand,
         headline,
         support,
         cta,
         heroImage,
         navLabel: "Menu",
-        servicesEyebrow: "The oven",
-        servicesHeadline: "Pies worth pulling over for",
+        servicesEyebrow: "Order online",
+        servicesHeadline: "Pickup, delivery, and hot pies",
         services: [
           {
-            title: "Classic pies",
-            detail: "Hand-tossed crust, real cheese, toppings that don’t skimp.",
+            title: "Carryout",
+            detail: "Order ahead, skip the line, grab it hot at the counter.",
           },
           {
-            title: "Specialty pies",
-            detail: "House favorites and builds you won’t find in a freezer aisle.",
+            title: "Delivery",
+            detail: "Local drivers, tracked windows — still hot at your door.",
           },
           {
-            title: "Pickup & delivery",
-            detail: "Hot out of the oven — grab it at the counter or get it to your door.",
+            title: "Family & group orders",
+            detail: "Multi-pie tickets, sides, and drinks for the whole table.",
+          },
+        ],
+        menuEyebrow: "Menu",
+        menuHeadline: "Build your order",
+        menuSupport:
+          "Sizes, crusts, and toppings — priced like a real pizza shop, not a three-bullet stub.",
+        menuItems: [
+          {
+            category: "Classic",
+            name: "Cheese",
+            detail: "Hand-tossed crust, sauce, mozzarella.",
+            priceLabel: "From $11",
+          },
+          {
+            category: "Classic",
+            name: "Pepperoni",
+            detail: "Extra crisp edges, generous cup-and-char.",
+            priceLabel: "From $13",
+          },
+          {
+            category: "Specialty",
+            name: "House supreme",
+            detail: "Pepperoni, sausage, peppers, onion, mushrooms.",
+            priceLabel: "From $16",
+          },
+          {
+            category: "Specialty",
+            name: "White pie",
+            detail: "Garlic oil, ricotta, mozzarella, herbs.",
+            priceLabel: "From $15",
+          },
+          {
+            category: "Sides",
+            name: "Garlic knots",
+            detail: "Butter, parsley, side of marinara.",
+            priceLabel: "$5",
+          },
+          {
+            category: "Sides",
+            name: "Garden salad",
+            detail: "House greens, tomato, cucumber, vinaigrette.",
+            priceLabel: "$6",
+          },
+        ],
+        specialsEyebrow: "Deals",
+        specialsHeadline: "Tonight’s specials",
+        specials: [
+          {
+            title: "Two-medium carryout",
+            detail: "Two classics, one pickup window — family night without the markup theater.",
+          },
+          {
+            title: "Lunch express",
+            detail: "Personal pie + drink when you order before 2.",
           },
         ],
         aboutEyebrow: "Kitchen",
         aboutHeadline: "Dough. Fire. Done right.",
-        aboutBody: support,
+        aboutBody:
+          support ||
+          `${brand} runs a real pizza line — carryout and delivery with a menu you can order from, not a placeholder paragraph.`,
         bookEyebrow: "Order",
-        bookHeadline: "Get your pie going",
+        bookHeadline: "Send the ticket",
         bookBody:
-          "Tell us the size, toppings, and pickup or delivery — we’ll fire the oven.",
-        bookNote: "Delivery windows open when the route allows.",
-        footerNote: `${brand} · Pizza · Pickup & delivery`,
-      };
+          "Name, phone, pickup or delivery, and what you want on the pie — we’ll confirm the window.",
+        bookNote: "Delivery windows open when the route allows. Large orders: call ahead.",
+        footerNote: `${brand} · Pizza · Order · Pickup & delivery`,
+        },
+        key,
+      );
     }
-    return {
+    return withBusinessSiteDepth(
+      {
       brand,
       headline,
       support,
       cta,
       heroImage,
       navLabel: "Menu",
-      servicesEyebrow: "The table",
-      servicesHeadline: "What we’re known for",
+      servicesEyebrow: "Dining",
+      servicesHeadline: "How guests use the room",
       services: [
         {
           title: "Dinner service",
-          detail: "Seasonal plates built for a night out — not a rush through.",
+          detail: "Seasonal plates built for a night out — not a rush ticket.",
         },
         {
           title: "Private gatherings",
@@ -399,6 +876,47 @@ export function customerFacingSiteCopy(
           detail: "Something cold, something shared, before the main event.",
         },
       ],
+      menuEyebrow: "Menu highlights",
+      menuHeadline: "What leaves the kitchen",
+      menuSupport: "Signature plates and bar notes — a full hospitality site, not three vague bullets.",
+      menuItems: [
+        {
+          category: "Starters",
+          name: "Seasonal small plates",
+          detail: "Shared bites before the main course.",
+          priceLabel: "From $12",
+        },
+        {
+          category: "Mains",
+          name: "Chef’s dinner plates",
+          detail: "Rotating mains matched to the market list.",
+          priceLabel: "From $24",
+        },
+        {
+          category: "Mains",
+          name: "Catch of the evening",
+          detail: "When the board has fish — ask your server.",
+          priceLabel: "Market",
+        },
+        {
+          category: "Bar",
+          name: "House cocktails",
+          detail: "Short list, careful pours.",
+          priceLabel: "From $11",
+        },
+      ],
+      specialsEyebrow: "This week",
+      specialsHeadline: "Kitchen notes",
+      specials: [
+        {
+          title: "Prix fixe midweek",
+          detail: "Three courses on select nights — ask when you reserve.",
+        },
+        {
+          title: "Late bar",
+          detail: "Small plates after the dining room softens.",
+        },
+      ],
       aboutEyebrow: "About",
       aboutHeadline: "A room worth dressing up for",
       aboutBody: support,
@@ -407,11 +925,14 @@ export function customerFacingSiteCopy(
       bookBody: "Pick a night and party size — we’ll hold the spot.",
       bookNote: "Walk-ins welcome when we have room.",
       footerNote: `${brand} · Reservations & hospitality`,
-    };
+      },
+      key,
+    );
   }
 
   if (key === "salon") {
-    return {
+    return withBusinessSiteDepth(
+      {
       brand,
       headline,
       support,
@@ -442,11 +963,14 @@ export function customerFacingSiteCopy(
       bookBody: "Choose a service and time — we’ll confirm shortly.",
       bookNote: "New clients: arrive five minutes early.",
       footerNote: `${brand} · Appointments`,
-    };
+      },
+      key,
+    );
   }
 
   if (key === "retail") {
-    return {
+    return withBusinessSiteDepth(
+      {
       brand,
       headline,
       support,
@@ -477,11 +1001,14 @@ export function customerFacingSiteCopy(
       bookBody: "Hours and directions — or message us if you want something held.",
       bookNote: "Shipping available on select items.",
       footerNote: `${brand} · Shop`,
-    };
+      },
+      key,
+    );
   }
 
   if (key === "trade") {
-    return {
+    return withBusinessSiteDepth(
+      {
       brand,
       headline,
       support,
@@ -512,10 +1039,13 @@ export function customerFacingSiteCopy(
       bookBody: "Describe the issue and preferred window — we’ll confirm arrival.",
       bookNote: "Emergency slots when available.",
       footerNote: `${brand} · Service requests`,
-    };
+      },
+      key,
+    );
   }
 
-  return {
+  return withBusinessSiteDepth(
+    {
     brand,
     headline,
     support,
@@ -546,7 +1076,9 @@ export function customerFacingSiteCopy(
     bookBody: "Share what you need and the best way to reach you.",
     bookNote: "We reply during business hours.",
     footerNote: `${brand}`,
-  };
+    },
+    key,
+  );
 }
 
 /** Full public-site CSS — hero + real sections, not a blank stub. */
@@ -857,6 +1389,256 @@ button {
   background:
     radial-gradient(90% 70% at 100% 0%, rgba(94, 234, 212, 0.1), transparent 50%),
     var(--ink);
+}
+
+.seed-about-grid {
+  display: grid;
+  gap: 2rem;
+  align-items: center;
+}
+
+@media (min-width: 860px) {
+  .seed-about-grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 3rem;
+  }
+}
+
+.seed-about-photo {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 0.2rem;
+  min-height: 16rem;
+  background: var(--panel);
+}
+
+.seed-about-photo img {
+  width: 100%;
+  height: 100%;
+  min-height: 16rem;
+  object-fit: cover;
+  animation: seed-zoom 1.1s ease both;
+}
+
+.seed-gallery {
+  padding: clamp(2.5rem, 7vw, 4rem) 0 0;
+  background: #0e151a;
+}
+
+.seed-gallery-intro {
+  padding-inline: var(--pad-inline);
+  margin-bottom: 1.5rem;
+}
+
+.seed-gallery-strip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.35rem;
+  padding-inline: var(--pad-inline);
+  padding-bottom: clamp(2rem, 6vw, 3.5rem);
+}
+
+@media (min-width: 720px) {
+  .seed-gallery-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+}
+
+.seed-gallery-item {
+  margin: 0;
+  overflow: hidden;
+  min-height: 12rem;
+  background: var(--panel);
+}
+
+.seed-gallery-item img {
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+  max-height: 18rem;
+  object-fit: cover;
+  transition: transform 420ms ease;
+}
+
+.seed-gallery-item:hover img {
+  transform: scale(1.04);
+}
+
+.seed-process {
+  background: var(--panel);
+}
+
+.seed-process-list {
+  display: grid;
+  gap: 0;
+  margin: 2.25rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: none;
+  border-top: 1px solid var(--line);
+}
+
+.seed-process-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.seed-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.seed-process-list h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.seed-process-list p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.seed-proof {
+  background:
+    linear-gradient(180deg, rgba(94, 234, 212, 0.08), transparent 42%),
+    var(--ink);
+}
+
+.seed-quote {
+  margin: 1.5rem 0 0;
+  max-width: 40rem;
+  padding: 0;
+  border: 0;
+}
+
+.seed-quote p {
+  margin: 0;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.35rem, 3.2vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.seed-quote footer {
+  margin-top: 1.1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.seed-area {
+  background: #101820;
+  border-block: 1px solid var(--line);
+}
+
+.seed-menu {
+  background: #0c1419;
+}
+
+.seed-menu-list {
+  display: grid;
+  gap: 0;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.seed-menu-list li {
+  padding: 1.2rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.seed-menu-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.seed-menu-cat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.seed-menu-price {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--foam);
+}
+
+.seed-menu-list h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.seed-menu-list p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.seed-specials {
+  background: var(--panel);
+}
+
+.seed-specials-list {
+  display: grid;
+  gap: 0;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 720px) {
+  .seed-specials-list {
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2rem;
+  }
+}
+
+.seed-specials-list li {
+  padding: 1.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.seed-specials-list h3 {
+  margin: 0;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.seed-specials-list p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .seed-book {
@@ -1587,7 +2369,7 @@ function esc(value: string): string {
   return value.replace(/`/g, "'").replace(/\\/g, "\\\\");
 }
 
-/** Customer-facing landing page source — full site, not hero-only. */
+/** Customer-facing landing page source — full business site, not a thin stub. */
 export function seedHomePageSource(
   input: SeedSiteCopy & { includeShop?: boolean },
 ): string {
@@ -1610,6 +2392,75 @@ export function seedHomePageSource(
           </li>`,
     )
     .join("\n");
+  const gallery = input.gallery
+    .map(
+      (image) => `          <figure className="seed-gallery-item">
+            <img src="${esc(image.src)}" alt="${esc(image.alt)}" loading="lazy" />
+          </figure>`,
+    )
+    .join("\n");
+  const process = input.process
+    .map(
+      (step, index) => `          <li>
+            <span className="seed-step-num">${index + 1}</span>
+            <div>
+              <h3>${esc(step.title)}</h3>
+              <p>${esc(step.detail)}</p>
+            </div>
+          </li>`,
+    )
+    .join("\n");
+  const menuItems = input.menuItems ?? [];
+  const specials = input.specials ?? [];
+  const menuSection =
+    menuItems.length > 0
+      ? `
+      <section className="seed-section seed-menu" id="menu">
+        <div className="seed-section-inner">
+          <p className="seed-eyebrow">${esc(input.menuEyebrow ?? "Menu")}</p>
+          <h2>${esc(input.menuHeadline ?? "Menu")}</h2>
+          ${
+            input.menuSupport
+              ? `<p className="lead">${esc(input.menuSupport)}</p>`
+              : ""
+          }
+          <ul className="seed-menu-list">
+${menuItems
+  .map(
+    (item) => `            <li>
+              <div className="seed-menu-meta">
+                <span className="seed-menu-cat">${esc(item.category)}</span>
+                <span className="seed-menu-price">${esc(item.priceLabel)}</span>
+              </div>
+              <h3>${esc(item.name)}</h3>
+              <p>${esc(item.detail)}</p>
+            </li>`,
+  )
+  .join("\n")}
+          </ul>
+        </div>
+      </section>`
+      : "";
+  const specialsSection =
+    specials.length > 0
+      ? `
+      <section className="seed-section seed-specials" id="specials">
+        <div className="seed-section-inner">
+          <p className="seed-eyebrow">${esc(input.specialsEyebrow ?? "Specials")}</p>
+          <h2>${esc(input.specialsHeadline ?? "Specials")}</h2>
+          <ul className="seed-specials-list">
+${specials
+  .map(
+    (item) => `            <li>
+              <h3>${esc(item.title)}</h3>
+              <p>${esc(item.detail)}</p>
+            </li>`,
+  )
+  .join("\n")}
+          </ul>
+        </div>
+      </section>`
+      : "";
 
   return `export default function HomePage() {
   return (
@@ -1620,7 +2471,17 @@ export function seedHomePageSource(
         </a>
         <ul className="seed-nav-links">
           <li>
-            <a href="#services">Services</a>
+            <a href="#services">Order</a>
+          </li>
+          ${
+            menuItems.length > 0
+              ? `<li>
+            <a href="#menu">Menu</a>
+          </li>`
+              : ""
+          }
+          <li>
+            <a href="#work">Work</a>
           </li>
           <li>
             <a href="#about">About</a>
@@ -1641,7 +2502,7 @@ export function seedHomePageSource(
           <p className="brand">${brand}</p>
           <h1>${headline}</h1>
           <p className="support">${support}</p>
-          <a className="cta" href="#book">
+          <a className="cta" href="${input.includeShop ? "/shop" : "#book"}">
             ${cta}
           </a>
         </div>
@@ -1654,12 +2515,52 @@ export function seedHomePageSource(
 ${services}
           </ul>
         </div>
+      </section>${menuSection}${specialsSection}
+      <section className="seed-gallery" id="work" aria-label="${esc(input.galleryHeadline)}">
+        <div className="seed-section-inner seed-gallery-intro">
+          <p className="seed-eyebrow">${esc(input.galleryEyebrow)}</p>
+          <h2>${esc(input.galleryHeadline)}</h2>
+        </div>
+        <div className="seed-gallery-strip">
+${gallery}
+        </div>
+      </section>
+      <section className="seed-section seed-process" id="process">
+        <div className="seed-section-inner">
+          <p className="seed-eyebrow">${esc(input.processEyebrow)}</p>
+          <h2>${esc(input.processHeadline)}</h2>
+          <ol className="seed-process-list">
+${process}
+          </ol>
+        </div>
       </section>
       <section className="seed-section seed-about" id="about">
+        <div className="seed-section-inner seed-about-grid">
+          <div>
+            <p className="seed-eyebrow">${esc(input.aboutEyebrow)}</p>
+            <h2>${esc(input.aboutHeadline)}</h2>
+            <p className="lead">${esc(input.aboutBody)}</p>
+          </div>
+          <figure className="seed-about-photo">
+            <img src="${esc(input.aboutImage)}" alt="" loading="lazy" />
+          </figure>
+        </div>
+      </section>
+      <section className="seed-section seed-proof" id="proof">
         <div className="seed-section-inner">
-          <p className="seed-eyebrow">${esc(input.aboutEyebrow)}</p>
-          <h2>${esc(input.aboutHeadline)}</h2>
-          <p className="lead">${esc(input.aboutBody)}</p>
+          <p className="seed-eyebrow">${esc(input.proofEyebrow)}</p>
+          <h2>${esc(input.proofHeadline)}</h2>
+          <blockquote className="seed-quote">
+            <p>“${esc(input.proof.quote)}”</p>
+            <footer>${esc(input.proof.attribution)}</footer>
+          </blockquote>
+        </div>
+      </section>
+      <section className="seed-section seed-area" id="area">
+        <div className="seed-section-inner">
+          <p className="seed-eyebrow">${esc(input.areaEyebrow)}</p>
+          <h2>${esc(input.areaHeadline)}</h2>
+          <p className="lead">${esc(input.areaBody)}</p>
         </div>
       </section>
       <section className="seed-section seed-book" id="book">
@@ -1912,6 +2813,29 @@ export function customerFacingAdminCopy(
             body: "Shake or vacuum mats weekly if you haul dogs, tools, or kids.",
           },
         ]
+      : briefIsPizza(projectName, brief) || key === "food"
+        ? [
+            {
+              id: "tip-ticket",
+              title: "Confirm the ticket",
+              body: "Name, phone, pickup vs delivery, and pie notes before you fire the oven.",
+            },
+            {
+              id: "tip-tax",
+              title: "Tax on the order",
+              body: "Sales tax stays on this Seed’s admin — apply it before the total hits the customer.",
+            },
+            {
+              id: "tip-crm",
+              title: "Follow up once",
+              body: "After first order, a short “thanks — here’s this week’s special” keeps them in your CRM lane.",
+            },
+            {
+              id: "tip-route",
+              title: "Batch the route",
+              body: "Group delivery windows by neighborhood so drivers aren’t zig-zagging empty.",
+            },
+          ]
       : wantsShop
         ? [
             {
@@ -1929,6 +2853,11 @@ export function customerFacingAdminCopy(
               title: "When it’s LTL",
               body: "Pallet freight needs class, weight, and liftgate notes — not a small-parcel label.",
             },
+            {
+              id: "tip-crm",
+              title: "Customer follow-up",
+              body: "Open orders and contacts live here — use them as your CRM for repeats.",
+            },
           ]
         : [
             {
@@ -1936,24 +2865,39 @@ export function customerFacingAdminCopy(
               title: "Between visits",
               body: "Share a short tip customers can use until the next appointment.",
             },
+            {
+              id: "tip-crm",
+              title: "Keep the thread",
+              body: "Schedule plus notes are your CRM — capture phone/email on every book.",
+            },
           ];
+
+  const pizzaOrFood = briefIsPizza(projectName, brief) || key === "food";
 
   return {
     brand,
-    title: wantsShop ? "Business admin · Commerce" : "Business admin",
+    title: wantsShop
+      ? pizzaOrFood
+        ? "Business admin · Orders & tax"
+        : "Business admin · Commerce"
+      : "Business admin",
     support: wantsShop
-      ? "Schedule plus inventory, UPS/LTL shipping, and sales tax — part of your Seed website."
+      ? pizzaOrFood
+        ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
+        : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
       : key === "detail"
         ? "Calendar, jobs, and tips for keeping cars clean — part of your Seed website."
-        : "Schedule and customer-care tips for your business — part of your Seed website.",
-    scheduleEyebrow: "Calendar",
-    scheduleHeadline: "Schedule",
+        : "Schedule, customer follow-up, and care tips — part of your Seed website (CRM-lite, automatic).",
+    scheduleEyebrow: pizzaOrFood ? "Tickets" : "Calendar",
+    scheduleHeadline: pizzaOrFood ? "Orders & slots" : "Schedule",
     tipsEyebrow: "Educate",
-    tipsHeadline: wantsShop
-      ? "Fulfillment tips"
-      : key === "detail"
-        ? "Keeping the car clean"
-        : "Customer care tips",
+    tipsHeadline: pizzaOrFood
+      ? "Shop floor tips"
+      : wantsShop
+        ? "Fulfillment tips"
+        : key === "detail"
+          ? "Keeping the car clean"
+          : "Customer care tips",
     services,
     appointments: [],
     tips,

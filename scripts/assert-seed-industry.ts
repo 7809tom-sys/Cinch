@@ -133,6 +133,18 @@ assert(
   ),
   "pizza services talk about pies / oven / delivery",
 );
+assert(
+  Array.isArray(pizza.menuItems) && pizza.menuItems.length >= 4,
+  "pizza site ships a real menu board (not thin stub)",
+);
+assert(
+  Array.isArray(pizza.specials) && pizza.specials.length >= 1,
+  "pizza site ships deals/specials like a chain site",
+);
+assert(
+  Boolean(pizza.gallery?.length && pizza.process?.length && pizza.proof?.quote),
+  "pizza site has gallery, process, and proof depth",
+);
 
 assert(
   seedLandingCopyMismatchesIndustry(pizzaName, pizzaBrief, {

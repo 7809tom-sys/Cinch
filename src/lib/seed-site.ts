@@ -89,9 +89,52 @@ function escapeCopy(copy: SeedSiteCopy): SeedSiteCopy {
       title: escapeHtml(service.title),
       detail: escapeHtml(service.detail),
     })),
+    galleryEyebrow: escapeHtml(copy.galleryEyebrow),
+    galleryHeadline: escapeHtml(copy.galleryHeadline),
+    gallery: copy.gallery.map((image) => ({
+      src: image.src,
+      alt: escapeHtml(image.alt),
+    })),
+    processEyebrow: escapeHtml(copy.processEyebrow),
+    processHeadline: escapeHtml(copy.processHeadline),
+    process: copy.process.map((step) => ({
+      title: escapeHtml(step.title),
+      detail: escapeHtml(step.detail),
+    })),
+    menuEyebrow: copy.menuEyebrow ? escapeHtml(copy.menuEyebrow) : copy.menuEyebrow,
+    menuHeadline: copy.menuHeadline
+      ? escapeHtml(copy.menuHeadline)
+      : copy.menuHeadline,
+    menuSupport: copy.menuSupport ? escapeHtml(copy.menuSupport) : copy.menuSupport,
+    menuItems: copy.menuItems?.map((item) => ({
+      category: escapeHtml(item.category),
+      name: escapeHtml(item.name),
+      detail: escapeHtml(item.detail),
+      priceLabel: escapeHtml(item.priceLabel),
+    })),
+    specialsEyebrow: copy.specialsEyebrow
+      ? escapeHtml(copy.specialsEyebrow)
+      : copy.specialsEyebrow,
+    specialsHeadline: copy.specialsHeadline
+      ? escapeHtml(copy.specialsHeadline)
+      : copy.specialsHeadline,
+    specials: copy.specials?.map((item) => ({
+      title: escapeHtml(item.title),
+      detail: escapeHtml(item.detail),
+    })),
     aboutEyebrow: escapeHtml(copy.aboutEyebrow),
     aboutHeadline: escapeHtml(copy.aboutHeadline),
     aboutBody: escapeHtml(copy.aboutBody),
+    aboutImage: copy.aboutImage,
+    proofEyebrow: escapeHtml(copy.proofEyebrow),
+    proofHeadline: escapeHtml(copy.proofHeadline),
+    proof: {
+      quote: escapeHtml(copy.proof.quote),
+      attribution: escapeHtml(copy.proof.attribution),
+    },
+    areaEyebrow: escapeHtml(copy.areaEyebrow),
+    areaHeadline: escapeHtml(copy.areaHeadline),
+    areaBody: escapeHtml(copy.areaBody),
     bookEyebrow: escapeHtml(copy.bookEyebrow),
     bookHeadline: escapeHtml(copy.bookHeadline),
     bookBody: escapeHtml(copy.bookBody),
@@ -253,8 +296,18 @@ export async function repairCustomerLandingIfNeeded(
         footerNote?: string;
         servicesHeadline?: string;
         services?: SeedService[];
+        gallery?: unknown[];
+        process?: unknown[];
+        menuItems?: unknown[];
+        proof?: { quote?: string };
+        aboutImage?: string;
+        areaBody?: string;
       };
       const brand = brandFromProject(project);
+      const foodNeedsMenu =
+        /\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(
+          `${project.name} ${project.brief}`,
+        );
       copyLooksBad = Boolean(
         (copy.headline && looksLikeAgentTaskCopy(copy.headline)) ||
           (copy.support && looksLikeAgentTaskCopy(copy.support)) ||
@@ -263,6 +316,16 @@ export async function repairCustomerLandingIfNeeded(
           !copy.heroImage ||
           !Array.isArray(copy.services) ||
           copy.services.length < 2 ||
+          // Thin stub landings (hero + 3 bullets only) must thicken.
+          !Array.isArray(copy.gallery) ||
+          copy.gallery.length < 2 ||
+          !Array.isArray(copy.process) ||
+          copy.process.length < 2 ||
+          !copy.proof?.quote ||
+          !copy.aboutImage ||
+          !copy.areaBody ||
+          (foodNeedsMenu &&
+            (!Array.isArray(copy.menuItems) || copy.menuItems.length < 4)) ||
           seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
       );
     } catch {
@@ -277,6 +340,13 @@ export async function repairCustomerLandingIfNeeded(
     !page.includes("seed-hero") ||
     !page.includes('id="services"') ||
     !page.includes('id="book"') ||
+    !page.includes("seed-gallery") ||
+    !page.includes("seed-process") ||
+    !page.includes("seed-proof") ||
+    (/\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(
+      `${project.name} ${project.brief}`,
+    ) &&
+      !page.includes("seed-menu")) ||
     (/Book a detail|Express wash|Showroom polish|Details that travel|Shop now|Reserve a table|Dinner service|Book an appointment/i.test(
       page,
     ) &&
@@ -308,7 +378,11 @@ export async function repairCustomerLandingIfNeeded(
       }));
 
   const cssLooksBad =
-    !css || !css.includes("seed-hero") || !css.includes("seed-services");
+    !css ||
+    !css.includes("seed-hero") ||
+    !css.includes("seed-services") ||
+    !css.includes("seed-gallery") ||
+    !css.includes("seed-process");
 
   if (!pageLooksBad && !copyLooksBad && !cssLooksBad) return;
 
@@ -319,7 +393,7 @@ export async function repairCustomerLandingIfNeeded(
     path: "app/globals.css",
     content: seedPublicSiteCss(),
     status: "ready",
-    message: "Restored full website styles",
+    message: "Restored full business website (gallery, process, proof)",
     agentName: "Conductor",
   });
   await upsertSourceFile({
@@ -330,7 +404,7 @@ export async function repairCustomerLandingIfNeeded(
       includeShop: briefAsksForEcommerce(project.brief),
     }),
     status: "ready",
-    message: "Restored full customer website",
+    message: "Restored full customer website with business depth",
     agentName: "Conductor",
   });
   await upsertSourceFile({
