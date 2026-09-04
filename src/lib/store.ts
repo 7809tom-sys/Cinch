@@ -18,6 +18,11 @@ import {
   planReactionsToEditedBrief,
   SEED_EDIT_MUST_REACT_RULE,
 } from "./seed-edit-rule";
+import {
+  planEngagementCollaborationChain,
+  projectHasEngagementCollab,
+  SEED_ENGAGEMENT_COLLABORATE_RULE,
+} from "./seed-engagement-rule";
 import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "./seed-site-copy";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
@@ -643,6 +648,8 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
       requiredSkills: ["copy"],
       minSkillLevel: 2,
     },
+    // HARD RULE: multi-agent engagement / conversion psychology chain.
+    // Inserted as drafts below after backlog base is built.
     {
       title: "Implement frontend shell",
       detail: `Routes, layout, wrap-friendly nav, 44px touch targets, safe-area padding. Merge shell modulars first; custom-code only missing pieces. ${modularsFirst}`,
@@ -699,6 +706,20 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     });
   }
 
+  // HARD RULE: agents collaborate on visitor psychology / conversion — not siloed lanes.
+  const writeCopyIdx = backlog.findIndex((item) =>
+    /write seed landing copy/i.test(item.title),
+  );
+  const engagementChain = planEngagementCollaborationChain({
+    brandHint: project.name,
+    briefHint: project.brief,
+  }).map(({ collabPath: _c, phase: _p, ...task }) => task);
+  if (writeCopyIdx >= 0) {
+    backlog.splice(writeCopyIdx + 1, 0, ...engagementChain);
+  } else {
+    backlog.push(...engagementChain);
+  }
+
   project.tasks = backlog.map((item) => ({
     ...item,
     id: randomUUID(),
@@ -710,7 +731,13 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
 
   pushActivity(
     project,
-    `${pm.name} drafted ${project.tasks.length} build tasks after modular survey (modulars first, then custom gaps).`,
+    `${pm.name} opened the engagement collaboration loop — ${SEED_ENGAGEMENT_COLLABORATE_RULE.summary}`,
+    pm.id,
+  );
+
+  pushActivity(
+    project,
+    `${pm.name} drafted ${project.tasks.length} build tasks after modular survey (modulars first, then custom gaps, then multi-agent conversion psychology).`,
     pm.id,
   );
 
@@ -732,6 +759,7 @@ export const GROWTH_WAVE_TITLES = [
   "Strengthen booking / contact conversion path",
   "Add trust and service-area cues",
   "Grow live-site health adaptations",
+  "Engagement collab · conversion psychology refresh",
 ] as const;
 
 /** Also match older wording so already-running Seeds can still complete. */
@@ -740,6 +768,7 @@ const GROWTH_WAVE_MATCHERS = [
   /strengthen booking/i,
   /trust and service-area/i,
   /live-site health/i,
+  /conversion psychology refresh/i,
 ];
 
 export function projectHasGrowthWave(project: SeedProject): boolean {
@@ -791,15 +820,13 @@ export async function appendNextBuildWave(
     },
     {
       title: GROWTH_WAVE_TITLES[1],
-      detail:
-        "Clarify the primary CTA and make it obvious how a visitor schedules service. Reuse booking/contact modulars first; custom-write only gaps.",
+      detail: `${SEED_ENGAGEMENT_COLLABORATE_RULE.summary} Clarify the primary CTA and make it obvious how a visitor schedules service, orders, or buys. Reuse booking/contact modulars first; custom-write only gaps. Append psychology notes to docs/engagement-collab.md.`,
       requiredSkills: ["copy"],
       minSkillLevel: 2,
     },
     {
       title: GROWTH_WAVE_TITLES[2],
-      detail:
-        "Surface service-area clarity, reviews, and care language for this Seed’s industry. Pull trust modulars from the library before inventing new blocks.",
+      detail: `${SEED_ENGAGEMENT_COLLABORATE_RULE.summary} Surface service-area clarity, reviews, and care language for this Seed’s industry. Pull trust modulars from the library before inventing new blocks. Continue the shared engagement notebook.`,
       requiredSkills: ["seo", "copy"],
       minSkillLevel: 2,
     },
@@ -810,7 +837,22 @@ export async function appendNextBuildWave(
       requiredSkills: ["backend", "devops"],
       minSkillLevel: 3,
     },
+    {
+      title: GROWTH_WAVE_TITLES[4],
+      detail: `${SEED_ENGAGEMENT_COLLABORATE_RULE.summary} Re-run the multi-agent conversion loop: psychology → desire path → friction → trust → QA sign-off. Extraordinary engagement requires the crew talking through the shared notebook — not one agent alone.`,
+      requiredSkills: ["qa", "research"],
+      minSkillLevel: 3,
+    },
   ];
+
+  // When forcing growth and the Seed never ran the full collab chain, queue it.
+  if (options.force && !projectHasEngagementCollab(project.tasks)) {
+    const chain = planEngagementCollaborationChain({
+      brandHint: project.name,
+      briefHint: project.brief,
+    }).map(({ collabPath: _c, phase: _p, ...task }) => task);
+    baseWave.push(...chain);
+  }
 
   const wave =
     waveNumber > 1
