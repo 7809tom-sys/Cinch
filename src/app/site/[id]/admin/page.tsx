@@ -96,7 +96,10 @@ export default async function SeedBusinessAdminPage({
                 className="seed-admin-link"
                 target="_top"
               >
-                Shop
+                {admin.commerce?.ordersHeadline?.includes("ticket") ||
+                admin.commerce?.ordersEyebrow === "Money"
+                  ? "Order menu"
+                  : "Shop"}
               </Link>
             ) : null}
             <Link

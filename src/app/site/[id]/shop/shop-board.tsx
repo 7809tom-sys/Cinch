@@ -16,12 +16,15 @@ export function SeedShopBoard({
   cta,
   shippingModes,
   salesTax,
+  restaurantOrdering = false,
 }: {
   projectId: string;
   products: SeedShopProduct[];
   cta: string;
   shippingModes: SeedShippingMode[];
   salesTax: SeedSalesTaxSettings;
+  /** Pizza / restaurant: pickup/delivery ticket UX instead of parcel ship. */
+  restaurantOrdering?: boolean;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [shippingModeId, setShippingModeId] = useState(
@@ -53,7 +56,9 @@ export function SeedShopBoard({
   const needsLtl = lines.some((line) => line.product.shipClass === "ltl");
   const mode =
     shippingModes.find((item) => item.id === shippingModeId) ??
-    shippingModes.find((item) => (needsLtl ? item.kind === "ltl" : item.kind === "parcel")) ??
+    shippingModes.find((item) =>
+      needsLtl ? item.kind === "ltl" : item.kind === "parcel",
+    ) ??
     shippingModes[0];
   const shippingUsd = mode?.baseRateUsd ?? 0;
   const taxApplies =
@@ -64,6 +69,9 @@ export function SeedShopBoard({
     ? Math.round(subtotal * (salesTax.ratePct / 100) * 100) / 100
     : 0;
   const total = Math.round((subtotal + taxUsd + shippingUsd) * 100) / 100;
+  const isDelivery =
+    restaurantOrdering &&
+    /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
 
   function add(productId: string) {
     const product = products.find((item) => item.id === productId);
@@ -100,7 +108,13 @@ export function SeedShopBoard({
       }
       setCart([]);
       setDone(
-        `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}, ship $${result.shippingUsd.toFixed(2)}).`,
+        restaurantOrdering
+          ? `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}${
+              result.shippingUsd > 0
+                ? `, delivery $${result.shippingUsd.toFixed(2)}`
+                : ", pickup"
+            }). The kitchen has the ticket.`
+          : `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}, ship $${result.shippingUsd.toFixed(2)}).`,
       );
     });
   }
@@ -126,8 +140,9 @@ export function SeedShopBoard({
             <p>{product.detail}</p>
             <p className="seed-shop-price">${product.priceUsd.toFixed(2)}</p>
             <p className="seed-shop-meta">
-              {product.sku} · {product.stockQty} in stock · {product.shipClass} ·{" "}
-              {product.weightLb} lb
+              {restaurantOrdering
+                ? `${product.sku} · ready to order`
+                : `${product.sku} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}
             </p>
             <button
               type="button"
@@ -142,9 +157,13 @@ export function SeedShopBoard({
       </div>
 
       <section className="seed-shop-cart" id="cart">
-        <h2>Cart</h2>
+        <h2>{restaurantOrdering ? "Your order" : "Cart"}</h2>
         {lines.length === 0 ? (
-          <p className="seed-shop-cart-empty">Your cart is empty.</p>
+          <p className="seed-shop-cart-empty">
+            {restaurantOrdering
+              ? "Add menu items to build your order."
+              : "Your cart is empty."}
+          </p>
         ) : (
           <>
             <ul>
@@ -169,7 +188,7 @@ export function SeedShopBoard({
                 : ""}{" "}
               · Total ${total.toFixed(2)}
             </p>
-            {needsLtl ? (
+            {needsLtl && !restaurantOrdering ? (
               <p className="seed-shop-meta">
                 Cart includes LTL freight items — choose an LTL mode below.
               </p>
@@ -187,7 +206,11 @@ export function SeedShopBoard({
                 <input name="contact" type="text" required />
               </label>
               <label>
-                Ship-to state
+                {restaurantOrdering
+                  ? isDelivery
+                    ? "Delivery state"
+                    : "Pickup state"
+                  : "Ship-to state"}
                 <input
                   name="shipToState"
                   type="text"
@@ -200,11 +223,15 @@ export function SeedShopBoard({
                 />
               </label>
               <label>
-                Ship-to ZIP
+                {restaurantOrdering
+                  ? isDelivery
+                    ? "Delivery ZIP"
+                    : "Pickup ZIP"
+                  : "Ship-to ZIP"}
                 <input name="shipToZip" type="text" required />
               </label>
               <label>
-                Shipping
+                {restaurantOrdering ? "Pickup or delivery" : "Shipping"}
                 <select
                   name="shippingModeId"
                   value={mode?.id ?? shippingModeId}
@@ -212,7 +239,9 @@ export function SeedShopBoard({
                 >
                   {shippingModes.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.label} ({item.kind}) · ${item.baseRateUsd.toFixed(2)}
+                      {item.label}
+                      {restaurantOrdering ? "" : ` (${item.kind})`} · $
+                      {item.baseRateUsd.toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -220,14 +249,24 @@ export function SeedShopBoard({
               <label>
                 Payment
                 <select name="paymentMethod" defaultValue="invoice">
-                  <option value="invoice">Pay later / invoice</option>
+                  <option value="invoice">
+                    {restaurantOrdering
+                      ? "Pay at pickup / on delivery"
+                      : "Pay later / invoice"}
+                  </option>
                   <option value="card">
                     Charge card (Seed checkout — recorded as paid)
                   </option>
                 </select>
               </label>
               <button type="submit" className="cta" disabled={pending}>
-                {pending ? "Placing order…" : "Place order"}
+                {pending
+                  ? restaurantOrdering
+                    ? "Sending ticket…"
+                    : "Placing order…"
+                  : restaurantOrdering
+                    ? "Place order"
+                    : "Place order"}
               </button>
             </form>
           </>

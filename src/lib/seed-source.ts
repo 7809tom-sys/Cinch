@@ -12,6 +12,7 @@ import {
   seedResponsiveGlobalsCss,
   seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
+  seedShopFulfillmentMismatchesBrief,
   seedShopPageSource,
 } from "./seed-site-copy";
 import { SEED_BUILD_MODULARS_FIRST_RULE } from "./module-library";
@@ -604,7 +605,14 @@ Agents write into this tree as the build advances. Open **Source** in your porta
           };
         }
         if (parsed.originZip) shopCopy = { ...shopCopy, originZip: parsed.originZip };
-        if (parsed.shippingModes?.length) {
+        if (
+          parsed.shippingModes?.length &&
+          !seedShopFulfillmentMismatchesBrief(
+            input.projectName,
+            input.brief,
+            parsed.shippingModes,
+          )
+        ) {
           shopCopy = { ...shopCopy, shippingModes: parsed.shippingModes };
         }
         if (parsed.salesTax) {

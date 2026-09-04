@@ -17,6 +17,7 @@ import type {
   SeedAdminCommerce,
   SeedShopOrder,
 } from "@/lib/seed-site-copy";
+import { summarizeSeedOrderMoney } from "@/lib/seed-site-copy";
 
 export function SeedAdminCommerceOps({
   projectId,
@@ -141,6 +142,7 @@ export function SeedAdminCommerceOps({
   }
 
   const openOrders = orders.filter((order) => order.status !== "fulfilled");
+  const money = summarizeSeedOrderMoney(orders);
   const previewForAdd = newPhotoPreview || catalogImageUrl;
 
   return (
@@ -442,45 +444,58 @@ export function SeedAdminCommerceOps({
       <section className="seed-admin-section" id="orders">
         <p className="seed-eyebrow">{commerce.ordersEyebrow}</p>
         <h2>{commerce.ordersHeadline}</h2>
-        {openOrders.length === 0 ? (
-          <p className="seed-admin-empty">No open shop orders yet.</p>
+        <p className="seed-admin-list-meta">
+          Open ${money.openUsd.toFixed(2)} ({money.openCount}) · Paid $
+          {money.paidUsd.toFixed(2)} ({money.paidCount}) · Fulfilled $
+          {money.fulfilledUsd.toFixed(2)} ({money.fulfilledCount}) · All tickets
+          ${money.allTicketUsd.toFixed(2)}
+        </p>
+        {orders.length === 0 ? (
+          <p className="seed-admin-empty">No shop orders yet.</p>
         ) : (
           <ul className="seed-admin-list">
-            {openOrders.map((order) => (
-              <li key={order.id}>
-                <div>
-                  <p className="seed-admin-list-title">
-                    {order.customerName} · ${order.totalUsd.toFixed(2)}
-                  </p>
-                  <p className="seed-admin-list-meta">
-                    {order.shippingLabel} ({order.shippingKind}) · tax $
-                    {order.taxUsd.toFixed(2)} · ship $
-                    {order.shippingUsd.toFixed(2)} · {order.shipToState}{" "}
-                    {order.shipToZip} · {order.status}
-                  </p>
-                </div>
-                <div className="seed-admin-list-actions">
-                  {order.status === "new" ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => onOrderStatus(order.id, "paid")}
-                    >
-                      Mark paid
-                    </button>
-                  ) : null}
-                  {order.status !== "fulfilled" ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => onOrderStatus(order.id, "fulfilled")}
-                    >
-                      Mark fulfilled
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+            {(openOrders.length > 0 ? openOrders : orders.slice(0, 8)).map(
+              (order) => (
+                <li key={order.id}>
+                  <div>
+                    <p className="seed-admin-list-title">
+                      {order.customerName} · ${order.totalUsd.toFixed(2)}
+                    </p>
+                    <p className="seed-admin-list-meta">
+                      {order.items
+                        .map((item) => `${item.title} × ${item.qty}`)
+                        .join(", ")}
+                    </p>
+                    <p className="seed-admin-list-meta">
+                      Subtotal ${order.subtotalUsd.toFixed(2)} · tax $
+                      {order.taxUsd.toFixed(2)} · {order.shippingLabel} $
+                      {order.shippingUsd.toFixed(2)} · {order.shipToState}{" "}
+                      {order.shipToZip} · {order.status}
+                    </p>
+                  </div>
+                  <div className="seed-admin-list-actions">
+                    {order.status === "new" ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => onOrderStatus(order.id, "paid")}
+                      >
+                        Mark paid
+                      </button>
+                    ) : null}
+                    {order.status !== "fulfilled" ? (
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => onOrderStatus(order.id, "fulfilled")}
+                      >
+                        Mark fulfilled
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              ),
+            )}
           </ul>
         )}
       </section>

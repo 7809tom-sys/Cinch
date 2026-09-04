@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   briefAsksForEcommerce,
   buildSeedShopPreview,
+  seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 import { SeedShopBoard } from "./shop-board";
@@ -29,6 +30,11 @@ export default async function SeedShopPage({
   const shop = await buildSeedShopPreview(project);
   if (!shop) notFound();
 
+  const restaurantOrdering = seedShopUsesRestaurantFulfillment(
+    project.name,
+    project.brief,
+  );
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: shop.css }} />
@@ -49,6 +55,7 @@ export default async function SeedShopPage({
           cta={shop.cta}
           shippingModes={shop.shippingModes}
           salesTax={shop.salesTax}
+          restaurantOrdering={restaurantOrdering}
         />
       </main>
     </>
