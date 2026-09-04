@@ -14,6 +14,7 @@ import {
   seedLandingCopyMismatchesIndustry,
   seedNeedsBusinessAdmin,
   seedPublicSiteCss,
+  seedGrowthBoardLooksThin,
   seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
   seedShopFulfillmentMismatchesBrief,
@@ -135,6 +136,21 @@ function escapeCopy(copy: SeedSiteCopy): SeedSiteCopy {
       quote: escapeHtml(copy.proof.quote),
       attribution: escapeHtml(copy.proof.attribution),
     },
+    resultsEyebrow: escapeHtml(copy.resultsEyebrow),
+    resultsHeadline: escapeHtml(copy.resultsHeadline),
+    resultsSupport: escapeHtml(copy.resultsSupport),
+    results: copy.results.map((stat) => ({
+      value: escapeHtml(stat.value),
+      label: escapeHtml(stat.label),
+      detail: escapeHtml(stat.detail),
+    })),
+    profitEyebrow: escapeHtml(copy.profitEyebrow),
+    profitHeadline: escapeHtml(copy.profitHeadline),
+    profitSupport: escapeHtml(copy.profitSupport),
+    profitPlays: copy.profitPlays.map((play) => ({
+      title: escapeHtml(play.title),
+      detail: escapeHtml(play.detail),
+    })),
     areaEyebrow: escapeHtml(copy.areaEyebrow),
     areaHeadline: escapeHtml(copy.areaHeadline),
     areaBody: escapeHtml(copy.areaBody),
@@ -305,6 +321,8 @@ export async function repairCustomerLandingIfNeeded(
         proof?: { quote?: string };
         aboutImage?: string;
         areaBody?: string;
+        results?: unknown[];
+        profitPlays?: unknown[];
       };
       const brand = brandFromProject(project);
       const foodNeedsMenu =
@@ -327,6 +345,7 @@ export async function repairCustomerLandingIfNeeded(
           !copy.proof?.quote ||
           !copy.aboutImage ||
           !copy.areaBody ||
+          seedGrowthBoardLooksThin(copy) ||
           (foodNeedsMenu &&
             (!Array.isArray(copy.menuItems) || copy.menuItems.length < 4)) ||
           seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
@@ -346,6 +365,8 @@ export async function repairCustomerLandingIfNeeded(
     !page.includes("seed-gallery") ||
     !page.includes("seed-process") ||
     !page.includes("seed-proof") ||
+    !page.includes("seed-results") ||
+    !page.includes("seed-profit") ||
     (/\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(
       `${project.name} ${project.brief}`,
     ) &&
@@ -396,7 +417,7 @@ export async function repairCustomerLandingIfNeeded(
     path: "app/globals.css",
     content: seedPublicSiteCss(),
     status: "ready",
-    message: "Restored full business website (gallery, process, proof)",
+    message: "Restored full business website (gallery, process, proof, results, profit)",
     agentName: "Conductor",
   });
   await upsertSourceFile({
