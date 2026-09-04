@@ -20,6 +20,13 @@ import {
   SEED_EDIT_MUST_REACT_RULE,
   taskIsReactToEditedBrief,
 } from "./seed-edit-rule";
+import {
+  engagementCollabNotebookPath,
+  engagementCollabPhaseFromTitle,
+  engagementCollabSectionMarkdown,
+  SEED_ENGAGEMENT_COLLABORATE_RULE,
+  taskIsEngagementCollab,
+} from "./seed-engagement-rule";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
 export type SourceFile = {
@@ -792,6 +799,96 @@ ${brief}
       status,
       message: `${agent} ${input.phase} reacting to edited brief`,
     });
+    return;
+  }
+
+  // HARD RULE: multi-agent engagement / conversion psychology collaboration.
+  if (taskIsEngagementCollab(input.taskTitle)) {
+    const identity = await projectIdentityFromSource(input.projectId);
+    const name = identity.name || "Seed site";
+    const brief = identity.brief || input.taskDetail;
+    const phase =
+      engagementCollabPhaseFromTitle(input.taskTitle) ?? "psychology";
+    const notebookPath = engagementCollabNotebookPath();
+    const bundle = await getSourceBundle(input.projectId);
+    const prior =
+      bundle?.files.find((file) => file.path === notebookPath)?.content ?? "";
+    const header =
+      prior.trim().length > 0
+        ? prior.trim()
+        : `# Engagement collaboration
+
+## HARD RULE
+
+${SEED_ENGAGEMENT_COLLABORATE_RULE.summary}
+
+## Why together
+
+${SEED_ENGAGEMENT_COLLABORATE_RULE.whyTogether}
+
+## Seed
+
+**${name}**
+
+${brief}
+
+---
+`;
+    const section = engagementCollabSectionMarkdown({
+      phase,
+      agentName: agent,
+      taskTitle: input.taskTitle,
+      taskDetail: input.taskDetail,
+      projectName: name,
+      brief,
+      status,
+    });
+    const phaseRegex = new RegExp(
+      `\\n## ${phase} — [\\s\\S]*?(?=\\n## [a-z]|$)`,
+      "i",
+    );
+    let next = header.startsWith("#") ? header : `# Engagement collaboration\n\n${header}`;
+    if (phaseRegex.test(`\n${next}`)) {
+      next = `\n${next}`.replace(phaseRegex, `\n\n${section.trim()}`).trim();
+    } else {
+      next = `${next.trim()}\n\n${section.trim()}`;
+    }
+
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: notebookPath,
+      content: `${next.trim()}\n`,
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} engagement collab (${phase})`,
+    });
+
+    // Refresh landing so conversion path stays customer-facing after each phase.
+    if (input.phase === "finished") {
+      const landing = customerFacingSiteCopy(name, brief);
+      await upsertSourceFile({
+        projectId: input.projectId,
+        path: "app/page.tsx",
+        content: seedHomePageSource({
+          ...landing,
+          includeShop: briefAsksForEcommerce(brief),
+        }),
+        authoredBy: input.agentId,
+        agentName: agent,
+        status,
+        message: `${agent} refreshed landing after engagement ${phase}`,
+      });
+      await upsertSourceFile({
+        projectId: input.projectId,
+        path: "content/landing.copy.json",
+        content: seedLandingCopyJson(landing),
+        authoredBy: input.agentId,
+        agentName: agent,
+        status,
+        message: `${agent} synced landing copy after engagement ${phase}`,
+      });
+    }
     return;
   }
 
