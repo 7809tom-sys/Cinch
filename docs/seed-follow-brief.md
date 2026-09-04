@@ -4,8 +4,8 @@
 
 A Seed build marked **complete**, but the live site looked like another
 project with only the brand name swapped — e.g. **Pizza Man** shipping salon
-stock products or fine-dining “Reserve a table” copy instead of pizza + empty
-owner-stocked shop.
+stock products or fine-dining “Reserve a table” copy instead of pizza + a
+priced orderable menu.
 
 ## Root cause (not a file-tree clone)
 
@@ -24,13 +24,16 @@ Two failures made that feel like a rename of another project:
    fine-dining templates were stamped.
 2. **Wrong catalog** — e-commerce stamped Unsplash stock SKUs (serum, “Signature
    item”, etc.) instead of an **empty** catalog when the owner must scan/enter
-   items (or pizza/food shop).
+   items, or instead of a **priced pizza/restaurant menu** when guests should
+   order online.
 
 ## Hard rules
 
 1. Classify from **name + brief** together (`seedIndustryKey` / `briefIsPizza`).
 2. Never finish by renaming another vertical’s landing or catalog onto this Seed.
-3. Owner-stocked / pizza / food e-com starts with an **empty** shop catalog.
+3. Owner-stocked e-com starts with an **empty** shop catalog. Pizza / restaurant
+   e-com starts with a **priced orderable menu** (pickup/delivery) so tickets
+   track money.
 4. Live repair (`repairCustomerLandingIfNeeded`, `ensureShopInSeed`) must rewrite
    mismatched landing copy and stock-template catalogs.
 5. **Edit Seed → Save** (`applySeedIdentityEdit`) rebuilds landing + shop from

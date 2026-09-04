@@ -1603,6 +1603,10 @@ button {
   overflow-wrap: anywhere;
 }
 
+.seed-menu-order {
+  margin: 1.75rem 0 0;
+}
+
 .seed-specials {
   background: var(--panel);
 }
@@ -2381,7 +2385,7 @@ export function seedHomePageSource(
   const shopNav = input.includeShop
     ? `
           <li>
-            <a href="/shop">Shop</a>
+            <a href="/shop">${input.menuItems?.length ? "Order" : "Shop"}</a>
           </li>`
     : "";
   const services = input.services
@@ -2438,6 +2442,13 @@ ${menuItems
   )
   .join("\n")}
           </ul>
+          ${
+            input.includeShop
+              ? `<p className="seed-menu-order">
+            <a className="cta" href="/shop">Order from this menu</a>
+          </p>`
+              : ""
+          }
         </div>
       </section>`
       : "";
@@ -2712,58 +2723,93 @@ export type SeedAdminCopy = {
   commerce: SeedAdminCommerce | null;
 };
 
+/** Pickup / delivery modes for pizza & restaurant ordering. */
+export function seedRestaurantFulfillmentModes(): SeedShippingMode[] {
+  return [
+    {
+      id: "fulfill-pickup",
+      label: "Counter pickup",
+      kind: "parcel",
+      carrier: "In-store",
+      notes: "Customer picks up at the counter — no delivery fee.",
+      baseRateUsd: 0,
+    },
+    {
+      id: "fulfill-delivery",
+      label: "Local delivery",
+      kind: "parcel",
+      carrier: "Driver",
+      notes: "Neighborhood delivery window — confirm address on the ticket.",
+      baseRateUsd: 4.5,
+    },
+  ];
+}
+
+/** Default UPS parcel + LTL modes for retail / shippable catalogs. */
+export function seedParcelShippingModes(): SeedShippingMode[] {
+  return [
+    {
+      id: "ship-ups-ground",
+      label: "UPS Ground",
+      kind: "parcel",
+      carrier: "UPS",
+      notes: "Packages under parcel limits — tracking on the label.",
+      baseRateUsd: 9.5,
+    },
+    {
+      id: "ship-ups-2day",
+      label: "UPS 2nd Day Air",
+      kind: "parcel",
+      carrier: "UPS",
+      notes: "Faster parcel when the customer pays for speed.",
+      baseRateUsd: 18,
+    },
+    {
+      id: "ship-ltl",
+      label: "LTL freight",
+      kind: "ltl",
+      carrier: "LTL partner",
+      notes: "Pallet / oversize — quote class and liftgate as needed.",
+      baseRateUsd: 85,
+    },
+  ];
+}
+
 /** Default UPS parcel + LTL + tax + inventory for Seed-grown e-commerce admin. */
 export function seedCommerceAdminBoard(
   projectName: string,
   brief: string,
 ): SeedAdminCommerce {
   const shop = customerFacingShopCopy(projectName, brief);
+  const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
   return {
-    eyebrow: "Commerce",
-    headline: "Shop operations",
-    support:
-      "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
-    inventoryEyebrow: "Stock",
-    inventoryHeadline: "Inventory · scan to add",
+    eyebrow: restaurant ? "Orders & money" : "Commerce",
+    headline: restaurant ? "Kitchen tickets & menu money" : "Shop operations",
+    support: restaurant
+      ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
+      : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
+    inventoryEyebrow: restaurant ? "Menu" : "Stock",
+    inventoryHeadline: restaurant
+      ? "Menu items · price & on-hand"
+      : "Inventory · scan to add",
     shippingEyebrow: "Fulfillment",
-    shippingHeadline: "Shipping",
+    shippingHeadline: restaurant ? "Pickup & delivery" : "Shipping",
     taxEyebrow: "Compliance",
     taxHeadline: "Sales tax",
-    ordersEyebrow: "Orders",
-    ordersHeadline: "Open orders",
+    ordersEyebrow: restaurant ? "Money" : "Orders",
+    ordersHeadline: restaurant ? "Tickets & order money" : "Open orders",
     originZip: "10001",
-    shippingModes: [
-      {
-        id: "ship-ups-ground",
-        label: "UPS Ground",
-        kind: "parcel",
-        carrier: "UPS",
-        notes: "Packages under parcel limits — tracking on the label.",
-        baseRateUsd: 9.5,
-      },
-      {
-        id: "ship-ups-2day",
-        label: "UPS 2nd Day Air",
-        kind: "parcel",
-        carrier: "UPS",
-        notes: "Faster parcel when the customer pays for speed.",
-        baseRateUsd: 18,
-      },
-      {
-        id: "ship-ltl",
-        label: "LTL freight",
-        kind: "ltl",
-        carrier: "LTL partner",
-        notes: "Pallet / oversize — quote class and liftgate as needed.",
-        baseRateUsd: 85,
-      },
-    ],
+    shippingModes: restaurant
+      ? seedRestaurantFulfillmentModes()
+      : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
       taxInclusive: false,
       nexusStates: ["NY", "NJ", "CT"],
-      notes: "Collect on taxable ship-to addresses in nexus states.",
+      notes: restaurant
+        ? "Collect sales tax on taxable order totals for nexus addresses."
+        : "Collect on taxable ship-to addresses in nexus states.",
     },
     inventory: shop.products.map((product) => ({
       productId: product.id,
@@ -3139,45 +3185,243 @@ export function seedShopShouldStartEmpty(
   brief: string,
 ): boolean {
   if (!briefAsksForEcommerce(brief)) return false;
+  // Pizza / restaurant menus are the catalog — orderable with prices so the
+  // kitchen sees money per ticket. Empty+scan is for retail inventory intake.
+  if (briefIsPizza(projectName, brief)) return false;
+  if (industryKey(brief, projectName) === "food") return false;
   if (briefAsksForOwnerStockedCatalog(brief)) return true;
-  if (briefIsPizza(projectName, brief)) return true;
-  if (industryKey(brief, projectName) === "food") return true;
   return false;
 }
 
+/** Pizza / restaurant e-com uses pickup & delivery — not UPS/LTL parcel. */
+export function seedShopUsesRestaurantFulfillment(
+  projectName: string,
+  brief: string,
+): boolean {
+  if (!briefAsksForEcommerce(brief)) return false;
+  return (
+    briefIsPizza(projectName, brief) ||
+    industryKey(brief, projectName) === "food"
+  );
+}
+
+const STOCK_CATALOG_FINGERPRINT =
+  /prod-serum|prod-mask|prod-brush|prod-spray|prod-towel|prod-kit|prod-one|prod-two|prod-three|daily shine serum|repair mask|studio paddle|signature item|everyday essential|gift set|detail spray|microfiber set|driveway kit|between-appointment gloss|clear coat/;
+
+function shopProductsLookLikeStockCatalog(
+  products: Array<{ id?: string; title?: string; detail?: string }>,
+): boolean {
+  if (!products.length) return false;
+  const blob = products
+    .map((p) => `${p.id ?? ""} ${p.title ?? ""} ${p.detail ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+  return STOCK_CATALOG_FINGERPRINT.test(blob);
+}
+
+/** True when shipping modes look like retail UPS/LTL instead of restaurant pickup. */
+export function seedShopFulfillmentMismatchesBrief(
+  projectName: string,
+  brief: string,
+  modes: Array<{ id?: string; label?: string; carrier?: string }>,
+): boolean {
+  if (!seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
+  if (!modes.length) return true;
+  const blob = modes
+    .map((m) => `${m.id ?? ""} ${m.label ?? ""} ${m.carrier ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+  return /ups|ltl|freight|parcel ground|2nd day/.test(blob);
+}
+
 /**
- * True when stored shop products look like a renamed stock template from
- * another vertical (salon serum, “Signature item”, detailing spray, etc.)
- * instead of this brief’s owner-stocked / pizza empty catalog.
+ * True when stored shop products look wrong for this brief:
+ * - Owner-stocked empty catalogs with renamed stock SKUs from another vertical
+ * - Pizza / restaurant e-com with empty catalog or salon/retail stock SKUs
  */
 export function seedShopCatalogMismatchesBrief(
   projectName: string,
   brief: string,
   products: Array<{ id?: string; title?: string; detail?: string }>,
 ): boolean {
+  if (seedShopUsesRestaurantFulfillment(projectName, brief)) {
+    if (!products.length) return true;
+    return shopProductsLookLikeStockCatalog(products);
+  }
+
   if (!seedShopShouldStartEmpty(projectName, brief)) return false;
   if (!products.length) return false;
+  return shopProductsLookLikeStockCatalog(products);
+}
 
-  const blob = products
-    .map((p) => `${p.id ?? ""} ${p.title ?? ""} ${p.detail ?? ""}`)
-    .join(" ")
-    .toLowerCase();
+/**
+ * Orderable menu products for pizza / restaurant Seeds — priced so checkout
+ * tracks money per order in Seed admin.
+ */
+export function seedRestaurantMenuProducts(
+  projectName: string,
+  brief: string,
+): SeedShopProduct[] {
+  if (briefIsPizza(projectName, brief)) {
+    return [
+      withInventory({
+        id: "menu-cheese",
+        title: "Cheese pizza",
+        detail: "Hand-tossed crust, sauce, mozzarella.",
+        priceUsd: 11,
+        sku: "MENU-CHEESE",
+        stockQty: 99,
+        weightLb: 1.5,
+        imageUrl:
+          "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "menu-pepperoni",
+        title: "Pepperoni pizza",
+        detail: "Extra crisp edges, generous cup-and-char.",
+        priceUsd: 13,
+        sku: "MENU-PEP",
+        stockQty: 99,
+        weightLb: 1.6,
+        imageUrl:
+          "https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "menu-supreme",
+        title: "House supreme",
+        detail: "Pepperoni, sausage, peppers, onion, mushrooms.",
+        priceUsd: 16,
+        sku: "MENU-SUP",
+        stockQty: 99,
+        weightLb: 2,
+        imageUrl:
+          "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "menu-white",
+        title: "White pie",
+        detail: "Garlic oil, ricotta, mozzarella, herbs.",
+        priceUsd: 15,
+        sku: "MENU-WHITE",
+        stockQty: 99,
+        weightLb: 1.7,
+        imageUrl:
+          "https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "menu-knots",
+        title: "Garlic knots",
+        detail: "Butter, parsley, side of marinara.",
+        priceUsd: 5,
+        sku: "MENU-KNOTS",
+        stockQty: 99,
+        weightLb: 0.8,
+        imageUrl:
+          "https://images.unsplash.com/photo-1615478503562-a2eaedb45eae?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "menu-salad",
+        title: "Garden salad",
+        detail: "House greens, tomato, cucumber, vinaigrette.",
+        priceUsd: 6,
+        sku: "MENU-SALAD",
+        stockQty: 99,
+        weightLb: 0.9,
+        imageUrl:
+          "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+      }),
+    ];
+  }
 
-  // Fingerprints of stock starter SKUs stamped by applyTaskToSource / templates.
-  return /prod-serum|prod-mask|prod-brush|prod-spray|prod-towel|prod-kit|prod-one|prod-two|prod-three|daily shine serum|repair mask|studio paddle|signature item|everyday essential|gift set|detail spray|microfiber set|driveway kit|between-appointment gloss|clear coat/.test(
-    blob,
-  );
+  if (industryKey(brief, projectName) === "food") {
+    return [
+      withInventory({
+        id: "menu-starter",
+        title: "Seasonal small plates",
+        detail: "Shared bites before the main course.",
+        priceUsd: 12,
+        sku: "MENU-START",
+        stockQty: 40,
+        weightLb: 1,
+      }),
+      withInventory({
+        id: "menu-main",
+        title: "Chef’s dinner plate",
+        detail: "Rotating mains matched to the market list.",
+        priceUsd: 24,
+        sku: "MENU-MAIN",
+        stockQty: 40,
+        weightLb: 1.5,
+      }),
+      withInventory({
+        id: "menu-cocktail",
+        title: "House cocktail",
+        detail: "Short list, careful pours.",
+        priceUsd: 11,
+        sku: "MENU-DRINK",
+        stockQty: 80,
+        weightLb: 0.5,
+      }),
+    ];
+  }
+
+  return [];
+}
+
+/** Money rollup so the restaurant sees what each ticket is worth. */
+export function summarizeSeedOrderMoney(orders: SeedShopOrder[]): {
+  openCount: number;
+  openUsd: number;
+  paidCount: number;
+  paidUsd: number;
+  fulfilledCount: number;
+  fulfilledUsd: number;
+  allTicketUsd: number;
+} {
+  let openUsd = 0;
+  let paidUsd = 0;
+  let fulfilledUsd = 0;
+  let openCount = 0;
+  let paidCount = 0;
+  let fulfilledCount = 0;
+  for (const order of orders) {
+    if (order.status === "new") {
+      openCount += 1;
+      openUsd += order.totalUsd;
+    } else if (order.status === "paid") {
+      paidCount += 1;
+      paidUsd += order.totalUsd;
+    } else if (order.status === "fulfilled") {
+      fulfilledCount += 1;
+      fulfilledUsd += order.totalUsd;
+    }
+  }
+  return {
+    openCount,
+    openUsd: Math.round(openUsd * 100) / 100,
+    paidCount,
+    paidUsd: Math.round(paidUsd * 100) / 100,
+    fulfilledCount,
+    fulfilledUsd: Math.round(fulfilledUsd * 100) / 100,
+    allTicketUsd: Math.round((openUsd + paidUsd + fulfilledUsd) * 100) / 100,
+  };
 }
 
 /**
  * HARD RULE: do not rename another Seed’s stock catalog onto this one.
  * When the brief says the owner enters/scans items, start empty so they add
  * real products — never ship salon serum/mask or “Signature item” fillers.
+ * Pizza / restaurant e-com ships the priced menu so orders track money.
  */
 export function seedStarterShopProducts(
   projectName: string,
   brief: string,
 ): SeedShopProduct[] {
+  if (briefAsksForEcommerce(brief)) {
+    const menu = seedRestaurantMenuProducts(projectName, brief);
+    if (menu.length > 0) return menu;
+  }
+
   if (seedShopShouldStartEmpty(projectName, brief)) {
     return [];
   }
@@ -3292,40 +3536,20 @@ export function customerFacingShopCopy(
   brief: string,
 ): SeedShopCopy {
   const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
   const commerce = {
     originZip: "10001",
-    shippingModes: [
-      {
-        id: "ship-ups-ground",
-        label: "UPS Ground",
-        kind: "parcel" as const,
-        carrier: "UPS",
-        notes: "Packages under parcel limits — tracking on the label.",
-        baseRateUsd: 9.5,
-      },
-      {
-        id: "ship-ups-2day",
-        label: "UPS 2nd Day Air",
-        kind: "parcel" as const,
-        carrier: "UPS",
-        notes: "Faster parcel when the customer pays for speed.",
-        baseRateUsd: 18,
-      },
-      {
-        id: "ship-ltl",
-        label: "LTL freight",
-        kind: "ltl" as const,
-        carrier: "LTL partner",
-        notes: "Pallet / oversize — quote class and liftgate as needed.",
-        baseRateUsd: 85,
-      },
-    ],
+    shippingModes: restaurant
+      ? seedRestaurantFulfillmentModes()
+      : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
       taxInclusive: false,
       nexusStates: ["NY", "NJ", "CT"],
-      notes: "Collect on taxable ship-to addresses in nexus states.",
+      notes: restaurant
+        ? "Collect sales tax on taxable order totals for nexus addresses."
+        : "Collect on taxable ship-to addresses in nexus states.",
     },
   };
 
@@ -3334,13 +3558,13 @@ export function customerFacingShopCopy(
 
   return {
     brand,
-    title: briefIsPizza(projectName, brief) ? "Order" : "Shop",
+    title: restaurant ? "Order" : "Shop",
     support: ownerStocks
-      ? briefIsPizza(projectName, brief)
-        ? "Menu and pies are added in Seed admin — scan or enter items, set your price and on-hand qty."
-        : "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
-      : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
-    cta: briefIsPizza(projectName, brief) ? "Add to order" : "Add to cart",
+      ? "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
+      : restaurant
+        ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
+        : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
+    cta: restaurant ? "Add to order" : "Add to cart",
     products,
     orders: [],
     ...commerce,

@@ -16,6 +16,7 @@ import {
   seedPublicSiteCss,
   seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
+  seedShopFulfillmentMismatchesBrief,
   seedShopPageSource,
   type SeedAdminCopy,
   type SeedService,
@@ -52,8 +53,10 @@ export {
   seedResponsiveGlobalsCss,
   seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
+  seedShopFulfillmentMismatchesBrief,
   seedShopPageSource,
   seedShopShouldStartEmpty,
+  seedShopUsesRestaurantFulfillment,
   seedStarterShopProducts,
   briefIsPizza,
 } from "./seed-site-copy";
@@ -467,6 +470,19 @@ export async function ensureBusinessAdminInSeed(
       !existing.commerce.salesTax ||
       existing.commerce.inventory.some(
         (row) => typeof (row as { imageUrl?: string }).imageUrl !== "string",
+      ) ||
+      seedShopFulfillmentMismatchesBrief(
+        project.name,
+        project.brief,
+        existing.commerce.shippingModes ?? [],
+      ) ||
+      seedShopCatalogMismatchesBrief(
+        project.name,
+        project.brief,
+        (existing.commerce.inventory ?? []).map((row) => ({
+          id: row.productId,
+          title: row.title,
+        })),
       ));
 
   const needsWrite =
@@ -485,6 +501,19 @@ export async function ensureBusinessAdminInSeed(
     const freshBoard =
       fresh.commerce ?? seedCommerceAdminBoard(project.name, project.brief);
     const prior = admin.commerce;
+    const fulfillmentMismatch = seedShopFulfillmentMismatchesBrief(
+      project.name,
+      project.brief,
+      prior?.shippingModes ?? [],
+    );
+    const inventoryMismatch = seedShopCatalogMismatchesBrief(
+      project.name,
+      project.brief,
+      (prior?.inventory ?? []).map((row) => ({
+        id: row.productId,
+        title: row.title,
+      })),
+    );
     admin = {
       ...admin,
       title: fresh.title,
@@ -497,21 +526,32 @@ export async function ensureBusinessAdminInSeed(
         : {
             ...freshBoard,
             ...prior,
-            inventory: (prior.inventory?.length
-              ? prior.inventory
-              : freshBoard.inventory
-            ).map((row, index) => {
-              const fallback = freshBoard.inventory[index];
-              return {
-                ...row,
-                imageUrl:
-                  typeof row.imageUrl === "string"
-                    ? row.imageUrl
-                    : fallback?.imageUrl || "",
-              };
-            }),
-            shippingModes:
-              prior.shippingModes?.length > 0
+            eyebrow: freshBoard.eyebrow,
+            headline: freshBoard.headline,
+            support: freshBoard.support,
+            inventoryEyebrow: freshBoard.inventoryEyebrow,
+            inventoryHeadline: freshBoard.inventoryHeadline,
+            shippingHeadline: freshBoard.shippingHeadline,
+            ordersEyebrow: freshBoard.ordersEyebrow,
+            ordersHeadline: freshBoard.ordersHeadline,
+            inventory: inventoryMismatch
+              ? freshBoard.inventory
+              : (prior.inventory?.length
+                  ? prior.inventory
+                  : freshBoard.inventory
+                ).map((row, index) => {
+                  const fallback = freshBoard.inventory[index];
+                  return {
+                    ...row,
+                    imageUrl:
+                      typeof row.imageUrl === "string"
+                        ? row.imageUrl
+                        : fallback?.imageUrl || "",
+                  };
+                }),
+            shippingModes: fulfillmentMismatch
+              ? freshBoard.shippingModes
+              : prior.shippingModes?.length > 0
                 ? prior.shippingModes
                 : freshBoard.shippingModes,
             salesTax: prior.salesTax ?? freshBoard.salesTax,
@@ -614,7 +654,8 @@ function normalizeShopCopy(
   const fresh = customerFacingShopCopy(project.name, project.brief);
   if (!raw) return fresh;
 
-  // Never keep renamed stock SKUs when this brief must start empty.
+  // Never keep renamed stock SKUs / empty pizza menu when this brief needs a
+  // real priced catalog.
   if (
     seedShopCatalogMismatchesBrief(
       project.name,
@@ -626,8 +667,13 @@ function normalizeShopCopy(
       ...fresh,
       orders: Array.isArray(raw.orders) ? raw.orders : [],
       originZip: raw.originZip || fresh.originZip,
-      shippingModes:
-        Array.isArray(raw.shippingModes) && raw.shippingModes.length > 0
+      shippingModes: seedShopFulfillmentMismatchesBrief(
+        project.name,
+        project.brief,
+        raw.shippingModes ?? [],
+      )
+        ? fresh.shippingModes
+        : Array.isArray(raw.shippingModes) && raw.shippingModes.length > 0
           ? raw.shippingModes
           : fresh.shippingModes,
       salesTax: raw.salesTax ?? fresh.salesTax,
@@ -676,6 +722,12 @@ function normalizeShopCopy(
     },
   );
 
+  const fulfillmentMismatch = seedShopFulfillmentMismatchesBrief(
+    project.name,
+    project.brief,
+    raw.shippingModes ?? [],
+  );
+
   return {
     brand: raw.brand || fresh.brand,
     title: raw.title || fresh.title,
@@ -684,8 +736,9 @@ function normalizeShopCopy(
     products,
     orders: Array.isArray(raw.orders) ? raw.orders : [],
     originZip: raw.originZip || fresh.originZip,
-    shippingModes:
-      Array.isArray(raw.shippingModes) && raw.shippingModes.length > 0
+    shippingModes: fulfillmentMismatch
+      ? fresh.shippingModes
+      : Array.isArray(raw.shippingModes) && raw.shippingModes.length > 0
         ? raw.shippingModes
         : fresh.shippingModes,
     salesTax: raw.salesTax ?? fresh.salesTax,
@@ -729,10 +782,16 @@ export async function ensureShopInSeed(
     project.brief,
     parsed?.products ?? existing?.products ?? [],
   );
+  const fulfillmentMismatch = seedShopFulfillmentMismatchesBrief(
+    project.name,
+    project.brief,
+    parsed?.shippingModes ?? existing?.shippingModes ?? [],
+  );
 
   const needsWrite =
     !existing ||
     catalogMismatch ||
+    fulfillmentMismatch ||
     !page ||
     !page.includes("seed-shop") ||
     !css.includes("seed-shop") ||
@@ -744,10 +803,14 @@ export async function ensureShopInSeed(
 
   if (!needsWrite && existing) return existing;
 
-  // Prefer brief-derived empty/owner catalog when stock templates were stamped.
-  const shop = catalogMismatch
-    ? customerFacingShopCopy(project.name, project.brief)
-    : (existing ?? customerFacingShopCopy(project.name, project.brief));
+  // Prefer brief-derived menu / owner catalog when stock templates were stamped.
+  const shop =
+    catalogMismatch || fulfillmentMismatch
+      ? {
+          ...customerFacingShopCopy(project.name, project.brief),
+          orders: existing?.orders ?? parsed?.orders ?? [],
+        }
+      : (existing ?? customerFacingShopCopy(project.name, project.brief));
 
   if (!css.includes("seed-shop")) {
     await upsertSourceFile({

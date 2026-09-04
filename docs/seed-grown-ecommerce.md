@@ -21,9 +21,9 @@ An e-commerce Seed must grow these into the **business administration panel** (n
 | Area | What the Seed admin holds |
 | --- | --- |
 | **Inventory** | SKU, on-hand qty, reorder point, weight, parcel vs LTL class |
-| **Shipping** | Ship-from ZIP, **UPS parcel** modes, **LTL freight** mode and rates |
+| **Shipping** | Ship-from ZIP, **UPS parcel** modes, **LTL freight** mode and rates — or **pickup / delivery** for pizza & restaurants |
 | **Sales tax** | Rate, nexus states, inclusive flag, notes |
-| **Orders** | Open orders with tax / ship totals; mark paid / fulfilled |
+| **Orders** | Open orders with line items + tax / ship totals; money rollup (open / paid / fulfilled); mark paid / fulfilled |
 
 Checkout on the shop reads those Seed admin settings (rates, tax nexus, stock, **product images**) and writes orders + inventory back into the Seed source tree.
 
@@ -48,8 +48,14 @@ When the owner adds a product on an e-commerce Seed:
 3. Those fields **fill automatically** into the Seed catalog.
 4. The owner only enters **their sell price** and **on-hand inventory** (then saves).
 
-When the brief asks the owner to enter/scan items (or is pizza/food e-com), the
-starter shop catalog is **empty** — not stock Unsplash SKUs from another vertical.
+When the brief asks the owner to enter/scan items, the starter shop catalog is
+**empty** — not stock Unsplash SKUs from another vertical.
+
+**Exception — pizza / restaurant e-com:** the menu **is** the catalog. Seeds
+ship priced menu products (pies, sides, plates) so guests can **place real
+orders** and Seed admin tracks **money per ticket**. Fulfillment is
+counter pickup + local delivery — not UPS/LTL. Empty pizza catalogs and salon
+stock SKUs on a pizza Seed are repaired on visit / Edit Seed save.
 
 Photo upload remains available as a replace/fallback when a barcode is unrecognized or the owner wants a custom shot. Card checkout is a Seed-local “recorded as paid” stub — not a Cinch platform Stripe product.
 

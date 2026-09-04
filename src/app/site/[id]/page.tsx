@@ -13,6 +13,7 @@ import {
   ensureShopInSeed,
   repairCustomerLandingIfNeeded,
   seedNeedsBusinessAdmin,
+  seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
@@ -54,6 +55,11 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   }
   const preview = await buildSeedSitePreview(project);
   const showShop = briefAsksForEcommerce(project.brief);
+  const restaurantOrder = seedShopUsesRestaurantFulfillment(
+    project.name,
+    project.brief,
+  );
+  const shopHref = showShop ? `/site/${project.id}/shop` : null;
 
   const [customer, master] = await Promise.all([
     getCurrentCustomer(),
@@ -103,9 +109,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             <li>
               <a href="#about">About</a>
             </li>
-            {showShop ? (
+            {shopHref ? (
               <li>
-                <a href={`/site/${project.id}/shop`}>Shop</a>
+                <a href={shopHref}>{restaurantOrder ? "Order" : "Shop"}</a>
               </li>
             ) : null}
             <li>
@@ -125,7 +131,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             <p className="brand">{preview.brand}</p>
             <h1>{preview.headline}</h1>
             <p className="support">{preview.support}</p>
-            <a className="cta" href="#book">
+            <a className="cta" href={shopHref ?? "#book"}>
               {preview.cta}
             </a>
           </div>
@@ -145,6 +151,37 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             </ul>
           </div>
         </section>
+
+        {preview.menuItems && preview.menuItems.length > 0 ? (
+          <section className="seed-section seed-menu" id="menu">
+            <div className="seed-section-inner">
+              <p className="seed-eyebrow">{preview.menuEyebrow ?? "Menu"}</p>
+              <h2>{preview.menuHeadline ?? "Menu"}</h2>
+              {preview.menuSupport ? (
+                <p className="lead">{preview.menuSupport}</p>
+              ) : null}
+              <ul className="seed-menu-list">
+                {preview.menuItems.map((item) => (
+                  <li key={`${item.category}-${item.name}`}>
+                    <div className="seed-menu-meta">
+                      <span className="seed-menu-cat">{item.category}</span>
+                      <span className="seed-menu-price">{item.priceLabel}</span>
+                    </div>
+                    <h3>{item.name}</h3>
+                    <p>{item.detail}</p>
+                  </li>
+                ))}
+              </ul>
+              {shopHref ? (
+                <p className="seed-menu-order">
+                  <a className="cta" href={shopHref}>
+                    Order from this menu
+                  </a>
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
         <section className="seed-section seed-about" id="about">
           <div className="seed-section-inner">

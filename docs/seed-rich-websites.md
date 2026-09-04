@@ -27,11 +27,12 @@ cover — automatically — the friendly day-to-day work:
 
 - Schedule / calendar
 - Orders and customer follow-up (CRM-lite)
-- Inventory / menu items
-- Sales tax and shipping when e-com is on
+- Inventory / menu items (priced — guests can order; admin sees money per ticket)
+- Sales tax and shipping (or pickup/delivery) when e-com is on
 
 This is AI-grown into the Seed, not a separate Cinch product and not a
 WordPress template pack.
 
-Implementation: `withBusinessSiteDepth`, pizza/restaurant menu boards, and
+Implementation: `withBusinessSiteDepth`, pizza/restaurant menu boards,
+`seedRestaurantMenuProducts`, `summarizeSeedOrderMoney`, and
 `seedHomePageSource` in `src/lib/seed-site-copy.ts`; repair in `src/lib/seed-site.ts`.
