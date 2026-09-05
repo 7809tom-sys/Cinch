@@ -7,6 +7,7 @@ import {
   briefIsPizza,
   customerFacingShopCopy,
   customerFacingSiteCopy,
+  seedGrowthBoardLooksThin,
   seedIndustryKey,
   seedLandingCopyMismatchesIndustry,
   seedRestaurantMenuProducts,
@@ -271,6 +272,69 @@ const money = summarizeSeedOrderMoney([
 assert(money.openUsd === 26, "open ticket money rolls up");
 assert(money.paidUsd === 37, "paid ticket money rolls up");
 assert(money.allTicketUsd === 63, "all ticket money rolls up");
+
+// HARD RULE: every Seed beats 2020 templates with numbers + profit help.
+assert(
+  seedIndustryKey("Harrison Lawn", "Weekly mowing and lawn care routes") ===
+    "lawn",
+  "Harrison Lawn classifies as lawn",
+);
+const lawn = customerFacingSiteCopy(
+  "Harrison Lawn",
+  "Weekly mowing and lawn care for neighborhood routes. Calendar schedule.",
+);
+assert(lawn.results.length >= 3, "lawn site ships concrete results stats");
+assert(
+  lawn.results.every((s) => /\d/.test(s.value)),
+  "lawn results values include numbers",
+);
+assert(lawn.profitPlays.length >= 3, "lawn site ships profit plays");
+assert(
+  lawn.profitPlays.some((p) => /\$|%|\d/.test(p.detail)),
+  "lawn profit plays cite dollars or counts",
+);
+assert(
+  /cut|edge|yard|lawn|mow|quote|route/i.test(
+    `${lawn.servicesHeadline} ${lawn.cta} ${lawn.footerNote}`,
+  ),
+  "lawn copy is yard-true",
+);
+
+assert(
+  seedIndustryKey(
+    "Northside Auto Garage",
+    "Mechanic shop — diagnostics, brakes, oil change",
+  ) === "garage",
+  "auto garage classifies as garage",
+);
+const garage = customerFacingSiteCopy(
+  "Northside Auto Garage",
+  "Auto garage mechanic shop. Diagnostics, brakes, oil change. Admin calendar.",
+);
+assert(garage.results.length >= 3, "garage site ships bay math results");
+assert(
+  garage.results.every((s) => /\d/.test(s.value)),
+  "garage results values include numbers",
+);
+assert(garage.profitPlays.length >= 3, "garage site ships profit plays");
+assert(/bay|diagnos|service/i.test(garage.cta + garage.servicesHeadline), "garage copy is shop-true");
+
+assert(
+  salon.results.length >= 3 && salon.profitPlays.length >= 3,
+  "salon also ships results + profit (AI thorough for every vertical)",
+);
+assert(
+  pizza.results.length >= 3 && pizza.profitPlays.length >= 3,
+  "pizza ships results + profit bands",
+);
+assert(
+  !seedGrowthBoardLooksThin(lawn) && !seedGrowthBoardLooksThin(garage),
+  "growth board thin detector accepts lawn + garage",
+);
+assert(
+  seedGrowthBoardLooksThin({ results: [], profitPlays: [] }),
+  "growth board thin detector flags empty boards",
+);
 
 if (process.exitCode) {
   console.error("\nIndustry copy guards failed.");

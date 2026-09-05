@@ -106,6 +106,14 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             <li>
               <a href="#services">Services</a>
             </li>
+            {preview.menuItems && preview.menuItems.length > 0 ? (
+              <li>
+                <a href="#menu">Menu</a>
+              </li>
+            ) : null}
+            <li>
+              <a href="#results">Results</a>
+            </li>
             <li>
               <a href="#about">About</a>
             </li>
@@ -183,11 +191,108 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
           </section>
         ) : null}
 
-        <section className="seed-section seed-about" id="about">
+        <section className="seed-section seed-results" id="results">
           <div className="seed-section-inner">
-            <p className="seed-eyebrow">{preview.aboutEyebrow}</p>
-            <h2>{preview.aboutHeadline}</h2>
-            <p className="lead">{preview.aboutBody}</p>
+            <p className="seed-eyebrow">{preview.resultsEyebrow}</p>
+            <h2>{preview.resultsHeadline}</h2>
+            <p className="lead">{preview.resultsSupport}</p>
+            <ul className="seed-results-grid">
+              {preview.results.map((stat) => (
+                <li key={`${stat.value}-${stat.label}`}>
+                  <span className="seed-results-value">{stat.value}</span>
+                  <span className="seed-results-label">{stat.label}</span>
+                  <p>{stat.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section
+          className="seed-gallery"
+          id="work"
+          aria-label={preview.galleryHeadline}
+        >
+          <div className="seed-section-inner seed-gallery-intro">
+            <p className="seed-eyebrow">{preview.galleryEyebrow}</p>
+            <h2>{preview.galleryHeadline}</h2>
+          </div>
+          <div className="seed-gallery-strip">
+            {preview.gallery.map((image) => (
+              <figure key={image.src} className="seed-gallery-item">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={image.src} alt={image.alt} loading="lazy" />
+              </figure>
+            ))}
+          </div>
+        </section>
+
+        <section className="seed-section seed-process" id="process">
+          <div className="seed-section-inner">
+            <p className="seed-eyebrow">{preview.processEyebrow}</p>
+            <h2>{preview.processHeadline}</h2>
+            <ol className="seed-process-list">
+              {preview.process.map((step, index) => (
+                <li key={step.title}>
+                  <span className="seed-step-num">{index + 1}</span>
+                  <div>
+                    <h3>{step.title}</h3>
+                    <p>{step.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="seed-section seed-profit" id="profit">
+          <div className="seed-section-inner">
+            <p className="seed-eyebrow">{preview.profitEyebrow}</p>
+            <h2>{preview.profitHeadline}</h2>
+            <p className="lead">{preview.profitSupport}</p>
+            <ul className="seed-profit-list">
+              {preview.profitPlays.map((play) => (
+                <li key={play.title}>
+                  <h3>{play.title}</h3>
+                  <p>{play.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="seed-section seed-about" id="about">
+          <div className="seed-section-inner seed-about-grid">
+            <div>
+              <p className="seed-eyebrow">{preview.aboutEyebrow}</p>
+              <h2>{preview.aboutHeadline}</h2>
+              <p className="lead">{preview.aboutBody}</p>
+            </div>
+            {preview.aboutImage ? (
+              <figure className="seed-about-photo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={preview.aboutImage} alt="" loading="lazy" />
+              </figure>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="seed-section seed-proof" id="proof">
+          <div className="seed-section-inner">
+            <p className="seed-eyebrow">{preview.proofEyebrow}</p>
+            <h2>{preview.proofHeadline}</h2>
+            <blockquote className="seed-quote">
+              <p>“{preview.proof.quote}”</p>
+              <footer>{preview.proof.attribution}</footer>
+            </blockquote>
+          </div>
+        </section>
+
+        <section className="seed-section seed-area" id="area">
+          <div className="seed-section-inner">
+            <p className="seed-eyebrow">{preview.areaEyebrow}</p>
+            <h2>{preview.areaHeadline}</h2>
+            <p className="lead">{preview.areaBody}</p>
           </div>
         </section>
 
