@@ -62,8 +62,20 @@ assert(
   "top of board includes known MiLB prospect names",
 );
 assert(
-  MILB_TOP_200.every((p) => typeof p.highlightUrl === "string" && p.highlightUrl.length > 0),
-  "every prospect has a highlightUrl",
+  MILB_TOP_200.every(
+    (p) =>
+      typeof p.highlightUrl === "string" &&
+      p.highlightUrl.includes("youtube.com"),
+  ),
+  "every prospect has a YouTube highlightUrl",
+);
+assert(
+  MILB_TOP_200.every(
+    (p) =>
+      typeof p.highlightAltUrl === "string" &&
+      p.highlightAltUrl.includes("mlb.com"),
+  ),
+  "every prospect has an MLB.com highlightAltUrl",
 );
 
 if (process.exitCode) {
