@@ -57,6 +57,14 @@ assert(
   ),
   "top of board includes known national HS names",
 );
+assert(
+  HS_BASKETBALL_TOP_100.every(
+    (p) =>
+      typeof p.highlightUrl === "string" &&
+      p.highlightUrl.includes("youtube.com"),
+  ),
+  "every HS prospect has a YouTube highlightUrl",
+);
 
 if (process.exitCode) {
   console.error("\nLockGM HS Top 100 guards failed.");

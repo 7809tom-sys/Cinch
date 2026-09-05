@@ -4,14 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import { useSport } from "@/lib/lockgm/sport-context";
 import type { SubTierId } from "@/lib/lockgm/config";
 import type { Prospect } from "@/lib/lockgm/sport-catalog";
-import { BASKETBALL_HS_BOARD_YEAR } from "@/lib/lockgm/sport-catalog";
+import {
+  BASKETBALL_HS_BOARD_YEAR,
+  BASEBALL_MILB_BOARD_YEAR,
+} from "@/lib/lockgm/sport-catalog";
+
+function youtubeEmbedSrc(prospect: Prospect): string | null {
+  if (prospect.highlightVideoId) {
+    return `https://www.youtube-nocookie.com/embed/${prospect.highlightVideoId}`;
+  }
+  return null;
+}
 
 export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   const { sport, franchise } = useSport();
   const stages = sport.stageOrder;
   const isHoopsBoard = sport.id === "basketball";
+  const isMilbBoard = sport.id === "baseball";
   const [stage, setStage] = useState<string>(
-    isHoopsBoard ? "high_school" : "all",
+    isHoopsBoard ? "high_school" : isMilbBoard ? "minors" : "all",
   );
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(
@@ -21,7 +32,13 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   const canSeeDeep = tier === "pipeline";
 
   useEffect(() => {
-    setStage(sport.id === "basketball" ? "high_school" : "all");
+    setStage(
+      sport.id === "basketball"
+        ? "high_school"
+        : sport.id === "baseball"
+          ? "minors"
+          : "all",
+    );
     setQuery("");
     setActiveId(franchise.prospects[0]?.id ?? null);
   }, [franchise.prospects, sport.id]);
@@ -46,6 +63,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
     list.find((p) => p.id === activeId) ?? list[0] ?? null;
 
   const earlyStage = stages[0];
+  const embedSrc = active ? youtubeEmbedSrc(active) : null;
 
   return (
     <div className="space-y-6">
@@ -55,7 +73,16 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
             HS Top {franchise.prospects.length}
           </span>{" "}
           · Class of {BASKETBALL_HS_BOARD_YEAR} national scouting board for
-          Shadow GM work — search, grade, and write reports on every prospect.
+          Shadow GM work — search, grade, watch highlights, and write reports.
+        </p>
+      ) : null}
+      {isMilbBoard ? (
+        <p className="text-sm text-[color:var(--lg-mute)]">
+          <span className="font-bold text-[color:var(--lg-accent)]">
+            MiLB Top {franchise.prospects.length}
+          </span>{" "}
+          · {BASEBALL_MILB_BOARD_YEAR} minor-league board for Shadow GM work —
+          search, grade, watch YouTube / MLB highlights, and write reports.
         </p>
       ) : null}
 
@@ -123,6 +150,14 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                   <div>
                     <p className="font-bold">
                       #{prospect.rank} {prospect.name}
+                      {prospect.highlightUrl ? (
+                        <span
+                          className="ml-2 text-[10px] font-bold tracking-wide text-[color:var(--lg-accent)] uppercase"
+                          title="Highlights available"
+                        >
+                          ▶ clip
+                        </span>
+                      ) : null}
                     </p>
                     <p className="text-xs text-[color:var(--lg-mute)]">
                       {prospect.position} · {prospect.school} ·{" "}
@@ -157,6 +192,60 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
             <p className="mt-4 text-base text-[color:var(--lg-text)]">
               {active.reportTeaser}
             </p>
+
+            {(active.highlightUrl ||
+              active.highlightAltUrl ||
+              embedSrc) && (
+              <div className="mt-5 border-t border-[color:var(--lg-line)] pt-4">
+                <p className="text-xs font-bold tracking-wide text-[color:var(--lg-mute)] uppercase">
+                  Video highlights
+                </p>
+                {embedSrc ? (
+                  <div className="mt-3 aspect-video w-full overflow-hidden border border-[color:var(--lg-line)] bg-black">
+                    <iframe
+                      title={`${active.name} highlights`}
+                      src={embedSrc}
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-3 flex aspect-video w-full flex-col items-center justify-center gap-3 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-4 text-center">
+                    <p className="lockgm-display text-2xl font-extrabold text-[color:var(--lg-accent)]">
+                      ▶
+                    </p>
+                    <p className="max-w-sm text-sm text-[color:var(--lg-mute)]">
+                      Open highlight film for {active.name} on YouTube or MLB
+                      Video — fresh search for this prospect.
+                    </p>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {active.highlightUrl ? (
+                    <a
+                      href={active.highlightUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md bg-[color:var(--lg-accent)] px-3 py-2 text-xs font-bold tracking-wide text-[color:var(--lg-bg)] uppercase"
+                    >
+                      YouTube highlights
+                    </a>
+                  ) : null}
+                  {active.highlightAltUrl ? (
+                    <a
+                      href={active.highlightAltUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md border border-[color:var(--lg-line)] px-3 py-2 text-xs font-bold tracking-wide text-[color:var(--lg-text)] uppercase"
+                    >
+                      {isMilbBoard ? "MLB.com video" : "More film"}
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            )}
 
             <div className="mt-5 border-t border-[color:var(--lg-line)] pt-4">
               <p className="text-xs font-bold tracking-wide text-[color:var(--lg-mute)] uppercase">

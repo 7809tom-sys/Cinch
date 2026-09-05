@@ -26,6 +26,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #1. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Beckham%20Black%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Beckham%20Black%20Southeastern%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb002",
@@ -43,6 +45,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #2. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Marcus%20Spears%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Marcus%20Spears%20Jr.%20Dynamic%20Prep%20(TX)%20highlights',
   },
   {
     id: "hsb003",
@@ -60,6 +64,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #3. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=CJ%20Rosser%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=CJ%20Rosser%20Southeastern%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb004",
@@ -77,6 +83,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #4. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Adan%20Diggs%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Adan%20Diggs%20Montverde%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb005",
@@ -94,6 +102,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #5. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Demarcus%20Henry%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Demarcus%20Henry%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb006",
@@ -111,6 +121,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #6. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Nasir%20Anderson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Nasir%20Anderson%20AZ%20Compass%20Prep%20(AZ)%20highlights',
   },
   {
     id: "hsb007",
@@ -128,6 +140,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #7. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Lewis%20Uvwo%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Lewis%20Uvwo%20Wasatch%20Academy%20(UT)%20highlights',
   },
   {
     id: "hsb008",
@@ -145,6 +159,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #8. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Paul%20Osaruyi%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Paul%20Osaruyi%20Overtime%20Elite%20(GA)%20highlights',
   },
   {
     id: "hsb009",
@@ -162,6 +178,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #9. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Cayden%20Daughtry%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Cayden%20Daughtry%20Calvary%20Christian%20(KY)%20highlights',
   },
   {
     id: "hsb010",
@@ -179,6 +197,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #10. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Reese%20Alston%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Reese%20Alston%20Sunrise%20Christian%20(KS)%20highlights',
   },
   {
     id: "hsb011",
@@ -196,6 +216,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #11. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Darius%20Wabbington%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Darius%20Wabbington%20Centennial%20(NV)%20highlights',
   },
   {
     id: "hsb012",
@@ -213,6 +235,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #12. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Javon%20Bardwell%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Javon%20Bardwell%20Oak%20Hill%20Academy%20(VA)%20highlights',
   },
   {
     id: "hsb013",
@@ -230,6 +254,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #13. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jalen%20Davis%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jalen%20Davis%20IMG%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb014",
@@ -247,6 +273,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #14. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Malachi%20Jordan%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Malachi%20Jordan%20Prolific%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb015",
@@ -264,6 +292,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #15. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Moussa%20Kamissoko%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Moussa%20Kamissoko%20Long%20Island%20Lutheran%20(NY)%20highlights',
   },
   {
     id: "hsb016",
@@ -281,6 +311,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #16. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Gabe%20Nesmith%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Gabe%20Nesmith%20Sierra%20Canyon%20(CA)%20highlights',
   },
   {
     id: "hsb017",
@@ -298,6 +330,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #17. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Davion%20Thompson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Davion%20Thompson%20Duncanville%20(TX)%20highlights',
   },
   {
     id: "hsb018",
@@ -315,6 +349,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #18. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=NaVorro%20Bowman%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=NaVorro%20Bowman%20Jr.%20DeMatha%20Catholic%20(MD)%20highlights',
   },
   {
     id: "hsb019",
@@ -332,6 +368,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #19. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Chase%20Branham%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Chase%20Branham%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb020",
@@ -349,6 +387,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #20. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Ahmad%20Hudson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Ahmad%20Hudson%20Combine%20Academy%20(NC)%20highlights',
   },
   {
     id: "hsb021",
@@ -366,6 +406,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #21. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jarvis%20Hayes%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jarvis%20Hayes%20Jr.%20Wheeler%20(GA)%20highlights',
   },
   {
     id: "hsb022",
@@ -383,6 +425,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #22. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Dawson%20Battie%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Dawson%20Battie%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb023",
@@ -400,6 +444,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #23. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Kager%20Knueppel%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Kager%20Knueppel%20Wisconsin%20Lutheran%20(WI)%20highlights',
   },
   {
     id: "hsb024",
@@ -417,6 +463,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #24. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Dooney%20Johnson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Dooney%20Johnson%20Oak%20Hill%20Academy%20(VA)%20highlights',
   },
   {
     id: "hsb025",
@@ -434,6 +482,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #25. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Scottie%20Adkinson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Scottie%20Adkinson%20Brewster%20Academy%20(NH)%20highlights',
   },
   {
     id: "hsb026",
@@ -451,6 +501,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #26. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Chase%20Lumpkin%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Chase%20Lumpkin%20Perry%20(AZ)%20highlights',
   },
   {
     id: "hsb027",
@@ -468,6 +520,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #27. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Devin%20Cleveland%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Devin%20Cleveland%20Montverde%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb028",
@@ -485,6 +539,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #28. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Zion%20Green%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Zion%20Green%20Wasatch%20Academy%20(UT)%20highlights',
   },
   {
     id: "hsb029",
@@ -502,6 +558,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #29. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Antonio%20Pemberton%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Antonio%20Pemberton%20Cathedral%20(IN)%20highlights',
   },
   {
     id: "hsb030",
@@ -519,6 +577,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #30. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Micah%20Gordon%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Micah%20Gordon%20St.%20John%20Bosco%20(CA)%20highlights',
   },
   {
     id: "hsb031",
@@ -536,6 +596,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #31. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jaxson%20Davis%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jaxson%20Davis%20Sunrise%20Christian%20(KS)%20highlights',
   },
   {
     id: "hsb032",
@@ -553,6 +615,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #32. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Darrell%20Davis%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Darrell%20Davis%20AZ%20Compass%20Prep%20(AZ)%20highlights',
   },
   {
     id: "hsb033",
@@ -570,6 +634,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #33. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Tyran%20Frazier%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Tyran%20Frazier%20Overtime%20Elite%20(GA)%20highlights',
   },
   {
     id: "hsb034",
@@ -587,6 +653,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #34. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Tyrone%20Jamison%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Tyrone%20Jamison%20IMG%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb035",
@@ -604,6 +672,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #35. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Josiah%20Harrington%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Josiah%20Harrington%20Combine%20Academy%20(NC)%20highlights',
   },
   {
     id: "hsb036",
@@ -621,6 +691,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #36. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=King%20Rachal%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=King%20Rachal%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb037",
@@ -638,6 +710,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #37. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Asa%20Montgomery%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Asa%20Montgomery%20Sierra%20Canyon%20(CA)%20highlights',
   },
   {
     id: "hsb038",
@@ -655,6 +729,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #38. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jaydn%20Jenkins%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jaydn%20Jenkins%20Montverde%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb039",
@@ -672,6 +748,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #39. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Donovan%20Davis%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Donovan%20Davis%20Prolific%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb040",
@@ -689,6 +767,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #40. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Cherif%20Millogo%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Cherif%20Millogo%20Wasatch%20Academy%20(UT)%20highlights',
   },
   {
     id: "hsb041",
@@ -706,6 +786,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #41. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Kameron%20Mercer%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Kameron%20Mercer%20Oak%20Hill%20Academy%20(VA)%20highlights',
   },
   {
     id: "hsb042",
@@ -723,6 +805,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #42. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Payton%20Jones%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Payton%20Jones%20Brewster%20Academy%20(NH)%20highlights',
   },
   {
     id: "hsb043",
@@ -740,6 +824,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #43. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=J%27Lon%20Lyons%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=J%27Lon%20Lyons%20Centennial%20%28NV%29%20highlights',
   },
   {
     id: "hsb044",
@@ -757,6 +843,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #44. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Caleb%20Ourigou%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Caleb%20Ourigou%20Overtime%20Elite%20(GA)%20highlights',
   },
   {
     id: "hsb045",
@@ -774,6 +862,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #45. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Kamsi%20Awaka%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Kamsi%20Awaka%20AZ%20Compass%20Prep%20(AZ)%20highlights',
   },
   {
     id: "hsb046",
@@ -791,6 +881,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #46. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Oneal%20Delancy%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Oneal%20Delancy%20Long%20Island%20Lutheran%20(NY)%20highlights',
   },
   {
     id: "hsb047",
@@ -808,6 +900,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #47. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Aaron%20Britt%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Aaron%20Britt%20Jr.%20Wheeler%20(GA)%20highlights',
   },
   {
     id: "hsb048",
@@ -825,6 +919,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #48. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Javion%20Tyndale%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Javion%20Tyndale%20Duncanville%20(TX)%20highlights',
   },
   {
     id: "hsb049",
@@ -842,6 +938,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #49. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Ferlandes%20Wright%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Ferlandes%20Wright%20DeMatha%20Catholic%20(MD)%20highlights',
   },
   {
     id: "hsb050",
@@ -859,6 +957,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #50. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Patrick%20Otey%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Patrick%20Otey%20Cathedral%20(IN)%20highlights',
   },
   {
     id: "hsb051",
@@ -876,6 +976,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #51. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Gene%20Roebuck%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Gene%20Roebuck%20Perry%20(AZ)%20highlights',
   },
   {
     id: "hsb052",
@@ -893,6 +995,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #52. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jack%20Kohnen%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jack%20Kohnen%20Wisconsin%20Lutheran%20(WI)%20highlights',
   },
   {
     id: "hsb053",
@@ -910,6 +1014,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #53. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jalen%20White%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jalen%20White%20St.%20John%20Bosco%20(CA)%20highlights',
   },
   {
     id: "hsb054",
@@ -927,6 +1033,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #54. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jason%20Gardner%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jason%20Gardner%20Jr.%20Sunrise%20Christian%20(KS)%20highlights',
   },
   {
     id: "hsb055",
@@ -944,6 +1052,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #55. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Carson%20Crawford%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Carson%20Crawford%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb056",
@@ -961,6 +1071,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #56. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jalen%20Brown%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jalen%20Brown%20IMG%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb057",
@@ -978,6 +1090,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #57. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jahari%20Miller%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jahari%20Miller%20Montverde%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb058",
@@ -995,6 +1109,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #58. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jeremiah%20Profit%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jeremiah%20Profit%20Prolific%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb059",
@@ -1012,6 +1128,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #59. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Geren%20Holmes%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Geren%20Holmes%20Wasatch%20Academy%20(UT)%20highlights',
   },
   {
     id: "hsb060",
@@ -1029,6 +1147,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #60. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jomar%20Bernard%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jomar%20Bernard%20Oak%20Hill%20Academy%20(VA)%20highlights',
   },
   {
     id: "hsb061",
@@ -1046,6 +1166,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #61. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Markus%20Kerr%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Markus%20Kerr%20Combine%20Academy%20(NC)%20highlights',
   },
   {
     id: "hsb062",
@@ -1063,6 +1185,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #62. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Munir%20Greig%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Munir%20Greig%20Sierra%20Canyon%20(CA)%20highlights',
   },
   {
     id: "hsb063",
@@ -1080,6 +1204,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #63. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Brandon%20Mason%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Brandon%20Mason%20Jr.%20Centennial%20(NV)%20highlights',
   },
   {
     id: "hsb064",
@@ -1097,6 +1223,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #64. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Keaundre%20Morris%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Keaundre%20Morris%20Brewster%20Academy%20(NH)%20highlights',
   },
   {
     id: "hsb065",
@@ -1114,6 +1242,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #65. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Baboucarr%20Ann%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Baboucarr%20Ann%20AZ%20Compass%20Prep%20(AZ)%20highlights',
   },
   {
     id: "hsb066",
@@ -1131,6 +1261,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #66. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Godson%20Okokoh%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Godson%20Okokoh%20Overtime%20Elite%20(GA)%20highlights',
   },
   {
     id: "hsb067",
@@ -1148,6 +1280,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #67. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Lucai%20Anderson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Lucai%20Anderson%20Duncanville%20(TX)%20highlights',
   },
   {
     id: "hsb068",
@@ -1165,6 +1299,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #68. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Lyris%20Robinson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Lyris%20Robinson%20Wheeler%20(GA)%20highlights',
   },
   {
     id: "hsb069",
@@ -1182,6 +1318,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #69. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Quincy%20Douby%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Quincy%20Douby%20Jr.%20Long%20Island%20Lutheran%20(NY)%20highlights',
   },
   {
     id: "hsb070",
@@ -1199,6 +1337,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #70. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Marri%20Wesley%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Marri%20Wesley%20DeMatha%20Catholic%20(MD)%20highlights',
   },
   {
     id: "hsb071",
@@ -1216,6 +1356,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #71. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Ian%20Condon%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Ian%20Condon%20Cathedral%20(IN)%20highlights',
   },
   {
     id: "hsb072",
@@ -1233,6 +1375,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #72. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jimmie%20Haywood%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jimmie%20Haywood%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb073",
@@ -1250,6 +1394,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Reads help early and pressures the paint. Strength vs pro physicality is the development ask. LockGM track: multi-year HS board.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #73. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jamaal%20McKnight%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jamaal%20McKnight%20Jr.%20Perry%20(AZ)%20highlights',
   },
   {
     id: "hsb074",
@@ -1267,6 +1413,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #74. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Isaiah%20Mack-Russell%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Isaiah%20Mack-Russell%20St.%20John%20Bosco%20(CA)%20highlights',
   },
   {
     id: "hsb075",
@@ -1284,6 +1432,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #75. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Kamari%20Whyte%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Kamari%20Whyte%20Wasatch%20Academy%20(UT)%20highlights',
   },
   {
     id: "hsb076",
@@ -1301,6 +1451,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #76. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Quinton%20Kitt%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Quinton%20Kitt%20Sunrise%20Christian%20(KS)%20highlights',
   },
   {
     id: "hsb077",
@@ -1318,6 +1470,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #77. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Kellen%20Brewer%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Kellen%20Brewer%20Montverde%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb078",
@@ -1335,6 +1489,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #78. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Brandon%20Woodard%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Brandon%20Woodard%20IMG%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb079",
@@ -1352,6 +1508,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #79. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Miguel%20Orbe%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Miguel%20Orbe%20Prolific%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb080",
@@ -1369,6 +1527,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #80. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Corey%20Dixon%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Corey%20Dixon%20Oak%20Hill%20Academy%20(VA)%20highlights',
   },
   {
     id: "hsb081",
@@ -1386,6 +1546,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #81. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Marquis%20Newson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Marquis%20Newson%20Combine%20Academy%20(NC)%20highlights',
   },
   {
     id: "hsb082",
@@ -1403,6 +1565,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Timing as a helper and vertical spacer tools. Switch drops and strength program are next.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #82. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Keller%20Daugherty%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Keller%20Daugherty%20Brewster%20Academy%20(NH)%20highlights',
   },
   {
     id: "hsb083",
@@ -1420,6 +1584,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #83. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Tony%20Cornett%20III%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Tony%20Cornett%20III%20AZ%20Compass%20Prep%20(AZ)%20highlights',
   },
   {
     id: "hsb084",
@@ -1437,6 +1603,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #84. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=K%27Nard%20Callendar%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=K%27Nard%20Callendar%20Centennial%20%28NV%29%20highlights',
   },
   {
     id: "hsb085",
@@ -1454,6 +1622,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #85. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Josiah%20Nance%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Josiah%20Nance%20Duncanville%20(TX)%20highlights',
   },
   {
     id: "hsb086",
@@ -1471,6 +1641,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #86. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jacoby%20Briscoe%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jacoby%20Briscoe%20Wheeler%20(GA)%20highlights',
   },
   {
     id: "hsb087",
@@ -1488,6 +1660,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #87. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Andrew%20Kretkowski%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Andrew%20Kretkowski%20Sierra%20Canyon%20(CA)%20highlights',
   },
   {
     id: "hsb088",
@@ -1505,6 +1679,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #88. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Tavid%20Johnson%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Tavid%20Johnson%20Long%20Island%20Lutheran%20(NY)%20highlights',
   },
   {
     id: "hsb089",
@@ -1522,6 +1698,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #89. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Frashad%20Tisby%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Frashad%20Tisby%20DeMatha%20Catholic%20(MD)%20highlights',
   },
   {
     id: "hsb090",
@@ -1539,6 +1717,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #90. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Terence%20Jones%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Terence%20Jones%20Cathedral%20(IN)%20highlights',
   },
   {
     id: "hsb091",
@@ -1556,6 +1736,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #91. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Deuce%20McDuffie%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Deuce%20McDuffie%20Wisconsin%20Lutheran%20(WI)%20highlights',
   },
   {
     id: "hsb092",
@@ -1573,6 +1755,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #92. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Marlon%20Martinez%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Marlon%20Martinez%20Perry%20(AZ)%20highlights',
   },
   {
     id: "hsb093",
@@ -1590,6 +1774,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #93. Multi-year track for college → declare pipeline.',
     traits: ['spacing', 'vertical', 'timing'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Silas%20Graham%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Silas%20Graham%20St.%20John%20Bosco%20(CA)%20highlights',
   },
   {
     id: "hsb094",
@@ -1607,6 +1793,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Creates advantages off the bounce and relocates. Contested-catch / off-ball defense still climbing.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #94. Multi-year track for college → declare pipeline.',
     traits: ['burst', 'compete', 'YACs'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Caleb%20Lundy%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Caleb%20Lundy%20Sunrise%20Christian%20(KS)%20highlights',
   },
   {
     id: "hsb095",
@@ -1624,6 +1812,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #95. Multi-year track for college → declare pipeline.',
     traits: ['PnR', 'pass', 'poise'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jayden%20Conerly%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jayden%20Conerly%20Link%20Academy%20(MO)%20highlights',
   },
   {
     id: "hsb096",
@@ -1641,6 +1831,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #96. Multi-year track for college → declare pipeline.',
     traits: ['frame', 'anchor', 'touch'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Nasir%20Muhammad-Gray%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Nasir%20Muhammad-Gray%20Montverde%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb097",
@@ -1658,6 +1850,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #97. Multi-year track for college → declare pipeline.',
     traits: ['shot creation', 'pace', 'IQ'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Tyson%20Pogi%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Tyson%20Pogi%20IMG%20Academy%20(FL)%20highlights',
   },
   {
     id: "hsb098",
@@ -1675,6 +1869,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Finishes above the rim and can step out. Handle under full-court pressure needs reps.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #98. Multi-year track for college → declare pipeline.',
     traits: ['length', 'rim pressure', 'motor'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Damon%20Miles%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Damon%20Miles%20Wasatch%20Academy%20(UT)%20highlights',
   },
   {
     id: "hsb099",
@@ -1692,6 +1888,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Length and closeouts jump off tape. Three-point consistency is the projection lever for next level.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #99. Multi-year track for college → declare pipeline.',
     traits: ['handle', 'vision', 'pull-up'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Nick%20Welch%20Jr.%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Nick%20Welch%20Jr.%20Prolific%20Prep%20(FL)%20highlights',
   },
   {
     id: "hsb100",
@@ -1709,6 +1907,8 @@ export const HS_BASKETBALL_TOP_100: Prospect[] = [
     reportPremium: 'Size to see over traps with a real pull-up. Shot selection vs set defenses is the swing skill on film.',
     pipelineNote: 'Class of 2027 — LockGM HS board rank #100. Multi-year track for college → declare pipeline.',
     traits: ['switch', 'closeout', 'upside'],
+    highlightUrl: 'https://www.youtube.com/results?search_query=Jimmy%20McKinney%20III%20basketball%20highlights',
+    highlightAltUrl: 'https://www.youtube.com/results?search_query=Jimmy%20McKinney%20III%20Oak%20Hill%20Academy%20(VA)%20highlights',
   },
 ];
 

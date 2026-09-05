@@ -3,6 +3,10 @@ import {
   HS_BASKETBALL_CLASS_YEAR,
   HS_BASKETBALL_TOP_100,
 } from "./hs-basketball-top100";
+import {
+  MILB_BOARD_YEAR,
+  MILB_TOP_200,
+} from "./milb-top200";
 
 export type Prospect = {
   id: string;
@@ -21,6 +25,12 @@ export type Prospect = {
   reportPremium: string;
   pipelineNote: string;
   traits: string[];
+  /** YouTube (or other) highlight search / video URL */
+  highlightUrl?: string;
+  /** Alternate highlight source (e.g. MLB.com video search) */
+  highlightAltUrl?: string;
+  /** Optional YouTube video id for in-panel embed */
+  highlightVideoId?: string;
 };
 
 export type FranchisePlayer = {
@@ -365,49 +375,12 @@ const BASEBALL: FranchiseKit = {
     { id: "t3", label: "Send AA arm", capDeltaM: 0, kind: "pick" },
     { id: "t4", label: "Receive SP — N. Crow", capDeltaM: 11.0, kind: "player" },
   ],
-  prospects: [
-    {
-      id: "bb01", name: "Jonah Reyes", position: "SS", school: "AA Lock City",
-      stage: "minors", rank: 1, height: "6'1\"", weight: 185, metric: 92, grade: 88, capHitM: 0.8,
-      reportTeaser: "Glove-first shortstop with emerging hit tool.",
-      reportPremium: "Internal clock elite. Power to gaps more than over fences. 2026 everyday projection.",
-      pipelineNote: "HS → draft → AA jump this season.",
-      traits: ["glove", "clock", "contact"],
-    },
-    {
-      id: "bb02", name: "Harvey Lin", position: "SP", school: "UCLA",
-      stage: "college", rank: 2, height: "6'3\"", weight: 205, metric: 96, grade: 86, capHitM: 2.1,
-      reportTeaser: "Fastball/change mix with starter stamina.",
-      reportPremium: "Third pitch (slider) improving. Command vs lefties is the swing skill for first-round status.",
-      pipelineNote: "HS arm → college Sunday → Friday starter.",
-      traits: ["FB", "change", "stamina"],
-    },
-    {
-      id: "bb03", name: "Cam Bright", position: "OF", school: "IMG Academy",
-      stage: "high_school", rank: 3, height: "6'2\"", weight: 190, metric: null, grade: 82, capHitM: 0,
-      reportTeaser: "Tools outfielder with CF range.",
-      reportPremium: "Hit tool raw but bat speed present. Signability watch for 2027 draft.",
-      pipelineNote: "Junior showcase circuit — long pipeline.",
-      traits: ["range", "arm", "upside"],
-    },
-    {
-      id: "bb04", name: "Bryson Cole", position: "3B", school: "Vanderbilt",
-      stage: "mlb_ready", rank: 4, height: "6'2\"", weight: 210, metric: 108, grade: 87, capHitM: 3.4,
-      reportTeaser: "Impact bat who can hold third.",
-      reportPremium: "Exit velo elite. Glove plays average. Ready for big-league at-bats.",
-      pipelineNote: "College → AAA seasoning → call-up queue.",
-      traits: ["exit", "pull", "compete"],
-    },
-    {
-      id: "bb05", name: "Seth Marin", position: "RP", school: "AAA Lock City",
-      stage: "minors", rank: 5, height: "6'4\"", weight: 220, metric: 98, grade: 80, capHitM: 0.6,
-      reportTeaser: "High-spin fastball for late innings.",
-      reportPremium: "One-inning dominance. Second pitch consistency decides big-league stickiness.",
-      pipelineNote: "College closer → org conversion to high leverage.",
-      traits: ["spin", "velo", "nerve"],
-    },
-  ],
+  // HARD RULE for LockGM baseball: MiLB Top 200 is the scouting board.
+  prospects: MILB_TOP_200,
 };
+
+/** Board year for the baseball MiLB Top 200 (UI eyebrow). */
+export const BASEBALL_MILB_BOARD_YEAR = MILB_BOARD_YEAR;
 
 const FOOTBALL: FranchiseKit = {
   clubName: "Lock City Legion",
