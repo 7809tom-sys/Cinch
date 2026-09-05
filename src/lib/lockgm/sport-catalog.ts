@@ -1,4 +1,8 @@
 import type { SportId } from "./sports";
+import {
+  HS_BASKETBALL_CLASS_YEAR,
+  HS_BASKETBALL_TOP_100,
+} from "./hs-basketball-top100";
 
 export type Prospect = {
   id: string;
@@ -222,57 +226,12 @@ const BASKETBALL: FranchiseKit = {
     { id: "t3", label: "Send 2026 2nd", capDeltaM: 0, kind: "pick" },
     { id: "t4", label: "Receive PG — N. Crow", capDeltaM: 8.6, kind: "player" },
   ],
-  prospects: [
-    {
-      id: "b01", name: "Ellis Grant", position: "PF", school: "Duke",
-      stage: "declare", rank: 1, height: "6'9\"", weight: 225, metric: 3.1, grade: 93, capHitM: 7.2,
-      reportTeaser: "Switchable four with a real three.",
-      reportPremium: "Shoots off movement, contests without fouling. Handle vs pressure still developing. Floor: starter spacer. Ceiling: two-way All-Star.",
-      pipelineNote: "HS McDonald’s → one-and-done declare.",
-      traits: ["switch", "shoot", "motor"],
-    },
-    {
-      id: "b02", name: "Micah Dane", position: "PG", school: "Gonzaga",
-      stage: "pro_ready", rank: 2, height: "6'3\"", weight: 195, metric: 2.95, grade: 90, capHitM: 6.8,
-      reportTeaser: "Pick-and-roll architect with deep range.",
-      reportPremium: "Reads help early; live dribble passing. Lateral defense improving. Ready for day-one minutes.",
-      pipelineNote: "HS point → college efficiency spike as junior.",
-      traits: ["PnR", "pass", "IQ"],
-    },
-    {
-      id: "b03", name: "Cam Bright", position: "SF", school: "Montverde",
-      stage: "high_school", rank: 3, height: "6'7\"", weight: 195, metric: null, grade: 84, capHitM: 0,
-      reportTeaser: "Wing athlete with defensive tools.",
-      reportPremium: "Length and closeouts jump off film. Shot consistency the swing skill. 2028 draft pipeline.",
-      pipelineNote: "Rising junior — multi-year LockGM track.",
-      traits: ["length", "closeout", "upside"],
-    },
-    {
-      id: "b04", name: "Andre Voss", position: "C", school: "Kentucky",
-      stage: "college", rank: 4, height: "6'11\"", weight: 245, metric: 3.25, grade: 86, capHitM: 4.5,
-      reportTeaser: "Vertical spacer who protects the rim.",
-      reportPremium: "Timing as a helper elite. Drop coverage solid; switch drops need work. One more year of strength.",
-      pipelineNote: "HS center → college stretch role.",
-      traits: ["rim", "timing", "stretch"],
-    },
-    {
-      id: "b05", name: "Kai Benton", position: "SG", school: "UCLA",
-      stage: "declare", rank: 5, height: "6'5\"", weight: 205, metric: 3.05, grade: 85, capHitM: 3.9,
-      reportTeaser: "Secondary creator who scores in bursts.",
-      reportPremium: "Pull-up gravity forces help. Shot selection vs set defenses is the film concern.",
-      pipelineNote: "HS combo → college off-ball growth.",
-      traits: ["burst", "pull-up", "competitiveness"],
-    },
-    {
-      id: "b06", name: "Noah Quill", position: "PG", school: "IMG Academy",
-      stage: "high_school", rank: 6, height: "6'1\"", weight: 170, metric: null, grade: 79, capHitM: 0,
-      reportTeaser: "Floor general with advanced pace control.",
-      reportPremium: "Sees second side early. Needs strength for pro physicality. Long track.",
-      pipelineNote: "Junior season — earliest pro window 2028–29.",
-      traits: ["pace", "vision", "upside"],
-    },
-  ],
+  // HARD RULE for LockGM basketball: HS Top 100 is the scouting board.
+  prospects: HS_BASKETBALL_TOP_100,
 };
+
+/** Class year for the basketball HS board (UI eyebrow). */
+export const BASKETBALL_HS_BOARD_YEAR = HS_BASKETBALL_CLASS_YEAR;
 
 const CRICKET: FranchiseKit = {
   clubName: "Lock City Strikers",
