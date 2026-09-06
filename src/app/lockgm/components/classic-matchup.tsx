@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   CLASSIC_TEAMS,
   classicTeamById,
@@ -18,13 +18,42 @@ type SeriesSummary = {
   results: GameResult[];
 };
 
+function readInitialFromUrl(): {
+  awayId: string;
+  homeId: string;
+  seed: number;
+  auto: boolean;
+} {
+  if (typeof window === "undefined") {
+    return {
+      awayId: CLASSIC_TEAMS[0]!.id,
+      homeId: CLASSIC_TEAMS[1]!.id,
+      seed: 19850501,
+      auto: false,
+    };
+  }
+  const q = new URLSearchParams(window.location.search);
+  const awayId = q.get("away") || CLASSIC_TEAMS[0]!.id;
+  const homeId = q.get("home") || CLASSIC_TEAMS[1]!.id;
+  const seed = Number(q.get("seed") || 19850501) || 19850501;
+  const auto = q.get("auto") === "1";
+  return {
+    awayId: classicTeamById(awayId) ? awayId : CLASSIC_TEAMS[0]!.id,
+    homeId: classicTeamById(homeId) ? homeId : CLASSIC_TEAMS[1]!.id,
+    seed,
+    auto,
+  };
+}
+
 export function ClassicMatchup() {
-  const [awayId, setAwayId] = useState(CLASSIC_TEAMS[0]!.id);
-  const [homeId, setHomeId] = useState(CLASSIC_TEAMS[1]!.id);
-  const [seed, setSeed] = useState(19850501);
+  const initial = readInitialFromUrl();
+  const [awayId, setAwayId] = useState(initial.awayId);
+  const [homeId, setHomeId] = useState(initial.homeId);
+  const [seed, setSeed] = useState(initial.seed);
   const [result, setResult] = useState<GameResult | null>(null);
   const [series, setSeries] = useState<SeriesSummary | null>(null);
   const [pending, startTransition] = useTransition();
+  const [didAuto, setDidAuto] = useState(false);
 
   const away = classicTeamById(awayId)!;
   const home = classicTeamById(homeId)!;
@@ -68,6 +97,13 @@ export function ClassicMatchup() {
       setResult(s.results[0] ?? null);
     });
   }
+
+  useEffect(() => {
+    if (!initial.auto || didAuto || awayId === homeId) return;
+    setDidAuto(true);
+    const game = simulateGame(away, home, { seed });
+    setResult(game);
+  }, [initial.auto, didAuto, awayId, homeId, away, home, seed]);
 
   return (
     <div className="space-y-10">
@@ -283,11 +319,7 @@ function LineScore({ result }: { result: GameResult }) {
   );
 }
 
-function BatterTable({
-  box,
-}: {
-  box: GameResult["away"];
-}) {
+function BatterTable({ box }: { box: GameResult["away"] }) {
   return (
     <div>
       <p className="lockgm-display text-xl font-bold">{box.abbrev} batting</p>
@@ -324,11 +356,7 @@ function BatterTable({
   );
 }
 
-function PitcherTable({
-  box,
-}: {
-  box: GameResult["away"];
-}) {
+function PitcherTable({ box }: { box: GameResult["away"] }) {
   return (
     <div>
       <p className="lockgm-display text-xl font-bold">{box.abbrev} pitching</p>
