@@ -13,6 +13,7 @@
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
     "assert:lockgm-updated-reports": "npx tsx scripts/assert-lockgm-updated-reports.ts",
+    "assert:lockgm-fantasy-scouting": "npx tsx scripts/assert-lockgm-fantasy-scouting.ts",
     "assert:lockgm-strat-sim": "npx tsx scripts/assert-lockgm-strat-sim.ts",
     "assert:lockgm-classic-matchup": "npx tsx scripts/assert-lockgm-strat-sim.ts",
     "dev:detective-shopper": "npm run dev --prefix apps/detective-shopper",

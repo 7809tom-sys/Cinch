@@ -12,6 +12,7 @@ const NAV = [
   { href: "/lockgm/ratings", label: "Ratings" },
   { href: "/lockgm/cap", label: "Budget" },
   { href: "/lockgm/scouting", label: "Scouting" },
+  { href: "/lockgm/fantasy-football", label: "Fantasy pulse" },
   { href: "/lockgm/pricing", label: "Tiers" },
 ];
 
