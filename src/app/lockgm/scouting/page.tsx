@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSport } from "@/lib/lockgm/sport-context";
 import {
   BASKETBALL_HS_BOARD_YEAR,
@@ -62,6 +63,18 @@ export default function LockgmScoutingPage() {
             All-Sports — the same queue pros can review.
           </>
         )}
+      </p>
+      <p className="mt-3 text-sm font-semibold">
+        <Link
+          href="/lockgm/ratings"
+          className="text-[color:var(--lg-accent)] underline-offset-2 hover:underline"
+        >
+          What do ratings mean?
+        </Link>
+        <span className="text-[color:var(--lg-mute)]">
+          {" "}
+          — LockGM Shadow GM grade classroom (baseball 1–20 first).
+        </span>
       </p>
       <div className="mt-10">
         <ScoutingTierSwitch />
