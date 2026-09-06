@@ -28,7 +28,9 @@ const touch = normalizeLockgmAnalyticsTouch({
   signupPath: "/login#signup",
   email: "must-not-be-accepted",
   ip: "192.0.2.1",
-});
+} as Partial<Record<string, unknown>> as Partial<
+  Record<"source" | "medium" | "campaign" | "content" | "term" | "referralCode" | "landingPath" | "signupPath", unknown>
+>);
 
 assert(touch?.source === "newsletter", "UTM source is normalized");
 assert(touch?.medium === "email", "UTM medium is captured");

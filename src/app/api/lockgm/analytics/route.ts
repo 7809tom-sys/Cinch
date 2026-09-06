@@ -6,6 +6,7 @@ import {
   isSupportedAnalyticsEvent,
   listLockgmAnalyticsEvents,
   recordLockgmAnalyticsEvent,
+  type AnalyticsCustomer,
 } from "@/lib/lockgm/analytics";
 import { listCustomers, type CustomerAccount } from "@/lib/customers";
 import { getMasterSession } from "@/lib/master-auth";
@@ -61,12 +62,17 @@ function aggregateCsv(snapshot: ReturnType<typeof buildLockgmAnalyticsSnapshot>)
 }
 
 function customersForAnalytics(customers: CustomerAccount[]) {
-  return customers.map((customer) => ({
+  return customers.map((customer): AnalyticsCustomer => {
+    const withIdentity = customer as CustomerAccount & {
+      lockgmProfile?: AnalyticsCustomer["lockgmProfile"];
+    };
+    return {
     id: customer.id,
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
-    lockgmProfile: customer.lockgmProfile,
-  }));
+      lockgmProfile: withIdentity.lockgmProfile,
+    };
+  });
 }
 
 export async function POST(request: Request) {
@@ -85,7 +91,12 @@ export async function POST(request: Request) {
   }
 
   const customer = await getCurrentCustomer();
-  const gmId = customer?.lockgmProfile?.gmId ?? null;
+  const withIdentity = customer as
+    | (NonNullable<typeof customer> & {
+        lockgmProfile?: { gmId?: string };
+      })
+    | null;
+  const gmId = withIdentity?.lockgmProfile?.gmId ?? null;
   const anonymousId =
     typeof body.anonymousId === "string" ? body.anonymousId : null;
   const headers = new Headers(request.headers);

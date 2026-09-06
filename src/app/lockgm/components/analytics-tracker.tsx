@@ -98,7 +98,10 @@ export function LockgmAnalyticsTracker({
   const isLockgmSurface = surface === "lockgm";
 
   useEffect(() => {
-    setConsent(window.localStorage.getItem(CONSENT_KEY));
+    const timer = window.setTimeout(() => {
+      setConsent(window.localStorage.getItem(CONSENT_KEY));
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
