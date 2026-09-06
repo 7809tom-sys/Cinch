@@ -92,9 +92,9 @@ export function isValidLockgmGmId(value: string): boolean {
 }
 
 /**
- * The identity branch supplies `lockgmProfile.gmId`. Until that branch is
- * merged, this deterministic fallback keeps invite links stable without
- * exposing email, legal name, or the account id in a URL.
+ * The merged identity branch supplies `lockgmProfile.gmId`. The deterministic
+ * fallback keeps older/demo records stable without exposing email, legal name,
+ * or the account id in a URL.
  */
 export function resolveLockgmPublicGmId(input: {
   id: string;

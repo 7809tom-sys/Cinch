@@ -21,12 +21,12 @@ name are never put in the invite record or analytics response.
    cannot earn a self-referral. Duplicate acceptance by the same public GM ID
    is ignored.
 
-When `cursor/lockgm-gm-identity-admin-b878` is merged, its stable
-`customer.lockgmProfile.gmId` is used automatically. Until then, the adapter
-derives a stable public GM ID from the authenticated account id with SHA-256;
-the account id, email, and legal name are not exposed. The identity/profile
-integration should also persist the returned `source` and `campaign` into its
-profile attribution record if profile-level attribution is required.
+The merged identity foundation supplies
+`customer.lockgmProfile.gmId`, which the invite adapter uses automatically.
+For older/demo records without that profile, the adapter derives a stable
+public GM ID from the authenticated account id with SHA-256; the account id,
+email, and legal name are not exposed. Signup also writes accepted
+source/campaign/code into the profile attribution record.
 
 ## Abuse and privacy controls
 
