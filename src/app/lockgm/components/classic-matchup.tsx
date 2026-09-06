@@ -211,7 +211,7 @@ export function ClassicMatchup() {
     <div className="space-y-10">
       <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
         <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-          LockGM Classic Matchup · original charts & dice
+          LockGM Classic Matchup · LockGM grades & dice
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <TeamPick

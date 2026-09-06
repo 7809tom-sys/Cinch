@@ -1,4 +1,4 @@
-/** LockGM Classic Matchup — original rating scales (card/dice-inspired, LockGM-owned). */
+/** LockGM Classic Matchup — proprietary LockGM rating scales (1–20). */
 
 export type Hand = "L" | "R" | "S";
 export type PitchRole = "SP" | "RP";
@@ -14,7 +14,7 @@ export type FieldPos =
   | "DH"
   | "P";
 
-/** Batter ratings on LockGM 1–20 scales (hand-authored from public season context). */
+/** Batter LockGM grades on 1–20 scales (hand-authored from public season context). */
 export type BatterRatings = {
   contact: number;
   power: number;
