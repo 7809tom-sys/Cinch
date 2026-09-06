@@ -183,7 +183,8 @@ function advanceRunners(
     case "E": {
       score(b3);
       if (b2) {
-        if (speed >= 13 && rng.chance(0.35)) score(b2);
+        // Most runners score from second on a single; faster ones almost always.
+        if (speed >= 11 || rng.chance(0.72)) score(b2);
         else b3 = b2;
       }
       b2 = b1;

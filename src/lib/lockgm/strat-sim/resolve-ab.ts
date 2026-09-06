@@ -52,7 +52,7 @@ export function resolveAtBat(
 
   // "Chart ownership" — higher contact vs stuff → more batter-chart outcomes.
   const batterEdge = (contact - stuff + 20) / 40; // ~0..1
-  const onBatterChart = rng.chance(clamp(0.28 + batterEdge * 0.44, 0.18, 0.72));
+  const onBatterChart = rng.chance(clamp(0.22 + batterEdge * 0.38, 0.15, 0.58));
 
   // Primary d1000-style roll (dice feel without copying card tables).
   const roll = rng.int(1, 1000);
@@ -71,14 +71,15 @@ function resolveBatterChart(
   rng: Rng,
 ): AtBatOutcome {
   // Weights scale with ratings; totals re-normalized each AB.
-  const hr = 8 + power * 2.2;
-  const triple = 3 + (contact > 12 ? 2 : 0);
-  const double = 18 + power * 1.1 + contact * 0.4;
-  const single = 55 + contact * 2.4;
-  const bb = 12 + eye * 1.6;
-  const hbp = 4;
-  const err = 6;
-  const out = 100; // residual outs on batter chart still happen
+  // Tuned for roughly mid-4s–5s R/G across classic packs (not Strat card tables).
+  const hr = 6.5 + power * 1.7;
+  const triple = 2.2 + (contact > 13 ? 1.8 : 0);
+  const double = 15 + power * 0.9 + contact * 0.35;
+  const single = 44 + contact * 1.95;
+  const bb = 10.5 + eye * 1.25;
+  const hbp = 3.5;
+  const err = 4.5;
+  const out = 145;
 
   const weights: { o: AtBatOutcome; w: number }[] = [
     { o: "HR", w: hr },
@@ -105,20 +106,20 @@ function resolvePitcherChart(
   eye: number,
   rng: Rng,
 ): AtBatOutcome {
-  const k = 40 + stuff * 3.2;
-  const bb = clamp(55 - control * 2.2 + eye * 0.4, 8, 70);
-  const hbp = 6;
-  const hitLeak = clamp(35 - stuff * 0.9, 8, 40); // weak contact allowed
-  const outPool = 120 + control * 1.5;
+  const k = 43 + stuff * 3.25;
+  const bb = clamp(46 - control * 1.95 + eye * 0.4, 7, 55);
+  const hbp = 5;
+  const hitLeak = clamp(30 - stuff * 0.82, 7, 32);
+  const outPool = 145 + control * 1.7;
   const gbShare = gb / 20;
 
   const weights: { o: AtBatOutcome; w: number }[] = [
     { o: "K", w: k },
     { o: "BB", w: bb },
     { o: "HBP", w: hbp },
-    { o: "1B", w: hitLeak * 0.72 },
-    { o: "2B", w: hitLeak * 0.2 },
-    { o: "HR", w: hitLeak * 0.08 },
+    { o: "1B", w: hitLeak * 0.74 },
+    { o: "2B", w: hitLeak * 0.19 },
+    { o: "HR", w: hitLeak * 0.07 },
     { o: "GO", w: outPool * gbShare },
     { o: "FO", w: outPool * (1 - gbShare) * 0.7 },
     { o: "LO", w: outPool * (1 - gbShare) * 0.3 },
