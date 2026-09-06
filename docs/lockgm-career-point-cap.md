@@ -38,6 +38,29 @@ NFL-style teaching example remains the clearest classroom demo: **2.5 × 50 = 12
 
 ---
 
+## CONFIRMED: playoff year-over-year modifier (±4%)
+
+Mimic real GM incentives: the sport **base pool** is unchanged; a **year-over-year playoff modifier** scales that base (or the resulting pool) for the **following** season’s career-point pool / salary room.
+
+```
+next-season pool = sport base pool × (1 ± 0.04)
+```
+
+| Prior season result | Modifier applied **the following year** |
+| --- | ---: |
+| Make the playoffs | **+4%** to career-point pool / salary room |
+| Miss the playoffs | **−4%** penalty to career-point pool / salary room |
+
+**How to apply:** Start from the sport base (`avgCareerYears × activeRosterSize`), then apply the playoff modifier for next season. The ±4% is **not** a change to the base formula — it is a YoY incentive layer on top.
+
+---
+
+## Contracts and dead money stick
+
+Injury, decline, or lost production **do not erase** committed career points. Guarantees, cut dead money, and underwater deals stay on the books — LockGM mimics bad-contract pressure from real leagues (NBA/MLB-shaped incentives): you live with the points you signed.
+
+---
+
 ## Max on one athlete
 
 Teaching / design max: about **~5** years (points) guaranteed to any single athlete. Do not allow a full-career dump of the pool onto one player.
@@ -60,7 +83,7 @@ Illustrative amortization for a max-style deal:
 
 ## Cuts / dead money
 
-When a player is cut, career points do not vanish cleanly. Two candidate rules (pick default later):
+When a player is cut, career points do not vanish cleanly — same principle as above: commitment sticks. Two candidate rules (pick default later):
 
 1. **85% dead money that year** — most of the remaining (or current-year) commitment hits the books immediately in the cut season.
 2. **75% prorated penalty over remaining life** — a discounted hangover spreads across the years left on the deal.
@@ -133,6 +156,8 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 ## Open questions (checklist)
 
 - [x] **Pool formula confirmed:** avg MLB career length × active roster size (**30** for baseball); multi-sport = sport avg × sport roster
+- [x] **Playoff YoY modifier confirmed:** make playoffs → **+4%** next year; miss → **−4%** next year (on sport base pool / salary room)
+- [x] **Contracts stick:** injury/decline do not erase points; dead money remains
 - [ ] Declining 5→4→3→2→1 mandatory vs illustrative?
 - [ ] Point = whole roster-year only, or fractional points allowed?
 - [ ] Default cut rule: 85% same-year vs 75% prorated?
@@ -145,4 +170,4 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 
 ## Status
 
-Design capture for PM — **formula confirmed** as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.
+Design capture for PM — **base formula** and **±4% playoff YoY modifier** confirmed as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.

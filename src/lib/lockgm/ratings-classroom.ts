@@ -319,6 +319,11 @@ export const CAREER_POINT_CAP = {
   formula:
     "CONFIRMED: career-point pool = average MLB career length (years) × active roster size (30 for baseball). Multi-sport: sport avg career length × that sport’s active roster. NFL-shaped example: 2.5 × 50 = 125.",
   baseballActiveRoster: 30,
+  /** CONFIRMED by PM: ±4% YoY playoff modifier on next season’s pool / salary room. */
+  playoffModifier:
+    "CONFIRMED: make playoffs → +4% to career-point pool / salary room the following year; miss playoffs → −4% the following year. Start from sport base pool, then apply the playoff modifier for next season.",
+  contractsStick:
+    "Contracts and dead money stick — injury or decline do not erase committed career points (mimic bad-contract pressure).",
   maxPerAthlete:
     "Soft/hard teaching max ≈ 5 years (points) guaranteed to any one athlete.",
   decliningScheduleExample:

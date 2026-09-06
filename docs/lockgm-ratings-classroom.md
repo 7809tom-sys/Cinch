@@ -88,4 +88,4 @@ Multi-sport grade books will follow the same LockGM classroom shape later.
 
 ## Related design
 
-See [Career-point cap](./lockgm-career-point-cap.md) for the long-term commitment pool (distinct from Classic Matchup’s annual salary hard cap).
+See [Career-point cap](./lockgm-career-point-cap.md) for the long-term commitment pool (distinct from Classic Matchup’s annual salary hard cap): sport base = avg career years × roster size, then **±4%** next year for make/miss playoffs; contracts/dead money stick.
