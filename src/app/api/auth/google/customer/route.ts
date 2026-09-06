@@ -1,7 +1,11 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { establishCustomerSessionCookie } from "@/lib/customer-auth";
-import { getCustomerByEmail, upsertCustomer } from "@/lib/customers";
+import {
+  getCustomerByEmail,
+  updateLockgmProfile,
+  upsertCustomer,
+} from "@/lib/customers";
 import { verifyGoogleIdToken } from "@/lib/google-auth";
 import {
   creditCapturedLockgmReferral,
@@ -47,9 +51,21 @@ export async function POST(request: Request) {
   });
   await establishCustomerSessionCookie(customer.id);
   if (!existing) {
-    await creditCapturedLockgmReferral({
+    const referral = await creditCapturedLockgmReferral({
       inviteeGmId: resolveLockgmPublicGmId(customer),
     });
+    if (referral?.ok && referral.accepted && customer.lockgmProfile) {
+      await updateLockgmProfile(customer.id, {
+        displayName: customer.lockgmProfile.displayName,
+        legalName: customer.lockgmProfile.legalName,
+        attributionConsent: true,
+        attribution: {
+          source: referral.source,
+          referralCode: referral.referralCode,
+          campaign: referral.campaign,
+        },
+      });
+    }
   }
 
   const isAdmin = isMasterEmail(customer.email);

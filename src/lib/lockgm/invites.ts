@@ -59,12 +59,14 @@ export type LockgmInviteAcceptanceResult =
       ok: true;
       accepted: boolean;
       reason: "accepted" | "duplicate";
+      referralCode: string;
       source: string;
       campaign: string;
     }
   | {
       ok: false;
       reason: "unknown_code" | "revoked" | "self_referral" | "cap_reached";
+      referralCode: string | null;
       source: string | null;
       campaign: string | null;
     };
@@ -325,12 +327,19 @@ export async function acceptLockgmInvite(input: {
   const store = await readInviteStore();
   const invite = findInvite(store, input.code);
   if (!invite) {
-    return { ok: false, reason: "unknown_code", source: null, campaign: null };
+    return {
+      ok: false,
+      reason: "unknown_code",
+      referralCode: null,
+      source: null,
+      campaign: null,
+    };
   }
   if (invite.revokedAt) {
     return {
       ok: false,
       reason: "revoked",
+      referralCode: invite.code,
       source: invite.source,
       campaign: invite.campaign,
     };
@@ -341,6 +350,7 @@ export async function acceptLockgmInvite(input: {
     return {
       ok: false,
       reason: "self_referral",
+      referralCode: invite.code,
       source: invite.source,
       campaign: invite.campaign,
     };
@@ -351,6 +361,7 @@ export async function acceptLockgmInvite(input: {
       ok: true,
       accepted: false,
       reason: "duplicate",
+      referralCode: invite.code,
       source: invite.source,
       campaign: invite.campaign,
     };
@@ -359,6 +370,7 @@ export async function acceptLockgmInvite(input: {
     return {
       ok: false,
       reason: "cap_reached",
+      referralCode: invite.code,
       source: invite.source,
       campaign: invite.campaign,
     };
@@ -373,6 +385,7 @@ export async function acceptLockgmInvite(input: {
     ok: true,
     accepted: true,
     reason: "accepted",
+    referralCode: invite.code,
     source: invite.source,
     campaign: invite.campaign,
   };
