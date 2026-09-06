@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { ClassicMatchup } from "../components/classic-matchup";
 
 export const metadata: Metadata = {
-  title: "Classic matchup sim — LockGM",
+  title: "Classic Matchup — LockGM",
   description:
-    "Strat-inspired LockGM baseball dice engine: pit classic clubs like the 1985 Brewers against Murderers' Row or the Big Red Machine.",
+    "LockGM Classic Matchup: card/dice-inspired baseball with original ratings, radio calls, hard salary caps, and 30-man classic leagues.",
 };
 
 export default function LockgmSimPage() {
@@ -14,13 +14,13 @@ export default function LockgmSimPage() {
         CLASSIC MATCHUP
       </p>
       <h1 className="mt-3 lockgm-display text-4xl font-extrabold text-[color:var(--lg-text)] sm:text-5xl">
-        Strat-inspired game lab
+        LockGM Baseball Engine
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Original LockGM ratings and dice resolution — batter vs pitcher,
-        platoon edges, seeded replay. Not a Strat-O-Matic clone: no proprietary
-        card charts. Foundation toward farm systems, hard caps, and full 162s
-        later.
+        Original LockGM ratings and dice resolution — lineup & gloves, L/R
+        platoon edges, radio booth calls, and short highlight snippets. Hard
+        salary caps bind every signing. Classic packs include the 1985 Brewers
+        plus Murderers&apos; Row and the Big Red Machine.
       </p>
       <div className="mt-10">
         <ClassicMatchup />

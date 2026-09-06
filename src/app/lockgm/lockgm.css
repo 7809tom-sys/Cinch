@@ -59,11 +59,32 @@
   animation: lg-pulse 1.6s ease-in-out infinite;
 }
 
+@keyframes lg-radio-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.lg-radio > p:last-child {
+  animation: lg-radio-in 0.35s ease-out both;
+}
+
+.lg-highlight-wrap {
+  animation: lg-rise 0.45s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lg-rise,
   .lg-rise-2,
   .lg-rise-3,
-  .lg-live {
+  .lg-live,
+  .lg-radio > p:last-child,
+  .lg-highlight-wrap {
     animation: none;
   }
 }

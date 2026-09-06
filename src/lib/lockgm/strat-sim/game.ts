@@ -1,9 +1,16 @@
 import { createRng, type Rng } from "./rng";
-import { outcomeLabel, resolveAtBat } from "./resolve-ab";
+import {
+  outcomeLabel,
+  radioCallFor,
+  resolveAtBat,
+  type ResolveMeta,
+} from "./resolve-ab";
+import { teamDefenseRating } from "./salary";
 import type {
   AtBatOutcome,
   BatterLine,
   ClassicTeam,
+  FieldPos,
   GameResult,
   PitcherLine,
   PlayEvent,
@@ -114,10 +121,10 @@ function maybeChangePitcher(
   scoreDiff: number,
   rng: Rng,
 ) {
-  const p = fielding.byId.get(fielding.pitcherId)!;
   const tired =
     fielding.pitcherOuts >= fielding.pitcherPitchBudget ||
-    (inning >= 7 && fielding.pitcherOuts >= Math.floor(fielding.pitcherPitchBudget * 0.75));
+    (inning >= 7 &&
+      fielding.pitcherOuts >= Math.floor(fielding.pitcherPitchBudget * 0.75));
   const blowup = scoreDiff <= -3 && inning >= 6 && rng.chance(0.35);
 
   if (!tired && !blowup) return;
@@ -128,7 +135,9 @@ function maybeChangePitcher(
   fielding.pitcherId = nextId;
   fielding.pitcherOuts = 0;
   const rel = fielding.byId.get(nextId)!;
-  fielding.pitcherPitchBudget = Math.round(6 + (rel.pitcher?.stamina ?? 8) * 1.1);
+  fielding.pitcherPitchBudget = Math.round(
+    6 + (rel.pitcher?.stamina ?? 8) * 1.1,
+  );
   ensurePitcherLine(fielding, nextId);
 }
 
@@ -171,7 +180,6 @@ function advanceRunners(
       score(b3);
       score(b2);
       if (b1) {
-        // Fast runners may score from first on a double.
         if (speed >= 14 && rng.chance(0.45)) score(b1);
         else b3 = b1;
       } else {
@@ -183,7 +191,6 @@ function advanceRunners(
     case "E": {
       score(b3);
       if (b2) {
-        // Most runners score from second on a single; faster ones almost always.
         if (speed >= 11 || rng.chance(0.72)) score(b2);
         else b3 = b2;
       }
@@ -193,7 +200,6 @@ function advanceRunners(
     }
     case "BB":
     case "HBP": {
-      // Forced advance only.
       if (b1 && b2 && b3) score(b3);
       if (b1 && b2) b3 = b2;
       if (b1) b2 = b1;
@@ -230,6 +236,16 @@ function toBox(side: SideState): TeamBox {
   };
 }
 
+function defenseContext(fielding: SideState, rng: Rng) {
+  const avg = teamDefenseRating(fielding.team);
+  const positions: FieldPos[] = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"];
+  const pos = positions[rng.int(0, positions.length - 1)]!;
+  const id = fielding.team.defense[pos];
+  const fielder = id ? fielding.byId.get(id) : undefined;
+  const rating = fielder?.batter?.defense ?? avg;
+  return { rating, position: pos };
+}
+
 /**
  * Simulate one full game with seeded RNG.
  * Walk-off and extras supported; maxInnings caps runaway ties.
@@ -251,7 +267,6 @@ export function simulateGame(
   let endedEarly = false;
 
   while (inning <= maxInnings) {
-    // Top
     const topRuns = playHalfInning({
       inning,
       half: "top",
@@ -263,7 +278,6 @@ export function simulateGame(
     });
     away.lineScore.push(topRuns);
 
-    // Bottom — skip if home already ahead after top of 9+ (regulation complete)
     const regulationDone = inning >= regulation;
     if (regulationDone && home.runs > away.runs) {
       home.lineScore.push(0);
@@ -289,7 +303,6 @@ export function simulateGame(
     inning += 1;
   }
 
-  // Decisions (simple: last pitcher of winning/losing side).
   assignDecisions(away, home);
 
   const winner: GameResult["winner"] =
@@ -323,23 +336,12 @@ function playHalfInning(args: {
   const { inning, half, batting, fielding, rng, plays, walkOff } = args;
   let outs = 0;
   let bases: Bases = [null, null, null];
-  let halfRuns = 0;
   const startRuns = batting.runs;
 
-  maybeChangePitcher(
-    fielding,
-    inning,
-    fielding.runs - batting.runs,
-    rng,
-  );
+  maybeChangePitcher(fielding, inning, fielding.runs - batting.runs, rng);
 
   while (outs < 3) {
-    maybeChangePitcher(
-      fielding,
-      inning,
-      fielding.runs - batting.runs,
-      rng,
-    );
+    maybeChangePitcher(fielding, inning, fielding.runs - batting.runs, rng);
 
     const batterId = batting.order[batting.batterIdx]!;
     batting.batterIdx = (batting.batterIdx + 1) % batting.order.length;
@@ -348,8 +350,11 @@ function playHalfInning(args: {
     const bLine = batting.lineupBatters.get(batterId)!;
     const pLine = fielding.pitcherLines.get(fielding.pitcherId)!;
 
-    const outcome = resolveAtBat(batter, pitcher, rng);
+    const meta: ResolveMeta = {};
+    const def = defenseContext(fielding, rng);
+    const outcome = resolveAtBat(batter, pitcher, rng, def, meta);
     const speed = batter.batter?.speed ?? 10;
+    let rbiThis = 0;
 
     if (isOut(outcome)) {
       outs += 1;
@@ -367,22 +372,20 @@ function playHalfInning(args: {
       }
       const adv = advanceRunners(bases, batterId, outcome, speed, rng);
       bases = adv.bases;
+      rbiThis = adv.scored.length;
       applyScored(adv.scored, batting, fielding, bLine, pLine);
-      halfRuns = batting.runs - startRuns;
     } else if (outcome === "E") {
-      batting.hits += 0;
       fielding.errors += 1;
       bLine.ab += 1;
       const adv = advanceRunners(bases, batterId, outcome, speed, rng);
       bases = adv.bases;
-      // Errors: unearned — still count R but not ER
+      rbiThis = adv.scored.length;
       for (const id of adv.scored) {
         batting.runs += 1;
         batting.lineupBatters.get(id)!.r += 1;
         bLine.rbi += 1;
         pLine.r += 1;
       }
-      halfRuns = batting.runs - startRuns;
     } else if (isHit(outcome)) {
       bLine.ab += 1;
       bLine.h += 1;
@@ -394,30 +397,38 @@ function playHalfInning(args: {
       }
       const adv = advanceRunners(bases, batterId, outcome, speed, rng);
       bases = adv.bases;
+      rbiThis = adv.scored.length;
       applyScored(adv.scored, batting, fielding, bLine, pLine);
-      halfRuns = batting.runs - startRuns;
     }
 
-    plays.push({
+    const highlight =
+      outcome === "HR"
+        ? ("hr" as const)
+        : meta.greatDefense
+          ? ("defense" as const)
+          : undefined;
+
+    const play: PlayEvent = {
       inning,
       half,
       batter: batter.name,
       pitcher: pitcher.name,
       outcome,
-      description: `${batter.name} ${outcomeLabel(outcome)}`,
+      description: `${batter.name} ${outcomeLabel(outcome)}${
+        meta.greatDefense ? " (robbed by defense)" : ""
+      }`,
+      radioCall: radioCallFor(batter.name, pitcher.name, outcome, {
+        greatDefense: meta.greatDefense,
+        rbi: rbiThis,
+      }),
       outsAfter: outs,
-      score: { away: half === "top" ? batting.runs : fielding.runs, home: half === "top" ? fielding.runs : batting.runs },
-    });
-
-    // Fix score in play log: away/home absolute
-    const last = plays[plays.length - 1]!;
-    // We don't have global away/home pointers here — fix below via sides identity.
-    // Recompute from batting/fielding roles:
-    if (half === "top") {
-      last.score = { away: batting.runs, home: fielding.runs };
-    } else {
-      last.score = { away: fielding.runs, home: batting.runs };
-    }
+      score:
+        half === "top"
+          ? { away: batting.runs, home: fielding.runs }
+          : { away: fielding.runs, home: batting.runs },
+      highlight,
+    };
+    plays.push(play);
 
     if (walkOff && batting.runs > fielding.runs) break;
   }
@@ -451,7 +462,6 @@ function assignDecisions(away: SideState, home: SideState) {
   const lp = lPitchers[lPitchers.length - 1];
   if (wp) wp.decision = "W";
   if (lp) lp.decision = "L";
-  // Save: if bullpen finished a close win
   if (
     wp &&
     winner.bullpenIdx > 0 &&
@@ -459,7 +469,6 @@ function assignDecisions(away: SideState, home: SideState) {
     wp.playerId !== winner.team.rotation[0]
   ) {
     wp.decision = "S";
-    // Starter still gets W if they pitched enough — reassign
     const starter = winner.pitcherLines.get(winner.team.rotation[0]!);
     if (starter && starter.ipOuts >= 15) {
       starter.decision = "W";

@@ -1,4 +1,5 @@
-import type { BatterRatings, ClassicTeam, PitcherRatings, Player } from "../types";
+import type { BatterRatings, PitcherRatings } from "../types";
+import type { LoosePlayer, LooseTeam } from "../roster-build";
 
 function bat(
   contact: number,
@@ -24,7 +25,7 @@ function pit(
   return { stuff, control, gb, stamina, platoonVsL, platoonVsR };
 }
 
-const players: Player[] = [
+const players: LoosePlayer[] = [
   {
     id: "nyy27-combs",
     name: "Earle Combs",
@@ -154,7 +155,7 @@ const players: Player[] = [
 ];
 
 /** 1927 New York Yankees — Murderers' Row classic pack. */
-export const YANKEES_1927: ClassicTeam = {
+export const YANKEES_1927_LOOSE: LooseTeam = {
   id: "yankees-1927",
   year: 1927,
   city: "New York",
@@ -162,6 +163,7 @@ export const YANKEES_1927: ClassicTeam = {
   abbrev: "NYY '27",
   blurb:
     "Murderers' Row experiment pack — Ruth & Gehrig at the heart of LockGM classic sims.",
+  salaryCap: 92,
   lineup: [
     "nyy27-combs",
     "nyy27-koenig",

@@ -1,4 +1,4 @@
-/** LockGM Strat-inspired sim — original rating scales (not Strat-O-Matic charts). */
+/** LockGM Classic Matchup — original rating scales (card/dice-inspired, LockGM-owned). */
 
 export type Hand = "L" | "R" | "S";
 export type PitchRole = "SP" | "RP";
@@ -22,8 +22,9 @@ export type BatterRatings = {
   speed: number;
   defense: number;
   arm: number;
-  /** Platoon contact bump vs opposite-handed pitching (−3..+3 typical). */
+  /** Platoon contact bump vs LHP (−3..+3 typical). */
   platoonVsL: number;
+  /** Platoon contact bump vs RHP (−3..+3 typical). */
   platoonVsR: number;
 };
 
@@ -43,6 +44,8 @@ export type Player = {
   bats: Hand;
   throws: Hand;
   positions: FieldPos[];
+  /** Honest annual salary in millions USD (binding for cap checks). */
+  salary: number;
   batter?: BatterRatings;
   pitcher?: PitcherRatings & { role: PitchRole };
 };
@@ -55,10 +58,13 @@ export type ClassicTeam = {
   abbrev: string;
   /** Public-history flavor blurb — not a trademark claim. */
   blurb: string;
+  /** Hard team salary cap in millions (must bind payroll). */
+  salaryCap: number;
   lineup: string[]; // player ids in batting order (9)
   defense: Partial<Record<FieldPos, string>>;
   rotation: string[]; // starter ids
   bullpen: string[];
+  /** Full 30-man active roster. */
   players: Player[];
 };
 
@@ -75,15 +81,22 @@ export type AtBatOutcome =
   | "HR"
   | "E";
 
+export type HighlightKind = "hr" | "defense";
+
 export type PlayEvent = {
   inning: number;
   half: "top" | "bottom";
   batter: string;
   pitcher: string;
   outcome: AtBatOutcome;
+  /** Short box-score style line. */
   description: string;
+  /** Radio booth call for the broadcast pane. */
+  radioCall: string;
   outsAfter: number;
   score: { away: number; home: number };
+  /** Optional highlight clip trigger (HR / web gem). */
+  highlight?: HighlightKind;
 };
 
 export type BatterLine = {
@@ -139,4 +152,12 @@ export type SimOptions = {
   regulationInnings?: number;
   /** Cap extras to keep demos bounded (default 18 total innings). */
   maxInnings?: number;
+};
+
+/** Lineup + defense overrides applied before a game. */
+export type ManagerCard = {
+  lineup: string[];
+  defense: Partial<Record<FieldPos, string>>;
+  rotation?: string[];
+  bullpen?: string[];
 };

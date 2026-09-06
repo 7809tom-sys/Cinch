@@ -1,4 +1,5 @@
-import type { BatterRatings, ClassicTeam, PitcherRatings, Player } from "../types";
+import type { BatterRatings, PitcherRatings } from "../types";
+import type { LoosePlayer, LooseTeam } from "../roster-build";
 
 function bat(
   contact: number,
@@ -24,7 +25,7 @@ function pit(
   return { stuff, control, gb, stamina, platoonVsL, platoonVsR };
 }
 
-const players: Player[] = [
+const players: LoosePlayer[] = [
   {
     id: "mil85-molitor",
     name: "Paul Molitor",
@@ -163,7 +164,7 @@ const players: Player[] = [
 ];
 
 /** 1985 Milwaukee Brewers — abbreviated classic pack (public roster/history). */
-export const BREWERS_1985: ClassicTeam = {
+export const BREWERS_1985_LOOSE: LooseTeam = {
   id: "brewers-1985",
   year: 1985,
   city: "Milwaukee",
@@ -171,6 +172,7 @@ export const BREWERS_1985: ClassicTeam = {
   abbrev: "MIL '85",
   blurb:
     "County Stadium crew built around Yount and Molitor — LockGM classic experiment pack.",
+  salaryCap: 92,
   lineup: [
     "mil85-molitor",
     "mil85-yount",

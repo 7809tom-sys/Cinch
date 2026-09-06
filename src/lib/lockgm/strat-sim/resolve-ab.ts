@@ -1,4 +1,4 @@
-import type { BatterRatings, Hand, PitcherRatings, Player } from "./types";
+import type { BatterRatings, FieldPos, Hand, PitcherRatings, Player } from "./types";
 import type { Rng } from "./rng";
 import type { AtBatOutcome } from "./types";
 
@@ -24,17 +24,30 @@ function platoonAdj(
   return batterSide - pitcherSide * 0.35 + sameHand;
 }
 
+export type DefenseContext = {
+  /** Average / relevant fielder defense rating (1–20). */
+  rating: number;
+  position?: FieldPos;
+};
+
+export type ResolveMeta = {
+  /** True when elite defense robbed a hit / turned a sure out. */
+  greatDefense?: boolean;
+};
+
 /**
  * LockGM-original AB resolution.
  *
  * Feel: dice decide whether the at-bat leans batter- or pitcher-controlled
- * (Strat-like chart ownership), then a secondary roll picks an outcome from
- * LockGM-authored weight tables — not proprietary Strat card charts.
+ * (chart ownership), then a secondary roll picks an outcome from LockGM-authored
+ * weight tables. Defense ratings can convert soft hits into outs (or inflate errors).
  */
 export function resolveAtBat(
   batter: Player,
   pitcher: Player,
   rng: Rng,
+  defense?: DefenseContext,
+  meta?: ResolveMeta,
 ): AtBatOutcome {
   const b = batter.batter;
   const p = pitcher.pitcher;
@@ -49,18 +62,32 @@ export function resolveAtBat(
   const stuff = clamp(p.stuff - adj * 0.3, 1, 20);
   const control = clamp(p.control, 1, 20);
   const gb = clamp(p.gb, 1, 20);
+  const def = clamp(defense?.rating ?? 11, 1, 20);
 
-  // "Chart ownership" — higher contact vs stuff → more batter-chart outcomes.
+  // Chart ownership — higher contact vs stuff → more batter-chart outcomes.
   const batterEdge = (contact - stuff + 20) / 40; // ~0..1
   const onBatterChart = rng.chance(clamp(0.22 + batterEdge * 0.38, 0.15, 0.58));
 
-  // Primary d1000-style roll (dice feel without copying card tables).
   const roll = rng.int(1, 1000);
 
-  if (onBatterChart) {
-    return resolveBatterChart(roll, contact, power, eye, rng);
+  let outcome = onBatterChart
+    ? resolveBatterChart(roll, contact, power, eye, def, rng)
+    : resolvePitcherChart(roll, stuff, control, gb, eye, def, rng);
+
+  // Elite glove: chance to rob a soft single / turn E into an out.
+  if (
+    (outcome === "1B" || outcome === "E") &&
+    def >= 15 &&
+    rng.chance(0.08 + (def - 15) * 0.03)
+  ) {
+    outcome = rng.chance(0.55) ? "FO" : "GO";
+    if (meta) meta.greatDefense = true;
+  } else if (outcome === "2B" && def >= 17 && rng.chance(0.06)) {
+    outcome = "FO";
+    if (meta) meta.greatDefense = true;
   }
-  return resolvePitcherChart(roll, stuff, control, gb, eye, rng);
+
+  return outcome;
 }
 
 function resolveBatterChart(
@@ -68,18 +95,19 @@ function resolveBatterChart(
   contact: number,
   power: number,
   eye: number,
+  defense: number,
   rng: Rng,
 ): AtBatOutcome {
-  // Weights scale with ratings; totals re-normalized each AB.
-  // Tuned for roughly mid-4s–5s R/G across classic packs (not Strat card tables).
+  // Tuned for roughly mid-4s–5s R/G across classic packs.
   const hr = 6.5 + power * 1.7;
   const triple = 2.2 + (contact > 13 ? 1.8 : 0);
   const double = 15 + power * 0.9 + contact * 0.35;
   const single = 44 + contact * 1.95;
   const bb = 10.5 + eye * 1.25;
   const hbp = 3.5;
-  const err = 4.5;
-  const out = 145;
+  // Poor defense inflates errors; gloves suppress them.
+  const err = clamp(7.5 - defense * 0.28, 1.5, 8);
+  const out = 145 + (defense - 11) * 2.2;
 
   const weights: { o: AtBatOutcome; w: number }[] = [
     { o: "HR", w: hr },
@@ -104,13 +132,14 @@ function resolvePitcherChart(
   control: number,
   gb: number,
   eye: number,
+  defense: number,
   rng: Rng,
 ): AtBatOutcome {
   const k = 43 + stuff * 3.25;
   const bb = clamp(46 - control * 1.95 + eye * 0.4, 7, 55);
   const hbp = 5;
-  const hitLeak = clamp(30 - stuff * 0.82, 7, 32);
-  const outPool = 145 + control * 1.7;
+  const hitLeak = clamp(30 - stuff * 0.82 - (defense - 11) * 0.35, 5, 32);
+  const outPool = 145 + control * 1.7 + (defense - 11) * 1.4;
   const gbShare = gb / 20;
 
   const weights: { o: AtBatOutcome; w: number }[] = [
@@ -134,7 +163,6 @@ function pickWeighted(
   rng: Rng,
 ): AtBatOutcome {
   const total = weights.reduce((s, x) => s + Math.max(0, x.w), 0);
-  // Mix the d1000 roll with a fresh unit sample so identical rolls diverge by seed.
   const u = ((roll - 1) / 1000) * 0.65 + rng.next() * 0.35;
   let cursor = 0;
   const target = u * total;
@@ -169,5 +197,41 @@ export function outcomeLabel(o: AtBatOutcome): string {
       return "homered";
     case "E":
       return "reached on error";
+  }
+}
+
+/** Longer radio-booth phrasing. */
+export function radioCallFor(
+  batter: string,
+  pitcher: string,
+  outcome: AtBatOutcome,
+  extras?: { greatDefense?: boolean; rbi?: number },
+): string {
+  if (extras?.greatDefense) {
+    return `Oh, what a play! ${batter} squares it up — and the leather snuffs it out. Crowd on its feet behind that glove.`;
+  }
+  switch (outcome) {
+    case "HR":
+      return `Swing and a high drive… back… back… GONE! ${batter} takes ${pitcher} deep — a LockGM classic blast!`;
+    case "3B":
+      return `${batter} drills one into the gap — he's flying, and he'll stretch it into a triple!`;
+    case "2B":
+      return `${batter} turns on ${pitcher}'s pitch — into the corner for a double!`;
+    case "1B":
+      return `${batter} finds a hole — base hit.`;
+    case "K":
+      return `${pitcher} freezes ${batter} — strike three swinging.`;
+    case "BB":
+      return `${batter} works the count and draws a walk.`;
+    case "HBP":
+      return `That one got away — ${batter} takes one off the body and trots to first.`;
+    case "GO":
+      return `${batter} chops one on the ground — routine play, he's out.`;
+    case "FO":
+      return `${batter} lifts it to the outfield — settled under, put away.`;
+    case "LO":
+      return `Lined hard — but right at a defender. ${batter} is retired.`;
+    case "E":
+      return `Bobble! ${batter} reaches on the miscue — the defense lets one get away.`;
   }
 }

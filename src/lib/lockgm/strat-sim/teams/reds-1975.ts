@@ -1,4 +1,5 @@
-import type { BatterRatings, ClassicTeam, PitcherRatings, Player } from "../types";
+import type { BatterRatings, PitcherRatings } from "../types";
+import type { LoosePlayer, LooseTeam } from "../roster-build";
 
 function bat(
   contact: number,
@@ -24,7 +25,7 @@ function pit(
   return { stuff, control, gb, stamina, platoonVsL, platoonVsR };
 }
 
-const players: Player[] = [
+const players: LoosePlayer[] = [
   {
     id: "cin75-rose",
     name: "Pete Rose",
@@ -163,7 +164,7 @@ const players: Player[] = [
 ];
 
 /** 1975 Cincinnati Reds — Big Red Machine classic pack. */
-export const REDS_1975: ClassicTeam = {
+export const REDS_1975_LOOSE: LooseTeam = {
   id: "reds-1975",
   year: 1975,
   city: "Cincinnati",
@@ -171,6 +172,7 @@ export const REDS_1975: ClassicTeam = {
   abbrev: "CIN '75",
   blurb:
     "Big Red Machine classic pack — Rose, Morgan, Bench, and company for matchup labs.",
+  salaryCap: 92,
   lineup: [
     "cin75-rose",
     "cin75-morgan",
