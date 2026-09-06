@@ -11,6 +11,7 @@ import {
 import {
   CLASSIC_TEAMS,
   FIELD_ORDER,
+  PLAYOFF_1985_TEAMS,
   applyManagerCard,
   attemptSignFreeAgent,
   checkSalaryCap,
@@ -22,8 +23,10 @@ import {
   formatIp,
   leagueStandings,
   makeCapBusterFreeAgent,
+  playoffSeriesScoreLine,
   simulateGame,
   simulateLeagueRound,
+  simulatePlayoffs1985,
   simulateSeries,
   teamPayroll,
   updateHumanCard,
@@ -33,6 +36,8 @@ import {
   type LeagueState,
   type ManagerCard,
   type PlayEvent,
+  type PlayoffBracketResult,
+  type PlayoffRoundResult,
 } from "@/lib/lockgm/strat-sim";
 import { HighlightReel } from "./highlight-reel";
 
@@ -43,11 +48,14 @@ type SeriesSummary = {
   results: GameResult[];
 };
 
+type SimMode = "matchup" | "playoffs1985";
+
 function readInitialFromUrl(): {
   awayId: string;
   homeId: string;
   seed: number;
   auto: boolean;
+  mode: SimMode;
 } {
   if (typeof window === "undefined") {
     return {
@@ -55,6 +63,7 @@ function readInitialFromUrl(): {
       homeId: CLASSIC_TEAMS[1]!.id,
       seed: 19850501,
       auto: false,
+      mode: "matchup",
     };
   }
   const q = new URLSearchParams(window.location.search);
@@ -62,16 +71,23 @@ function readInitialFromUrl(): {
   const homeId = q.get("home") || CLASSIC_TEAMS[1]!.id;
   const seed = Number(q.get("seed") || 19850501) || 19850501;
   const auto = q.get("auto") === "1";
+  const modeParam = q.get("mode");
+  const mode: SimMode =
+    modeParam === "playoffs1985" || modeParam === "playoffs" || modeParam === "1985"
+      ? "playoffs1985"
+      : "matchup";
   return {
     awayId: classicTeamById(awayId) ? awayId : CLASSIC_TEAMS[0]!.id,
     homeId: classicTeamById(homeId) ? homeId : CLASSIC_TEAMS[1]!.id,
     seed,
     auto,
+    mode,
   };
 }
 
 export function ClassicMatchup() {
   const initial = readInitialFromUrl();
+  const [mode, setMode] = useState<SimMode>(initial.mode);
   const [awayId, setAwayId] = useState(initial.awayId);
   const [homeId, setHomeId] = useState(initial.homeId);
   const [seed, setSeed] = useState(initial.seed);
@@ -149,11 +165,25 @@ export function ClassicMatchup() {
   }
 
   useEffect(() => {
-    if (!initial.auto || didAuto || awayId === homeId) return;
+    if (!initial.auto || didAuto) return;
+    if (initial.mode === "playoffs1985") {
+      setDidAuto(true);
+      setMode("playoffs1985");
+      const b = simulatePlayoffs1985(seed);
+      const game =
+        b.worldSeries?.series.results[0] ?? b.alcs.series.results[0] ?? null;
+      if (game) {
+        setResult(game);
+        const firstHl = game.plays.find((p) => p.highlight);
+        if (firstHl) setHighlight(firstHl);
+      }
+      return;
+    }
+    if (awayId === homeId) return;
     setDidAuto(true);
     const game = simulateGame(away, home, { seed });
     setResult(game);
-  }, [initial.auto, didAuto, awayId, homeId, away, home, seed]);
+  }, [initial.auto, initial.mode, didAuto, awayId, homeId, away, home, seed]);
 
   // Radio-style progressive reveal
   useEffect(() => {
@@ -209,6 +239,47 @@ export function ClassicMatchup() {
 
   return (
     <div className="space-y-10">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("matchup")}
+          className={`rounded-md px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 ${
+            mode === "matchup"
+              ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+              : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+          }`}
+        >
+          Free matchup
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("playoffs1985")}
+          className={`rounded-md px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 ${
+            mode === "playoffs1985"
+              ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+              : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+          }`}
+        >
+          1985 Playoffs
+        </button>
+      </div>
+
+      {mode === "playoffs1985" ? (
+        <Playoffs1985Desk
+          seed={seed}
+          setSeed={setSeed}
+          pending={pending}
+          startTransition={startTransition}
+          onFeatureGame={(game, hl) => {
+            setResult(game);
+            setSeries(null);
+            setBroadcastIdx(0);
+            if (hl) setHighlight(hl);
+          }}
+        />
+      ) : null}
+
+      {mode === "matchup" ? (
       <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
         <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
           LockGM Classic Matchup · LockGM grades & dice
@@ -291,7 +362,9 @@ export function ClassicMatchup() {
           </p>
         ) : null}
       </section>
+      ) : null}
 
+      {mode === "matchup" ? (
       <LeagueDesk
         league={league}
         onClaim={onClaim}
@@ -300,6 +373,7 @@ export function ClassicMatchup() {
         onSyncCard={syncHumanCardFromAway}
         capMsg={capMsg}
       />
+      ) : null}
 
       {highlight ? (
         <HighlightReel
@@ -309,7 +383,7 @@ export function ClassicMatchup() {
         />
       ) : null}
 
-      {series ? (
+      {mode === "matchup" && series ? (
         <section className="lg-rise border-t border-[color:var(--lg-line)] pt-6">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
             SERIES TALLY
@@ -380,9 +454,207 @@ export function ClassicMatchup() {
         </>
       ) : (
         <p className="text-sm text-[color:var(--lg-mute)]">
-          Set your lineup and gloves, then run a game. Same seed → same box.
+          {mode === "playoffs1985"
+            ? "Run the 1985 bracket to open a featured box + radio call."
+            : "Set your lineup and gloves, then run a game. Same seed → same box."}
         </p>
       )}
+    </div>
+  );
+}
+
+function Playoffs1985Desk({
+  seed,
+  setSeed,
+  pending,
+  startTransition,
+  onFeatureGame,
+}: {
+  seed: number;
+  setSeed: (n: number) => void;
+  pending: boolean;
+  startTransition: (fn: () => void) => void;
+  onFeatureGame: (game: GameResult, highlight?: PlayEvent) => void;
+}) {
+  const [bracket, setBracket] = useState<PlayoffBracketResult | null>(null);
+  const [focusRound, setFocusRound] = useState<"alcs" | "nlcs" | "ws">("ws");
+  const [focusGame, setFocusGame] = useState(0);
+
+  function runBracket() {
+    startTransition(() => {
+      const b = simulatePlayoffs1985(seed);
+      setBracket(b);
+      const round =
+        b.worldSeries ?? b.alcs;
+      const game = round.series.results[0];
+      setFocusRound(b.worldSeries ? "ws" : "alcs");
+      setFocusGame(0);
+      if (game) {
+        const hl = game.plays.find((p) => p.highlight);
+        onFeatureGame(game, hl);
+      }
+    });
+  }
+
+  function openGame(round: PlayoffRoundResult, gameIdx: number, roundId: "alcs" | "nlcs" | "ws") {
+    const g = round.series.games[gameIdx];
+    if (!g) return;
+    setFocusRound(roundId);
+    setFocusGame(gameIdx);
+    const hl = g.result.plays.find((p) => p.highlight);
+    onFeatureGame(g.result, hl);
+  }
+
+  return (
+    <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
+      <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
+        LockGM Classic Matchup · 1985 Playoffs
+      </p>
+      <h2 className="mt-2 lockgm-display text-2xl font-extrabold sm:text-3xl">
+        Re-sim the four-team October
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm text-[color:var(--lg-mute)]">
+        Pre–wild-card field: Toronto vs Kansas City (ALCS), St. Louis vs Los
+        Angeles (NLCS), then World Series. Best-of-7 with 2-3-2 home field.
+        Historical team names for experiment — LockGM ratings only.
+      </p>
+
+      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+        {PLAYOFF_1985_TEAMS.map((t) => (
+          <li
+            key={t.id}
+            className="border border-[color:var(--lg-line)]/70 px-3 py-2 text-sm"
+          >
+            <span className="font-bold">{classicTeamLabel(t)}</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--lg-mute)]">
+              {t.players.length}-man · ${teamPayroll(t).toFixed(1)}M · {t.blurb}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-5 flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          <span className="font-bold">Seed</span>
+          <input
+            type="number"
+            className="ml-2 w-36 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-3 py-2 text-[color:var(--lg-text)]"
+            value={seed}
+            onChange={(e) => setSeed(Number(e.target.value) || 1)}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={runBracket}
+          disabled={pending}
+          className="inline-flex h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5 disabled:opacity-40"
+        >
+          Sim 1985 playoffs
+        </button>
+      </div>
+
+      {bracket ? (
+        <div className="mt-8 space-y-6">
+          <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+            BRACKET RESULTS
+          </p>
+          {bracket.championLabel ? (
+            <p className="lockgm-display text-3xl font-extrabold">
+              Champion: {bracket.championLabel}
+            </p>
+          ) : (
+            <p className="text-sm text-[color:var(--lg-warn)]">
+              Bracket incomplete (series ties prevented a champion).
+            </p>
+          )}
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <RoundCard
+              title="ALCS"
+              round={bracket.alcs}
+              active={focusRound === "alcs"}
+              focusGame={focusRound === "alcs" ? focusGame : -1}
+              onPickGame={(i) => openGame(bracket.alcs, i, "alcs")}
+            />
+            <RoundCard
+              title="NLCS"
+              round={bracket.nlcs}
+              active={focusRound === "nlcs"}
+              focusGame={focusRound === "nlcs" ? focusGame : -1}
+              onPickGame={(i) => openGame(bracket.nlcs, i, "nlcs")}
+            />
+            {bracket.worldSeries ? (
+              <RoundCard
+                title="World Series"
+                round={bracket.worldSeries}
+                active={focusRound === "ws"}
+                focusGame={focusRound === "ws" ? focusGame : -1}
+                onPickGame={(i) =>
+                  openGame(bracket.worldSeries!, i, "ws")
+                }
+              />
+            ) : (
+              <div className="border border-[color:var(--lg-line)] p-4 text-sm text-[color:var(--lg-mute)]">
+                World Series pending LCS champions.
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-[color:var(--lg-mute)]">
+            Pick a game number to load its box score and radio booth below.
+            Same seed reproduces the full bracket.
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function RoundCard({
+  title,
+  round,
+  active,
+  focusGame,
+  onPickGame,
+}: {
+  title: string;
+  round: PlayoffRoundResult;
+  active: boolean;
+  focusGame: number;
+  onPickGame: (idx: number) => void;
+}) {
+  return (
+    <div
+      className={`border p-4 ${
+        active
+          ? "border-[color:var(--lg-accent)]"
+          : "border-[color:var(--lg-line)]"
+      }`}
+    >
+      <p className="lockgm-display text-lg font-bold">{title}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums">
+        {playoffSeriesScoreLine(round)}
+      </p>
+      <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
+        {round.championLabel
+          ? `Winner: ${round.championLabel}`
+          : "No series winner yet"}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {round.series.games.map((g, i) => (
+          <button
+            key={g.gameNumber}
+            type="button"
+            onClick={() => onPickGame(i)}
+            className={`rounded-md px-2.5 py-1 text-xs font-bold ${
+              active && focusGame === i
+                ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+            }`}
+          >
+            G{g.gameNumber}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
