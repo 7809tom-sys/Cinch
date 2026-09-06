@@ -182,6 +182,7 @@ assert(
 );
 const signed = attemptSignFreeAgent(league, buster);
 assert(!signed.ok, "league signing blocked by hard cap");
+assert(/overspend|cap|Blocked/i.test(signed.message), "league block cites salary cap");
 league = simulateLeagueRound(signed.league, 11);
 assert(
   league.slots.some((s) => s.wins + s.losses + s.ties > 0),

@@ -279,7 +279,16 @@ export function attemptSignFreeAgent(
   if (!slot) {
     return { league, ok: false, message: "Claim a team first." };
   }
-  const result = tryAddPlayer(slot.roster, player);
+  // Prefer replacing cheapest depth so the hard-cap check is the binding constraint
+  // (30-man is already full on classic packs).
+  const depth = [...slot.roster.players]
+    .filter((p) => !slot.roster.lineup.includes(p.id))
+    .filter((p) => !slot.roster.rotation.includes(p.id))
+    .filter((p) => !slot.roster.bullpen.includes(p.id))
+    .sort((a, b) => a.salary - b.salary)[0];
+  const result = tryAddPlayer(slot.roster, player, {
+    replaceId: depth?.id,
+  });
   if (!result.ok) {
     return {
       league: {
