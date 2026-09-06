@@ -66,6 +66,8 @@ export type ClassicTeam = {
   bullpen: string[];
   /** Full 30-man active roster. */
   players: Player[];
+  /** Applied from ManagerCard — engine pitching change plan for this game. */
+  pitchingPlan?: PitchingPlan;
 };
 
 export type AtBatOutcome =
@@ -154,10 +156,26 @@ export type SimOptions = {
   maxInnings?: number;
 };
 
-/** Lineup + defense overrides applied before a game. */
+/**
+ * Pre-game pitching change plan the engine follows (v1 mid-game control).
+ * Interactive pause/step pitching is a follow-up; this plan hooks the starter
+ * and sequences the bullpen without rewriting the full sim loop.
+ */
+export type PitchingPlan = {
+  /**
+   * Target innings for the starter before preferring the bullpen (1–9).
+   * Engine still hooks earlier on pitch-budget fatigue or blowups.
+   */
+  starterInningsTarget: number;
+};
+
+/** Lineup + defense + pitching overrides applied before a game. */
 export type ManagerCard = {
   lineup: string[];
   defense: Partial<Record<FieldPos, string>>;
+  /** Starter is rotation[0]; remaining ids are unused depth for this game. */
   rotation?: string[];
+  /** Entry order — index 0 is the first arm called when the starter is hooked. */
   bullpen?: string[];
+  pitchingPlan?: PitchingPlan;
 };

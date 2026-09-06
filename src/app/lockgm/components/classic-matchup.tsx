@@ -23,7 +23,12 @@ import {
   formatIp,
   leagueStandings,
   makeCapBusterFreeAgent,
+  moveBullpenArm,
   playoffSeriesScoreLine,
+  rosterPitchers,
+  selectStartingPitcher,
+  setBullpenSlot,
+  setStarterInningsTarget,
   simulateGame,
   simulateLeagueRound,
   simulatePlayoffs1985,
@@ -32,6 +37,7 @@ import {
   updateHumanCard,
   validateDefense,
   validateLineup,
+  validatePitching,
   type GameResult,
   type LeagueState,
   type ManagerCard,
@@ -456,7 +462,7 @@ export function ClassicMatchup() {
         <p className="text-sm text-[color:var(--lg-mute)]">
           {mode === "playoffs1985"
             ? "Run the 1985 bracket to open a featured box + radio call."
-            : "Set your lineup and gloves, then run a game. Same seed → same box."}
+            : "Set lineup, gloves, starter, and bullpen plan, then run a game. Same seed → same box."}
         </p>
       )}
     </div>
@@ -701,6 +707,14 @@ function TeamPick({
   );
 }
 
+function bullpenCallLabel(idx: number): string {
+  const n = idx + 1;
+  if (n === 1) return "1st";
+  if (n === 2) return "2nd";
+  if (n === 3) return "3rd";
+  return `${n}th`;
+}
+
 function ManagerDesk({
   title,
   team,
@@ -713,8 +727,14 @@ function ManagerDesk({
   onChange: (c: ManagerCard) => void;
 }) {
   const batters = team.players.filter((p) => p.batter);
+  const arms = rosterPitchers(team);
+  const rotation = card.rotation ?? team.rotation;
+  const bullpen = card.bullpen ?? team.bullpen;
+  const starterId = rotation[0] ?? "";
+  const planTarget = card.pitchingPlan?.starterInningsTarget ?? 6;
   const lineupCheck = validateLineup(team, card.lineup);
   const defCheck = validateDefense(team, card.defense);
+  const pitchCheck = validatePitching(team, rotation, bullpen, card.pitchingPlan);
 
   function setLineupSlot(idx: number, playerId: string) {
     const next = [...card.lineup];
@@ -728,60 +748,183 @@ function ManagerDesk({
     onChange({ ...card, defense: { ...card.defense, [pos]: playerId } });
   }
 
+  function pitcherLabel(p: (typeof arms)[number]) {
+    const pit = p.pitcher!;
+    return `${p.name} (${p.throws}/${pit.role}) St${pit.stuff} Ct${pit.control} Sta${pit.stamina}`;
+  }
+
   return (
     <div className="border border-[color:var(--lg-line)] p-4">
       <p className="lockgm-display text-lg font-bold">{title}</p>
       <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
-        Lineup + fielders · L/R platoon baked into every AB · gloves change
-        outs/errors
+        Lineup + fielders + pitching · L/R platoon baked into every AB · gloves
+        change outs/errors · plan hooks the starter by IP target
       </p>
-      <div className="mt-3 space-y-2">
-        {card.lineup.map((id, idx) => (
-          <label key={`lu-${idx}`} className="flex items-center gap-2 text-xs">
-            <span className="w-5 font-bold text-[color:var(--lg-accent)]">
-              {idx + 1}
-            </span>
-            <select
-              className="flex-1 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
-              value={id}
-              onChange={(e) => setLineupSlot(idx, e.target.value)}
-            >
-              {batters.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({p.bats}) C{p.batter?.contact}/P{p.batter?.power} $
-                  {p.salary.toFixed(1)}M
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
+
+      <div className="mt-4 border-t border-[color:var(--lg-line)]/70 pt-3">
+        <p className="text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
+          Pitching card
+        </p>
+        <label className="mt-2 block text-xs">
+          <span className="font-bold text-[color:var(--lg-mute)]">
+            Starting pitcher
+          </span>
+          <select
+            className="mt-1 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
+            value={starterId}
+            onChange={(e) =>
+              onChange(selectStartingPitcher(card, team, e.target.value))
+            }
+          >
+            {arms.map((p) => (
+              <option key={p.id} value={p.id}>
+                {pitcherLabel(p)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="mt-3 block text-xs">
+          <span className="font-bold text-[color:var(--lg-mute)]">
+            Pitching change plan · starter IP target
+          </span>
+          <select
+            className="mt-1 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
+            value={planTarget}
+            onChange={(e) =>
+              onChange(setStarterInningsTarget(card, Number(e.target.value)))
+            }
+          >
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+              <option key={n} value={n}>
+                Hook after ~{n} IP (fatigue/blowups still pull earlier)
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="mt-1 text-[11px] leading-snug text-[color:var(--lg-mute)]">
+          Engine follows this plan between ABs. Interactive inning-break
+          pitching is next — not required for seeded Free matchup control.
+        </p>
+
+        <p className="mt-3 text-xs font-bold text-[color:var(--lg-mute)]">
+          Bullpen entry order
+        </p>
+        <p className="mt-0.5 text-[11px] text-[color:var(--lg-mute)]">
+          1st call enters first when the starter is hooked. Last slot is a
+          natural closer seat for late leads.
+        </p>
+        <div className="mt-2 space-y-2">
+          {bullpen.map((id, idx) => {
+            const options = arms.filter(
+              (p) => p.id === id || p.id !== starterId,
+            );
+            const isCloserSeat = idx === bullpen.length - 1;
+            return (
+              <div key={`bp-${idx}`} className="flex items-center gap-1.5">
+                <span className="w-14 shrink-0 text-[11px] font-bold text-[color:var(--lg-accent)]">
+                  {isCloserSeat ? "Closer" : bullpenCallLabel(idx)}
+                </span>
+                <select
+                  className="min-w-0 flex-1 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5 text-xs"
+                  value={id}
+                  onChange={(e) =>
+                    onChange(setBullpenSlot(card, team, idx, e.target.value))
+                  }
+                >
+                  {options.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {pitcherLabel(p)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  aria-label="Move bullpen arm up"
+                  disabled={idx === 0}
+                  onClick={() =>
+                    onChange(moveBullpenArm(card, team, idx, idx - 1))
+                  }
+                  className="border border-[color:var(--lg-line)] px-1.5 py-1 text-xs font-bold disabled:opacity-30"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label="Move bullpen arm down"
+                  disabled={idx >= bullpen.length - 1}
+                  onClick={() =>
+                    onChange(moveBullpenArm(card, team, idx, idx + 1))
+                  }
+                  className="border border-[color:var(--lg-line)] px-1.5 py-1 text-xs font-bold disabled:opacity-30"
+                >
+                  ↓
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        {FIELD_ORDER.map((pos) => (
-          <label key={pos} className="text-xs">
-            <span className="font-bold text-[color:var(--lg-mute)]">{pos}</span>
-            <select
-              className="mt-1 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
-              value={card.defense[pos] || ""}
-              onChange={(e) => setDefense(pos, e.target.value)}
-            >
-              {batters.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} D{p.batter?.defense ?? "-"}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
+
+      <div className="mt-4 border-t border-[color:var(--lg-line)]/70 pt-3">
+        <p className="text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
+          Batting order
+        </p>
+        <div className="mt-2 space-y-2">
+          {card.lineup.map((id, idx) => (
+            <label key={`lu-${idx}`} className="flex items-center gap-2 text-xs">
+              <span className="w-5 font-bold text-[color:var(--lg-accent)]">
+                {idx + 1}
+              </span>
+              <select
+                className="flex-1 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
+                value={id}
+                onChange={(e) => setLineupSlot(idx, e.target.value)}
+              >
+                {batters.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.bats}) C{p.batter?.contact}/P{p.batter?.power} $
+                    {p.salary.toFixed(1)}M
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
       </div>
+
+      <div className="mt-4 border-t border-[color:var(--lg-line)]/70 pt-3">
+        <p className="text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
+          Fielders
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {FIELD_ORDER.map((pos) => (
+            <label key={pos} className="text-xs">
+              <span className="font-bold text-[color:var(--lg-mute)]">{pos}</span>
+              <select
+                className="mt-1 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
+                value={card.defense[pos] || ""}
+                onChange={(e) => setDefense(pos, e.target.value)}
+              >
+                {batters.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} D{p.batter?.defense ?? "-"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <p
         className={`mt-3 text-xs ${
-          lineupCheck.ok && defCheck.ok
+          lineupCheck.ok && defCheck.ok && pitchCheck.ok
             ? "text-[color:var(--lg-mute)]"
             : "text-[color:var(--lg-warn)]"
         }`}
       >
-        {lineupCheck.message} · {defCheck.message}
+        {lineupCheck.message} · {defCheck.message} · {pitchCheck.message}
       </p>
     </div>
   );

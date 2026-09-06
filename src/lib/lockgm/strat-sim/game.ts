@@ -121,13 +121,23 @@ function maybeChangePitcher(
   scoreDiff: number,
   rng: Rng,
 ) {
+  const starterId = fielding.team.rotation[0];
+  const isStarter = fielding.pitcherId === starterId;
+  const planTarget = fielding.team.pitchingPlan?.starterInningsTarget;
+  const reachedPlan =
+    isStarter &&
+    typeof planTarget === "number" &&
+    fielding.pitcherOuts >= planTarget * 3;
+
   const tired =
     fielding.pitcherOuts >= fielding.pitcherPitchBudget ||
     (inning >= 7 &&
       fielding.pitcherOuts >= Math.floor(fielding.pitcherPitchBudget * 0.75));
   const blowup = scoreDiff <= -3 && inning >= 6 && rng.chance(0.35);
 
-  if (!tired && !blowup) return;
+  // Pitching plan (v1 mid-game control): hook starter at target IP even if fresh.
+  // Fatigue / blowups still force earlier changes. Interactive pause/step is next.
+  if (!tired && !blowup && !reachedPlan) return;
   if (fielding.bullpenIdx >= fielding.team.bullpen.length) return;
 
   const nextId = fielding.team.bullpen[fielding.bullpenIdx]!;
