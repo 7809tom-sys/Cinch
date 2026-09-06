@@ -10,6 +10,7 @@ import {
   getCurrentCustomer,
 } from "@/lib/customer-auth";
 import {
+  accountHasPassword,
   getCustomerByEmail,
   listWebAuthnCredentials,
   logInWithPassword,
@@ -80,6 +81,22 @@ async function maybeGrantMasterAdmin(email: string, name?: string) {
     email: email.trim().toLowerCase(),
     name: name?.trim() || email.split("@")[0] || email,
   });
+}
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/**
+ * ESPN/Disney-ID-style sign-in: check an email before ever asking for a
+ * password, so the client can reveal a "log in" or a "create account" step
+ * next without the visitor having to choose up front.
+ */
+export async function checkCustomerEmailAction(rawEmail: string) {
+  const email = rawEmail.trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) {
+    return { ok: false as const, error: "Enter a valid email address." };
+  }
+  const hasPassword = await accountHasPassword(email);
+  return { ok: true as const, email, hasPassword };
 }
 
 /** Create a brand-new portal login. */

@@ -2,12 +2,20 @@
 
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useRouter } from "next/navigation";
-import { useId, useState, useSyncExternalStore, useTransition } from "react";
 import {
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
+import {
+  checkCustomerEmailAction,
   logInCustomerAction,
   loginCustomerWithAccessCodeAction,
   signUpCustomerAction,
 } from "@/app/portal/actions";
+import { GoogleSignInButton } from "@/components/google-sign-in";
 
 function EyeIcon({ open }: { open: boolean }) {
   if (open) {
@@ -218,63 +226,164 @@ function BiometricSignInButton({
   );
 }
 
-type Mode = "login" | "signup";
+function EditPencilIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+/**
+ * ESPN / Disney-ID style entry chip: once an email has been confirmed, it is
+ * shown as a locked pill with an "Edit" affordance instead of a re-typeable
+ * text field, so the next step can focus purely on the password.
+ */
+function EmailChip({ email, onEdit }: { email: string; onEdit: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-brand/15 bg-mist/40 px-4 py-3">
+      <span className="truncate text-sm font-semibold text-brand-deep">
+        {email}
+      </span>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="inline-flex shrink-0 items-center gap-1 text-xs font-bold uppercase tracking-wide text-brand hover:text-brand-deep"
+      >
+        <EditPencilIcon />
+        Edit
+      </button>
+    </div>
+  );
+}
+
+function OrDivider() {
+  return (
+    <div className="flex items-center gap-3" aria-hidden="true">
+      <span className="h-px flex-1 bg-brand/15" />
+      <span className="text-xs font-bold uppercase tracking-[0.15em] text-muted">
+        or
+      </span>
+      <span className="h-px flex-1 bg-brand/15" />
+    </div>
+  );
+}
+
+/** Which screen of the ESPN-style one-field-at-a-time flow is showing. */
+type Step = "email" | "login" | "signup";
 
 export function LoginForm({
   initialError,
+  googleClientId,
 }: {
   initialError?: string;
+  googleClientId?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [mode, setMode] = useState<Mode>("login");
+  const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
+  const [emailInput, setEmailInput] = useState("");
   const [error, setError] = useState<string | null>(initialError || null);
   const [legacyError, setLegacyError] = useState<string | null>(null);
+  const accessDetailsRef = useRef<HTMLDetailsElement | null>(null);
+
+  function backToEmail() {
+    setStep("email");
+    setError(null);
+    setEmailInput(email);
+  }
+
+  function revealAccessCodeHelp() {
+    if (accessDetailsRef.current) accessDetailsRef.current.open = true;
+    document
+      .getElementById("access-code-section")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <div className="space-y-6">
-      <div
-        role="tablist"
-        aria-label="Sign in or create an account"
-        className="grid grid-cols-2 gap-1 rounded-md bg-mist/60 p-1"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "login"}
-          onClick={() => {
-            setMode("login");
-            setError(null);
-          }}
-          className={`h-10 rounded-md text-sm font-bold tracking-wide transition-colors ${
-            mode === "login"
-              ? "bg-foam text-brand-deep shadow-sm"
-              : "text-muted hover:text-brand-deep"
-          }`}
-        >
-          Log in
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "signup"}
-          onClick={() => {
-            setMode("signup");
-            setError(null);
-          }}
-          className={`h-10 rounded-md text-sm font-bold tracking-wide transition-colors ${
-            mode === "signup"
-              ? "bg-foam text-brand-deep shadow-sm"
-              : "text-muted hover:text-brand-deep"
-          }`}
-        >
-          Sign up
-        </button>
-      </div>
+      {step === "email" ? (
+        <div className="space-y-5">
+          {googleClientId ? (
+            <>
+              <GoogleSignInButton
+                clientId={googleClientId}
+                endpoint="/api/auth/google/customer"
+                redirectTo="/portal"
+                buttonText="continue_with"
+              />
+              <OrDivider />
+            </>
+          ) : null}
 
-      {mode === "login" ? (
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const candidate = emailInput.trim();
+              setError(null);
+              startTransition(async () => {
+                const result = await checkCustomerEmailAction(candidate);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                setEmail(result.email);
+                setStep(result.hasPassword ? "login" : "signup");
+              });
+            }}
+          >
+            <label className="block">
+              <span className="text-sm font-medium text-brand-deep">
+                Email
+              </span>
+              <input
+                name="email"
+                type="email"
+                required
+                autoFocus
+                autoComplete="email"
+                placeholder="you@business.com"
+                value={emailInput}
+                onChange={(event) => setEmailInput(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={pending}
+              className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
+            >
+              {pending ? "Checking…" : "Continue"}
+            </button>
+            {error ? (
+              <p className="text-sm text-accent-deep" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </form>
+
+          <p className="text-xs leading-relaxed text-muted">
+            We&apos;ll check if you already have a Cinch account and take you
+            straight to log in or account setup — no need to choose up front.
+          </p>
+        </div>
+      ) : step === "login" ? (
         <div className="space-y-4">
+          <EmailChip email={email} onEdit={backToEmail} />
+
           <form
             className="space-y-4"
             onSubmit={(event) => {
@@ -291,19 +400,7 @@ export function LoginForm({
               });
             }}
           >
-            <label className="block">
-              <span className="text-sm font-medium text-brand-deep">Email</span>
-              <input
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="you@business.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={FIELD_CLASS}
-              />
-            </label>
+            <input type="hidden" name="email" value={email} />
             <PasswordField
               name="password"
               label="Password"
@@ -317,6 +414,13 @@ export function LoginForm({
             >
               {pending ? "Signing in…" : "Log in"}
             </button>
+            <button
+              type="button"
+              onClick={revealAccessCodeHelp}
+              className="text-xs font-semibold text-brand hover:text-brand-deep"
+            >
+              Forgot your password?
+            </button>
             {error ? (
               <p className="text-sm text-accent-deep" role="alert">
                 {error}
@@ -325,81 +429,69 @@ export function LoginForm({
           </form>
 
           <BiometricSignInButton getEmail={() => email} onError={setError} />
-
-          <p className="text-xs leading-relaxed text-muted">
-            New here?{" "}
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className="font-semibold text-brand hover:text-brand-deep"
-            >
-              Sign up
-            </button>{" "}
-            instead.
-          </p>
         </div>
       ) : (
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            setError(null);
-            startTransition(async () => {
-              const result = await signUpCustomerAction(formData);
-              if (result && !result.ok) {
-                setError(result.error);
-                return;
-              }
-              router.refresh();
-            });
-          }}
-        >
-          <label className="block">
-            <span className="text-sm font-medium text-brand-deep">Email</span>
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="you@business.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className={FIELD_CLASS}
-            />
-          </label>
-          <PasswordField
-            name="password"
-            label="Password"
-            placeholder="At least 8 characters"
-            autoComplete="new-password"
-          />
-          <PasswordField
-            name="confirmPassword"
-            label="Confirm password"
-            placeholder="Enter the same password again"
-            autoComplete="new-password"
-          />
-          <button
-            type="submit"
-            disabled={pending}
-            className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
-          >
-            {pending ? "Creating account…" : "Create account"}
-          </button>
-          <p className="text-xs leading-relaxed text-muted">
-            We&apos;ll create your portal login with this email and password.
-            Enter the password twice so it matches.
+        <div className="space-y-4">
+          <EmailChip email={email} onEdit={backToEmail} />
+          <p className="text-sm font-semibold text-brand-deep">
+            Create your password
           </p>
-          {error ? (
-            <p className="text-sm text-accent-deep" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </form>
+
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              setError(null);
+              startTransition(async () => {
+                const result = await signUpCustomerAction(formData);
+                if (result && !result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                router.refresh();
+              });
+            }}
+          >
+            <input type="hidden" name="email" value={email} />
+            <PasswordField
+              name="password"
+              label="Password"
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+            />
+            <PasswordField
+              name="confirmPassword"
+              label="Confirm password"
+              placeholder="Enter the same password again"
+              autoComplete="new-password"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam transition-[transform,opacity] hover:-translate-y-0.5 disabled:opacity-60"
+            >
+              {pending ? "Creating account…" : "Create account"}
+            </button>
+            {error ? (
+              <p className="text-sm text-accent-deep" role="alert">
+                {error}
+              </p>
+            ) : null}
+          </form>
+
+          <p className="text-xs leading-relaxed text-muted">
+            No account uses this email yet, so we&apos;ll set one up with the
+            password you choose here.
+          </p>
+        </div>
       )}
 
-      <details className="border-t border-brand/10 pt-5">
+      <details
+        id="access-code-section"
+        ref={accessDetailsRef}
+        className="border-t border-brand/10 pt-5"
+      >
         <summary className="cursor-pointer text-sm font-semibold text-brand-deep">
           Have a Seed access code instead?
         </summary>
@@ -427,6 +519,7 @@ export function LoginForm({
               required
               autoComplete="email"
               placeholder="you@business.com"
+              defaultValue={email}
               className={FIELD_CLASS}
             />
           </label>
