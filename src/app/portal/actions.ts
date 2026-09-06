@@ -15,6 +15,7 @@ import {
   logInWithPassword,
   removeWebAuthnCredential,
   signUpWithPassword,
+  updateLockgmProfile,
   upsertCustomer,
   verifyCustomerLogin,
 } from "@/lib/customers";
@@ -33,6 +34,10 @@ import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
+import {
+  creditCapturedLockgmReferral,
+  resolveLockgmPublicGmId,
+} from "@/lib/lockgm/invites";
 import {
   getCatalogSite,
   listCatalogSites,
@@ -96,6 +101,25 @@ export async function signUpCustomerAction(formData: FormData) {
   }
 
   await establishCustomerSession(result.customer.id);
+  // Credit only after the account exists. The invite primitive validates the
+  // code, blocks self-referral, stores source/campaign, and consumes the
+  // HttpOnly referral cookie. The merged LockGM identity branch can also
+  // persist the returned source/campaign onto its profile attribution.
+  const referral = await creditCapturedLockgmReferral({
+    inviteeGmId: resolveLockgmPublicGmId(result.customer),
+  });
+  if (referral?.ok && referral.accepted && result.customer.lockgmProfile) {
+    await updateLockgmProfile(result.customer.id, {
+      displayName: result.customer.lockgmProfile.displayName,
+      legalName: result.customer.lockgmProfile.legalName,
+      attributionConsent: true,
+      attribution: {
+        source: referral.source,
+        referralCode: referral.referralCode,
+        campaign: referral.campaign,
+      },
+    });
+  }
   await maybeGrantMasterAdmin(result.customer.email, result.customer.name);
   revalidatePath("/portal");
   revalidatePath("/admin");
