@@ -13,10 +13,18 @@ const NAV = [
   { href: "/lockgm/cap", label: "Budget" },
   { href: "/lockgm/scouting", label: "Scouting" },
   { href: "/lockgm/fantasy-football", label: "Fantasy pulse" },
+  { href: "/lockgm/friends", label: "Invite friends" },
   { href: "/lockgm/pricing", label: "Tiers" },
+  { href: "/lockgm/profile", label: "My profile" },
 ];
 
-export function LockgmChrome({ children }: { children: React.ReactNode }) {
+export function LockgmChrome({
+  children,
+  isAdmin,
+}: {
+  children: React.ReactNode;
+  isAdmin: boolean;
+}) {
   const { sport, franchise } = useSport();
 
   return (
@@ -44,6 +52,14 @@ export function LockgmChrome({ children }: { children: React.ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {isAdmin ? (
+              <Link
+                href="/lockgm/admin"
+                className="font-bold text-[color:var(--lg-accent)] transition-colors hover:text-[color:var(--lg-text)]"
+              >
+                GM admin
+              </Link>
+            ) : null}
             <Link
               href="/lockgm/draft"
               className="rounded-md bg-[color:var(--lg-accent)] px-3 py-1.5 text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
@@ -69,6 +85,12 @@ export function LockgmChrome({ children }: { children: React.ReactNode }) {
               className="hover:text-[color:var(--lg-text)]"
             >
               My reports
+            </Link>
+            <Link
+              href="/lockgm/profile"
+              className="hover:text-[color:var(--lg-text)]"
+            >
+              My profile
             </Link>
             <Link
               href="/lockgm/pricing"

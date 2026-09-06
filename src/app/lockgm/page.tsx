@@ -126,6 +126,12 @@ export default async function LockgmHomePage() {
             >
               See tiers
             </Link>
+            <Link
+              href="/lockgm/profile"
+              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
+            >
+              Build your GM identity
+            </Link>
           </div>
         </div>
       </section>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, IBM_Plex_Sans } from "next/font/google";
+import { getMasterSession } from "@/lib/master-auth";
 import { SportProvider } from "@/lib/lockgm/sport-context";
 import { LockgmChrome } from "./components/lockgm-chrome";
 import "./lockgm.css";
@@ -22,17 +23,19 @@ export const metadata: Metadata = {
     "Multi-sport Shadow GM platform: AI scout research, personal numbered reports, salary/wage desks, and draft-day beat-the-pick races.",
 };
 
-export default function LockgmLayout({
+export default async function LockgmLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const master = await getMasterSession();
+
   return (
     <div
       className={`${display.variable} ${body.variable} lockgm-root min-h-full`}
     >
       <SportProvider>
-        <LockgmChrome>{children}</LockgmChrome>
+        <LockgmChrome isAdmin={Boolean(master)}>{children}</LockgmChrome>
       </SportProvider>
     </div>
   );
