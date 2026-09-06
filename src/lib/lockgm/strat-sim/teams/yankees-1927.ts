@@ -1,0 +1,191 @@
+import type { BatterRatings, PitcherRatings } from "../types";
+import type { LoosePlayer, LooseTeam } from "../roster-build";
+
+function bat(
+  contact: number,
+  power: number,
+  eye: number,
+  speed: number,
+  defense: number,
+  arm: number,
+  platoonVsL = 0,
+  platoonVsR = 0,
+): BatterRatings {
+  return { contact, power, eye, speed, defense, arm, platoonVsL, platoonVsR };
+}
+
+function pit(
+  stuff: number,
+  control: number,
+  gb: number,
+  stamina: number,
+  platoonVsL = 0,
+  platoonVsR = 0,
+): PitcherRatings {
+  return { stuff, control, gb, stamina, platoonVsL, platoonVsR };
+}
+
+const players: LoosePlayer[] = [
+  {
+    id: "nyy27-combs",
+    name: "Earle Combs",
+    bats: "L",
+    throws: "R",
+    positions: ["CF"],
+    batter: bat(17, 10, 14, 15, 14, 12, 2, -1),
+  },
+  {
+    id: "nyy27-koenig",
+    name: "Mark Koenig",
+    bats: "S",
+    throws: "R",
+    positions: ["SS"],
+    batter: bat(13, 8, 9, 11, 12, 12, 0, 0),
+  },
+  {
+    id: "nyy27-ruth",
+    name: "Babe Ruth",
+    bats: "L",
+    throws: "L",
+    positions: ["RF", "LF"],
+    batter: bat(16, 20, 18, 10, 11, 14, 2, -2),
+  },
+  {
+    id: "nyy27-gehrig",
+    name: "Lou Gehrig",
+    bats: "L",
+    throws: "L",
+    positions: ["1B"],
+    batter: bat(18, 19, 16, 9, 13, 12, 2, -1),
+  },
+  {
+    id: "nyy27-meusel",
+    name: "Bob Meusel",
+    bats: "R",
+    throws: "R",
+    positions: ["LF", "RF"],
+    batter: bat(15, 14, 10, 13, 12, 16, 0, 1),
+  },
+  {
+    id: "nyy27-lazzeri",
+    name: "Tony Lazzeri",
+    bats: "R",
+    throws: "R",
+    positions: ["2B"],
+    batter: bat(14, 13, 12, 11, 13, 13, 0, 0),
+  },
+  {
+    id: "nyy27-dugan",
+    name: "Joe Dugan",
+    bats: "R",
+    throws: "R",
+    positions: ["3B"],
+    batter: bat(13, 8, 9, 10, 13, 12, 0, 0),
+  },
+  {
+    id: "nyy27-collins",
+    name: "Pat Collins",
+    bats: "R",
+    throws: "R",
+    positions: ["C"],
+    batter: bat(12, 9, 11, 5, 12, 13, 0, 0),
+  },
+  {
+    id: "nyy27-gazella",
+    name: "Mike Gazella",
+    bats: "R",
+    throws: "R",
+    positions: ["3B", "SS"],
+    batter: bat(11, 7, 10, 10, 12, 11, 0, 0),
+  },
+  {
+    id: "nyy27-hoyt",
+    name: "Waite Hoyt",
+    bats: "R",
+    throws: "R",
+    positions: ["P"],
+    batter: bat(7, 3, 5, 6, 8, 8),
+    pitcher: { ...pit(15, 15, 12, 18, 0, 1), role: "SP" },
+  },
+  {
+    id: "nyy27-pennock",
+    name: "Herb Pennock",
+    bats: "S",
+    throws: "L",
+    positions: ["P"],
+    batter: bat(7, 3, 5, 6, 8, 8),
+    pitcher: { ...pit(14, 16, 13, 17, 1, 0), role: "SP" },
+  },
+  {
+    id: "nyy27-pipgras",
+    name: "George Pipgras",
+    bats: "R",
+    throws: "R",
+    positions: ["P"],
+    batter: bat(5, 2, 4, 5, 8, 8),
+    pitcher: { ...pit(14, 12, 11, 15, 0, 0), role: "SP" },
+  },
+  {
+    id: "nyy27-shocker",
+    name: "Urban Shocker",
+    bats: "R",
+    throws: "R",
+    positions: ["P"],
+    batter: bat(6, 3, 5, 5, 8, 8),
+    pitcher: { ...pit(15, 14, 14, 16, 0, 0), role: "SP" },
+  },
+  {
+    id: "nyy27-moore",
+    name: "Wilcy Moore",
+    bats: "R",
+    throws: "R",
+    positions: ["P"],
+    batter: bat(4, 2, 3, 5, 8, 8),
+    pitcher: { ...pit(14, 13, 15, 10, 0, 0), role: "RP" },
+  },
+  {
+    id: "nyy27-ruether",
+    name: "Dutch Ruether",
+    bats: "L",
+    throws: "L",
+    positions: ["P"],
+    batter: bat(8, 4, 6, 6, 8, 8),
+    pitcher: { ...pit(12, 12, 12, 12, 1, 0), role: "RP" },
+  },
+];
+
+/** 1927 New York Yankees — Murderers' Row classic pack. */
+export const YANKEES_1927_LOOSE: LooseTeam = {
+  id: "yankees-1927",
+  year: 1927,
+  city: "New York",
+  nickname: "Yankees",
+  abbrev: "NYY '27",
+  blurb:
+    "Murderers' Row experiment pack — Ruth & Gehrig at the heart of LockGM classic sims.",
+  salaryCap: 92,
+  lineup: [
+    "nyy27-combs",
+    "nyy27-koenig",
+    "nyy27-ruth",
+    "nyy27-gehrig",
+    "nyy27-meusel",
+    "nyy27-lazzeri",
+    "nyy27-dugan",
+    "nyy27-collins",
+    "nyy27-gazella",
+  ],
+  defense: {
+    C: "nyy27-collins",
+    "1B": "nyy27-gehrig",
+    "2B": "nyy27-lazzeri",
+    "3B": "nyy27-dugan",
+    SS: "nyy27-koenig",
+    LF: "nyy27-meusel",
+    CF: "nyy27-combs",
+    RF: "nyy27-ruth",
+  },
+  rotation: ["nyy27-hoyt", "nyy27-pennock", "nyy27-pipgras", "nyy27-shocker"],
+  bullpen: ["nyy27-moore", "nyy27-ruether"],
+  players,
+};
