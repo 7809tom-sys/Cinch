@@ -28,7 +28,9 @@ export default async function LockgmReportsPage() {
           {content.reportsIntro.aiHeadline}
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-[color:var(--lg-mute)]">
-          {content.reportsIntro.aiBody}
+          {content.reportsIntro.aiBody} On the Scouting board you can also
+          Refresh report or Run AI scout on any talent — including the full
+          MiLB Top 200 and HS Top 100 — and claim numbered SR-### entries here.
         </p>
         <div className="mt-6">
           <AiScoutAgents />
