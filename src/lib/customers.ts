@@ -7,6 +7,11 @@ import {
 } from "crypto";
 import { promisify } from "util";
 import { readJsonStore, writeJsonStore } from "./kv-store";
+import {
+  createLockgmProfile,
+  type LockgmAttribution,
+  type LockgmProfile,
+} from "./lockgm/identity";
 
 const scrypt = promisify(scryptCallback);
 
@@ -35,6 +40,9 @@ export type CustomerAccount = {
   projectIds: string[];
   createdAt: string;
   updatedAt: string;
+  emailVerifiedAt?: string;
+  authProvider?: "google" | "password" | "legacy";
+  lockgmProfile?: LockgmProfile;
 };
 
 export type CustomerSession = {
@@ -102,10 +110,20 @@ async function ensureCustomers(): Promise<CustomerStore> {
     accounts: [],
     sessions: [],
   });
+  let migrated = false;
+  const accounts = loaded.accounts.map((account) => {
+    if (account.lockgmProfile?.gmId) return account;
+    migrated = true;
+    return {
+      ...account,
+      lockgmProfile: createLockgmProfile(account.name, account.createdAt),
+    };
+  });
   memory = {
-    accounts: loaded.accounts ?? [],
+    accounts,
     sessions: loaded.sessions ?? [],
   };
+  if (migrated) await writeJsonStore(STORE_KEY, memory);
   return memory;
 }
 
@@ -161,6 +179,8 @@ export async function upsertCustomer(input: {
   email: string;
   name?: string;
   projectId?: string;
+  emailVerifiedAt?: string;
+  authProvider?: CustomerAccount["authProvider"];
 }): Promise<CustomerAccount> {
   const store = await ensureCustomers();
   const email = normalizeEmail(input.email);
@@ -180,11 +200,21 @@ export async function upsertCustomer(input: {
       projectIds: [],
       createdAt: stamp,
       updatedAt: stamp,
+      emailVerifiedAt: input.emailVerifiedAt,
+      authProvider: input.authProvider,
+      lockgmProfile: createLockgmProfile(
+        (input.name ?? email.split("@")[0] ?? "Customer").trim(),
+        stamp,
+      ),
     };
     store.accounts.unshift(account);
-  } else if (input.name?.trim()) {
-    account.name = input.name.trim();
-    account.updatedAt = stamp;
+  } else {
+    if (input.name?.trim()) {
+      account.name = input.name.trim();
+      account.updatedAt = stamp;
+    }
+    if (input.emailVerifiedAt) account.emailVerifiedAt = input.emailVerifiedAt;
+    if (input.authProvider) account.authProvider = input.authProvider;
   }
 
   if (input.projectId && !account.projectIds.includes(input.projectId)) {
@@ -192,6 +222,48 @@ export async function upsertCustomer(input: {
     account.updatedAt = stamp;
   }
 
+  await writeCustomers(store);
+  return account;
+}
+
+export async function updateLockgmProfile(
+  customerId: string,
+  input: {
+    displayName: string;
+    legalName: string;
+    attributionConsent: boolean;
+    attribution: Omit<LockgmAttribution, "capturedAt">;
+  },
+): Promise<CustomerAccount | null> {
+  const store = await ensureCustomers();
+  const account = store.accounts.find((item) => item.id === customerId);
+  if (!account) return null;
+
+  const stamp = now();
+  const profile = account.lockgmProfile ?? createLockgmProfile(account.name);
+  const source = input.attribution.source?.trim().slice(0, 120) || null;
+  const referralCode =
+    input.attribution.referralCode?.trim().slice(0, 120) || null;
+  const campaign = input.attribution.campaign?.trim().slice(0, 120) || null;
+  const hasAttribution = Boolean(source || referralCode || campaign);
+
+  account.lockgmProfile = {
+    ...profile,
+    displayName: input.displayName.trim(),
+    legalName: input.legalName.trim().slice(0, 160),
+    attribution:
+      input.attributionConsent && hasAttribution
+        ? {
+            source,
+            referralCode,
+            campaign,
+            capturedAt: profile.attribution?.capturedAt ?? stamp,
+          }
+        : null,
+    attributionConsentAt: input.attributionConsent ? stamp : null,
+    updatedAt: stamp,
+  };
+  account.updatedAt = stamp;
   await writeCustomers(store);
   return account;
 }
@@ -283,6 +355,12 @@ export async function signUpWithPassword(input: {
       projectIds: [],
       createdAt: stamp,
       updatedAt: stamp,
+      authProvider: "password",
+      lockgmProfile: createLockgmProfile(
+        (input.name ?? email.split("@")[0] ?? "Customer").trim() ||
+          "Customer",
+        stamp,
+      ),
     };
     store.accounts.unshift(account);
     await writeCustomers(store);
@@ -293,6 +371,7 @@ export async function signUpWithPassword(input: {
   const salt = randomBytes(16).toString("hex");
   account.passwordHash = await hashPassword(password, salt);
   account.passwordSalt = salt;
+  account.authProvider = "password";
   account.updatedAt = stamp;
   if (input.name?.trim()) account.name = input.name.trim();
   await writeCustomers(store);

@@ -36,6 +36,9 @@ export default async function PortalHomePage() {
             <Link href="/browse" className="hover:text-brand-deep">
               Browse
             </Link>
+            <Link href="/lockgm" className="hover:text-brand-deep">
+              LockGM
+            </Link>
             {isAdmin ? (
               <Link
                 href="/admin"

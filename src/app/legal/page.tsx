@@ -74,6 +74,20 @@ export default function LegalPage() {
             private and rotate them if they are exposed.
           </p>
           <p className="text-base leading-relaxed text-muted">
+            LockGM profiles use your signed-in account identity, a chosen
+            public display name, and a generated GM ID so future draft calls
+            and achievements can be credited consistently. Source, campaign,
+            and referral fields are optional and saved only after you
+            explicitly consent in your profile.
+          </p>
+          <p className="text-base leading-relaxed text-muted">
+            LockGM does not ask for or store government ID numbers, Social
+            Security numbers, dates of birth, passports, or identity
+            documents for this feature. An optional legal name is kept
+            private to your account and authenticated administrators; it is
+            not part of a public résumé.
+          </p>
+          <p className="text-base leading-relaxed text-muted">
             Questions about privacy: contact us through{" "}
             <a
               href={CINCH_SEED_ORIGIN}
