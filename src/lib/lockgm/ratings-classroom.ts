@@ -324,6 +324,9 @@ export const CAREER_POINT_CAP = {
     "CONFIRMED: make playoffs → +4% to career-point pool / salary room the following year; miss playoffs → −4% the following year. Start from sport base pool, then apply the playoff modifier for next season.",
   contractsStick:
     "Contracts and dead money stick — injury or decline do not erase committed career points (mimic bad-contract pressure).",
+  /** CONFIRMED by PM: older-star 5-point deals OK; mid-deal retirement/exit = remaining balance is dead money, no escape hatch. */
+  ageStarRisk:
+    "CONFIRMED: you may give a productive older star (LeBron-at-40 archetype) a 5-point deal while they’re still great — but if they retire or otherwise exit mid-deal, the club eats the remaining balance as dead money / committed points. No escape hatch.",
   maxPerAthlete:
     "Soft/hard teaching max ≈ 5 years (points) guaranteed to any one athlete.",
   decliningScheduleExample:

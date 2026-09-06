@@ -172,6 +172,12 @@ export function RatingsClassroom() {
           </li>
           <li>
             <span className="font-bold text-[color:var(--lg-accent)]">
+              Age / star risk:{" "}
+            </span>
+            {CAREER_POINT_CAP.ageStarRisk}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
               Max one athlete:{" "}
             </span>
             {CAREER_POINT_CAP.maxPerAthlete}

@@ -61,6 +61,20 @@ Injury, decline, or lost production **do not erase** committed career points. Gu
 
 ---
 
+## CONFIRMED: age / star risk — retirement eats remaining points
+
+You **may** give a productive older star (LeBron-at-40 archetype) a **5-point** max-style deal when they are still great. That is a legitimate GM call.
+
+**If they retire (or otherwise exit) mid-deal, the club eats the remaining balance as dead money / committed career points.** There is **no escape hatch** — remaining years on the deal stay on the books against the career-point pool until the contract would have ended.
+
+Classroom rule of thumb:
+
+- Signing the aging star to **5** is allowed when production still justifies it.
+- Retirement / mid-deal exit ≠ free the points. The franchise **keeps paying** the leftover commitment as dead money.
+- Same spirit as injury/decline: production can leave; the points do not.
+
+---
+
 ## Max on one athlete
 
 Teaching / design max: about **~5** years (points) guaranteed to any single athlete. Do not allow a full-career dump of the pool onto one player.
@@ -158,6 +172,7 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 - [x] **Pool formula confirmed:** avg MLB career length × active roster size (**30** for baseball); multi-sport = sport avg × sport roster
 - [x] **Playoff YoY modifier confirmed:** make playoffs → **+4%** next year; miss → **−4%** next year (on sport base pool / salary room)
 - [x] **Contracts stick:** injury/decline do not erase points; dead money remains
+- [x] **Age/star risk confirmed:** older stars may get a **5-point** deal; mid-deal retirement/exit → club eats remaining balance as dead money (no escape hatch)
 - [ ] Declining 5→4→3→2→1 mandatory vs illustrative?
 - [ ] Point = whole roster-year only, or fractional points allowed?
 - [ ] Default cut rule: 85% same-year vs 75% prorated?
@@ -170,4 +185,4 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 
 ## Status
 
-Design capture for PM — **base formula** and **±4% playoff YoY modifier** confirmed as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.
+Design capture for PM — **base formula**, **±4% playoff YoY modifier**, and **age/star retirement dead-money** confirmed as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.
