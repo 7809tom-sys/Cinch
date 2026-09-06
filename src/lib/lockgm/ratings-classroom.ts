@@ -317,8 +317,9 @@ export const CAREER_POINT_CAP = {
     "A league-wide point pool that limits how much guaranteed career commitment teams can stack on athletes — separate from the annual salary hard cap in Classic Matchup.",
   /** CONFIRMED by PM: avg career length × active roster size (30 for baseball). */
   formula:
-    "CONFIRMED: career-point pool = average MLB career length (years) × active roster size (30 for baseball). Multi-sport: sport avg career length × that sport’s active roster. NFL-shaped example: 2.5 × 50 = 125.",
+    "CONFIRMED: career-point pool = average MLB career length (years) × active roster size (30 for baseball). Multi-sport: sport avg career length × that sport’s active roster. NFL: 2.5 × 50 = 125; must draft every position (hard roster-construction rule — no skill-only stacks).",
   baseballActiveRoster: 30,
+  nflPool: "CONFIRMED NFL: pool = 2.5 × 50 = 125. Must draft every position. Same playoff ±4%, dead money, and retirement/bad-contract risk as general career-point rules.",
   /** CONFIRMED by PM: ±4% YoY playoff modifier on next season’s pool / salary room. */
   playoffModifier:
     "CONFIRMED: make playoffs → +4% to career-point pool / salary room the following year; miss playoffs → −4% the following year. Start from sport base pool, then apply the playoff modifier for next season.",
