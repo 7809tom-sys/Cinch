@@ -277,12 +277,14 @@ export function buildLockgmAnalyticsSnapshot(
   const eligibleCustomers = customers.filter((customer) =>
     customerMatches(customer, filters),
   );
-  const completedCustomers = eligibleCustomers.filter(
-    (customer) =>
-      Boolean(customer.lockgmProfile?.gmId) &&
-      Boolean(customer.lockgmProfile?.displayName.trim()) &&
-      customer.lockgmProfile.updatedAt !== customer.createdAt,
-  );
+  const completedCustomers = eligibleCustomers.filter((customer) => {
+    const profile = customer.lockgmProfile;
+    return Boolean(
+      profile?.gmId &&
+        profile.displayName.trim() &&
+        profile.updatedAt !== customer.createdAt,
+    );
+  });
   const stageCounts = new Map<LockgmAnalyticsEventName, Set<string>>();
   for (const stage of FUNNEL_STAGES) {
     stageCounts.set(stage, stageSubjects(filteredEvents, stage));
