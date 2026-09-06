@@ -38,6 +38,8 @@ export async function POST(request: Request) {
   const customer = await upsertCustomer({
     email: identity.email,
     name: identity.name,
+    emailVerifiedAt: new Date().toISOString(),
+    authProvider: "google",
   });
   await establishCustomerSessionCookie(customer.id);
 
