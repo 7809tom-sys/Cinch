@@ -1,5 +1,7 @@
 # LockGM ratings classroom (baseball first)
 
+Proprietary LockGM talent-grade definitions for Shadow GM classroom teaching and Classic Matchup. **Doc + teachable UI** — not a third-party chart dump.
+
 **Brand rule:** Every talent rating is a **LockGM rating** / **LockGM grade** / **LockGM Shadow GM grade**. Do not label in-product numbers as Strat-O-Matic, public consensus lists, or any third-party card chart.
 
 Structured source of truth: `src/lib/lockgm/ratings-classroom.ts`  

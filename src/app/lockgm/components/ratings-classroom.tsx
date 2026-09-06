@@ -180,6 +180,30 @@ export function RatingsClassroom() {
             <span className="font-bold text-[color:var(--lg-accent)]">FA: </span>
             {CAREER_POINT_CAP.freeAgency}
           </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Minors (proposed):{" "}
+            </span>
+            {CAREER_POINT_CAP.minorsProposed}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Draft + intl:{" "}
+            </span>
+            {CAREER_POINT_CAP.draftIntlPool}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Service time:{" "}
+            </span>
+            {CAREER_POINT_CAP.serviceTime}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              MiLB pressure:{" "}
+            </span>
+            {CAREER_POINT_CAP.milbPressure}
+          </li>
         </ul>
         <div className="mt-8">
           <p className="text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
