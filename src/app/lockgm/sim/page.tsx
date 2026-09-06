@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ClassicMatchup } from "../components/classic-matchup";
 
 export const metadata: Metadata = {
   title: "Classic Matchup — LockGM",
   description:
-    "LockGM Classic Matchup: card/dice-inspired baseball with original ratings, radio calls, hard salary caps, and 30-man classic leagues.",
+    "LockGM Classic Matchup: original LockGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
 };
 
 export default function LockgmSimPage() {
@@ -21,6 +22,18 @@ export default function LockgmSimPage() {
         platoon edges, radio booth calls, and short highlight snippets. Hard
         salary caps bind every signing. Classic packs include the 1985 Brewers
         plus Murderers&apos; Row and the Big Red Machine.
+      </p>
+      <p className="mt-3 text-sm font-semibold">
+        <Link
+          href="/lockgm/ratings"
+          className="text-[color:var(--lg-accent)] underline-offset-2 hover:underline"
+        >
+          What do ratings mean?
+        </Link>
+        <span className="text-[color:var(--lg-mute)]">
+          {" "}
+          — LockGM 1–20 classroom for hitters, gloves, and pitchers.
+        </span>
       </p>
       <div className="mt-10">
         <ClassicMatchup />

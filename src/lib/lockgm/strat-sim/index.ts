@@ -1,7 +1,7 @@
 /**
- * LockGM Classic Matchup — card/dice-inspired baseball simulation.
+ * LockGM Classic Matchup — baseball simulation with proprietary LockGM grades.
  *
- * Original dice + ratings resolution. LockGM branding only in player-facing copy.
+ * Dice + LockGM ratings resolution. Player-facing copy uses LockGM branding only.
  */
 
 export type {
