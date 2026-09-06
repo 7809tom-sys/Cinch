@@ -160,6 +160,18 @@ export function RatingsClassroom() {
           </li>
           <li>
             <span className="font-bold text-[color:var(--lg-accent)]">
+              Playoff YoY (±4%):{" "}
+            </span>
+            {CAREER_POINT_CAP.playoffModifier}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Contracts stick:{" "}
+            </span>
+            {CAREER_POINT_CAP.contractsStick}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
               Max one athlete:{" "}
             </span>
             {CAREER_POINT_CAP.maxPerAthlete}
