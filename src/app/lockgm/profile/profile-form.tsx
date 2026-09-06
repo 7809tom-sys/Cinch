@@ -38,18 +38,25 @@ export function LockgmProfileForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let timeout: number | undefined;
     try {
       const raw = window.localStorage.getItem("lockgm_attribution_v1");
       if (!raw) return;
       const stored = JSON.parse(raw) as Partial<AttributionFields>;
-      setAttribution((current) => ({
-        source: current.source || String(stored.source ?? ""),
-        referralCode: current.referralCode || String(stored.referralCode ?? ""),
-        campaign: current.campaign || String(stored.campaign ?? ""),
-      }));
+      timeout = window.setTimeout(() => {
+        setAttribution((current) => ({
+          source: current.source || String(stored.source ?? ""),
+          referralCode:
+            current.referralCode || String(stored.referralCode ?? ""),
+          campaign: current.campaign || String(stored.campaign ?? ""),
+        }));
+      }, 0);
     } catch {
       // Browser storage is an optional convenience, not part of identity.
     }
+    return () => {
+      if (timeout) window.clearTimeout(timeout);
+    };
   }, []);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
