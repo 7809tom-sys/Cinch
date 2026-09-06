@@ -507,3 +507,86 @@ export function simulateSeries(
   }
   return { awayWins, homeWins, ties, results };
 }
+
+export type BestOfGame = {
+  gameNumber: number;
+  /** Team id that hosted (2-3-2 higher-seed home for G1/2/6/7). */
+  homeTeamId: string;
+  awayTeamId: string;
+  result: GameResult;
+  /** Winner relative to series clubs (not box away/home). */
+  seriesWinnerId: string | null;
+};
+
+export type BestOfSeriesResult = {
+  higherSeedId: string;
+  lowerSeedId: string;
+  winsNeeded: number;
+  higherWins: number;
+  lowerWins: number;
+  ties: number;
+  championId: string | null;
+  games: BestOfGame[];
+  /** Flattened game results in series order (for radio/highlights). */
+  results: GameResult[];
+};
+
+/**
+ * Best-of-N series with 2-3-2 home field: higher seed hosts games 1, 2, 6, 7.
+ * Stops when one club reaches winsNeeded (ties do not award a series win).
+ */
+export function simulateBestOf(
+  higherSeed: ClassicTeam,
+  lowerSeed: ClassicTeam,
+  seed: number,
+  winsNeeded = 4,
+): BestOfSeriesResult {
+  const maxGames = winsNeeded * 2 - 1;
+  const games: BestOfGame[] = [];
+  let higherWins = 0;
+  let lowerWins = 0;
+  let ties = 0;
+
+  for (let g = 1; g <= maxGames; g++) {
+    if (higherWins >= winsNeeded || lowerWins >= winsNeeded) break;
+    const higherIsHome = g === 1 || g === 2 || g === 6 || g === 7;
+    const home = higherIsHome ? higherSeed : lowerSeed;
+    const away = higherIsHome ? lowerSeed : higherSeed;
+    const result = simulateGame(away, home, { seed: seed + g * 9973 });
+    let seriesWinnerId: string | null = null;
+    if (result.winner === "home") {
+      seriesWinnerId = home.id;
+      if (home.id === higherSeed.id) higherWins += 1;
+      else lowerWins += 1;
+    } else if (result.winner === "away") {
+      seriesWinnerId = away.id;
+      if (away.id === higherSeed.id) higherWins += 1;
+      else lowerWins += 1;
+    } else {
+      ties += 1;
+    }
+    games.push({
+      gameNumber: g,
+      homeTeamId: home.id,
+      awayTeamId: away.id,
+      result,
+      seriesWinnerId,
+    });
+  }
+
+  let championId: string | null = null;
+  if (higherWins >= winsNeeded) championId = higherSeed.id;
+  else if (lowerWins >= winsNeeded) championId = lowerSeed.id;
+
+  return {
+    higherSeedId: higherSeed.id,
+    lowerSeedId: lowerSeed.id,
+    winsNeeded,
+    higherWins,
+    lowerWins,
+    ties,
+    championId,
+    games,
+    results: games.map((x) => x.result),
+  };
+}

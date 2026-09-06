@@ -3,11 +3,17 @@
  * Run: npm run assert:lockgm-strat-sim
  */
 import {
+  BLUE_JAYS_1985,
   BREWERS_1985,
+  CARDINALS_1985,
   CLASSIC_TEAMS,
   DEFAULT_SALARY_CAP,
+  DODGERS_1985,
+  PLAYOFF_1985_TEAM_IDS,
+  PLAYOFF_1985_TEAMS,
   REDS_1975,
   ROSTER_SIZE,
+  ROYALS_1985,
   YANKEES_1927,
   aiSetLineup,
   applyManagerCard,
@@ -18,8 +24,11 @@ import {
   countOutsRecorded,
   createClassicLeague,
   makeCapBusterFreeAgent,
+  playoffSeriesScoreLine,
+  simulateBestOf,
   simulateGame,
   simulateLeagueRound,
+  simulatePlayoffs1985,
   simulateSeries,
   teamPayroll,
   tryAddPlayer,
@@ -34,10 +43,19 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-assert(CLASSIC_TEAMS.length >= 3, "at least 3 classic team packs");
+assert(CLASSIC_TEAMS.length >= 7, "at least 7 classic team packs");
 assert(!!classicTeamById("brewers-1985"), "1985 Brewers pack loads");
 assert(!!classicTeamById("yankees-1927"), "1927 Yankees pack loads");
 assert(!!classicTeamById("reds-1975"), "1975 Reds pack loads");
+assert(!!classicTeamById("blue-jays-1985"), "1985 Blue Jays pack loads");
+assert(!!classicTeamById("royals-1985"), "1985 Royals pack loads");
+assert(!!classicTeamById("cardinals-1985"), "1985 Cardinals pack loads");
+assert(!!classicTeamById("dodgers-1985"), "1985 Dodgers pack loads");
+assert(PLAYOFF_1985_TEAMS.length === 4, "1985 playoff field has 4 clubs");
+assert(
+  PLAYOFF_1985_TEAM_IDS.every((id) => !!classicTeamById(id)),
+  "all 1985 playoff ids resolve",
+);
 
 for (const team of CLASSIC_TEAMS) {
   assert(team.players.length === ROSTER_SIZE, `${team.id} is 30-man`);
@@ -81,6 +99,22 @@ assert(
 assert(
   REDS_1975.players.some((p) => /Bench/i.test(p.name)),
   "Reds pack includes Bench",
+);
+assert(
+  BLUE_JAYS_1985.players.some((p) => /Stieb/i.test(p.name)),
+  "Blue Jays pack includes Stieb",
+);
+assert(
+  ROYALS_1985.players.some((p) => /Brett/i.test(p.name)),
+  "Royals pack includes Brett",
+);
+assert(
+  CARDINALS_1985.players.some((p) => /Ozzie Smith/i.test(p.name)),
+  "Cardinals pack includes Ozzie Smith",
+);
+assert(
+  DODGERS_1985.players.some((p) => /Hershiser/i.test(p.name)),
+  "Dodgers pack includes Hershiser",
 );
 
 // Hard cap blocks overspend
@@ -168,16 +202,52 @@ assert(
   "series tallies sum to 10",
 );
 
+const alcs = simulateBestOf(BLUE_JAYS_1985, ROYALS_1985, 1985, 4);
+assert(alcs.games.length >= 4 && alcs.games.length <= 7, "ALCS best-of-7 length");
+assert(
+  alcs.higherWins === 4 || alcs.lowerWins === 4 || alcs.championId === null,
+  "best-of reaches 4 wins or unresolved ties",
+);
+assert(
+  alcs.games[0]?.homeTeamId === BLUE_JAYS_1985.id,
+  "higher seed hosts game 1 (2-3-2)",
+);
+
+const bracket = simulatePlayoffs1985(19851027);
+assert(bracket.alcs.series.games.length >= 4, "bracket ALCS played");
+assert(bracket.nlcs.series.games.length >= 4, "bracket NLCS played");
+assert(!!bracket.worldSeries, "World Series scheduled after LCS");
+assert(
+  typeof playoffSeriesScoreLine(bracket.alcs) === "string" &&
+    playoffSeriesScoreLine(bracket.alcs).includes("–"),
+  "series score line formats",
+);
+const bracket2 = simulatePlayoffs1985(19851027);
+assert(
+  bracket.championId === bracket2.championId &&
+    bracket.alcs.series.higherWins === bracket2.alcs.series.higherWins &&
+    bracket.nlcs.series.lowerWins === bracket2.nlcs.series.lowerWins,
+  "same seed reproduces 1985 playoff bracket",
+);
+assert(
+  bracket.featuredGame?.plays.every((p) => p.radioCall.length > 10),
+  "featured playoff game has radio calls",
+);
+
 // League claim + AI + cap buster
 let league = createClassicLeague(3);
-assert(league.slots.length === 3, "league has 3 classic clubs");
+assert(
+  league.slots.length === CLASSIC_TEAMS.length,
+  `league has ${CLASSIC_TEAMS.length} classic clubs`,
+);
 assert(league.rosterSize === 30, "league uses 30-man structure");
 const claimed = claimTeam(league, "brewers-1985");
 assert(claimed.ok, "human can claim Brewers");
 league = claimed.league;
 assert(league.humanTeamId === "brewers-1985", "human team recorded");
 assert(
-  league.slots.filter((s) => s.claimedBy === "ai").length === 2,
+  league.slots.filter((s) => s.claimedBy === "ai").length ===
+    CLASSIC_TEAMS.length - 1,
   "empty clubs become AI managers",
 );
 const signed = attemptSignFreeAgent(league, buster);
@@ -195,6 +265,10 @@ const brandBlob = JSON.stringify({
   a: BREWERS_1985.blurb,
   b: YANKEES_1927.blurb,
   c: REDS_1975.blurb,
+  d: BLUE_JAYS_1985.blurb,
+  e: ROYALS_1985.blurb,
+  f: CARDINALS_1985.blurb,
+  g: DODGERS_1985.blurb,
 });
 assert(!/Strat-O-Matic/i.test(brandBlob), "classic blurbs avoid Strat-O-Matic");
 

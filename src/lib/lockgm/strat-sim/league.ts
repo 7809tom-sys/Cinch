@@ -123,7 +123,7 @@ export function createClassicLeague(seed = 1): LeagueState {
     slots,
     humanTeamId: null,
     log: [
-      "League opened. Three classic clubs on the board — claim one; the rest get AI managers that play to win under the same hard cap.",
+      `League opened. ${slots.length} classic clubs on the board — claim one; the rest get AI managers that play to win under the same hard cap.`,
     ],
   };
 }

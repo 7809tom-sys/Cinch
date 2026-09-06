@@ -28,17 +28,36 @@ export { resolveAtBat, outcomeLabel, radioCallFor } from "./resolve-ab";
 export {
   simulateGame,
   simulateSeries,
+  simulateBestOf,
   formatIp,
   countOutsRecorded,
+  type BestOfGame,
+  type BestOfSeriesResult,
 } from "./game";
 export {
   CLASSIC_TEAMS,
   BREWERS_1985,
   YANKEES_1927,
   REDS_1975,
+  BLUE_JAYS_1985,
+  ROYALS_1985,
+  CARDINALS_1985,
+  DODGERS_1985,
+  PLAYOFF_1985_TEAM_IDS,
   classicTeamById,
   classicTeamLabel,
 } from "./teams";
+export {
+  PLAYOFF_1985_TEAMS,
+  PLAYOFF_1985_ALCS,
+  PLAYOFF_1985_NLCS,
+  simulatePlayoffs1985,
+  playoffSeriesScoreLine,
+  type PlayoffBracketResult,
+  type PlayoffRoundResult,
+  type PlayoffRoundId,
+  type PlayoffRoundDef,
+} from "./playoffs";
 export {
   ROSTER_SIZE,
   DEFAULT_SALARY_CAP,
