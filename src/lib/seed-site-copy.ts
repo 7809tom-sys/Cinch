@@ -1,5 +1,21 @@
 /** Pure helpers for customer-facing Seed website copy (no store imports). */
 
+import {
+  SEED_AI_THOROUGH_RULE,
+  seedGrowthBoardLooksThin,
+  seedIndustryGrowthBoard,
+  type SeedGrowthBoard,
+  type SeedProfitPlay,
+  type SeedResultStat,
+} from "./seed-ai-thorough";
+
+export {
+  SEED_AI_THOROUGH_RULE,
+  seedGrowthBoardLooksThin,
+  seedIndustryGrowthBoard,
+};
+export type { SeedGrowthBoard, SeedProfitPlay, SeedResultStat };
+
 /** True when text looks like an agent task note, not customer website copy. */
 export function looksLikeAgentTaskCopy(text: string): boolean {
   return /wave\s*\d+|growth wave|polish mobile|touch targets|cross-device|verify phone|safe-area|44px|installable app manifest|information architecture|qa checklist|ship cross-device|implement frontend|write seed landing|shape information/i.test(
@@ -30,6 +46,9 @@ function firstSentences(brief: string, count = 2): string[] {
  * - HARD RULE: never “rename another Seed” — copy must follow THIS brief.
  *   E-commerce that asks the owner to enter/scan items starts with an empty
  *   catalog (not stock serum/mask SKUs from a salon template).
+ * - HARD RULE: every Seed must beat 2020-era template sites — thorough pages,
+ *   concrete numbers, and profit-maximizing operator help (lawn, garage,
+ *   pizza, salon — same bar as AI kitchen design beating 2020 software).
  */
 function industryKey(brief: string, name = ""): string {
   const lower = `${name} ${brief}`.toLowerCase();
@@ -60,6 +79,24 @@ function industryKey(brief: string, name = ""): string {
     )
   ) {
     return "food";
+  }
+  // Lawn / landscape before generic trade.
+  if (
+    /\b(lawn|landscap(?:e|ing)?|mow(?:ing)?|turf|sod|yard\s*care|irrigation|grass\s*cut)\b/.test(
+      lower,
+    )
+  ) {
+    return "lawn";
+  }
+  // Auto garage / mechanic before detailing — repair shop ≠ mobile detail.
+  if (
+    /\b(auto\s*garage|mechanic|auto\s*shop|oil\s*change|brakes?|transmission|car\s*repair|vehicle\s*repair|service\s*bay)\b/.test(
+      lower,
+    ) ||
+    (/\bgarage\b/.test(lower) &&
+      /\b(auto|car|truck|vehicle|repair|mechanic)\b/.test(lower))
+  ) {
+    return "garage";
   }
   // Word boundaries — do not let "shop" inside "barbershop" win as retail.
   if (/\b(shop|store|retail|boutique|florist)\b/.test(lower)) return "retail";
@@ -200,6 +237,12 @@ export function customerFacingHeadline(
     }
     return "Your car. Our care. On your schedule.";
   }
+  if (key === "lawn") {
+    return "Sharp lawns. Routes that pay.";
+  }
+  if (key === "garage") {
+    return "Diagnose. Approve. Fixed right.";
+  }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
       return "Hot pies. Ready when you are.";
@@ -226,6 +269,8 @@ export function customerFacingHeadline(
 export function customerFacingCta(brief: string, projectName = ""): string {
   const key = industryKey(brief, projectName);
   if (key === "detail") return "Book a detail";
+  if (key === "lawn") return "Get a quote";
+  if (key === "garage") return "Book service";
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) return "Order pizza";
     return "Reserve a table";
@@ -244,6 +289,12 @@ export function customerFacingHeroImage(
   const key = industryKey(brief, projectName);
   if (key === "detail") {
     return "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "lawn") {
+    return "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "garage") {
+    return "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1800&q=80";
   }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
@@ -330,6 +381,16 @@ export type SeedSiteCopy = {
   proofEyebrow: string;
   proofHeadline: string;
   proof: SeedProof;
+  /** Concrete industry numbers — proves AI thoroughness vs 2020 stubs. */
+  resultsEyebrow: string;
+  resultsHeadline: string;
+  resultsSupport: string;
+  results: SeedResultStat[];
+  /** Operator profit levers with dollars / % / time. */
+  profitEyebrow: string;
+  profitHeadline: string;
+  profitSupport: string;
+  profitPlays: SeedProfitPlay[];
   /** Service area / hours / trust band. */
   areaEyebrow: string;
   areaHeadline: string;
@@ -353,10 +414,41 @@ type SeedSiteCopyCore = Omit<
   | "proofEyebrow"
   | "proofHeadline"
   | "proof"
+  | "resultsEyebrow"
+  | "resultsHeadline"
+  | "resultsSupport"
+  | "results"
+  | "profitEyebrow"
+  | "profitHeadline"
+  | "profitSupport"
+  | "profitPlays"
   | "areaEyebrow"
   | "areaHeadline"
   | "areaBody"
 >;
+
+function withGrowthBoard(
+  site: Omit<
+    SeedSiteCopy,
+    | "resultsEyebrow"
+    | "resultsHeadline"
+    | "resultsSupport"
+    | "results"
+    | "profitEyebrow"
+    | "profitHeadline"
+    | "profitSupport"
+    | "profitPlays"
+  >,
+  key: string,
+): SeedSiteCopy {
+  const growth = seedIndustryGrowthBoard(
+    key,
+    site.brand,
+    site.brand,
+    `${site.servicesHeadline} ${site.footerNote} ${site.aboutBody}`,
+  );
+  return { ...site, ...growth };
+}
 
 /** Extra sections so Seeds feel like full business sites — not hero stubs. */
 function withBusinessSiteDepth(
@@ -365,7 +457,8 @@ function withBusinessSiteDepth(
 ): SeedSiteCopy {
   const brand = core.brand;
   if (key === "detail") {
-    return {
+    return withGrowthBoard(
+      {
       ...core,
       galleryEyebrow: "Results",
       galleryHeadline: "What the driveway looks like after",
@@ -411,13 +504,120 @@ function withBusinessSiteDepth(
       areaEyebrow: "Service area",
       areaHeadline: "We roll where you are",
       areaBody: `${brand} covers the metro and nearby suburbs. Same-day windows open when the route allows — ask when you book.`,
-    };
+      },
+      key,
+    );
+  }
+  if (key === "lawn") {
+    return withGrowthBoard(
+      {
+        ...core,
+        galleryEyebrow: "The work",
+        galleryHeadline: "Edges, stripes, and clean beds",
+        gallery: [
+          {
+            src: "https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&w=1200&q=80",
+            alt: "Freshly mowed lawn stripes",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1200&q=80",
+            alt: "Trimmed hedge and yard edge",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1466692476866-aefeee23a6b7?auto=format&fit=crop&w=1200&q=80",
+            alt: "Green lawn after maintenance",
+          },
+        ],
+        processEyebrow: "How service runs",
+        processHeadline: "Quote, schedule, keep it sharp",
+        process: [
+          {
+            title: "Tell us the property",
+            detail: "Lot size, frequency, and anything the crew should know.",
+          },
+          {
+            title: "Get a clear price",
+            detail: "Weekly or biweekly cut — written before the first visit.",
+          },
+          {
+            title: "We hit the route",
+            detail: "Same crew rhythm, same clean edge — rain delays texted.",
+          },
+        ],
+        aboutImage:
+          "https://images.unsplash.com/photo-1592419044706-39796d40f98c?auto=format&fit=crop&w=1400&q=80",
+        proofEyebrow: "Homeowners",
+        proofHeadline: "Why they keep the contract",
+        proof: {
+          quote:
+            "Yard looks intentional every week — and I never have to chase anyone about when they’re coming.",
+          attribution: "Pat · recurring lawn client",
+        },
+        areaEyebrow: "Routes",
+        areaHeadline: "Neighborhoods we already run",
+        areaBody: `${brand} clusters routes by ZIP so crews stay dense. Ask which days we already serve your block.`,
+      },
+      key,
+    );
+  }
+  if (key === "garage") {
+    return withGrowthBoard(
+      {
+        ...core,
+        galleryEyebrow: "In the bay",
+        galleryHeadline: "Diagnostics to done-right repairs",
+        gallery: [
+          {
+            src: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1200&q=80",
+            alt: "Mechanic working in service bay",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80",
+            alt: "Vehicle ready after service",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+            alt: "Shop floor tools and lift",
+          },
+        ],
+        processEyebrow: "Service path",
+        processHeadline: "From check-in to approval",
+        process: [
+          {
+            title: "Describe the symptom",
+            detail: "Noise, light, or leak — enough to book the right bay time.",
+          },
+          {
+            title: "Paid diagnosis",
+            detail: "We find the cause and send a clear estimate before tear-in.",
+          },
+          {
+            title: "Approve and finish",
+            detail: "Parts + labor with updates — pick up when it’s right.",
+          },
+        ],
+        aboutImage:
+          "https://images.unsplash.com/photo-1487754180451-8de083866afe?auto=format&fit=crop&w=1400&q=80",
+        proofEyebrow: "Drivers",
+        proofHeadline: "Why they come back",
+        proof: {
+          quote:
+            "They showed me the worn part, priced the fix, and had me back on the road the same day. No mystery invoice.",
+          attribution: "Casey · service customer",
+        },
+        areaEyebrow: "Shop hours",
+        areaHeadline: "Bays book ahead — walk-ins when we can",
+        areaBody: `${brand} prioritizes appointments so diagnostics stay on time. Ask about same-day slots when a bay opens.`,
+      },
+      key,
+    );
   }
   if (key === "food") {
     const pizza = /pizza|pie|oven/i.test(
       `${core.brand} ${core.servicesHeadline} ${core.footerNote}`,
     );
-    return {
+    return withGrowthBoard(
+      {
       ...core,
       galleryEyebrow: pizza ? "From the oven" : "The room",
       galleryHeadline: pizza ? "Hot pies, real crust" : "A night worth dressing for",
@@ -504,10 +704,13 @@ function withBusinessSiteDepth(
       areaBody: pizza
         ? `${brand} runs pickup at the counter and delivery on a local route. Ask for today’s windows when you order.`
         : `${brand} takes reservations most evenings. Walk-ins when we have room — call ahead on weekends.`,
-    };
+      },
+      key,
+    );
   }
   if (key === "salon") {
-    return {
+    return withGrowthBoard(
+      {
       ...core,
       galleryEyebrow: "In the chair",
       galleryHeadline: "Cuts, color, and finish",
@@ -553,10 +756,13 @@ function withBusinessSiteDepth(
       areaEyebrow: "Studio",
       areaHeadline: "Appointments first",
       areaBody: `${brand} runs on booked chairs. New clients: arrive a few minutes early so we can start on time.`,
-    };
+      },
+      key,
+    );
   }
   if (key === "retail") {
-    return {
+    return withGrowthBoard(
+      {
       ...core,
       galleryEyebrow: "On the floor",
       galleryHeadline: "What you’ll actually find",
@@ -602,10 +808,13 @@ function withBusinessSiteDepth(
       areaEyebrow: "Visit",
       areaHeadline: "Hours that match the neighborhood",
       areaBody: `${brand} is open for walk-ins most days. Message us if you want something held before you come by.`,
-    };
+      },
+      key,
+    );
   }
   if (key === "trade") {
-    return {
+    return withGrowthBoard(
+      {
       ...core,
       galleryEyebrow: "On the job",
       galleryHeadline: "Clean work, clear sites",
@@ -651,9 +860,12 @@ function withBusinessSiteDepth(
       areaEyebrow: "Coverage",
       areaHeadline: "We work your schedule",
       areaBody: `${brand} books diagnostics and repairs across the local area. Emergency slots when the board allows — ask when you request service.`,
-    };
+      },
+      key,
+    );
   }
-  return {
+  return withGrowthBoard(
+    {
     ...core,
     galleryEyebrow: "Look closer",
     galleryHeadline: "How the work shows up",
@@ -699,7 +911,9 @@ function withBusinessSiteDepth(
     areaEyebrow: "Reach us",
     areaHeadline: "Built for how you already work",
     areaBody: `${brand} replies during business hours. Share what you need and the best way to follow up.`,
-  };
+    },
+    key,
+  );
 }
 
 /** Industry-shaped services, about, and booking copy for a full site — not a hero stub. */
@@ -752,6 +966,94 @@ export function customerFacingSiteCopy(
         "Tell us the vehicle, package, and where to meet you. We’ll confirm a window and come to you.",
       bookNote: "Same-day slots open when the route allows.",
       footerNote: `${brand} · Mobile detailing that comes to you`,
+      },
+      key,
+    );
+  }
+
+  if (key === "lawn") {
+    return withBusinessSiteDepth(
+      {
+        brand,
+        headline,
+        support,
+        cta,
+        heroImage,
+        navLabel: "Services",
+        servicesEyebrow: "Yard service",
+        servicesHeadline: "Cuts, edges, and seasonal care",
+        services: [
+          {
+            title: "Weekly / biweekly mow",
+            detail:
+              "Stripe, edge, and blow-off on a route schedule you can count on.",
+          },
+          {
+            title: "Fertilizer & weed control",
+            detail:
+              "Seasonal applications that keep the lawn thick without guesswork.",
+          },
+          {
+            title: "Cleanup & aeration",
+            detail:
+              "Leaf, spring, and core aeration windows that protect next season’s growth.",
+          },
+        ],
+        aboutEyebrow: "Crew",
+        aboutHeadline: "Routes first. Lawns that look intentional.",
+        aboutBody:
+          support ||
+          `${brand} runs dense neighborhood routes — clear pricing, clean edges, and texts when weather moves the day.`,
+        bookEyebrow: "Quote",
+        bookHeadline: "Get on the route",
+        bookBody:
+          "Share your address, lot size, and preferred frequency — we’ll send a written price.",
+        bookNote: "New routes open by ZIP cluster so crews stay efficient.",
+        footerNote: `${brand} · Lawn care · Recurring routes`,
+      },
+      key,
+    );
+  }
+
+  if (key === "garage") {
+    return withBusinessSiteDepth(
+      {
+        brand,
+        headline,
+        support,
+        cta,
+        heroImage,
+        navLabel: "Services",
+        servicesEyebrow: "Shop services",
+        servicesHeadline: "Diagnostics, repairs, and maintenance",
+        services: [
+          {
+            title: "Diagnostics",
+            detail:
+              "Paid inspection that finds the real cause before any tear-in.",
+          },
+          {
+            title: "Brakes, fluids & wear items",
+            detail:
+              "Clear parts + labor estimates — approve before we start.",
+          },
+          {
+            title: "Maintenance menus",
+            detail:
+              "Oil, filters, and seasonal checks that keep the bay booked between big jobs.",
+          },
+        ],
+        aboutEyebrow: "The bay",
+        aboutHeadline: "Honest estimates. Finished right.",
+        aboutBody:
+          support ||
+          `${brand} runs appointment-first bays — diagnose, approve, and repair without mystery invoices.`,
+        bookEyebrow: "Service",
+        bookHeadline: "Book a bay",
+        bookBody:
+          "Tell us the symptom and preferred window — we’ll confirm diagnostic time.",
+        bookNote: "Same-day slots when a bay opens.",
+        footerNote: `${brand} · Auto garage · Diagnostics & repair`,
       },
       key,
     );
@@ -1645,6 +1947,95 @@ button {
   overflow-wrap: anywhere;
 }
 
+.seed-results {
+  background: #0e161c;
+  border-block: 1px solid var(--line);
+}
+
+.seed-results-grid {
+  display: grid;
+  gap: 1.25rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 720px) {
+  .seed-results-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+.seed-results-grid li {
+  padding: 1rem 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.seed-results-value {
+  display: block;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.seed-results-label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--foam);
+}
+
+.seed-results-grid p {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.seed-profit {
+  background: var(--panel);
+}
+
+.seed-profit-list {
+  display: grid;
+  gap: 0;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 720px) {
+  .seed-profit-list {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0 1.75rem;
+  }
+}
+
+.seed-profit-list li {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.seed-profit-list h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.seed-profit-list p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .seed-book {
   background: #e8eef0;
   color: var(--ink);
@@ -2416,6 +2807,8 @@ export function seedHomePageSource(
     .join("\n");
   const menuItems = input.menuItems ?? [];
   const specials = input.specials ?? [];
+  const results = input.results ?? [];
+  const profitPlays = input.profitPlays ?? [];
   const menuSection =
     menuItems.length > 0
       ? `
@@ -2527,6 +2920,24 @@ ${services}
           </ul>
         </div>
       </section>${menuSection}${specialsSection}
+      <section className="seed-section seed-results" id="results">
+        <div className="seed-section-inner">
+          <p className="seed-eyebrow">${esc(input.resultsEyebrow)}</p>
+          <h2>${esc(input.resultsHeadline)}</h2>
+          <p className="lead">${esc(input.resultsSupport)}</p>
+          <ul className="seed-results-grid">
+${results
+  .map(
+    (stat) => `            <li>
+              <span className="seed-results-value">${esc(stat.value)}</span>
+              <span className="seed-results-label">${esc(stat.label)}</span>
+              <p>${esc(stat.detail)}</p>
+            </li>`,
+  )
+  .join("\n")}
+          </ul>
+        </div>
+      </section>
       <section className="seed-gallery" id="work" aria-label="${esc(input.galleryHeadline)}">
         <div className="seed-section-inner seed-gallery-intro">
           <p className="seed-eyebrow">${esc(input.galleryEyebrow)}</p>
@@ -2543,6 +2954,23 @@ ${gallery}
           <ol className="seed-process-list">
 ${process}
           </ol>
+        </div>
+      </section>
+      <section className="seed-section seed-profit" id="profit">
+        <div className="seed-section-inner">
+          <p className="seed-eyebrow">${esc(input.profitEyebrow)}</p>
+          <h2>${esc(input.profitHeadline)}</h2>
+          <p className="lead">${esc(input.profitSupport)}</p>
+          <ul className="seed-profit-list">
+${profitPlays
+  .map(
+    (play) => `            <li>
+              <h3>${esc(play.title)}</h3>
+              <p>${esc(play.detail)}</p>
+            </li>`,
+  )
+  .join("\n")}
+          </ul>
         </div>
       </section>
       <section className="seed-section seed-about" id="about">
@@ -2836,27 +3264,73 @@ export function customerFacingAdminCopy(
   const wantsShop = briefAsksForEcommerce(brief);
 
   const tips: SeedAdminTip[] =
-    key === "detail"
+    key === "lawn"
       ? [
           {
-            id: "tip-rinse",
-            title: "Rinse before you wipe",
-            body: "Knock off grit with water first so dry towels don’t scratch clear coat.",
+            id: "tip-route",
+            title: "Cluster before you mow",
+            body: "Keep windshield time under ~12 minutes between stops — recovering 1–2 jobs/day is real profit.",
+          },
+          {
+            id: "tip-prepay",
+            title: "Sell the season",
+            body: "Offer ~10% off a 12-cut prepay in spring so rain weeks don’t empty the payroll account.",
+          },
+          {
+            id: "tip-addon",
+            title: "One add-on every invoice",
+            body: "Fertilizer, edging, or leaf cleanup — an 8% yes at +$20 is ~$160/day on a 10-stop route.",
+          },
+          {
+            id: "tip-crm",
+            title: "Text the skip",
+            body: "When weather moves a day, text the block — retained seasons are $1,200–$2,400 LTV.",
+          },
+        ]
+      : key === "garage"
+        ? [
+            {
+              id: "tip-diag",
+              title: "Always charge the diag",
+              body: "Waive only when they approve the repair same day — protects ~$89–$129 that used to vanish.",
+            },
+            {
+              id: "tip-menu",
+              title: "Maintenance menu on every RO",
+              body: "Fluids/filters/wipers as a $49–$89 attach lifts ticket without another bay hour.",
+            },
+            {
+              id: "tip-approve",
+              title: "Approve-by-text in 20 minutes",
+              body: "Photo + estimate same morning — shops that approve same-day clear ~30% more ROs/week.",
+            },
+            {
+              id: "tip-follow",
+              title: "Call stalled estimates twice",
+              body: "Inside 48 hours recovers ~15–20% of silent approvals.",
+            },
+          ]
+      : key === "detail"
+      ? [
+          {
+            id: "tip-tiers",
+            title: "Quote three tiers every time",
+            body: "Express / full / ceramic — anchoring lifts average ticket ~18–25% vs one price.",
+          },
+          {
+            id: "tip-rebook",
+            title: "90-day rebook text",
+            body: "Message at day 75; a 40% return on full details is ~$75–$100 profit per original job.",
+          },
+          {
+            id: "tip-cluster",
+            title: "Condo / office clusters",
+            body: "Two cars in one lot cut travel to near zero — aim for one cluster block daily.",
           },
           {
             id: "tip-shade",
             title: "Shade beats sun",
             body: "Park in shade when you can — hot paint flash-dries soap and leaves spots.",
-          },
-          {
-            id: "tip-buckets",
-            title: "Two-bucket habit",
-            body: "One bucket for soap, one for rinse. It keeps dirt out of your wash mitt.",
-          },
-          {
-            id: "tip-mats",
-            title: "Mats between visits",
-            body: "Shake or vacuum mats weekly if you haul dogs, tools, or kids.",
           },
         ]
       : briefIsPizza(projectName, brief) || key === "food"
@@ -2867,19 +3341,42 @@ export function customerFacingAdminCopy(
               body: "Name, phone, pickup vs delivery, and pie notes before you fire the oven.",
             },
             {
+              id: "tip-bundle",
+              title: "Bundle sides on every pie",
+              body: "Knots or salad prompt — 15% attach at $5–$6 is ~$75–$90 per 100 pies.",
+            },
+            {
+              id: "tip-lunch",
+              title: "Own the lunch dead zone",
+              body: "Personal pie + drink before 2 recovers oven hours that used to sit cold.",
+            },
+            {
               id: "tip-tax",
               title: "Tax on the order",
               body: "Sales tax stays on this Seed’s admin — apply it before the total hits the customer.",
             },
+          ]
+      : key === "salon"
+        ? [
             {
-              id: "tip-crm",
-              title: "Follow up once",
-              body: "After first order, a short “thanks — here’s this week’s special” keeps them in your CRM lane.",
+              id: "tip-rebook",
+              title: "Book next in the chair",
+              body: "A 12% rebook lift on color clients is multiple full tickets every month.",
             },
             {
-              id: "tip-route",
-              title: "Batch the route",
-              body: "Group delivery windows by neighborhood so drivers aren’t zig-zagging empty.",
+              id: "tip-retail",
+              title: "One product every ticket",
+              body: "$35 attach on 1 in 3 tickets is ~$350 per 30 clients — recommend a single SKU.",
+            },
+            {
+              id: "tip-peak",
+              title: "Protect Saturday color",
+              body: "Keep Sat AM for high-ticket color; move express cuts to Tue–Thu gaps.",
+            },
+            {
+              id: "tip-crm",
+              title: "Keep the thread",
+              body: "Schedule plus notes are your CRM — capture phone/email on every book.",
             },
           ]
       : wantsShop
@@ -2907,6 +3404,16 @@ export function customerFacingAdminCopy(
           ]
         : [
             {
+              id: "tip-speed",
+              title: "Answer in under 5 minutes",
+              body: "Speed-to-lead lifts close rates roughly 20–30% vs overnight replies.",
+            },
+            {
+              id: "tip-offer",
+              title: "One offer, one reminder",
+              body: "A single clear next step plus one follow-up recovers ~15% of silent leads.",
+            },
+            {
               id: "tip-care",
               title: "Between visits",
               body: "Share a short tip customers can use until the next appointment.",
@@ -2919,6 +3426,7 @@ export function customerFacingAdminCopy(
           ];
 
   const pizzaOrFood = briefIsPizza(projectName, brief) || key === "food";
+  const opsHeavy = pizzaOrFood || key === "lawn" || key === "garage" || key === "detail";
 
   return {
     brand,
@@ -2926,24 +3434,44 @@ export function customerFacingAdminCopy(
       ? pizzaOrFood
         ? "Business admin · Orders & tax"
         : "Business admin · Commerce"
-      : "Business admin",
+      : opsHeavy
+        ? "Business admin · Profit ops"
+        : "Business admin",
     support: wantsShop
       ? pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
-      : key === "detail"
-        ? "Calendar, jobs, and tips for keeping cars clean — part of your Seed website."
+      : key === "lawn"
+        ? "Route density, seasonal prepays, and add-on scripts — AI-grown tips so the lawn book makes more money."
+        : key === "garage"
+          ? "Bay utilization, diagnostic fees, and approve-by-text plays — operator help that maximizes ticket value."
+          : key === "detail"
+        ? "Package tiers, rebooks, and cluster routes — part of your Seed website."
         : "Schedule, customer follow-up, and care tips — part of your Seed website (CRM-lite, automatic).",
-    scheduleEyebrow: pizzaOrFood ? "Tickets" : "Calendar",
-    scheduleHeadline: pizzaOrFood ? "Orders & slots" : "Schedule",
-    tipsEyebrow: "Educate",
+    scheduleEyebrow: pizzaOrFood
+      ? "Tickets"
+      : key === "lawn" || key === "garage"
+        ? "Jobs"
+        : "Calendar",
+    scheduleHeadline: pizzaOrFood
+      ? "Orders & slots"
+      : key === "lawn"
+        ? "Routes & quotes"
+        : key === "garage"
+          ? "Bay schedule"
+          : "Schedule",
+    tipsEyebrow: "Profit",
     tipsHeadline: pizzaOrFood
-      ? "Shop floor tips"
-      : wantsShop
-        ? "Fulfillment tips"
-        : key === "detail"
-          ? "Keeping the car clean"
-          : "Customer care tips",
+      ? "Kitchen money tips"
+      : key === "lawn"
+        ? "Route profit tips"
+        : key === "garage"
+          ? "Bay profit tips"
+          : wantsShop
+            ? "Fulfillment tips"
+            : key === "detail"
+              ? "Detail profit tips"
+              : "Customer care tips",
     services,
     appointments: [],
     tips,
