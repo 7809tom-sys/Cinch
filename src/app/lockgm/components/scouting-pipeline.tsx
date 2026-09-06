@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSport } from "@/lib/lockgm/sport-context";
 import type { SubTierId } from "@/lib/lockgm/config";
 import type { Prospect } from "@/lib/lockgm/sport-catalog";
@@ -8,6 +8,24 @@ import {
   BASKETBALL_HS_BOARD_YEAR,
   BASEBALL_MILB_BOARD_YEAR,
 } from "@/lib/lockgm/sport-catalog";
+import {
+  applyUpdatedOverlay,
+  formatRefreshedAt,
+  getUpdatedReport,
+  loadUpdatedReports,
+  refreshBoardReports,
+  refreshOneReport,
+  saveUpdatedReports,
+  type UpdatedBoardReport,
+  type UpdatedReportsStore,
+} from "@/lib/lockgm/updated-reports";
+import {
+  formatReportNumber,
+  loadNotebook,
+  nextReportNumber,
+  saveNotebook,
+  type PersonalReport,
+} from "@/lib/lockgm/scout-notebook";
 
 function youtubeEmbedSrc(prospect: Prospect): string | null {
   if (prospect.highlightVideoId) {
@@ -17,7 +35,7 @@ function youtubeEmbedSrc(prospect: Prospect): string | null {
 }
 
 export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
-  const { sport, franchise } = useSport();
+  const { sport, franchise, sportId } = useSport();
   const stages = sport.stageOrder;
   const isHoopsBoard = sport.id === "basketball";
   const isMilbBoard = sport.id === "baseball";
@@ -28,8 +46,18 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   const [activeId, setActiveId] = useState<string | null>(
     franchise.prospects[0]?.id ?? null,
   );
+  const [reportStore, setReportStore] = useState<UpdatedReportsStore>(() =>
+    emptySafeStore(),
+  );
+  const [busy, setBusy] = useState<"one" | "board" | "scout" | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const canReadPremium = tier === "pro" || tier === "pipeline";
   const canSeeDeep = tier === "pipeline";
+
+  useEffect(() => {
+    setReportStore(loadUpdatedReports());
+  }, []);
 
   useEffect(() => {
     setStage(
@@ -59,11 +87,113 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
       .sort((a, b) => a.rank - b.rank);
   }, [franchise.prospects, stage, query]);
 
-  const active: Prospect | null =
+  const activeBase: Prospect | null =
     list.find((p) => p.id === activeId) ?? list[0] ?? null;
+
+  const activeOverlay: UpdatedBoardReport | null = activeBase
+    ? getUpdatedReport(reportStore, sportId, activeBase.id)
+    : null;
+
+  const active: Prospect | null = activeBase
+    ? applyUpdatedOverlay(activeBase, activeOverlay)
+    : null;
 
   const earlyStage = stages[0];
   const embedSrc = active ? youtubeEmbedSrc(active) : null;
+  const updatedCount = franchise.prospects.filter((p) =>
+    Boolean(getUpdatedReport(reportStore, sportId, p.id)),
+  ).length;
+
+  function persistStore(next: UpdatedReportsStore) {
+    setReportStore(next);
+    saveUpdatedReports(next);
+  }
+
+  function showFlash(msg: string) {
+    setFlash(msg);
+    window.setTimeout(() => setFlash(null), 3200);
+  }
+
+  function refreshActive() {
+    if (!activeBase || busy) return;
+    setBusy("one");
+    startTransition(() => {
+      const { store, report } = refreshOneReport(
+        loadUpdatedReports(),
+        sportId,
+        activeBase,
+        ["alpha"],
+      );
+      persistStore(store);
+      setBusy(null);
+      showFlash(
+        `Refreshed report for ${activeBase.name} (pass #${report.refreshCount}).`,
+      );
+    });
+  }
+
+  function runAiScoutOnActive() {
+    if (!activeBase || busy) return;
+    setBusy("scout");
+    startTransition(() => {
+      const latestStore = loadUpdatedReports();
+      const { store, report } = refreshOneReport(
+        latestStore,
+        sportId,
+        activeBase,
+        ["alpha", "beta"],
+      );
+      persistStore(store);
+
+      // Also tabulate a personal SR so the Reports desk stays in sync.
+      const notebook = loadNotebook();
+      const personal: PersonalReport = {
+        id: `rep_${Date.now()}`,
+        number: nextReportNumber(notebook.reports),
+        prospectId: activeBase.id,
+        prospectName: activeBase.name,
+        position: activeBase.position,
+        sportId,
+        body: [
+          `— Scout Alpha + Scout Beta (board refresh) —`,
+          report.reportTeaser,
+          "",
+          report.reportPremium,
+        ].join("\n"),
+        grade: activeBase.grade,
+        agents: ["alpha", "beta"],
+        status: "ready",
+        updatedAt: report.refreshedAt,
+      };
+      saveNotebook({
+        ...notebook,
+        reports: [personal, ...notebook.reports],
+      });
+
+      setBusy(null);
+      showFlash(
+        `AI scout ran on ${activeBase.name} · claimed ${formatReportNumber(personal.number)}.`,
+      );
+    });
+  }
+
+  function refreshEntireBoard() {
+    if (busy || franchise.prospects.length === 0) return;
+    setBusy("board");
+    startTransition(() => {
+      const next = refreshBoardReports(
+        loadUpdatedReports(),
+        sportId,
+        franchise.prospects,
+        ["alpha", "beta"],
+      );
+      persistStore(next);
+      setBusy(null);
+      showFlash(
+        `Updated scouting reports for all ${franchise.prospects.length} talents on this board.`,
+      );
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -73,7 +203,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
             HS Top {franchise.prospects.length}
           </span>{" "}
           · Class of {BASKETBALL_HS_BOARD_YEAR} national scouting board for
-          Shadow GM work — search, grade, watch highlights, and write reports.
+          Shadow GM work — search, grade, refresh reports, watch highlights.
         </p>
       ) : null}
       {isMilbBoard ? (
@@ -82,8 +212,29 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
             MiLB Top {franchise.prospects.length}
           </span>{" "}
           · {BASEBALL_MILB_BOARD_YEAR} minor-league board for Shadow GM work —
-          search, grade, watch YouTube / MLB highlights, and write reports.
+          search, grade, refresh reports, watch YouTube / MLB highlights.
         </p>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          disabled={Boolean(busy) || franchise.prospects.length === 0}
+          onClick={refreshEntireBoard}
+          className="rounded-md bg-[color:var(--lg-accent)] px-3 py-2 text-xs font-bold tracking-wide text-[color:var(--lg-bg)] uppercase disabled:opacity-40"
+        >
+          {busy === "board"
+            ? "Refreshing board…"
+            : `Refresh all ${franchise.prospects.length} reports`}
+        </button>
+        <p className="text-xs text-[color:var(--lg-mute)]">
+          {updatedCount} of {franchise.prospects.length} talents have a
+          refreshed board report
+          {pending ? " · working…" : ""}
+        </p>
+      </div>
+      {flash ? (
+        <p className="text-sm font-bold text-[color:var(--lg-accent)]">{flash}</p>
       ) : null}
 
       <div className="flex flex-wrap gap-2">
@@ -136,44 +287,59 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
               No prospects match that search.
             </li>
           ) : (
-            list.map((prospect) => (
-              <li key={prospect.id}>
-                <button
-                  type="button"
-                  onClick={() => setActiveId(prospect.id)}
-                  className={`flex w-full items-start justify-between gap-3 border-b border-[color:var(--lg-line)] px-4 py-3 text-left text-sm ${
-                    active?.id === prospect.id
-                      ? "bg-[color:var(--lg-accent)]/10"
-                      : "hover:bg-white/5"
-                  }`}
-                >
-                  <div>
-                    <p className="font-bold">
-                      #{prospect.rank} {prospect.name}
-                      {prospect.highlightUrl ? (
-                        <span
-                          className="ml-2 text-[10px] font-bold tracking-wide text-[color:var(--lg-accent)] uppercase"
-                          title="Highlights available"
-                        >
-                          ▶ clip
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-[color:var(--lg-mute)]">
-                      {prospect.position} · {prospect.school} ·{" "}
-                      {sport.stages[prospect.stage] ?? prospect.stage}
-                    </p>
-                  </div>
-                  <span className="text-xs font-bold text-[color:var(--lg-accent)]">
-                    {prospect.grade}
-                  </span>
-                </button>
-              </li>
-            ))
+            list.map((prospect) => {
+              const overlay = getUpdatedReport(
+                reportStore,
+                sportId,
+                prospect.id,
+              );
+              return (
+                <li key={prospect.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveId(prospect.id)}
+                    className={`flex w-full items-start justify-between gap-3 border-b border-[color:var(--lg-line)] px-4 py-3 text-left text-sm ${
+                      active?.id === prospect.id
+                        ? "bg-[color:var(--lg-accent)]/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div>
+                      <p className="font-bold">
+                        #{prospect.rank} {prospect.name}
+                        {prospect.highlightUrl ? (
+                          <span
+                            className="ml-2 text-[10px] font-bold tracking-wide text-[color:var(--lg-accent)] uppercase"
+                            title="Highlights available"
+                          >
+                            ▶ clip
+                          </span>
+                        ) : null}
+                        {overlay ? (
+                          <span
+                            className="ml-2 text-[10px] font-bold tracking-wide text-[color:var(--lg-accent)] uppercase"
+                            title={`Refreshed ${formatRefreshedAt(overlay.refreshedAt)}`}
+                          >
+                            updated
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-[color:var(--lg-mute)]">
+                        {prospect.position} · {prospect.school} ·{" "}
+                        {sport.stages[prospect.stage] ?? prospect.stage}
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-[color:var(--lg-accent)]">
+                      {prospect.grade}
+                    </span>
+                  </button>
+                </li>
+              );
+            })
           )}
         </ul>
 
-        {active ? (
+        {active && activeBase ? (
           <article className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] px-5 py-5">
             <p className="lockgm-display text-sm font-bold tracking-[0.16em] text-[color:var(--lg-accent)]">
               SCOUTING REPORT
@@ -189,6 +355,41 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                 : ""}{" "}
               · grade {active.grade}
             </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={refreshActive}
+                className="rounded-md bg-[color:var(--lg-accent)] px-3 py-2 text-xs font-bold tracking-wide text-[color:var(--lg-bg)] uppercase disabled:opacity-40"
+              >
+                {busy === "one" ? "Refreshing…" : "Refresh report"}
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={runAiScoutOnActive}
+                className="rounded-md border border-[color:var(--lg-line)] px-3 py-2 text-xs font-bold tracking-wide text-[color:var(--lg-text)] uppercase disabled:opacity-40"
+              >
+                {busy === "scout" ? "Scouting…" : "Run AI scout"}
+              </button>
+            </div>
+            {activeOverlay ? (
+              <p className="mt-2 text-xs text-[color:var(--lg-mute)]">
+                Updated {formatRefreshedAt(activeOverlay.refreshedAt)} · pass #
+                {activeOverlay.refreshCount}
+                {activeOverlay.agents.length
+                  ? ` · ${activeOverlay.agents.join(" + ")}`
+                  : ""}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-[color:var(--lg-mute)]">
+                Seed teaser — refresh or run AI scout for a fresh LockGM write-up.
+                Shadow can update teasers; Reports / All-Sports unlock full premium
+                text.
+              </p>
+            )}
+
             <p className="mt-4 text-base text-[color:var(--lg-text)]">
               {active.reportTeaser}
             </p>
@@ -259,6 +460,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                 <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
                   Locked — upgrade to <strong>Reports</strong> or{" "}
                   <strong>All-Sports</strong> for full scouting write-ups.
+                  Shadow still refreshes the public teaser above.
                 </p>
               )}
             </div>
@@ -293,4 +495,8 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
       </div>
     </div>
   );
+}
+
+function emptySafeStore(): UpdatedReportsStore {
+  return { byKey: {} };
 }

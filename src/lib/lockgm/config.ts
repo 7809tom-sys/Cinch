@@ -28,7 +28,7 @@ export const SUB_TIERS: SubTier[] = [
     perks: [
       "Live draft sync + beat-the-pick",
       "Personal SR-### board (handwritten)",
-      "Public teaser grades",
+      "Refresh teaser reports on every talent",
       "Browse every sport",
     ],
     cta: "Start as Shadow GM",
@@ -43,7 +43,7 @@ export const SUB_TIERS: SubTier[] = [
     perks: [
       "Everything in Shadow",
       "Scout Alpha + Beta on your prospects",
-      "Full premium scouting reports",
+      "Full premium + refreshed write-ups",
       "Budget / trade desk for 1 sport",
     ],
     cta: "Upgrade reports",

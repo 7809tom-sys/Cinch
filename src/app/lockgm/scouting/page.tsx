@@ -38,10 +38,10 @@ export default function LockgmScoutingPage() {
             <strong className="text-[color:var(--lg-text)]">
               {franchise.prospects.length} prospects
             </strong>{" "}
-            ranked for Shadow GM scouting, each with YouTube highlight links.
-            Run AI scouts, number your reports, and lock picks for draft day.
-            Full write-ups unlock on Reports; deep pipeline tracking unlocks on
-            All-Sports.
+            ranked for Shadow GM scouting. Refresh or run AI scout on any
+            talent (or the full board), watch YouTube highlights, and lock
+            picks for draft day. Full write-ups unlock on Reports; deep
+            pipeline tracking unlocks on All-Sports.
           </>
         ) : isBaseball ? (
           <>
@@ -49,15 +49,17 @@ export default function LockgmScoutingPage() {
             <strong className="text-[color:var(--lg-text)]">
               {franchise.prospects.length} prospects
             </strong>{" "}
-            ranked for Shadow GM work. Every player includes YouTube and MLB.com
-            video highlight links. Full write-ups unlock on Reports; deep
-            pipeline tracking unlocks on All-Sports.
+            ranked for Shadow GM work. Refresh updated scouting reports for
+            every talent, plus YouTube / MLB.com highlight links. Full
+            write-ups unlock on Reports; deep pipeline tracking unlocks on
+            All-Sports.
           </>
         ) : (
           <>
-            Follow prospects across stages for {sport.name}. Full scouting
-            reports unlock on the Reports upgrade; deep early-stage tracking
-            unlocks on All-Sports — the same queue pros can review.
+            Follow prospects across stages for {sport.name}. Refresh or run AI
+            scout on every talent on this board. Full scouting reports unlock
+            on the Reports upgrade; deep early-stage tracking unlocks on
+            All-Sports — the same queue pros can review.
           </>
         )}
       </p>

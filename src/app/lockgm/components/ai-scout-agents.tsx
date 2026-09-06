@@ -12,6 +12,12 @@ import {
   type ScoutNotebook,
 } from "@/lib/lockgm/scout-notebook";
 import type { Prospect } from "@/lib/lockgm/sport-catalog";
+import {
+  loadUpdatedReports,
+  refreshOneReport,
+  reportStoreKey,
+  saveUpdatedReports,
+} from "@/lib/lockgm/updated-reports";
 
 type AgentBusy = {
   alpha: boolean;
@@ -142,6 +148,38 @@ export function AiScoutAgents({
       reports: [report, ...latest.reports],
     };
     persist(next);
+
+    // Keep the scouting board overlay fresh for this talent too.
+    const agents =
+      agentsUsed.length > 0
+        ? agentsUsed
+        : (["alpha", "beta"] as Array<"alpha" | "beta">);
+    const board = refreshOneReport(
+      loadUpdatedReports(),
+      sportId,
+      prospect,
+      agents,
+    );
+    // Prefer the claimed body as the refreshed teaser / premium when possible.
+    const teaserLine =
+      mergedText
+        .trim()
+        .split("\n")
+        .map((l) => l.trim())
+        .find((l) => l.length > 12 && !l.startsWith("—")) ??
+      board.report.reportTeaser;
+    saveUpdatedReports({
+      byKey: {
+        ...board.store.byKey,
+        [reportStoreKey(sportId, prospect.id)]: {
+          ...board.report,
+          reportTeaser: teaserLine.slice(0, 180),
+          reportPremium: mergedText.trim().slice(0, 900),
+          agents,
+        },
+      },
+    });
+
     onClaimed?.(report);
     setMergedText("");
     setAgentsUsed([]);
