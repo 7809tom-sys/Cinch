@@ -12,6 +12,7 @@ const NAV = [
   { href: "/lockgm/ratings", label: "Ratings" },
   { href: "/lockgm/cap", label: "Budget" },
   { href: "/lockgm/scouting", label: "Scouting" },
+  { href: "/lockgm/friends", label: "Invite friends" },
   { href: "/lockgm/pricing", label: "Tiers" },
   { href: "/lockgm/profile", label: "My profile" },
 ];

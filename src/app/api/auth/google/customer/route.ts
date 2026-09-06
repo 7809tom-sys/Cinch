@@ -4,6 +4,10 @@ import { establishCustomerSessionCookie } from "@/lib/customer-auth";
 import { getCustomerByEmail, upsertCustomer } from "@/lib/customers";
 import { verifyGoogleIdToken } from "@/lib/google-auth";
 import {
+  creditCapturedLockgmReferral,
+  resolveLockgmPublicGmId,
+} from "@/lib/lockgm/invites";
+import {
   encodeMasterSession,
   isMasterEmail,
   MASTER_SESSION_COOKIE,
@@ -42,6 +46,11 @@ export async function POST(request: Request) {
     authProvider: "google",
   });
   await establishCustomerSessionCookie(customer.id);
+  if (!existing) {
+    await creditCapturedLockgmReferral({
+      inviteeGmId: resolveLockgmPublicGmId(customer),
+    });
+  }
 
   const isAdmin = isMasterEmail(customer.email);
   if (isAdmin) {

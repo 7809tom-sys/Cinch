@@ -34,6 +34,10 @@ import { liveWebsiteUrl } from "@/lib/domain";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
 import {
+  creditCapturedLockgmReferral,
+  resolveLockgmPublicGmId,
+} from "@/lib/lockgm/invites";
+import {
   getCatalogSite,
   listCatalogSites,
   normalizePreviewUrl,
@@ -96,6 +100,13 @@ export async function signUpCustomerAction(formData: FormData) {
   }
 
   await establishCustomerSession(result.customer.id);
+  // Credit only after the account exists. The invite primitive validates the
+  // code, blocks self-referral, stores source/campaign, and consumes the
+  // HttpOnly referral cookie. The merged LockGM identity branch can also
+  // persist the returned source/campaign onto its profile attribution.
+  await creditCapturedLockgmReferral({
+    inviteeGmId: resolveLockgmPublicGmId(result.customer),
+  });
   await maybeGrantMasterAdmin(result.customer.email, result.customer.name);
   revalidatePath("/portal");
   revalidatePath("/admin");
