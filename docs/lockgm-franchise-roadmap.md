@@ -64,7 +64,7 @@ Deepen the baseball loop so “HOF from your system” is the hook.
 
 Expand the proven loop to the rest of LockGM (~10 sports).
 
-- Sport-specific roster rules, salary models, and development paths
+- Sport-specific roster rules, salary models, and development paths (NFL: career-point pool **2.5×50=125** and **must draft every position** — see `docs/lockgm-career-point-cap.md`)
 - Seeded initial rosters fans can claim; leagues evolve over time
 - Shared LockGM identity / desk chrome; sport engines stay sport-true
 - Cross-sport discovery without forcing one ruleset onto every game

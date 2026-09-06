@@ -38,6 +38,38 @@ NFL-style teaching example remains the clearest classroom demo: **2.5 × 50 = 12
 
 ---
 
+## CONFIRMED: NFL career-point leagues
+
+Same hard-cap philosophy as the general formula, with NFL constants and a hard roster-construction rule.
+
+### Point pool (NFL)
+
+```
+NFL career-point pool = avgCareerYears × rosterSize
+                      = 2.5 × 50
+                      = 125
+```
+
+| Constant | Value |
+| --- | ---: |
+| Avg career length (`avgCareerYears`) | **2.5** |
+| Active roster size (`rosterSize`) | **50** |
+| Base career-point pool | **125** |
+
+### Must draft every position (hard rule)
+
+In NFL career-point leagues, Shadow GMs **must draft every position** — a hard roster-construction / draft requirement. You cannot ignore OL, kickers, specialists, or other less-glamorous slots and only stack skill players (QB/WR/RB/TE). Positional coverage across the full NFL position set is mandatory; skill-player stacking that leaves required positions empty is illegal under this rule.
+
+### Same risk stack as general rules
+
+NFL career-point leagues inherit the confirmed general rules without carve-outs:
+
+- **Playoff YoY ±4%** — make playoffs → **+4%** next-season pool; miss → **−4%** (applied on the NFL base of 125).
+- **Contracts / dead money stick** — injury, decline, or lost production do not erase committed career points; cut dead money and underwater deals stay on the books.
+- **Bad-contract / retirement risk** — mid-deal retirement or exit → the club eats the remaining balance as dead money (no escape hatch); same spirit as the age/star risk rule.
+
+---
+
 ## CONFIRMED: playoff year-over-year modifier (±4%)
 
 Mimic real GM incentives: the sport **base pool** is unchanged; a **year-over-year playoff modifier** scales that base (or the resulting pool) for the **following** season’s career-point pool / salary room.
@@ -156,6 +188,7 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 ## Open questions (checklist)
 
 - [x] **Pool formula confirmed:** avg MLB career length × active roster size (**30** for baseball); multi-sport = sport avg × sport roster
+- [x] **NFL confirmed:** pool = **2.5 × 50 = 125**; **must draft every position** (hard roster-construction / draft rule — no skill-only stacks); same ±4% / dead-money / retirement risk as general rules
 - [x] **Playoff YoY modifier confirmed:** make playoffs → **+4%** next year; miss → **−4%** next year (on sport base pool / salary room)
 - [x] **Contracts stick:** injury/decline do not erase points; dead money remains
 - [ ] Declining 5→4→3→2→1 mandatory vs illustrative?
@@ -170,4 +203,4 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 
 ## Status
 
-Design capture for PM — **base formula** and **±4% playoff YoY modifier** confirmed as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.
+Design capture for PM — **base formula**, **NFL 2.5×50=125 + must-draft-every-position**, and **±4% playoff YoY modifier** confirmed as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.
