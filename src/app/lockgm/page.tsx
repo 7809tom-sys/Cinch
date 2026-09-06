@@ -115,6 +115,12 @@ export default async function LockgmHomePage() {
               Open GM office
             </Link>
             <Link
+              href="/lockgm/sim"
+              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
+            >
+              Classic matchup sim
+            </Link>
+            <Link
               href="/lockgm/pricing"
               className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
             >

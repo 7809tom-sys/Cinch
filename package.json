@@ -13,6 +13,7 @@
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
     "assert:lockgm-updated-reports": "npx tsx scripts/assert-lockgm-updated-reports.ts",
+    "assert:lockgm-strat-sim": "npx tsx scripts/assert-lockgm-strat-sim.ts",
     "dev:detective-shopper": "npm run dev --prefix apps/detective-shopper",
     "build:detective-shopper": "npm run build --prefix apps/detective-shopper",
     "lint:detective-shopper": "npm run lint --prefix apps/detective-shopper",
