@@ -230,7 +230,7 @@ assert(
   "same seed reproduces 1985 playoff bracket",
 );
 assert(
-  bracket.featuredGame !== undefined &&
+  bracket.featuredGame != null &&
     bracket.featuredGame.plays.every((p) => p.radioCall.length > 10),
   "featured playoff game has radio calls",
 );
