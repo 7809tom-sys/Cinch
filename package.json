@@ -9,6 +9,7 @@
     "lint": "eslint",
     "assert:seed-industry": "npx tsx scripts/assert-seed-industry.ts",
     "assert:seed-edit-react": "npx tsx scripts/assert-seed-edit-react.ts",
+    "assert:seed-engagement": "npx tsx scripts/assert-seed-engagement.ts",
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
     "assert:lockgm-updated-reports": "npx tsx scripts/assert-lockgm-updated-reports.ts",

@@ -38,6 +38,9 @@ cover — automatically — the friendly day-to-day work:
 This is AI-grown into the Seed, not a separate Cinch product and not a
 WordPress template pack.
 
+Agents must also **collaborate** on visitor psychology and conversion
+(call / book / buy) — see `docs/seed-engagement-collaborate.md`.
+
 Implementation: `withBusinessSiteDepth`, `seedIndustryGrowthBoard`,
 pizza/restaurant menu boards, `seedRestaurantMenuProducts`,
 `summarizeSeedOrderMoney`, and `seedHomePageSource` in
