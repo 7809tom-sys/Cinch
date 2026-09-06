@@ -30,6 +30,7 @@ export type AnalyticsCustomer = {
   lockgmProfile?: {
     gmId: string;
     displayName: string;
+    updatedAt: string;
     attribution:
       | {
           source: string | null;
@@ -118,6 +119,14 @@ export function createLockgmAnalyticsEvent(input: {
   const anonymousId = input.anonymousId
     ? cleanSubjectId(input.anonymousId)
     : null;
+  if (
+    anonymousId &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      anonymousId,
+    )
+  ) {
+    return null;
+  }
   const subjectId = gmId || anonymousId;
   if (!subjectId) return null;
   return {
@@ -271,7 +280,8 @@ export function buildLockgmAnalyticsSnapshot(
   const completedCustomers = eligibleCustomers.filter(
     (customer) =>
       Boolean(customer.lockgmProfile?.gmId) &&
-      Boolean(customer.lockgmProfile?.displayName.trim()),
+      Boolean(customer.lockgmProfile?.displayName.trim()) &&
+      customer.lockgmProfile.updatedAt !== customer.createdAt,
   );
   const stageCounts = new Map<LockgmAnalyticsEventName, Set<string>>();
   for (const stage of FUNNEL_STAGES) {

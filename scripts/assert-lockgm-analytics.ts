@@ -42,7 +42,7 @@ assert(!Object.hasOwn(touch ?? {}, "ip"), "IP is not an attribution field");
 
 const event = createLockgmAnalyticsEvent({
   eventName: "visit",
-  anonymousId: "visitor-123",
+  anonymousId: "123e4567-e89b-12d3-a456-426614174000",
   firstTouch: touch,
   latestTouch: touch,
   geo: { country: "us", region: "ca" },
@@ -61,7 +61,7 @@ const snapshot = buildLockgmAnalyticsSnapshot(
     event!,
     createLockgmAnalyticsEvent({
       eventName: "signup_started",
-      anonymousId: "visitor-123",
+      anonymousId: "123e4567-e89b-12d3-a456-426614174000",
       firstTouch: touch,
       latestTouch: touch,
       occurredAt: "2026-09-06T12:01:00.000Z",
