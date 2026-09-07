@@ -8,7 +8,7 @@ import {
   broadcastPlayIndex,
   isBroadcastComplete,
   type PublicLiveMatchup,
-} from "@/lib/lockgm/live-matchup";
+} from "@/lib/lockgm/live-matchup-shared";
 import {
   claimLiveMatchupAction,
   createLiveMatchupAction,

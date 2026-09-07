@@ -17,25 +17,31 @@ import {
   type ManagerCard,
 } from "@/lib/lockgm/strat-sim";
 import { listActiveLocalAds, type LocalAd } from "@/lib/lockgm/local-ads";
+import {
+  LIVE_MATCHUP_MS_PER_PLAY,
+  broadcastPlayIndex,
+  isBroadcastComplete,
+  matchupInviteLink,
+  normalizeMatchupCode,
+  type MatchupSeat,
+  type MatchupSide,
+  type PublicLiveMatchup,
+} from "@/lib/lockgm/live-matchup-shared";
 
-export const LIVE_MATCHUP_MS_PER_PLAY = 1200;
+export {
+  LIVE_MATCHUP_MS_PER_PLAY,
+  broadcastPlayIndex,
+  isBroadcastComplete,
+  matchupInviteLink,
+  normalizeMatchupCode,
+};
+export type { MatchupSeat, MatchupSide, PublicLiveMatchup };
+
 export const MAX_OPEN_ROOMS_PER_HOST = 8;
 export const MAX_PENDING_MEMBER_INVITES = 12;
 
 const STORE_KEY = "lockgm-live-matchups";
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-export type MatchupSide = "away" | "home";
-
-export type MatchupSeat = {
-  side: MatchupSide;
-  gmId: string | null;
-  displayName: string | null;
-  teamId: string | null;
-  ready: boolean;
-  /** Invite status when a seat is reserved for a specific GM. */
-  reservedGmId: string | null;
-};
 
 export type MatchupRoomInvite = {
   code: string;
@@ -81,41 +87,6 @@ type LiveMatchupStore = {
   invites: MatchupRoomInvite[];
 };
 
-export type PublicLiveMatchup = {
-  id: string;
-  code: string;
-  hostGmId: string;
-  hostDisplayName: string;
-  name: string;
-  market: string;
-  status: LiveMatchupRoom["status"];
-  seats: LiveMatchupRoom["seats"];
-  seed: number;
-  createdAt: string;
-  updatedAt: string;
-  inviteLink: string;
-  /** Present once the game has started or finished. */
-  broadcast: null | {
-    startedAt: string;
-    seed: number;
-    awayTeamId: string;
-    homeTeamId: string;
-    msPerPlay: number;
-    summary: string;
-    awayScore: number;
-    homeScore: number;
-    playCount: number;
-    result: GameResult;
-  };
-  ads: Array<{
-    id: string;
-    sponsor: string;
-    headline: string;
-    href: string;
-    market: string;
-  }>;
-};
-
 function now(): string {
   return new Date().toISOString();
 }
@@ -152,18 +123,6 @@ export function createMatchupRoomCode(random = randomBytes(5)): string {
     suffix += CODE_ALPHABET[byte % CODE_ALPHABET.length];
   }
   return `LM-${suffix}`;
-}
-
-export function normalizeMatchupCode(value: string | null | undefined): string {
-  return (value ?? "").trim().toUpperCase();
-}
-
-export function matchupInviteLink(
-  code: string,
-  origin = process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000",
-): string {
-  const base = origin.replace(/\/+$/, "");
-  return `${base}/lockgm/live/join/${encodeURIComponent(normalizeMatchupCode(code))}`;
 }
 
 export function publicRoomView(
@@ -205,32 +164,6 @@ export function publicRoomView(
       market: ad.market,
     })),
   };
-}
-
-/** Shared real-time cursor — same wall clock → same play index for every viewer. */
-export function broadcastPlayIndex(
-  startedAt: string,
-  playCount: number,
-  msPerPlay = LIVE_MATCHUP_MS_PER_PLAY,
-  nowMs = Date.now(),
-): number {
-  if (playCount <= 0) return 0;
-  const started = Date.parse(startedAt);
-  if (!Number.isFinite(started)) return 0;
-  const elapsed = Math.max(0, nowMs - started);
-  return Math.min(playCount - 1, Math.floor(elapsed / Math.max(200, msPerPlay)));
-}
-
-export function isBroadcastComplete(
-  startedAt: string,
-  playCount: number,
-  msPerPlay = LIVE_MATCHUP_MS_PER_PLAY,
-  nowMs = Date.now(),
-): boolean {
-  if (playCount <= 0) return true;
-  const started = Date.parse(startedAt);
-  if (!Number.isFinite(started)) return true;
-  return nowMs - started >= playCount * Math.max(200, msPerPlay);
 }
 
 function findRoom(
