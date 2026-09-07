@@ -38,7 +38,7 @@ export function LockgmChrome({
               href="/lockgm"
               className="lockgm-display text-2xl font-extrabold tracking-tight text-[color:var(--lg-accent)]"
             >
-              LockGM
+              LockedGM
             </Link>
             <p className="text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
               {franchise.abbrev} · {sport.roleTitle}
@@ -84,7 +84,7 @@ export function LockgmChrome({
       <footer className="border-t border-[color:var(--lg-line)] px-6 py-8 sm:px-8">
         <div className="mx-auto flex max-w-6xl flex-col justify-between gap-3 text-sm text-[color:var(--lg-mute)] sm:flex-row sm:items-center">
           <p className="lockgm-display text-lg font-bold text-[color:var(--lg-accent)]">
-            LockGM
+            LockedGM
           </p>
           <div className="flex flex-wrap gap-4">
             <Link href="/" className="hover:text-[color:var(--lg-text)]">

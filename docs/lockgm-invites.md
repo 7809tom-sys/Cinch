@@ -1,6 +1,6 @@
-# LockGM friend invites
+# LockedGM friend invites
 
-LockGM friend invites live at `/lockgm/friends`. A signed-in customer can
+LockedGM friend invites live at `/lockgm/friends`. A signed-in customer can
 generate one active link, copy/share it, see sent/pending/accepted counts, and
 revoke or rotate the code. The public invite URL contains only a random invite
 code. The inviter is displayed as a public `GM-XXXXXXXXXX` ID; email and legal

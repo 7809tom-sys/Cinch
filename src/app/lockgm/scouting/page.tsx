@@ -35,7 +35,7 @@ export default function LockgmScoutingPage() {
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
         {isHoops ? (
           <>
-            LockGM’s national high-school basketball board —{" "}
+            LockedGM’s national high-school basketball board —{" "}
             <strong className="text-[color:var(--lg-text)]">
               {franchise.prospects.length} prospects
             </strong>{" "}
@@ -46,7 +46,7 @@ export default function LockgmScoutingPage() {
           </>
         ) : isBaseball ? (
           <>
-            LockGM’s minor-league baseball board —{" "}
+            LockedGM’s minor-league baseball board —{" "}
             <strong className="text-[color:var(--lg-text)]">
               {franchise.prospects.length} prospects
             </strong>{" "}
@@ -73,7 +73,7 @@ export default function LockgmScoutingPage() {
         </Link>
         <span className="text-[color:var(--lg-mute)]">
           {" "}
-          — LockGM Shadow GM grade classroom (baseball 1–20 first).
+          — LockedGM Shadow GM grade classroom (baseball 1–20 first).
         </span>
       </p>
       <div className="mt-10">

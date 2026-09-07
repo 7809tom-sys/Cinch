@@ -147,7 +147,7 @@ export function LockgmAnalyticsTracker({
       role="status"
     >
       <p className={isLockgmSurface ? "font-bold text-[color:var(--lg-text)]" : "font-bold text-brand-deep"}>
-        Help us understand how GMs find LockGM
+        Help us understand how GMs find LockedGM
       </p>
       <p
         className={`mt-1 leading-relaxed ${

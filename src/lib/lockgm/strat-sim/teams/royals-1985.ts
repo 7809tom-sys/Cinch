@@ -147,7 +147,7 @@ const players: LoosePlayer[] = [
   },
 ];
 
-/** 1985 Kansas City Royals — AL West champs / WS winners (LockGM grades). */
+/** 1985 Kansas City Royals — AL West champs / WS winners (LockedGM grades). */
 export const ROYALS_1985_LOOSE: LooseTeam = {
   id: "royals-1985",
   year: 1985,
@@ -155,7 +155,7 @@ export const ROYALS_1985_LOOSE: LooseTeam = {
   nickname: "Royals",
   abbrev: "KC '85",
   blurb:
-    "Brett, Saberhagen, and Quisenberry — LockGM pack for the 1985 AL West champions.",
+    "Brett, Saberhagen, and Quisenberry — LockedGM pack for the 1985 AL West champions.",
   salaryCap: 92,
   lineup: [
     "kc85-lsmith",

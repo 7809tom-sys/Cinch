@@ -5,9 +5,9 @@ import { LockgmProfileForm } from "./profile-form";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "GM profile — LockGM",
+  title: "GM profile — LockedGM",
   description:
-    "Create the attributable public identity that LockGM can use for future draft records and résumé credits.",
+    "Create the attributable public identity that LockedGM can use for future draft records and résumé credits.",
 };
 
 function first(value: string | string[] | undefined): string {
@@ -46,7 +46,7 @@ export default async function LockgmProfilePage({
             Put your name on the board.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-            LockGM is building credible GM résumés. Your verified account
+            LockedGM is building credible GM résumés. Your verified account
             identity and stable GM ID are the foundation for crediting future
             draft calls and achievements. Choose what is public; keep optional
             private details private.

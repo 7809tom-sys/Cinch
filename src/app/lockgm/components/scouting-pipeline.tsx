@@ -384,7 +384,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
               </p>
             ) : (
               <p className="mt-2 text-xs text-[color:var(--lg-mute)]">
-                Seed teaser — refresh or run AI scout for a fresh LockGM write-up.
+                Seed teaser — refresh or run AI scout for a fresh LockedGM write-up.
                 Shadow can update teasers; Reports / All-Sports unlock full premium
                 text.
               </p>

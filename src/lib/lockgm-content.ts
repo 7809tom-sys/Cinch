@@ -3,8 +3,8 @@ import { readJsonStore, writeJsonStore } from "@/lib/kv-store";
 import { SUB_TIERS, type SubTierId } from "@/lib/lockgm/config";
 
 /**
- * Admin-editable marketing copy for the LockGM platform product.
- * LockGM's pages are static TSX (see src/app/lockgm/*), but read their
+ * Admin-editable marketing copy for the LockedGM platform product.
+ * LockedGM's pages are static TSX (see src/app/lockgm/*), but read their
  * headline/body copy through this store so admins can edit it from
  * CinchSeed without a code deploy — mirrors the pattern in site-settings.ts.
  *

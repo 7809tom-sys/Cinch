@@ -18,7 +18,7 @@ export default async function LockgmHomePage() {
         />
         <div className="relative mx-auto flex min-h-[100svh] w-full max-w-6xl flex-col justify-end px-6 pb-20 pt-28 sm:justify-center sm:px-8">
           <p className="lg-rise lockgm-display text-6xl font-extrabold leading-none tracking-tight text-[color:var(--lg-accent)] sm:text-8xl">
-            LockGM
+            LockedGM
           </p>
           <h1 className="lg-rise-2 mt-5 max-w-xl lockgm-display text-3xl font-bold leading-[1.05] text-[color:var(--lg-text)] sm:text-5xl">
             {content.hero.headline}

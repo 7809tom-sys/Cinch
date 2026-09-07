@@ -1,4 +1,4 @@
-# LockGM career-point cap (design)
+# LockedGM career-point cap (design)
 
 Product design from PM for long-term roster commitment. This is **separate** from the Classic Matchup **annual salary hard cap** (payroll in millions). Structured summary also lives in `src/lib/lockgm/ratings-classroom.ts` (`CAREER_POINT_CAP`) and on `/lockgm/ratings`.
 
@@ -14,7 +14,7 @@ Limit how much guaranteed career commitment a franchise can stack across the ros
 career-point pool = average MLB career length (years) × active roster size
 ```
 
-**Baseball (LockGM default):** active roster size = **30**.
+**Baseball (LockedGM default):** active roster size = **30**.
 
 ```
 baseball pool = avg MLB career length × 30
@@ -30,7 +30,7 @@ sport pool = average career length (that sport) × active roster size (that spor
 
 | Sport (example) | Avg career length | Active roster | Example pool |
 | --- | ---: | ---: | ---: |
-| Baseball (LockGM) | ~avg MLB years | **30** | avg × 30 |
+| Baseball (LockedGM) | ~avg MLB years | **30** | avg × 30 |
 | Football (NFL-shaped) | **2.5** | **50** | **125** |
 | Basketball / hockey / etc. | sport avg | sport roster | avg × roster |
 
@@ -89,7 +89,7 @@ next-season pool = sport base pool × (1 ± 0.04)
 
 ## Contracts and dead money stick
 
-Injury, decline, or lost production **do not erase** committed career points. Guarantees, cut dead money, and underwater deals stay on the books — LockGM mimics bad-contract pressure from real leagues (NBA/MLB-shaped incentives): you live with the points you signed.
+Injury, decline, or lost production **do not erase** committed career points. Guarantees, cut dead money, and underwater deals stay on the books — LockedGM mimics bad-contract pressure from real leagues (NBA/MLB-shaped incentives): you live with the points you signed.
 
 ---
 

@@ -171,7 +171,7 @@ export const BREWERS_1985_LOOSE: LooseTeam = {
   nickname: "Brewers",
   abbrev: "MIL '85",
   blurb:
-    "County Stadium crew built around Yount and Molitor — LockGM classic experiment pack.",
+    "County Stadium crew built around Yount and Molitor — LockedGM classic experiment pack.",
   salaryCap: 92,
   lineup: [
     "mil85-molitor",

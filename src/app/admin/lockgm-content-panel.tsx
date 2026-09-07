@@ -143,7 +143,7 @@ export function LockgmContentPanel({
       }
       applyContent(result.draft);
       setAiDraftApplied(
-        `AI draft loaded from ${result.provider} (${result.model}) — review the fields below, then click "Save LockGM copy" to publish.`,
+        `AI draft loaded from ${result.provider} (${result.model}) — review the fields below, then click "Save LockedGM copy" to publish.`,
       );
     });
   };
@@ -196,10 +196,10 @@ export function LockgmContentPanel({
   return (
     <div className="border-t border-brand/15 pt-6">
       <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
-        Edit the LockGM webpage
+        Edit the LockedGM webpage
       </h3>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        LockGM&apos;s pages are built into Cinch Seed, not a customer Seed —
+        LockedGM&apos;s pages are built into Cinch Seed, not a customer Seed —
         so there&apos;s no build agent to ask. Edit every headline and body of
         copy across its pages here instead; changes go live immediately, no
         redeploy needed. (The interactive tools themselves — draft board, cap
@@ -217,7 +217,7 @@ export function LockgmContentPanel({
             <p className="mt-1 text-sm text-muted">
               Tell it what to change in plain English — it drafts new copy for
               every field below. Nothing goes live until you review it and
-              click &quot;Save LockGM copy.&quot;
+              click &quot;Save LockedGM copy.&quot;
             </p>
             <textarea
               className={`${inputClass} mt-3`}
@@ -661,7 +661,7 @@ export function LockgmContentPanel({
             onClick={save}
             className="inline-flex h-10 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
           >
-            {pending ? "Saving…" : "Save LockGM copy"}
+            {pending ? "Saving…" : "Save LockedGM copy"}
           </button>
           <button
             type="button"

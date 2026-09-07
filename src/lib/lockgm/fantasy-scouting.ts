@@ -119,7 +119,7 @@ export function formatSnapshotTime(iso: string): string {
 }
 
 const DEMO_SOURCE: ScoutingSource = {
-  label: "LockGM local fixture",
+  label: "LockedGM local fixture",
   kind: "local-fixture",
 };
 

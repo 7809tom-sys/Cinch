@@ -236,7 +236,7 @@ const BASKETBALL: FranchiseKit = {
     { id: "t3", label: "Send 2026 2nd", capDeltaM: 0, kind: "pick" },
     { id: "t4", label: "Receive PG — N. Crow", capDeltaM: 8.6, kind: "player" },
   ],
-  // HARD RULE for LockGM basketball: HS Top 100 is the scouting board.
+  // HARD RULE for LockedGM basketball: HS Top 100 is the scouting board.
   prospects: HS_BASKETBALL_TOP_100,
 };
 
@@ -375,7 +375,7 @@ const BASEBALL: FranchiseKit = {
     { id: "t3", label: "Send AA arm", capDeltaM: 0, kind: "pick" },
     { id: "t4", label: "Receive SP — N. Crow", capDeltaM: 11.0, kind: "player" },
   ],
-  // HARD RULE for LockGM baseball: MiLB Top 200 is the scouting board.
+  // HARD RULE for LockedGM baseball: MiLB Top 200 is the scouting board.
   prospects: MILB_TOP_200,
 };
 

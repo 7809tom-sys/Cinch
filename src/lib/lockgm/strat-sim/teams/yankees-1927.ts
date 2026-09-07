@@ -162,7 +162,7 @@ export const YANKEES_1927_LOOSE: LooseTeam = {
   nickname: "Yankees",
   abbrev: "NYY '27",
   blurb:
-    "Murderers' Row experiment pack — Ruth & Gehrig at the heart of LockGM classic sims.",
+    "Murderers' Row experiment pack — Ruth & Gehrig at the heart of LockedGM classic sims.",
   salaryCap: 92,
   lineup: [
     "nyy27-combs",

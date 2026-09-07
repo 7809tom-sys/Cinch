@@ -11,8 +11,8 @@ import { InvitePanel } from "./invite-panel";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Invite friends — LockGM",
-  description: "Share a privacy-safe LockGM invite with friends and league rivals.",
+  title: "Invite friends — LockedGM",
+  description: "Share a privacy-safe LockedGM invite with friends and league rivals.",
 };
 
 export default async function LockgmFriendsPage() {
@@ -32,7 +32,7 @@ export default async function LockgmFriendsPage() {
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
         Your invite uses your public GM ID, never your email or legal name.
-        Friends land on a LockGM welcome page first, then attribution is held
+        Friends land on a LockedGM welcome page first, then attribution is held
         through signup.
       </p>
 

@@ -4,7 +4,7 @@ import { Redis } from "@upstash/redis";
 
 /**
  * Shared persistence layer for every JSON "store" in this app (customers,
- * Seeds, site settings, module library, LockGM content, etc.).
+ * Seeds, site settings, module library, LockedGM content, etc.).
  *
  * Vercel's serverless functions have an ephemeral filesystem: `/tmp` can
  * disappear between invocations and is always wiped on redeploy, so a

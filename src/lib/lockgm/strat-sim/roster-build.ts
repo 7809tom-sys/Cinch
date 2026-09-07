@@ -122,7 +122,7 @@ const DEPTH_POOL: {
 
 /**
  * Assign binding salaries, pad to 30-man, attach hard salaryCap.
- * Depth names are LockGM-original fillers — not marketed as historical stars.
+ * Depth names are LockedGM-original fillers — not marketed as historical stars.
  */
 export function finalizeClassicTeam(loose: LooseTeam): ClassicTeam {
   const prefix = loose.id.replace(/[^a-z0-9]/gi, "").slice(0, 8);

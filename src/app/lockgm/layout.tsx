@@ -19,7 +19,7 @@ const body = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LockGM — Shadow GM draft & scouting",
+  title: "LockedGM — Shadow GM draft & scouting",
   description:
     "Multi-sport Shadow GM platform: AI scout research, personal numbered reports, salary/wage desks, and draft-day beat-the-pick races.",
 };

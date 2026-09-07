@@ -1,6 +1,6 @@
 import type { BatterRatings, PitcherRatings } from "../types";
 
-/** LockGM 1–20 batter grades for classic packs. */
+/** LockedGM 1–20 batter grades for classic packs. */
 export function bat(
   contact: number,
   power: number,
@@ -14,7 +14,7 @@ export function bat(
   return { contact, power, eye, speed, defense, arm, platoonVsL, platoonVsR };
 }
 
-/** LockGM 1–20 pitcher grades for classic packs. */
+/** LockedGM 1–20 pitcher grades for classic packs. */
 export function pit(
   stuff: number,
   control: number,

@@ -3,7 +3,7 @@ import { SUB_TIERS } from "@/lib/lockgm/config";
 import { getLockgmContent } from "@/lib/lockgm-content";
 
 export const metadata = {
-  title: "Tiers — LockGM",
+  title: "Tiers — LockedGM",
   description:
     "Shadow ($0), Reports ($20/yr scouting upgrade), All-Sports ($59/yr).",
 };
