@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Serve LockGM at the root of its own domain (e.g. lockgm.com/office)
+ * Serve LockedGM at the root of its own domain (e.g. lockgm.com/office)
  * while it keeps working as a subpath on cinchseed.com (cinchseed.com/lockgm/office).
  *
  * Set LOCKGM_DOMAIN in Vercel once the domain's DNS is verified and the
@@ -15,8 +15,8 @@ const STATIC_OR_INTERNAL_RE = /^\/(?:_next|api)(?:\/|$)|\.[a-zA-Z0-9]+$/;
 
 /**
  * Shared Cinch Seed customer-account pages that must keep working verbatim
- * on the LockGM domain (not get swallowed into the /lockgm rewrite below).
- * LockGM accounts ARE Cinch Seed customer accounts (see lockgmProfile on
+ * on the LockedGM domain (not get swallowed into the /lockgm rewrite below).
+ * LockedGM accounts ARE Cinch Seed customer accounts (see lockgmProfile on
  * CustomerAccount), so signing in/up has to resolve to the real /login and
  * /portal pages — otherwise "lockedgm.com/login" 404s as "/lockgm/login",
  * which doesn't exist, and visitors have no way to create a login.
@@ -40,7 +40,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // A LockGM page linked internally as "/lockgm/office" — redirect to the
+  // A LockedGM page linked internally as "/lockgm/office" — redirect to the
   // clean root-relative URL so the address bar never shows "/lockgm" on
   // this domain.
   if (pathname === "/lockgm" || pathname.startsWith("/lockgm/")) {
@@ -51,7 +51,7 @@ export function proxy(request: NextRequest) {
   }
 
   // Everything else on this domain (e.g. "/", "/office", "/draft") is
-  // LockGM content — rewrite internally so Next.js resolves the matching
+  // LockedGM content — rewrite internally so Next.js resolves the matching
   // page under /lockgm, while the browser's URL stays clean.
   const url = request.nextUrl.clone();
   url.pathname = `/lockgm${pathname === "/" ? "" : pathname}`;

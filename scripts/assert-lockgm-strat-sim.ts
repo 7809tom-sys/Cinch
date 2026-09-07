@@ -1,5 +1,5 @@
 /**
- * Guard: LockGM Classic Matchup foundation.
+ * Guard: LockedGM Classic Matchup foundation.
  * Run: npm run assert:lockgm-strat-sim
  */
 import {

@@ -148,7 +148,7 @@ function DraftCardView({
       {report ? (
         <details className="mt-5 border-t border-[color:var(--lg-line)] pt-4">
           <summary className="cursor-pointer text-sm font-bold text-[color:var(--lg-accent)]">
-            Open complete LockGM report
+            Open complete LockedGM report
           </summary>
           <div className="mt-4 space-y-4 text-sm leading-relaxed">
             <p>{report.talentSummary}</p>

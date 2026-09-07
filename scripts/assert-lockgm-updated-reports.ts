@@ -1,5 +1,5 @@
 /**
- * Guard: every LockGM talent can receive an updated / refreshed scouting report.
+ * Guard: every LockedGM talent can receive an updated / refreshed scouting report.
  * Run: npx tsx scripts/assert-lockgm-updated-reports.ts
  */
 import { FRANCHISES, franchiseFor } from "../src/lib/lockgm/sport-catalog";
@@ -57,13 +57,13 @@ const generated = generateUpdatedReport(sample, "baseball", {
 assert(
   generated.reportTeaser.length > 20 &&
     !/pipeline\.com|mlb pipeline/i.test(generated.reportTeaser),
-  "generator produces LockGM-original teaser (no Pipeline copy)",
+  "generator produces LockedGM-original teaser (no Pipeline copy)",
 );
 assert(
   generated.reportPremium.includes(sample.name) ||
-    generated.reportPremium.includes("LockGM") ||
+    generated.reportPremium.includes("LockedGM") ||
     generated.reportPremium.includes("AI scout"),
-  "generator premium references LockGM / prospect context",
+  "generator premium references LockedGM / prospect context",
 );
 assert(generated.refreshCount === 1, "fresh generate starts at refreshCount 1");
 
@@ -135,7 +135,7 @@ for (const id of sportIds) {
 }
 
 if (process.exitCode) {
-  console.error("\nLockGM updated-reports guards failed.");
+  console.error("\nLockedGM updated-reports guards failed.");
   process.exit(process.exitCode);
 }
-console.log("\nAll LockGM updated-reports guards passed.");
+console.log("\nAll LockedGM updated-reports guards passed.");

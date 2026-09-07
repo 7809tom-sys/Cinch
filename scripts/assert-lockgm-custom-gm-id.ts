@@ -75,7 +75,7 @@ assert(
 );
 
 if (process.exitCode) {
-  console.error("\nLockGM custom GM ID guards failed.");
+  console.error("\nLockedGM custom GM ID guards failed.");
   process.exit(process.exitCode);
 }
-console.log("\nAll LockGM custom GM ID guards passed.");
+console.log("\nAll LockedGM custom GM ID guards passed.");

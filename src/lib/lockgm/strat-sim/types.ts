@@ -1,4 +1,4 @@
-/** LockGM Classic Matchup — proprietary LockGM rating scales (1–20). */
+/** LockedGM Classic Matchup — proprietary LockedGM rating scales (1–20). */
 
 export type Hand = "L" | "R" | "S";
 export type PitchRole = "SP" | "RP";
@@ -14,7 +14,7 @@ export type FieldPos =
   | "DH"
   | "P";
 
-/** Batter LockGM grades on 1–20 scales (hand-authored from public season context). */
+/** Batter LockedGM grades on 1–20 scales (hand-authored from public season context). */
 export type BatterRatings = {
   contact: number;
   power: number;
@@ -44,7 +44,7 @@ export type Player = {
   bats: Hand;
   throws: Hand;
   /**
-   * LockGM-eligible positions — only spots where the player has a positional
+   * LockedGM-eligible positions — only spots where the player has a positional
    * rating / enough playing time. No listing = not eligible (OOP if forced).
    * First field spot is treated as the primary position.
    */

@@ -6,9 +6,9 @@ import {
 import { FantasyFootballBoard } from "./fantasy-football-board";
 
 export const metadata: Metadata = {
-  title: "Fantasy football scouting — LockGM",
+  title: "Fantasy football scouting — LockedGM",
   description:
-    "LockGM PPR Football draft cards, complete scouting reports, and transparent weekly pulse fixtures.",
+    "LockedGM PPR Football draft cards, complete scouting reports, and transparent weekly pulse fixtures.",
 };
 
 export default async function FantasyFootballPage() {
@@ -25,7 +25,7 @@ export default async function FantasyFootballPage() {
       </h1>
       <p className="mt-4 max-w-3xl text-base leading-relaxed text-[color:var(--lg-mute)]">
         A PPR Football view for draft decisions under a clock, with a separate
-        LockGM report for long-term talent and team fit. The weekly pulse below
+        LockedGM report for long-term talent and team fit. The weekly pulse below
         is a local fixture until a licensed data provider is connected.
       </p>
       <div className="mt-8">

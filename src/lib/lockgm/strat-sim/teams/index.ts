@@ -18,7 +18,7 @@ export const CARDINALS_1985: ClassicTeam =
   finalizeClassicTeam(CARDINALS_1985_LOOSE);
 export const DODGERS_1985: ClassicTeam = finalizeClassicTeam(DODGERS_1985_LOOSE);
 
-/** All LockGM classic experiment packs (card/dice-inspired demos). */
+/** All LockedGM classic experiment packs (card/dice-inspired demos). */
 export const CLASSIC_TEAMS: ClassicTeam[] = [
   BREWERS_1985,
   BLUE_JAYS_1985,

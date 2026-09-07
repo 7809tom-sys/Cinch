@@ -257,7 +257,7 @@ export async function getAdminSnapshot() {
     platformProducts: [
       {
         id: "lockgm",
-        name: "LockGM",
+        name: "LockedGM",
         description:
           "Shadow-GM draft & scouting platform, built directly into Cinch Seed. Not a customer Seed — no build agents, no portal.",
         urls: [
@@ -503,7 +503,7 @@ export async function bookDomainAction(
   }
 }
 
-/** Connect a domain you already own directly to LockGM (not a customer Seed). */
+/** Connect a domain you already own directly to LockedGM (not a customer Seed). */
 export async function connectLockgmDomainAction(hostname: string) {
   const result = await connectLockgmDomain(hostname);
   if ("error" in result) return { ok: false as const, error: result.error };
@@ -549,7 +549,7 @@ export async function disconnectLockgmDomainAction() {
   return { ok: true as const, settings };
 }
 
-/** Edit LockGM's marketing copy — a platform product, not a Seed. */
+/** Edit LockedGM's marketing copy — a platform product, not a Seed. */
 export async function updateLockgmContentAction(input: {
   hero: LockgmHeroContent;
   features: LockgmFeatureCard[];
@@ -572,7 +572,7 @@ export async function updateLockgmContentAction(input: {
     return {
       ok: false as const,
       error:
-        error instanceof Error ? error.message : "Could not save LockGM content.",
+        error instanceof Error ? error.message : "Could not save LockedGM content.",
     };
   }
 }
@@ -587,7 +587,7 @@ export async function resetLockgmContentAction() {
   return { ok: true as const, content };
 }
 
-const LOCKGM_DRAFT_SYSTEM_PROMPT = `You are Quill, the copywriter on the Cinch Seed AI team, drafting copy for LockGM — a Shadow-GM draft & scouting platform.
+const LOCKGM_DRAFT_SYSTEM_PROMPT = `You are Quill, the copywriter on the Cinch Seed AI team, drafting copy for LockedGM — a Shadow-GM draft & scouting platform.
 
 You will be given the CURRENT copy for every page as JSON, and an admin's plain-English instruction for what to change.
 
@@ -614,9 +614,9 @@ Rules:
 
 /**
  * Calls a real, configured AI provider (OpenAI/Anthropic/Google — whichever
- * has a key set) to draft new LockGM copy from a plain-English instruction.
+ * has a key set) to draft new LockedGM copy from a plain-English instruction.
  * Returns the proposed content for the admin to review; nothing is saved
- * until they click "Save LockGM copy" in the panel.
+ * until they click "Save LockedGM copy" in the panel.
  */
 export async function generateLockgmContentDraftAction(instruction: string) {
   const trimmed = instruction.trim();

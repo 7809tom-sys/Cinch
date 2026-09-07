@@ -60,7 +60,7 @@ export type SiteSettings = {
   tokenMarkup: number;
   card: BillingCard;
   domainOrders: DomainOrder[];
-  /** LockGM's own domain (separate product, served at its own root by middleware). */
+  /** LockedGM's own domain (separate product, served at its own root by middleware). */
   lockgmDomain: PlatformDomainConnection | null;
 };
 
@@ -205,7 +205,7 @@ export async function addDomainOrder(input: {
 }
 
 /**
- * Point a domain you already own at LockGM specifically (not a customer
+ * Point a domain you already own at LockedGM specifically (not a customer
  * Seed) — the same DNS pattern as any Vercel custom domain.
  */
 export async function connectLockgmDomain(
@@ -239,7 +239,7 @@ export async function checkLockgmDomainDns(): Promise<
 > {
   const settings = await ensureSettings();
   if (!settings.lockgmDomain) {
-    return { error: "No LockGM domain connected yet." };
+    return { error: "No LockedGM domain connected yet." };
   }
 
   const result = await verifyDnsForHostname(settings.lockgmDomain.hostname);

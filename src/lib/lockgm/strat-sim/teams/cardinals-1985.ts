@@ -147,7 +147,7 @@ const players: LoosePlayer[] = [
   },
 ];
 
-/** 1985 St. Louis Cardinals — NL East champs (public roster grounding; LockGM grades). */
+/** 1985 St. Louis Cardinals — NL East champs (public roster grounding; LockedGM grades). */
 export const CARDINALS_1985_LOOSE: LooseTeam = {
   id: "cardinals-1985",
   year: 1985,
@@ -155,7 +155,7 @@ export const CARDINALS_1985_LOOSE: LooseTeam = {
   nickname: "Cardinals",
   abbrev: "STL '85",
   blurb:
-    "Whitey-ball speed: Coleman, McGee, Ozzie, Tudor — LockGM 1985 NLCS/WS experiment pack.",
+    "Whitey-ball speed: Coleman, McGee, Ozzie, Tudor — LockedGM 1985 NLCS/WS experiment pack.",
   salaryCap: 92,
   lineup: [
     "stl85-coleman",

@@ -3,7 +3,7 @@ import type { SportId } from "./sports";
 
 /**
  * Persisted board-report overlays so Shadow GMs can refresh / update
- * scouting write-ups for every talent on every LockGM board.
+ * scouting write-ups for every talent on every LockedGM board.
  * Client storage matches the scout-notebook pattern.
  */
 
@@ -91,7 +91,7 @@ function pick<T>(items: readonly T[], seed: number, salt: number): T {
 }
 
 const TEASER_OPENERS = [
-  "Latest LockGM pass:",
+  "Latest LockedGM pass:",
   "Updated board note:",
   "Fresh tape read:",
   "Re-scout pulse:",
@@ -107,7 +107,7 @@ const PREMIUM_CLOSES = [
 ] as const;
 
 /**
- * Generate LockGM-original updated report prose from prospect traits.
+ * Generate LockedGM-original updated report prose from prospect traits.
  * Does not copy third-party Pipeline / media blurbs — template + traits only.
  */
 export function generateUpdatedReport(
@@ -145,7 +145,7 @@ export function generateUpdatedReport(
   ] as const;
 
   const premiumAngles = [
-    `LockGM refresh #${refreshCount} on ${prospect.name} (${prospect.position}, ${prospect.school}). Traits in focus: ${traitHint}. Athletic seed ${prospect.metric ?? "n/a"}; board grade ${prospect.grade}. Scheme fit stays tied to ${stageHint} reps — strengths travel, polish items are coachable. ${close}`,
+    `LockedGM refresh #${refreshCount} on ${prospect.name} (${prospect.position}, ${prospect.school}). Traits in focus: ${traitHint}. Athletic seed ${prospect.metric ?? "n/a"}; board grade ${prospect.grade}. Scheme fit stays tied to ${stageHint} reps — strengths travel, polish items are coachable. ${close}`,
     `Updated write-up: ${prospect.name} remains a ${prospect.position} with ${traitHint} as the primary tells. Cap/value frame ~$${prospect.capHitM}M if projected. Risk is sample size at the next level, not the tool set. ${close}`,
     `AI scout merge (${agents.join(" + ")}): tape confirms ${traitHint}. Rank context #${prospect.rank} on the ${sportId} board. Projection holds if the hit/decision layer keeps pace with the athletic base. ${close}`,
     `Board note ${now.toISOString().slice(0, 10)}: ${prospect.name} — ${prospect.height}, ${prospect.weight} lbs — still projects as a developmental ${prospect.position}. Keep ${traitHint} on the watch list through the next competitive block. ${close}`,

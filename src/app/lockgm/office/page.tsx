@@ -2,7 +2,7 @@ import { GmOffice } from "../components/gm-office";
 import { getLockgmContent } from "@/lib/lockgm-content";
 
 export const metadata = {
-  title: "GM office — LockGM",
+  title: "GM office — LockedGM",
   description:
     "Professional Shadow GM office: needs, assets, decision log, and war-room links.",
 };

@@ -1,5 +1,5 @@
 /**
- * LockGM Classic Matchup — 1985 playoff bracket re-sim.
+ * LockedGM Classic Matchup — 1985 playoff bracket re-sim.
  * Pre–wild-card four-team field; trademark-safe historical experiment.
  */
 import type { ClassicTeam, GameResult } from "./types";

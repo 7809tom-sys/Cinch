@@ -61,4 +61,4 @@ assert.deepEqual(
   "referral cookie round trip must preserve only attribution token data",
 );
 
-console.log("LockGM invite assertions passed.");
+console.log("LockedGM invite assertions passed.");

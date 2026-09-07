@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import type { HighlightKind } from "@/lib/lockgm/strat-sim";
 
 /**
- * ~5s CSS/canvas highlight snippet — LockGM original animation (no MLB video).
+ * ~5s CSS/canvas highlight snippet — LockedGM original animation (no MLB video).
  */
 export function HighlightReel({
   kind,
@@ -112,7 +112,7 @@ export function HighlightReel({
   return (
     <div className="lg-highlight-wrap border border-[color:var(--lg-accent)] bg-black/40 p-2">
       <p className="mb-2 text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
-        Highlight · ~5s LockGM replay
+        Highlight · ~5s LockedGM replay
       </p>
       <canvas
         ref={canvasRef}

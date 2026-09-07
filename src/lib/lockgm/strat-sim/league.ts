@@ -52,7 +52,7 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
   const positions = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"] as const;
   const used = new Set<string>();
   for (const pos of positions) {
-    // Prefer LockGM-eligible gloves only; DH does not grant field eligibility.
+    // Prefer LockedGM-eligible gloves only; DH does not grant field eligibility.
     const candidates = team.players
       .filter(
         (p) =>
@@ -125,7 +125,7 @@ export function createClassicLeague(seed = 1): LeagueState {
 
   return {
     id: `lg-classic-${seed}`,
-    name: "LockGM Classic League",
+    name: "LockedGM Classic League",
     salaryCap: DEFAULT_SALARY_CAP,
     rosterSize: ROSTER_SIZE,
     slots,

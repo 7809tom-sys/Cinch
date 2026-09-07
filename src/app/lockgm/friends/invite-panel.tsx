@@ -57,8 +57,8 @@ export function InvitePanel({
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Join me on LockGM",
-          text: "Join me on LockGM as a fellow GM.",
+          title: "Join me on LockedGM",
+          text: "Join me on LockedGM as a fellow GM.",
           url: invite.link,
         });
       } else {
@@ -174,13 +174,13 @@ export function InvitePanel({
           <Metric label="Invite cap" value={100} />
         </dl>
         <p className="mt-6 text-sm leading-relaxed text-[color:var(--lg-mute)]">
-          Pending is a count only. LockGM never shows you an invitee&apos;s
+          Pending is a count only. LockedGM never shows you an invitee&apos;s
           email, legal name, or private account details.
         </p>
         <p className="mt-4 border-t border-[color:var(--lg-line)] pt-4 text-xs leading-relaxed text-[color:var(--lg-mute)]">
           League invites are the next durable step: the same flow can carry a
           league ID once league membership primitives are wired. Until then,
-          this is a friend invite to LockGM, not a claim on a contest roster.
+          this is a friend invite to LockedGM, not a claim on a contest roster.
         </p>
       </div>
     </section>

@@ -26,7 +26,7 @@ export default async function LockgmInviteLandingPage({
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)] sm:text-lg">
           GM <strong className="text-[color:var(--lg-text)]">{invite.ownerGmId}</strong>{" "}
-          shared a LockGM invite. Create your own public GM identity, compare
+          shared a LockedGM invite. Create your own public GM identity, compare
           scouting notes, and join future leagues without sharing personal
           contact details.
         </p>
@@ -41,7 +41,7 @@ export default async function LockgmInviteLandingPage({
             href="/lockgm"
             className="inline-flex min-h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
           >
-            Explore LockGM first
+            Explore LockedGM first
           </Link>
         </div>
         <p className="mt-8 border-t border-[color:var(--lg-line)] pt-5 text-xs leading-relaxed text-[color:var(--lg-mute)]">

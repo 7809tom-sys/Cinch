@@ -291,7 +291,7 @@ export function ClassicMatchup() {
       {mode === "matchup" ? (
       <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
         <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-          LockGM Classic Matchup · LockGM grades & dice
+          LockedGM Classic Matchup · LockedGM grades & dice
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <TeamPick
@@ -414,7 +414,7 @@ export function ClassicMatchup() {
               {result.summary}
             </h2>
             <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-              Seed {result.seed} · LockGM dice engine · platoon + defense live
+              Seed {result.seed} · LockedGM dice engine · platoon + defense live
             </p>
             <LineScore result={result} />
             <div className="mt-8 grid gap-8 lg:grid-cols-2">
@@ -517,7 +517,7 @@ function Playoffs1985Desk({
   return (
     <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
       <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-        LockGM Classic Matchup · 1985 Playoffs
+        LockedGM Classic Matchup · 1985 Playoffs
       </p>
       <h2 className="mt-2 lockgm-display text-2xl font-extrabold sm:text-3xl">
         Re-sim the four-team October
@@ -525,7 +525,7 @@ function Playoffs1985Desk({
       <p className="mt-2 max-w-2xl text-sm text-[color:var(--lg-mute)]">
         Pre–wild-card field: Toronto vs Kansas City (ALCS), St. Louis vs Los
         Angeles (NLCS), then World Series. Best-of-7 with 2-3-2 home field.
-        Historical team names for experiment — LockGM ratings only.
+        Historical team names for experiment — LockedGM ratings only.
       </p>
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -905,7 +905,7 @@ function ManagerDesk({
           Fielders
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--lg-mute)]">
-          Eligible gloves only have LockGM positional ratings. Injury OOP
+          Eligible gloves only have LockedGM positional ratings. Injury OOP
           fill-ins are allowed but score real bad (errors + range collapse).
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2">

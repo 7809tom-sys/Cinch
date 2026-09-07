@@ -11,8 +11,8 @@ import { getMasterSession } from "@/lib/master-auth";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "Marketing analytics — LockGM",
-  description: "Privacy-safe LockGM acquisition and funnel analytics.",
+  title: "Marketing analytics — LockedGM",
+  description: "Privacy-safe LockedGM acquisition and funnel analytics.",
 };
 
 function first(value: string | string[] | undefined): string {

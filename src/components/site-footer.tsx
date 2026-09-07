@@ -13,7 +13,7 @@ export function SiteFooter() {
             {CINCH_SEED_DOMAIN}
           </a>
           <Link href="/lockgm" className="hover:text-brand-deep">
-            LockGM
+            LockedGM
           </Link>
           <Link href="/browse" className="hover:text-brand-deep">
             Browse

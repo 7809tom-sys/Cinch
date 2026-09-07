@@ -1,5 +1,5 @@
 /**
- * Guard: LockGM baseball ships a Top 200 MiLB scouting board.
+ * Guard: LockedGM baseball ships a Top 200 MiLB scouting board.
  * Run: npx tsx scripts/assert-lockgm-milb-top200.ts
  */
 import {
@@ -50,7 +50,7 @@ assert(
 );
 assert(
   kit.prospects[0]?.name === MILB_TOP_200[0]?.name,
-  "kit board starts with LockGM #1",
+  "kit board starts with LockedGM #1",
 );
 assert(
   /Jesús Made|Leo De Vries|Eli Willits|Josue De Paula|Kade Anderson/i.test(
@@ -79,7 +79,7 @@ assert(
 );
 
 if (process.exitCode) {
-  console.error("\nLockGM MiLB Top 200 guards failed.");
+  console.error("\nLockedGM MiLB Top 200 guards failed.");
   process.exit(process.exitCode);
 }
-console.log("\nAll LockGM MiLB Top 200 guards passed.");
+console.log("\nAll LockedGM MiLB Top 200 guards passed.");
