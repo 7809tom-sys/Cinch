@@ -34,6 +34,48 @@ export function generateLockgmGmId(): string {
   return `GM-${randomBytes(5).toString("hex").toUpperCase()}`;
 }
 
+/** Handle portion accepted for a user-chosen GM ID (after the "GM-" prefix). */
+const GM_ID_HANDLE_RE = /^[A-Z0-9]{3,20}$/;
+
+/** Handles that would be confusing or impersonate LockedGM/Cinch staff. */
+const RESERVED_LOCKGM_HANDLES = new Set([
+  "ADMIN",
+  "SUPPORT",
+  "STAFF",
+  "OWNER",
+  "ROOT",
+  "SYSTEM",
+  "MODERATOR",
+  "MOD",
+  "LOCKGM",
+  "CINCH",
+  "CINCHSEED",
+  "TEAM",
+  "OFFICIAL",
+  "HELP",
+]);
+
+/**
+ * Turn free-typed input ("Shadow-42", "gm-shadow42", "  shadow42 ") into the
+ * canonical "GM-XXXX" form this system stores and validates against, or
+ * null if it can't be made valid. A leading "GM-" is optional on input;
+ * separators/spaces are stripped so the stored ID always matches
+ * `isValidLockgmGmId`.
+ */
+export function normalizeLockgmGmId(raw: string): string | null {
+  const upper = raw.trim().toUpperCase();
+  const withoutPrefix = upper.startsWith("GM-") ? upper.slice(3) : upper;
+  const handle = withoutPrefix.replace(/[^A-Z0-9]/g, "");
+  if (!GM_ID_HANDLE_RE.test(handle)) return null;
+  return `GM-${handle}`;
+}
+
+/** True when a (normalized) GM ID's handle is reserved for staff/product use. */
+export function isReservedLockgmGmId(gmId: string): boolean {
+  const handle = gmId.trim().toUpperCase().replace(/^GM-/, "");
+  return RESERVED_LOCKGM_HANDLES.has(handle);
+}
+
 export function createLockgmProfile(
   displayName: string,
   now = new Date().toISOString(),
@@ -48,8 +90,13 @@ export function createLockgmProfile(
   };
 }
 
+/**
+ * Auto-generated IDs are 10 hex chars; user-chosen IDs (see
+ * `normalizeLockgmGmId`) are 3-20 letters/numbers. Both shapes are valid
+ * "stable public GM ID"s once assigned to a profile.
+ */
 export function isValidLockgmGmId(gmId: string): boolean {
-  return /^GM-[A-F0-9]{10}$/.test(gmId);
+  return /^GM-[A-Z0-9]{3,20}$/.test(gmId);
 }
 
 export function isLockgmProfileComplete(profile: LockgmProfile): boolean {

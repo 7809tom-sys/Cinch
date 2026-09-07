@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { SPORTS } from "@/lib/lockgm/sports";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 import { getLockgmContent } from "@/lib/lockgm-content";
 
 export default async function LockgmHomePage() {
-  const content = await getLockgmContent();
+  const [content, customer] = await Promise.all([
+    getLockgmContent(),
+    getCurrentCustomer(),
+  ]);
 
   return (
     <main>
@@ -40,6 +44,17 @@ export default async function LockgmHomePage() {
               {content.hero.secondaryCtaLabel}
             </Link>
           </div>
+          {customer ? null : (
+            <p className="lg-rise-3 mt-5 text-sm text-[color:var(--lg-mute)]">
+              New here?{" "}
+              <Link
+                href="/login"
+                className="font-bold text-[color:var(--lg-accent)] hover:underline"
+              >
+                Sign in or create your GM login
+              </Link>
+            </p>
+          )}
         </div>
       </section>
 

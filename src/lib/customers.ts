@@ -226,6 +226,25 @@ export async function upsertCustomer(input: {
   return account;
 }
 
+/**
+ * True when another account already has this (normalized) GM ID. Used to
+ * enforce uniqueness before a user-chosen GM ID is saved — auto-generated
+ * IDs are random enough not to need this, but human-picked handles can
+ * collide.
+ */
+export async function isLockgmGmIdTaken(
+  gmId: string,
+  excludeCustomerId?: string,
+): Promise<boolean> {
+  const store = await ensureCustomers();
+  const normalized = gmId.trim().toUpperCase();
+  return store.accounts.some(
+    (account) =>
+      account.id !== excludeCustomerId &&
+      account.lockgmProfile?.gmId?.trim().toUpperCase() === normalized,
+  );
+}
+
 export async function updateLockgmProfile(
   customerId: string,
   input: {
@@ -233,6 +252,12 @@ export async function updateLockgmProfile(
     legalName: string;
     attributionConsent: boolean;
     attribution: Omit<LockgmAttribution, "capturedAt">;
+    /**
+     * Pre-validated + normalized "GM-XXXX" id (see `normalizeLockgmGmId`,
+     * reserved-handle, and uniqueness checks in the caller). Omit to keep
+     * the profile's current GM ID unchanged.
+     */
+    gmId?: string;
   },
 ): Promise<CustomerAccount | null> {
   const store = await ensureCustomers();
@@ -249,6 +274,7 @@ export async function updateLockgmProfile(
 
   account.lockgmProfile = {
     ...profile,
+    gmId: input.gmId ?? profile.gmId,
     displayName: input.displayName.trim(),
     legalName: input.legalName.trim().slice(0, 160),
     attribution:
