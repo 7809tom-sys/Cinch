@@ -33,9 +33,18 @@ import {
 } from "@/lib/lockgm/local-ads";
 import { resolveLockgmPublicGmId } from "@/lib/lockgm/invites";
 import type { ManagerCard } from "@/lib/lockgm/strat-sim";
+import {
+  getMlb2026LeagueBoard,
+  type Mlb2026LeagueBoard,
+} from "@/lib/lockgm/mlb-2026-league";
 
-type OkRoom = { ok: true; room: PublicLiveMatchup };
+type OkRoom = { ok: true; room: PublicLiveMatchup; league: Mlb2026LeagueBoard };
 type Err = { ok: false; error: string };
+
+async function withLeague(room: PublicLiveMatchup): Promise<OkRoom> {
+  const league = await getMlb2026LeagueBoard();
+  return { ok: true, room, league };
+}
 
 async function requireGm(): Promise<
   | {
@@ -80,7 +89,7 @@ export async function createLiveMatchupAction(input?: {
     });
     revalidatePath("/lockgm/live");
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -112,7 +121,7 @@ export async function refreshLiveMatchupAction(
 ): Promise<OkRoom | Err> {
   const room = await asPublic(roomId);
   if (!room) return { ok: false, error: "Matchup not found." };
-  return { ok: true, room };
+  return withLeague(room);
 }
 
 export async function claimLiveMatchupAction(
@@ -129,7 +138,7 @@ export async function claimLiveMatchupAction(
     revalidatePath("/lockgm/live");
     revalidatePath(`/lockgm/live/${room.id}`);
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -149,10 +158,12 @@ export async function pickTeamAction(
       roomId,
       gmId: identity.gmId,
       teamId,
+      displayName: identity.displayName,
     });
     revalidatePath(`/lockgm/live/${room.id}`);
+    revalidatePath("/lockgm/league");
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -175,7 +186,7 @@ export async function setReadyAction(
     });
     revalidatePath(`/lockgm/live/${room.id}`);
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -199,7 +210,7 @@ export async function scheduleMatchupAction(
     revalidatePath(`/lockgm/live/${room.id}`);
     revalidatePath("/lockgm/live");
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -223,7 +234,7 @@ export async function lockCardAction(
     revalidatePath(`/lockgm/live/${room.id}`);
     revalidatePath("/lockgm/live");
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -242,7 +253,7 @@ export async function unlockCardAction(roomId: string): Promise<OkRoom | Err> {
     });
     revalidatePath(`/lockgm/live/${room.id}`);
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -262,7 +273,7 @@ export async function startMatchupAction(roomId: string): Promise<OkRoom | Err> 
     revalidatePath(`/lockgm/live/${room.id}`);
     revalidatePath("/lockgm/live");
     const ads = await listActiveLocalAds(room.market);
-    return { ok: true, room: publicRoomView(room, ads) };
+    return withLeague(publicRoomView(room, ads));
   } catch (error) {
     return {
       ok: false,
@@ -326,9 +337,11 @@ export async function inviteMemberByGmIdAction(
     });
     revalidatePath(`/lockgm/live/${room.id}`);
     const ads = await listActiveLocalAds(room.market);
+    const league = await getMlb2026LeagueBoard();
     return {
       ok: true,
       room: publicRoomView(room, ads),
+      league,
       inviteLink: matchupInviteLink(invite.code),
       inviteeGmId,
       inviteeDisplayName,

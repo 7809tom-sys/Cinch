@@ -7,6 +7,7 @@ import {
   finalizeLiveMatchupIfComplete,
   getPublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup";
+import { getMlb2026LeagueBoard } from "@/lib/lockgm/mlb-2026-league";
 import { LiveMatchupRoomBoard } from "../live-board";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export default async function LockgmLiveRoomPage({
   if (!room) notFound();
 
   const gmId = resolveLockgmPublicGmId(customer);
+  const league = await getMlb2026LeagueBoard();
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8">
@@ -48,7 +50,7 @@ export default async function LockgmLiveRoomPage({
           ← All live rooms
         </Link>
       </p>
-      <LiveMatchupRoomBoard gmId={gmId} initialRoom={room} />
+      <LiveMatchupRoomBoard gmId={gmId} initialRoom={room} initialLeague={league} />
     </main>
   );
 }
