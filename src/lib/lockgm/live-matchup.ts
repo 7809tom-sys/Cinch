@@ -598,12 +598,13 @@ export async function getMatchupInviteLanding(code: string): Promise<{
   roomName: string;
   reservedGmId: string | null;
   side: MatchupSide | null;
+  status: LiveMatchupRoom["status"];
 } | null> {
   const store = await readStore();
   const invite = findInvite(store, code);
   if (!invite || invite.revokedAt) return null;
   const room = findRoom(store, invite.roomId);
-  if (!room || room.status === "final") return null;
+  if (!room) return null;
   return {
     code: invite.code,
     roomId: room.id,
@@ -612,6 +613,7 @@ export async function getMatchupInviteLanding(code: string): Promise<{
     roomName: room.name,
     reservedGmId: invite.reservedGmId,
     side: invite.side,
+    status: room.status,
   };
 }
 
