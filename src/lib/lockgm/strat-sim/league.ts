@@ -401,19 +401,20 @@ export function simulateLeaguePlayoffs(
   let championId: string | null = semifinalA.championId;
 
   if (field.length >= 4) {
-    semifinalB = simulateBestOf(
+    const semiB = simulateBestOf(
       pack(field[1]!.teamId),
       pack(field[2]!.teamId),
       seed + 22,
       PLAYOFF_WINS_NEEDED,
     );
-    if (semifinalA.championId && semifinalB.championId) {
+    semifinalB = semiB;
+    if (semifinalA.championId && semiB.championId) {
       const aIdx = field.findIndex((s) => s.teamId === semifinalA.championId);
-      const bIdx = field.findIndex((s) => s.teamId === semifinalB.championId);
+      const bIdx = field.findIndex((s) => s.teamId === semiB.championId);
       const higherId =
-        aIdx <= bIdx ? semifinalA.championId : semifinalB.championId;
+        aIdx <= bIdx ? semifinalA.championId : semiB.championId;
       const lowerId =
-        aIdx <= bIdx ? semifinalB.championId : semifinalA.championId;
+        aIdx <= bIdx ? semiB.championId : semifinalA.championId;
       championship = simulateBestOf(
         pack(higherId),
         pack(lowerId),
@@ -425,16 +426,17 @@ export function simulateLeaguePlayoffs(
       championId = null;
     }
   } else if (field.length === 3) {
-    semifinalB = simulateBestOf(
+    const semiB = simulateBestOf(
       pack(field[1]!.teamId),
       pack(field[2]!.teamId),
       seed + 22,
       PLAYOFF_WINS_NEEDED,
     );
-    if (semifinalB.championId) {
+    semifinalB = semiB;
+    if (semiB.championId) {
       championship = simulateBestOf(
         pack(field[0]!.teamId),
-        pack(semifinalB.championId),
+        pack(semiB.championId),
         seed + 33,
         PLAYOFF_WINS_NEEDED,
       );
