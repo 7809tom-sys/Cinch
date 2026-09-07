@@ -3,7 +3,7 @@ import { MyReportsDesk } from "../components/my-reports-desk";
 import { getLockgmContent } from "@/lib/lockgm-content";
 
 export const metadata = {
-  title: "My reports — LockGM",
+  title: "My reports — LockedGM",
   description:
     "Assign AI scouts, type your own reports, number them to your customer ID, and lock them for draft day.",
 };

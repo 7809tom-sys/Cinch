@@ -468,7 +468,7 @@ export function ClassicMatchup() {
               {result.summary}
             </h2>
             <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
-              Seed {result.seed} · LockGM dice engine · platoon + defense live
+              Seed {result.seed} · LockedGM dice engine · platoon + defense live
             </p>
             <LineScore result={result} />
             <div className="mt-8 grid gap-8 lg:grid-cols-2">
@@ -968,7 +968,7 @@ function ManagerDesk({
           Fielders
         </p>
         <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--lg-mute)]">
-          Eligible gloves only have LockGM positional ratings. Injury OOP
+          Eligible gloves only have LockedGM positional ratings. Injury OOP
           fill-ins are allowed but score real bad (errors + range collapse).
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2">

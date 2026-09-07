@@ -1,5 +1,5 @@
 /**
- * Guards the LockGM privacy-safe analytics contract.
+ * Guards the LockedGM privacy-safe analytics contract.
  * Run: npx tsx scripts/assert-lockgm-analytics.ts
  */
 import {
@@ -76,7 +76,7 @@ assert(snapshot.acquisition[0]?.visitors === 1, "acquisition is aggregate-only")
 assert(snapshot.acquisition[0]?.signupsStarted === 1, "signup starts are counted");
 
 if (process.exitCode) {
-  console.error("\nLockGM analytics guards failed.");
+  console.error("\nLockedGM analytics guards failed.");
   process.exit(process.exitCode);
 }
-console.log("\nAll LockGM analytics guards passed.");
+console.log("\nAll LockedGM analytics guards passed.");

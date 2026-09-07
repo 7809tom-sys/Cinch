@@ -2,7 +2,7 @@
  * Cloudflare DNS zone management — separate from the Registrar API in
  * cloudflare-registrar.ts (that one buys domains; this one edits DNS
  * records for a domain whose nameservers already point at Cloudflare,
- * which is exactly the LockGM domain situation).
+ * which is exactly the LockedGM domain situation).
  *
  * Critical Cloudflare gotcha: a record must be "DNS only" (proxied:
  * false) for Vercel to see the real target. A "Proxied" (orange-cloud)

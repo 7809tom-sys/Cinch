@@ -6,8 +6,8 @@ import { isLockgmProfileComplete } from "@/lib/lockgm/identity";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "GM directory — LockGM",
-  description: "Authenticated LockGM administration for GM identity records.",
+  title: "GM directory — LockedGM",
+  description: "Authenticated LockedGM administration for GM identity records.",
 };
 
 function attributionLabel(
@@ -133,13 +133,13 @@ export default async function LockgmAdminPage() {
         {customers.length === 0 ? (
           <p className="py-8 text-sm text-[color:var(--lg-mute)]">
             No Cinch accounts yet. A person can sign up at{" "}
-            <code>/login</code>, then open their LockGM profile.
+            <code>/login</code>, then open their LockedGM profile.
           </p>
         ) : null}
       </div>
 
       <p className="mt-8 text-xs leading-relaxed text-[color:var(--lg-mute)]">
-        Privacy boundary: public LockGM views should use only display name and
+        Privacy boundary: public LockedGM views should use only display name and
         GM ID. Never put legal names, email addresses, attribution, or
         government identity data into public résumé or draft-credit payloads.
       </p>

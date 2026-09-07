@@ -31,7 +31,7 @@ export type DefenseContext = {
   position?: FieldPos;
   /**
    * True when the involved fielder is out-of-position / unrated at the spot.
-   * Inflates errors and suppresses range on the LockGM chart.
+   * Inflates errors and suppresses range on the LockedGM chart.
    */
   outOfPosition?: boolean;
 };
@@ -42,10 +42,10 @@ export type ResolveMeta = {
 };
 
 /**
- * LockGM-original AB resolution.
+ * LockedGM-original AB resolution.
  *
  * Feel: dice decide whether the at-bat leans batter- or pitcher-controlled
- * (chart ownership), then a secondary roll picks an outcome from LockGM-authored
+ * (chart ownership), then a secondary roll picks an outcome from LockedGM-authored
  * weight tables. Defense ratings can convert soft hits into outs (or inflate errors).
  */
 export function resolveAtBat(
@@ -238,7 +238,7 @@ export function radioCallFor(
   }
   switch (outcome) {
     case "HR":
-      return `Swing and a high drive… back… back… GONE! ${batter} takes ${pitcher} deep — a LockGM classic blast!`;
+      return `Swing and a high drive… back… back… GONE! ${batter} takes ${pitcher} deep — a LockedGM classic blast!`;
     case "3B":
       return `${batter} drills one into the gap — he's flying, and he'll stretch it into a triple!`;
     case "2B":

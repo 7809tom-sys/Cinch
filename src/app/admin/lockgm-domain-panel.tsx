@@ -37,10 +37,10 @@ export function LockgmDomainPanel({
   return (
     <div className="border-t border-brand/15 pt-6">
       <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
-        LockGM&apos;s own domain
+        LockedGM&apos;s own domain
       </h3>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Point a domain you already own (e.g. lockgm.com) straight at LockGM —
+        Point a domain you already own (e.g. lockgm.com) straight at LockedGM —
         a separate product from customer Seeds. DNS is checked live; going
         fully live also needs two manual steps below.
       </p>
@@ -204,7 +204,7 @@ export function LockgmDomainPanel({
                 <code className="rounded bg-black/5 px-1 py-0.5">
                   LOCKGM_DOMAIN={current.hostname}
                 </code>{" "}
-                and redeploy — this tells the app to serve LockGM at that
+                and redeploy — this tells the app to serve LockedGM at that
                 domain&apos;s root instead of cinchseed.com/lockgm.
               </li>
             </ol>

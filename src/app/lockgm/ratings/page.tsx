@@ -3,9 +3,9 @@ import Link from "next/link";
 import { RatingsClassroom } from "../components/ratings-classroom";
 
 export const metadata: Metadata = {
-  title: "LockGM ratings classroom — What do ratings mean?",
+  title: "LockedGM ratings classroom — What do ratings mean?",
   description:
-    "Teachable LockGM Shadow GM grade definitions for baseball Classic Matchup (1–20) — not third-party card charts. Includes career-point cap design.",
+    "Teachable LockedGM Shadow GM grade definitions for baseball Classic Matchup (1–20) — not third-party card charts. Includes career-point cap design.",
 };
 
 export default function LockgmRatingsPage() {
@@ -15,11 +15,11 @@ export default function LockgmRatingsPage() {
         CLASSROOM
       </p>
       <h1 className="mt-3 lockgm-display text-4xl font-extrabold text-[color:var(--lg-text)] sm:text-5xl">
-        What do LockGM ratings mean?
+        What do LockedGM ratings mean?
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Plain-English LockGM grades for Shadow GMs — baseball first, with
-        multi-sport grade books to follow. Every number here is a LockGM product
+        Plain-English LockedGM grades for Shadow GMs — baseball first, with
+        multi-sport grade books to follow. Every number here is a LockedGM product
         grade for league play.
       </p>
       <p className="mt-3 text-sm text-[color:var(--lg-mute)]">

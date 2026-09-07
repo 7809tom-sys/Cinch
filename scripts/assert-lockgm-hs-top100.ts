@@ -1,5 +1,5 @@
 /**
- * Guard: LockGM basketball ships a Top 100 HS scouting board.
+ * Guard: LockedGM basketball ships a Top 100 HS scouting board.
  * Run: npx tsx scripts/assert-lockgm-hs-top100.ts
  */
 import {
@@ -46,7 +46,7 @@ assert(
 );
 assert(
   kit.prospects[0]?.name === HS_BASKETBALL_TOP_100[0]?.name,
-  "kit board starts with LockGM #1",
+  "kit board starts with LockedGM #1",
 );
 assert(
   /Beckham Black|Marcus Spears/i.test(
@@ -67,7 +67,7 @@ assert(
 );
 
 if (process.exitCode) {
-  console.error("\nLockGM HS Top 100 guards failed.");
+  console.error("\nLockedGM HS Top 100 guards failed.");
   process.exit(process.exitCode);
 }
-console.log("\nAll LockGM HS Top 100 guards passed.");
+console.log("\nAll LockedGM HS Top 100 guards passed.");

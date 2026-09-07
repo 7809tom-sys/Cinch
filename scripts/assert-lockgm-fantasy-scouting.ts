@@ -60,7 +60,7 @@ async function main() {
   );
 
   console.log(
-    `LockGM fantasy scouting assertions passed: ${snapshot.draftCards.length} draft cards, ${snapshot.fullReports.length} full reports.`,
+    `LockedGM fantasy scouting assertions passed: ${snapshot.draftCards.length} draft cards, ${snapshot.fullReports.length} full reports.`,
   );
 }
 

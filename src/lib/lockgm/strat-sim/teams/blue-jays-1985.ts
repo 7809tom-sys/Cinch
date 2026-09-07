@@ -147,7 +147,7 @@ const players: LoosePlayer[] = [
   },
 ];
 
-/** 1985 Toronto Blue Jays — AL East champs (public roster grounding; LockGM grades). */
+/** 1985 Toronto Blue Jays — AL East champs (public roster grounding; LockedGM grades). */
 export const BLUE_JAYS_1985_LOOSE: LooseTeam = {
   id: "blue-jays-1985",
   year: 1985,
@@ -155,7 +155,7 @@ export const BLUE_JAYS_1985_LOOSE: LooseTeam = {
   nickname: "Blue Jays",
   abbrev: "TOR '85",
   blurb:
-    "AL East champs with Bell, Barfield, Moseby, and Stieb — LockGM 1985 playoff experiment pack.",
+    "AL East champs with Bell, Barfield, Moseby, and Stieb — LockedGM 1985 playoff experiment pack.",
   salaryCap: 92,
   lineup: [
     "tor85-garcia",

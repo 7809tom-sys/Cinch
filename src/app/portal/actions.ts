@@ -120,7 +120,7 @@ export async function signUpCustomerAction(formData: FormData) {
   await establishCustomerSession(result.customer.id);
   // Credit only after the account exists. The invite primitive validates the
   // code, blocks self-referral, stores source/campaign, and consumes the
-  // HttpOnly referral cookie. The merged LockGM identity branch can also
+  // HttpOnly referral cookie. The merged LockedGM identity branch can also
   // persist the returned source/campaign onto its profile attribution.
   const referral = await creditCapturedLockgmReferral({
     inviteeGmId: resolveLockgmPublicGmId(result.customer),

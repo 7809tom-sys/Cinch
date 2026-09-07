@@ -1,4 +1,4 @@
-# LockGM improvement suggestions
+# LockedGM improvement suggestions
 
 Product research snapshot and prioritized suggestions for Shadow GM draft & scouting at `/lockgm`.
 
@@ -8,7 +8,7 @@ Product research snapshot and prioritized suggestions for Shadow GM draft & scou
 
 ## Current-state snapshot (main)
 
-LockGM is a multi-sport Shadow GM war room under `src/app/lockgm/` with shared chrome, a sport switcher, and tools for reports, draft day, budget/trades, scouting, and pricing.
+LockedGM is a multi-sport Shadow GM war room under `src/app/lockgm/` with shared chrome, a sport switcher, and tools for reports, draft day, budget/trades, scouting, and pricing.
 
 | Area | What exists today |
 | --- | --- |

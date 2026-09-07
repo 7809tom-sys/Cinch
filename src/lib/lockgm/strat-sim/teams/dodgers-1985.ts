@@ -147,7 +147,7 @@ const players: LoosePlayer[] = [
   },
 ];
 
-/** 1985 Los Angeles Dodgers — NL West champs (public roster grounding; LockGM grades). */
+/** 1985 Los Angeles Dodgers — NL West champs (public roster grounding; LockedGM grades). */
 export const DODGERS_1985_LOOSE: LooseTeam = {
   id: "dodgers-1985",
   year: 1985,
@@ -155,7 +155,7 @@ export const DODGERS_1985_LOOSE: LooseTeam = {
   nickname: "Dodgers",
   abbrev: "LAD '85",
   blurb:
-    "Guerrero, Hershiser, Fernando — LockGM pack for the 1985 NL West champions.",
+    "Guerrero, Hershiser, Fernando — LockedGM pack for the 1985 NL West champions.",
   salaryCap: 92,
   lineup: [
     "lad85-sax",

@@ -1,7 +1,7 @@
 /**
- * LockGM position eligibility + out-of-position (OOP) defense penalties.
+ * LockedGM position eligibility + out-of-position (OOP) defense penalties.
  *
- * A player is eligible at a field spot only when their LockGM pack lists that
+ * A player is eligible at a field spot only when their LockedGM pack lists that
  * position (playing-time / rating threshold). No listing = unrated = ineligible.
  * Forced injury fill-ins still sim, but score real bad for the glove.
  */
@@ -21,7 +21,7 @@ export const FIELD_POSITIONS: FieldPos[] = [
 ];
 
 /**
- * Effective LockGM defense grade when a player is forced into an unrated spot.
+ * Effective LockedGM defense grade when a player is forced into an unrated spot.
  * Floor of the 1–20 scale — errors spike, range collapses, no web gems.
  */
 export const OOP_DEFENSE_RATING = 1;
@@ -30,7 +30,7 @@ export const OOP_DEFENSE_RATING = 1;
 export const OOP_ERROR_MULT = 2.75;
 
 /**
- * Field positions the player has a LockGM rating / experience flag for.
+ * Field positions the player has a LockedGM rating / experience flag for.
  * DH and P do not grant field eligibility.
  */
 export function eligibleFieldPositions(player: Player): FieldPos[] {
@@ -43,7 +43,7 @@ export function eligibleFieldPositions(player: Player): FieldPos[] {
   );
 }
 
-/** True when the player has a LockGM positional rating at `pos`. */
+/** True when the player has a LockedGM positional rating at `pos`. */
 export function isEligibleAt(player: Player, pos: FieldPos): boolean {
   if (pos === "DH" || pos === "P") return player.positions.includes(pos);
   return eligibleFieldPositions(player).includes(pos);
@@ -65,7 +65,7 @@ export function eligibilityBadge(player: Player): string {
 
 /**
  * Effective glove grade at an assigned spot.
- * Eligible → published LockGM defense; OOP / unrated → severe floor.
+ * Eligible → published LockedGM defense; OOP / unrated → severe floor.
  */
 export function effectiveDefenseAt(player: Player, pos: FieldPos): number {
   if (!player.batter) return OOP_DEFENSE_RATING;

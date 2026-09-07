@@ -1,5 +1,5 @@
 /**
- * Guards the LockGM identity foundation.
+ * Guards the LockedGM identity foundation.
  * Run: npx tsx scripts/assert-lockgm-identity.ts
  */
 import {
@@ -40,7 +40,7 @@ assert(!("email" in credit), "future credits do not copy account email");
 assert(!("legalName" in credit), "future credits do not copy private legal name");
 
 if (process.exitCode) {
-  console.error("\nLockGM identity guards failed.");
+  console.error("\nLockedGM identity guards failed.");
   process.exit(process.exitCode);
 }
-console.log("\nAll LockGM identity guards passed.");
+console.log("\nAll LockedGM identity guards passed.");

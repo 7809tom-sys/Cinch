@@ -118,7 +118,7 @@ export function LockgmChrome({
               onClick={close}
               className="lockgm-display text-2xl font-extrabold tracking-tight text-[color:var(--lg-accent)]"
             >
-              LockGM
+              LockedGM
             </Link>
             <p className="text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
               {franchise.abbrev} · {sport.roleTitle}
@@ -131,7 +131,7 @@ export function LockgmChrome({
                 gets the hamburger menu instead of a cramped wrap. */}
             <nav
               className="hidden items-center gap-4 text-sm font-semibold text-[color:var(--lg-mute)] xl:flex"
-              aria-label="LockGM tools"
+              aria-label="LockedGM tools"
             >
               {NAV.map((item) => (
                 <Link
@@ -189,7 +189,7 @@ export function LockgmChrome({
             onClick={close}
           />
           <nav
-            aria-label="LockGM mobile"
+            aria-label="LockedGM mobile"
             className={`absolute inset-x-0 top-full z-50 origin-top border-b border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-5 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.5)] transition-[opacity,transform] duration-200 sm:px-8 ${
               open
                 ? "translate-y-0 opacity-100"
@@ -236,7 +236,7 @@ export function LockgmChrome({
       <footer className="border-t border-[color:var(--lg-line)] px-6 py-8 sm:px-8">
         <div className="mx-auto flex max-w-6xl flex-col justify-between gap-3 text-sm text-[color:var(--lg-mute)] sm:flex-row sm:items-center">
           <p className="lockgm-display text-lg font-bold text-[color:var(--lg-accent)]">
-            LockGM
+            LockedGM
           </p>
           <div className="flex flex-wrap gap-4">
             <Link href="/" className="hover:text-[color:var(--lg-text)]">

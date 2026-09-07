@@ -125,7 +125,7 @@ export function LockgmProfileForm({
         </div>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[color:var(--lg-mute)]">
           Use a name you are comfortable attaching to future reports, draft
-          calls, and achievements. Your GM ID starts out LockGM-generated,
+          calls, and achievements. Your GM ID starts out LockedGM-generated,
           but it&apos;s yours — pick 3-20 letters/numbers to claim a custom
           one (e.g. GM-SHADOW42). It stays stable once saved; changing it
           later won&apos;t update invite links or reports already made under
@@ -166,7 +166,7 @@ export function LockgmProfileForm({
             </span>
           ) : (
             <span className="rounded-full border border-[color:var(--lg-line)] px-2.5 py-1 text-xs font-bold text-[color:var(--lg-mute)]">
-              Email not verified in LockGM
+              Email not verified in LockedGM
             </span>
           )}
         </div>
@@ -184,7 +184,7 @@ export function LockgmProfileForm({
           Optional legal name
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--lg-mute)]">
-          This stays private to your account and authenticated LockGM admins.
+          This stays private to your account and authenticated LockedGM admins.
           It is not shown on public résumés. Do not enter a government ID
           number, Social Security number, date of birth, passport, or identity
           document here.
@@ -208,11 +208,11 @@ export function LockgmProfileForm({
           SOURCE & REFERRAL
         </p>
         <h2 className="mt-2 lockgm-display text-2xl font-bold">
-          How did you find LockGM?
+          How did you find LockedGM?
         </h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--lg-mute)]">
           These fields can be prefilled from campaign links or this browser.
-          LockGM saves them to your account only when you give the consent
+          LockedGM saves them to your account only when you give the consent
           below. Attribution is used for product and referral reporting and is
           not part of your public profile.
         </p>
@@ -278,7 +278,7 @@ export function LockgmProfileForm({
             className="mt-1 size-4 accent-[color:var(--lg-accent)]"
           />
           <span>
-            I agree that LockGM may save this source, campaign, and referral
+            I agree that LockedGM may save this source, campaign, and referral
             attribution to my account. I can remove it by unchecking this box.
           </span>
         </label>
@@ -290,7 +290,7 @@ export function LockgmProfileForm({
           disabled={pending}
           className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)] disabled:opacity-50"
         >
-          {pending ? "Saving profile…" : "Save LockGM profile"}
+          {pending ? "Saving profile…" : "Save LockedGM profile"}
         </button>
         {message ? (
           <p className="text-sm font-semibold text-[color:var(--lg-accent)]" role="status">

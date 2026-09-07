@@ -1,18 +1,18 @@
 /**
- * LockGM ratings classroom — teachable definitions for Shadow GMs.
+ * LockedGM ratings classroom — teachable definitions for Shadow GMs.
  *
- * These are proprietary LockGM product grades for league play.
+ * These are proprietary LockedGM product grades for league play.
  * They are NOT Strat-O-Matic card charts, public consensus lists, or
  * third-party trademarked rating systems.
  *
  * Baseball (Classic Matchup) is defined first. Multi-sport grade books
- * will share the same LockGM naming and classroom shape later.
+ * will share the same LockedGM naming and classroom shape later.
  */
 
 export const LOCKGM_RATING_SCALE = {
   min: 1,
   max: 20,
-  label: "LockGM 1–20",
+  label: "LockedGM 1–20",
 } as const;
 
 export type RatingGroup = "hitter" | "defense" | "pitcher" | "platoon";
@@ -20,7 +20,7 @@ export type RatingGroup = "hitter" | "defense" | "pitcher" | "platoon";
 export type RatingClassroomDef = {
   /** Stable key matching Classic Matchup field names where applicable. */
   id: string;
-  /** Display name — always LockGM-branded. */
+  /** Display name — always LockedGM-branded. */
   name: string;
   group: RatingGroup;
   /** Short classroom definition (one teachable sentence). */
@@ -41,20 +41,20 @@ export type ScaleBand = {
   meaning: string;
 };
 
-/** How LockGM grades work — intro copy for UI and docs. */
+/** How LockedGM grades work — intro copy for UI and docs. */
 export const LOCKGM_GRADES_INTRO = {
-  title: "How LockGM grades work",
+  title: "How LockedGM grades work",
   paragraphs: [
-    "Every talent rating you see in LockGM is a LockGM Shadow GM grade — a proprietary product scale built for league play, Classic Matchup, and classroom teaching.",
-    "These are not Strat-O-Matic card charts, not copied public consensus lists, and not third-party trademarked ratings. When you say “he’s an 18 LockGM power,” you are speaking LockGM language.",
-    "Baseball Classic Matchup uses a LockGM 1–20 scale for hitters, defense, and pitchers. Platoon splits are small bumps (−3…+3 typical) layered on top of the main grades.",
-    "Multi-sport LockGM grade books (football, basketball, and more) will reuse this classroom pattern — same LockGM naming, sport-specific skills — in later releases.",
+    "Every talent rating you see in LockedGM is a LockedGM Shadow GM grade — a proprietary product scale built for league play, Classic Matchup, and classroom teaching.",
+    "These are not Strat-O-Matic card charts, not copied public consensus lists, and not third-party trademarked ratings. When you say “he’s an 18 LockedGM power,” you are speaking LockedGM language.",
+    "Baseball Classic Matchup uses a LockedGM 1–20 scale for hitters, defense, and pitchers. Platoon splits are small bumps (−3…+3 typical) layered on top of the main grades.",
+    "Multi-sport LockedGM grade books (football, basketball, and more) will reuse this classroom pattern — same LockedGM naming, sport-specific skills — in later releases.",
   ],
   trademarkNote:
-    "LockGM ratings · LockGM grades · LockGM Shadow GM grades only. Do not label in-product numbers as Strat-O-Matic or any other third-party chart brand.",
+    "LockedGM ratings · LockedGM grades · LockedGM Shadow GM grades only. Do not label in-product numbers as Strat-O-Matic or any other third-party chart brand.",
 } as const;
 
-/** Teaching bands for the 1–20 LockGM scale. */
+/** Teaching bands for the 1–20 LockedGM scale. */
 export const LOCKGM_SCALE_BANDS: ScaleBand[] = [
   {
     range: "1–5",
@@ -94,7 +94,7 @@ export const LOCKGM_SCALE_BANDS: ScaleBand[] = [
 export const HITTER_RATINGS: RatingClassroomDef[] = [
   {
     id: "contact",
-    name: "LockGM Contact",
+    name: "LockedGM Contact",
     group: "hitter",
     definition:
       "How often the batter puts the ball in play with authority on their chart — the skill of avoiding empty swings and finding hits.",
@@ -108,10 +108,10 @@ export const HITTER_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "power",
-    name: "LockGM Power",
+    name: "LockedGM Power",
     group: "hitter",
     definition:
-      "Extra-base thump — the grade that turns fair contact into doubles and home runs on the LockGM batter chart.",
+      "Extra-base thump — the grade that turns fair contact into doubles and home runs on the LockedGM batter chart.",
     highMeans:
       "More XBH and HR when the batter owns the roll; changes scoreboard math fast.",
     lowMeans:
@@ -122,7 +122,7 @@ export const HITTER_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "eye",
-    name: "LockGM Eye",
+    name: "LockedGM Eye",
     group: "hitter",
     definition:
       "Plate discipline and walk skill — patience that draws free passes and punishes pitchers who miss the zone.",
@@ -136,7 +136,7 @@ export const HITTER_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "speed",
-    name: "LockGM Speed",
+    name: "LockedGM Speed",
     group: "hitter",
     definition:
       "Baserunning and infield pressure — first-to-third range, infield hits, and the threat that stretches singles.",
@@ -153,10 +153,10 @@ export const HITTER_RATINGS: RatingClassroomDef[] = [
 export const DEFENSE_RATINGS: RatingClassroomDef[] = [
   {
     id: "defense",
-    name: "LockGM Defense (glove)",
+    name: "LockedGM Defense (glove)",
     group: "defense",
     definition:
-      "Fielding reliability at the assigned position — converting soft hits into outs and suppressing errors on the LockGM chart. A player is only eligible at positions listed on their LockGM card (playing-time / rating threshold). No listing = unrated = not eligible.",
+      "Fielding reliability at the assigned position — converting soft hits into outs and suppressing errors on the LockedGM chart. A player is only eligible at positions listed on their LockedGM card (playing-time / rating threshold). No listing = unrated = not eligible.",
     highMeans:
       "More soft contact becomes outs; fewer errors that extend innings.",
     lowMeans:
@@ -167,7 +167,7 @@ export const DEFENSE_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "arm",
-    name: "LockGM Arm",
+    name: "LockedGM Arm",
     group: "defense",
     definition:
       "Throwing strength and accuracy — cutting down runners, holding extras, and punishing aggressive baserunners from the outfield or catcher.",
@@ -184,7 +184,7 @@ export const DEFENSE_RATINGS: RatingClassroomDef[] = [
 export const PITCHER_RATINGS: RatingClassroomDef[] = [
   {
     id: "stuff",
-    name: "LockGM Stuff",
+    name: "LockedGM Stuff",
     group: "pitcher",
     definition:
       "Miss-bat quality — velocity, movement, and wipeout pitches that produce strikeouts when the pitcher chart is in control.",
@@ -198,7 +198,7 @@ export const PITCHER_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "control",
-    name: "LockGM Control",
+    name: "LockedGM Control",
     group: "pitcher",
     definition:
       "Strike-throwing and walk prevention — keeping free passes down and staying ahead in counts.",
@@ -212,7 +212,7 @@ export const PITCHER_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "gb",
-    name: "LockGM GB tendency",
+    name: "LockedGM GB tendency",
     group: "pitcher",
     definition:
       "Ground-ball rate on the pitcher chart — how often balls in play stay on the dirt instead of in the air.",
@@ -226,7 +226,7 @@ export const PITCHER_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "stamina",
-    name: "LockGM Stamina",
+    name: "LockedGM Stamina",
     group: "pitcher",
     definition:
       "Pitch-budget endurance — how deep into a game the arm can work before the manager must go to the pen.",
@@ -243,10 +243,10 @@ export const PITCHER_RATINGS: RatingClassroomDef[] = [
 export const PLATOON_RATINGS: RatingClassroomDef[] = [
   {
     id: "platoonVsL",
-    name: "LockGM Platoon vs L",
+    name: "LockedGM Platoon vs L",
     group: "platoon",
     definition:
-      "Handedness edge against left-handed opponents — a small LockGM bump (typically −3 to +3) applied to the matchup.",
+      "Handedness edge against left-handed opponents — a small LockedGM bump (typically −3 to +3) applied to the matchup.",
     highMeans:
       "Positive bump: the player performs better vs LHP (hitters) or LHB (pitchers).",
     lowMeans:
@@ -257,7 +257,7 @@ export const PLATOON_RATINGS: RatingClassroomDef[] = [
   },
   {
     id: "platoonVsR",
-    name: "LockGM Platoon vs R",
+    name: "LockedGM Platoon vs R",
     group: "platoon",
     definition:
       "Handedness edge against right-handed opponents — the mirror bump for the more common RHP/RHB matchups.",
@@ -287,7 +287,7 @@ export const RATING_GROUPS: {
   {
     id: "hitter",
     title: "Hitter grades",
-    blurb: "Offense on the LockGM batter chart — contact through speed.",
+    blurb: "Offense on the LockedGM batter chart — contact through speed.",
     ratings: HITTER_RATINGS,
   },
   {
@@ -299,13 +299,13 @@ export const RATING_GROUPS: {
   {
     id: "pitcher",
     title: "Pitcher grades",
-    blurb: "Stuff, control, grounders, and stamina on the LockGM pitcher chart.",
+    blurb: "Stuff, control, grounders, and stamina on the LockedGM pitcher chart.",
     ratings: PITCHER_RATINGS,
   },
   {
     id: "platoon",
     title: "Platoon splits",
-    blurb: "Small LockGM handedness bumps layered on the main 1–20 grades.",
+    blurb: "Small LockedGM handedness bumps layered on the main 1–20 grades.",
     ratings: PLATOON_RATINGS,
   },
 ];

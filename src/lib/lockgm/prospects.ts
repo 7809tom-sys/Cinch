@@ -236,7 +236,7 @@ export const PROSPECTS: Prospect[] = [
     capHitM: 0,
     reportTeaser: "Blueprint left tackle frame.",
     reportPremium:
-      "Premium length and feet for a junior. Commit profile: SEC/Big Ten battleground. Multi-year track — LockGM pipeline flag for 2028 draft.",
+      "Premium length and feet for a junior. Commit profile: SEC/Big Ten battleground. Multi-year track — LockedGM pipeline flag for 2028 draft.",
     pipelineNote: "Rising junior — earliest pro window 2028–29.",
     traits: ["length", "feet", "upside"],
   },

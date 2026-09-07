@@ -37,7 +37,7 @@ export function generateLockgmGmId(): string {
 /** Handle portion accepted for a user-chosen GM ID (after the "GM-" prefix). */
 const GM_ID_HANDLE_RE = /^[A-Z0-9]{3,20}$/;
 
-/** Handles that would be confusing or impersonate LockGM/Cinch staff. */
+/** Handles that would be confusing or impersonate LockedGM/Cinch staff. */
 const RESERVED_LOCKGM_HANDLES = new Set([
   "ADMIN",
   "SUPPORT",
