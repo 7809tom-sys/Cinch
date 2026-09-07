@@ -128,6 +128,15 @@ const players: LoosePlayer[] = [
     pitcher: { ...pit(16, 15, 11, 9, 0, 1), role: "RP" },
   },
   {
+    id: "mil82-bernard",
+    name: "Dwight Bernard",
+    bats: "R",
+    throws: "R",
+    positions: ["P"],
+    batter: bat(4, 2, 3, 5, 8, 8),
+    pitcher: { ...pit(12, 13, 11, 8, 0, 0), role: "RP" },
+  },
+  {
     id: "mil82-ladd",
     name: "Pete Ladd",
     bats: "R",
@@ -143,7 +152,16 @@ const players: LoosePlayer[] = [
     throws: "L",
     positions: ["P"],
     batter: bat(4, 2, 3, 5, 8, 8),
-    pitcher: { ...pit(12, 12, 12, 8, 1, 0), role: "RP" },
+    pitcher: { ...pit(12, 12, 12, 12, 1, 0), role: "RP" },
+  },
+  {
+    id: "mil82-slaton",
+    name: "Jim Slaton",
+    bats: "R",
+    throws: "R",
+    positions: ["P"],
+    batter: bat(4, 2, 3, 5, 8, 8),
+    pitcher: { ...pit(12, 13, 13, 14, 0, 0), role: "RP" },
   },
 ];
 
@@ -155,7 +173,7 @@ export const BREWERS_1982_LOOSE: LooseTeam = {
   nickname: "Brewers",
   abbrev: "MIL '82",
   blurb:
-    "Harvey's Wallbangers: Yount, Molitor, Thomas, Vuckovich — LockedGM 1982 ALCS/WS experiment pack.",
+    "Harvey's Wallbangers: Yount, Molitor, Thomas, Vuckovich — LockedGM 1982 pack with a Kuenn fireman pen (Fingers, Bernard, Ladd, McClure, Slaton).",
   salaryCap: 92,
   lineup: [
     "mil82-molitor",
@@ -184,6 +202,12 @@ export const BREWERS_1982_LOOSE: LooseTeam = {
     "mil82-sutton",
     "mil82-haas",
   ],
-  bullpen: ["mil82-fingers", "mil82-ladd", "mil82-mcclure"],
+  bullpen: [
+    "mil82-fingers",
+    "mil82-bernard",
+    "mil82-ladd",
+    "mil82-mcclure",
+    "mil82-slaton",
+  ],
   players,
 };

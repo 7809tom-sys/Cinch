@@ -2,17 +2,18 @@ import type { BatterRatings, FieldPos, Hand, PitcherRatings, Player } from "./ty
 import type { Rng } from "./rng";
 import type { AtBatOutcome } from "./types";
 import { OOP_ERROR_MULT } from "./eligibility";
+import { FATIGUE_BF_THRESHOLD, FATIGUE_XBH_WALK_MULT } from "./fatigue";
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-function effectiveBats(bats: Hand, pitcherThrows: Hand): Hand {
+export function effectiveBats(bats: Hand, pitcherThrows: Hand): Hand {
   if (bats !== "S") return bats;
   return pitcherThrows === "L" ? "R" : "L";
 }
 
-function platoonAdj(
+export function platoonAdj(
   batter: BatterRatings,
   pitcher: PitcherRatings,
   bats: Hand,
@@ -23,6 +24,15 @@ function platoonAdj(
   // Same-hand matchup is usually tougher for the batter.
   const sameHand = bats === throws ? -1 : 1;
   return batterSide - pitcherSide * 0.35 + sameHand;
+}
+
+/** Same chart adjustment the AB engine uses — pinch-hit AI reads this. */
+export function platoonMatchupAdj(batter: Player, pitcher: Player): number {
+  const b = batter.batter;
+  const p = pitcher.pitcher;
+  if (!b || !p) return 0;
+  const bats = effectiveBats(batter.bats, pitcher.throws);
+  return platoonAdj(b, p, bats, pitcher.throws);
 }
 
 export type DefenseContext = {
@@ -41,6 +51,13 @@ export type ResolveMeta = {
   greatDefense?: boolean;
 };
 
+export type FatigueAbContext = {
+  /** Emergency appearance: grades already dropped on the pitcher clone. */
+  fatigued?: boolean;
+  /** Batters faced in this appearance before this PA. */
+  battersFaced?: number;
+};
+
 /**
  * LockedGM-original AB resolution.
  *
@@ -54,6 +71,7 @@ export function resolveAtBat(
   rng: Rng,
   defense?: DefenseContext,
   meta?: ResolveMeta,
+  fatigue?: FatigueAbContext,
 ): AtBatOutcome {
   const b = batter.batter;
   const p = pitcher.pitcher;
@@ -70,6 +88,10 @@ export function resolveAtBat(
   const gb = clamp(p.gb, 1, 20);
   const def = clamp(defense?.rating ?? 11, 1, 20);
   const oop = !!defense?.outOfPosition;
+  const xbhWalk =
+    !!fatigue?.fatigued && (fatigue.battersFaced ?? 0) >= FATIGUE_BF_THRESHOLD
+      ? FATIGUE_XBH_WALK_MULT
+      : 1;
 
   // Chart ownership — higher contact vs stuff → more batter-chart outcomes.
   const batterEdge = (contact - stuff + 20) / 40; // ~0..1
@@ -78,8 +100,8 @@ export function resolveAtBat(
   const roll = rng.int(1, 1000);
 
   let outcome = onBatterChart
-    ? resolveBatterChart(roll, contact, power, eye, def, rng, oop)
-    : resolvePitcherChart(roll, stuff, control, gb, eye, def, rng, oop);
+    ? resolveBatterChart(roll, contact, power, eye, def, rng, oop, xbhWalk)
+    : resolvePitcherChart(roll, stuff, control, gb, eye, def, rng, oop, xbhWalk);
 
   // Elite glove: chance to rob a soft single / turn E into an out.
   // OOP / unrated gloves never rob hits — they score real bad.
@@ -107,13 +129,14 @@ function resolveBatterChart(
   defense: number,
   rng: Rng,
   outOfPosition = false,
+  xbhWalk = 1,
 ): AtBatOutcome {
   // Tuned for roughly mid-4s–5s R/G across classic packs.
-  const hr = 6.5 + power * 1.7;
-  const triple = 2.2 + (contact > 13 ? 1.8 : 0);
-  const double = 15 + power * 0.9 + contact * 0.35;
+  const hr = (6.5 + power * 1.7) * xbhWalk;
+  const triple = (2.2 + (contact > 13 ? 1.8 : 0)) * xbhWalk;
+  const double = (15 + power * 0.9 + contact * 0.35) * xbhWalk;
   const single = 44 + contact * 1.95;
-  const bb = 10.5 + eye * 1.25;
+  const bb = (10.5 + eye * 1.25) * xbhWalk;
   const hbp = 3.5;
   const oopErrMult = outOfPosition ? OOP_ERROR_MULT : 1;
   const err = clamp(7.5 - defense * 0.28, 1.5, 8) * oopErrMult;
@@ -151,9 +174,10 @@ function resolvePitcherChart(
   defense: number,
   rng: Rng,
   outOfPosition = false,
+  xbhWalk = 1,
 ): AtBatOutcome {
   const k = 43 + stuff * 3.25;
-  const bb = clamp(46 - control * 1.95 + eye * 0.4, 7, 55);
+  const bb = clamp(46 - control * 1.95 + eye * 0.4, 7, 55) * xbhWalk;
   const hbp = 5;
   const hitLeak = clamp(
     30 - stuff * 0.82 - (defense - 11) * 0.35 + (outOfPosition ? 14 : 0),
@@ -172,8 +196,8 @@ function resolvePitcherChart(
     { o: "BB", w: bb },
     { o: "HBP", w: hbp },
     { o: "1B", w: hitLeak * 0.74 },
-    { o: "2B", w: hitLeak * 0.19 },
-    { o: "HR", w: hitLeak * 0.07 },
+    { o: "2B", w: hitLeak * 0.19 * xbhWalk },
+    { o: "HR", w: hitLeak * 0.07 * xbhWalk },
     { o: "E", w: err },
     { o: "GO", w: outPool * gbShare },
     { o: "FO", w: outPool * (1 - gbShare) * 0.7 },

@@ -52,6 +52,14 @@ import {
   OOP_DEFENSE_RATING,
   fieldersForPosition,
   countOutOfPosition,
+  canEnter,
+  recordOutings,
+  dropGradeTiers,
+  emptyRestBook,
+  findPinchHitRecommendation,
+  startLiveGame,
+  CLEAR_SPLIT_EDGE,
+  PINCH_HIT_FROM_INNING,
 } from "../src/lib/lockgm/strat-sim";
 
 function assert(condition: boolean, message: string) {
@@ -178,8 +186,8 @@ assert(
   game.plays.every((p) => typeof p.radioCall === "string" && p.radioCall.length > 10),
   "radio calls on every play",
 );
-assert(game.away.batters.length === 9, "away batter lines");
-assert(game.home.batters.length === 9, "home batter lines");
+assert(game.away.batters.length >= 9, "away batter lines");
+assert(game.home.batters.length >= 9, "home batter lines");
 assert(game.away.pitchers.length >= 1, "away pitchers logged");
 assert(game.home.pitchers.length >= 1, "home pitchers logged");
 assert(game.away.runs >= 0 && game.home.runs >= 0, "non-negative runs");
@@ -299,12 +307,16 @@ assert(
   "short IP plan brings a reliever into the box",
 );
 assert(
-  relieverA === shortPlan.bullpen?.[0],
-  "first-call bullpen arm is the first reliever after early hook",
+  relieverA === shortPlan.bullpen?.[1],
+  "early hook skips the fireman and calls setup/long relief first",
 );
 assert(
-  relieverB === reversed.bullpen?.[0],
-  "reordered bullpen changes which arm enters first",
+  relieverA !== firstPen,
+  "fireman (bullpen[0]) is not burned on a 1st-inning hook",
+);
+assert(
+  relieverB === reversed.bullpen?.[1],
+  "reordered bullpen changes which setup arm enters first",
 );
 assert(relieverA !== relieverB, "bullpen order affects seeded relief appearance");
 
@@ -530,6 +542,177 @@ assert(
 assert(teamPayroll(BREWERS_1985) > 0, "payroll helper works");
 
 // Trademark-safety smoke: user-facing strings in this module surface should not say Strat-O-Matic
+assert(
+  BREWERS_1982.bullpen[0] === "mil82-fingers" &&
+    BREWERS_1982.bullpen.includes("mil82-bernard") &&
+    BREWERS_1982.bullpen.includes("mil82-ladd") &&
+    BREWERS_1982.bullpen.includes("mil82-mcclure") &&
+    BREWERS_1982.bullpen.includes("mil82-slaton"),
+  "1982 Brewers pen is Kuenn fireman hierarchy (Fingers, Bernard, Ladd, McClure, Slaton)",
+);
+
+// Fireman rest is engine law — 3+ IP sits two games; never 3 days in a row
+const rest0 = emptyRestBook();
+const after3 = recordOutings(rest0, [{ id: "mil82-fingers", outs: 9 }], [
+  "mil82-fingers",
+  "mil82-bernard",
+]);
+assert(!canEnter(after3, "mil82-fingers").ok, "3.0 IP fireman sits the next game");
+assert(canEnter(after3, "mil82-bernard").ok, "unused setup arm is eligible next game");
+const afterSit1 = recordOutings(after3, [{ id: "mil82-bernard", outs: 3 }], [
+  "mil82-fingers",
+  "mil82-bernard",
+]);
+assert(!canEnter(afterSit1, "mil82-fingers").ok, "3.0 IP still sitting game 2 of rest");
+const afterSit2 = recordOutings(afterSit1, [{ id: "mil82-bernard", outs: 3 }], [
+  "mil82-fingers",
+  "mil82-bernard",
+]);
+assert(canEnter(afterSit2, "mil82-fingers").ok, "fireman eligible after two sit games");
+
+const afterShort = recordOutings(emptyRestBook(), [{ id: "arm", outs: 3 }]);
+const day2short = recordOutings(afterShort, [{ id: "arm", outs: 3 }]);
+assert(!canEnter(day2short, "arm").ok, "two consecutive 1.0 IP days lock the 3rd");
+
+assert(dropGradeTiers(15) <= 9, "fatigue drops plus grades two classroom tiers");
+
+const five = simulateSeries(BREWERS_1982, YANKEES_1927, 1982, 5);
+const fingersMask = five.results.map((g) =>
+  [...g.away.pitchers, ...g.home.pitchers].some((p) => p.playerId === "mil82-fingers"),
+);
+assert(
+  fingersMask.filter(Boolean).length < five.results.length,
+  "Fingers does not pitch all five games of a series",
+);
+for (let i = 0; i < fingersMask.length - 2; i++) {
+  assert(
+    !(fingersMask[i] && fingersMask[i + 1] && fingersMask[i + 2]),
+    `Fingers never works three series games in a row (games ${i + 1}-${i + 3})`,
+  );
+}
+
+const royalsPen = simulateGame(
+  REDS_1975,
+  applyManagerCard(ROYALS_1985, setStarterInningsTarget(defaultManagerCard(ROYALS_1985), 1)),
+  { seed: 777 },
+);
+assert(
+  royalsPen.home.pitchers[1]?.playerId !== ROYALS_1985.bullpen[0],
+  "Royals fireman is also skipped on an early hook — rest rules are not Brewers-only",
+);
+
+// 7th-inning pinch-hit: clear split pauses / auto takes it
+const weakLeft = {
+  id: "test-weak-lhb",
+  name: "Weak Lefty",
+  bats: "L" as const,
+  throws: "R" as const,
+  positions: ["DH" as const],
+  salary: 0.5,
+  batter: {
+    contact: 10,
+    power: 8,
+    eye: 8,
+    speed: 8,
+    defense: 8,
+    arm: 8,
+    platoonVsL: -3,
+    platoonVsR: 2,
+  },
+};
+const splitHammer = {
+  id: "test-ph-rhb",
+  name: "Split Hammer",
+  bats: "R" as const,
+  throws: "R" as const,
+  positions: ["DH" as const, "LF" as const],
+  salary: 0.5,
+  batter: {
+    contact: 13,
+    power: 12,
+    eye: 10,
+    speed: 9,
+    defense: 9,
+    arm: 9,
+    platoonVsL: 3,
+    platoonVsR: -1,
+  },
+};
+const lhp = BREWERS_1985.players.find((p) => p.id === "mil85-higuera")!;
+const tinyPhTeam = {
+  ...YANKEES_1927,
+  players: [weakLeft, splitHammer],
+  lineup: Array(9).fill(weakLeft.id) as string[],
+};
+const phRecEarly = findPinchHitRecommendation({
+  inning: 6,
+  half: "top",
+  outs: 0,
+  score: { away: 2, home: 2 },
+  battingTeam: tinyPhTeam,
+  lineup: tinyPhTeam.lineup,
+  lineupIdx: 0,
+  pitcher: lhp,
+});
+assert(phRecEarly == null, "no pinch-hit rec before the 7th");
+
+const phRec7 = findPinchHitRecommendation({
+  inning: PINCH_HIT_FROM_INNING,
+  half: "top",
+  outs: 1,
+  score: { away: 3, home: 3 },
+  battingTeam: tinyPhTeam,
+  lineup: tinyPhTeam.lineup,
+  lineupIdx: 0,
+  pitcher: lhp,
+});
+assert(!!phRec7, "7th-inning scan finds a pinch-hit vs LHP");
+assert(phRec7!.recommendedId === splitHammer.id, "AI recommends the +split RHB");
+assert(phRec7!.edge >= CLEAR_SPLIT_EDGE, "recommendation meets the clear-edge bar");
+
+const yankPhTeam = {
+  ...YANKEES_1927,
+  players: [...YANKEES_1927.players, weakLeft, splitHammer],
+  lineup: [weakLeft.id, ...YANKEES_1927.lineup.slice(1)],
+};
+
+const brewLhp = applyManagerCard(
+  BREWERS_1985,
+  selectStartingPitcher(defaultManagerCard(BREWERS_1985), BREWERS_1985, "mil85-higuera"),
+);
+const live = startLiveGame(yankPhTeam, brewLhp, {
+  seed: 1918,
+  pinchHitMode: "pause",
+});
+let paused = false;
+let liveRecId: string | undefined;
+for (let i = 0; i < 400; i++) {
+  const step = live.step();
+  if (step.kind === "pinch-hit") {
+    paused = true;
+    liveRecId = step.rec.recommendedId;
+    assert(step.rec.inning >= 7, "live pause is 7th inning or later");
+    live.acceptPinchHit();
+    break;
+  }
+  if (step.kind === "done") break;
+}
+assert(paused, "pause-mode live game stops for a pinch-hit recommendation");
+assert(!!liveRecId, "pause names a bench bat");
+const afterPh = simulateGame(yankPhTeam, brewLhp, {
+  seed: 1918,
+  pinchHitMode: "auto",
+});
+assert(
+  afterPh.plays.some((p) => p.substitution?.kind === "pinch-hit"),
+  "auto mode records the pinch-hit substitution in the play log",
+);
+assert(
+  afterPh.away.batters.some((b) => b.pinchHit) ||
+    afterPh.home.batters.some((b) => b.pinchHit),
+  "pinch hitter appears in the batting box",
+);
+
 const brandBlob = JSON.stringify({
   a: BREWERS_1985.blurb,
   b: YANKEES_1927.blurb,
