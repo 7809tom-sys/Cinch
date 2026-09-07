@@ -11,6 +11,7 @@ import { BREWERS_1982_LOOSE } from "./brewers-1982";
 import { ANGELS_1982_LOOSE } from "./angels-1982";
 import { CARDINALS_1982_LOOSE } from "./cardinals-1982";
 import { BRAVES_1982_LOOSE } from "./braves-1982";
+import { MLB_2026_TEAMS, MLB_2026_TEAM_IDS } from "./mlb-2026";
 
 export const BREWERS_1985: ClassicTeam = finalizeClassicTeam(BREWERS_1985_LOOSE);
 export const YANKEES_1927: ClassicTeam = finalizeClassicTeam(YANKEES_1927_LOOSE);
@@ -58,8 +59,19 @@ export const PLAYOFF_1982_TEAM_IDS = [
   "braves-1982",
 ] as const;
 
+export { MLB_2026_TEAMS, MLB_2026_TEAM_IDS };
+
+/** Free matchup / playoff series: 2026 MLB plus historical packs. */
+export const MATCHUP_TEAMS: ClassicTeam[] = [
+  ...MLB_2026_TEAMS,
+  ...CLASSIC_TEAMS,
+];
+
+export const DEFAULT_MATCHUP_AWAY_ID = "yankees-2026";
+export const DEFAULT_MATCHUP_HOME_ID = "dodgers-2026";
+
 export function classicTeamById(id: string): ClassicTeam | undefined {
-  return CLASSIC_TEAMS.find((t) => t.id === id);
+  return MATCHUP_TEAMS.find((t) => t.id === id);
 }
 
 export function classicTeamLabel(team: ClassicTeam): string {

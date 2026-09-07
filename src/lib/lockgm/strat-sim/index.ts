@@ -64,6 +64,11 @@ export {
 export { platoonMatchupAdj } from "./resolve-ab";
 export {
   CLASSIC_TEAMS,
+  MATCHUP_TEAMS,
+  MLB_2026_TEAMS,
+  MLB_2026_TEAM_IDS,
+  DEFAULT_MATCHUP_AWAY_ID,
+  DEFAULT_MATCHUP_HOME_ID,
   BREWERS_1985,
   YANKEES_1927,
   REDS_1975,

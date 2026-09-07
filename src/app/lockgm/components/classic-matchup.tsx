@@ -9,8 +9,10 @@ import {
   useTransition,
 } from "react";
 import {
-  CLASSIC_TEAMS,
+  DEFAULT_MATCHUP_AWAY_ID,
+  DEFAULT_MATCHUP_HOME_ID,
   FIELD_ORDER,
+  MATCHUP_TEAMS,
   PLAYOFF_1982_TEAMS,
   PLAYOFF_1985_TEAMS,
   applyManagerCard,
@@ -132,26 +134,34 @@ function readInitialFromUrl(): {
 } {
   if (typeof window === "undefined") {
     return {
-      awayId: CLASSIC_TEAMS[0]!.id,
-      homeId: CLASSIC_TEAMS[1]!.id,
+      awayId: DEFAULT_MATCHUP_AWAY_ID,
+      homeId: DEFAULT_MATCHUP_HOME_ID,
       seed: 19850501,
       auto: false,
       mode: "matchup",
     };
   }
   const q = new URLSearchParams(window.location.search);
-  const awayId = q.get("away") || CLASSIC_TEAMS[0]!.id;
-  const homeId = q.get("home") || CLASSIC_TEAMS[1]!.id;
+  const awayId = q.get("away") || DEFAULT_MATCHUP_AWAY_ID;
+  const homeId = q.get("home") || DEFAULT_MATCHUP_HOME_ID;
   const seed = Number(q.get("seed") || 19850501) || 19850501;
   const auto = q.get("auto") === "1";
   const mode = parseSimMode(q.get("mode"));
   return {
-    awayId: classicTeamById(awayId) ? awayId : CLASSIC_TEAMS[0]!.id,
-    homeId: classicTeamById(homeId) ? homeId : CLASSIC_TEAMS[1]!.id,
+    awayId: classicTeamById(awayId) ? awayId : DEFAULT_MATCHUP_AWAY_ID,
+    homeId: classicTeamById(homeId) ? homeId : DEFAULT_MATCHUP_HOME_ID,
     seed,
     auto,
     mode,
   };
+}
+
+function matchupPack(id: string): ClassicTeam {
+  return (
+    classicTeamById(id) ??
+    classicTeamById(DEFAULT_MATCHUP_AWAY_ID) ??
+    MATCHUP_TEAMS[0]!
+  );
 }
 
 export function ClassicMatchup() {
@@ -169,10 +179,10 @@ export function ClassicMatchup() {
   const [didAuto, setDidAuto] = useState(false);
 
   const [awayCard, setAwayCard] = useState<ManagerCard>(() =>
-    defaultManagerCard(classicTeamById(initial.awayId)!),
+    defaultManagerCard(matchupPack(initial.awayId)),
   );
   const [homeCard, setHomeCard] = useState<ManagerCard>(() =>
-    defaultManagerCard(classicTeamById(initial.homeId)!),
+    defaultManagerCard(matchupPack(initial.homeId)),
   );
 
   const [league, setLeague] = useState<LeagueState>(() =>
@@ -193,8 +203,8 @@ export function ClassicMatchup() {
     home: number;
   } | null>(null);
 
-  const awayPack = classicTeamById(awayId)!;
-  const homePack = classicTeamById(homeId)!;
+  const awayPack = matchupPack(awayId);
+  const homePack = matchupPack(homeId);
   const away = useMemo(
     () => applyManagerCard(awayPack, awayCard),
     [awayPack, awayCard],
@@ -208,10 +218,10 @@ export function ClassicMatchup() {
   const homeCap = checkSalaryCap(home);
 
   useEffect(() => {
-    setAwayCard(defaultManagerCard(classicTeamById(awayId)!));
+    setAwayCard(defaultManagerCard(matchupPack(awayId)));
   }, [awayId]);
   useEffect(() => {
-    setHomeCard(defaultManagerCard(classicTeamById(homeId)!));
+    setHomeCard(defaultManagerCard(matchupPack(homeId)));
   }, [homeId]);
 
   const onHighlightDone = useCallback(() => setHighlight(null), []);
@@ -491,7 +501,7 @@ export function ClassicMatchup() {
       {mode === "matchup" ? (
       <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
         <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-          LockedGM Classic Matchup · LockedGM grades & dice
+          LockedGM Classic Matchup · 2026 MLB + classic packs
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <TeamPick
@@ -717,7 +727,7 @@ export function ClassicMatchup() {
               ? "Run the 1985 bracket to open a featured box + radio call."
               : pinchRec
                 ? "The engine stopped in the 7th or later — a platoon split is clearly better off the bench."
-                : "Set lineup, gloves, starter, and bullpen plan, then run a game or a best-of-7 playoff series. Classic clubs use a four-man rotation; modern-year clubs use five. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game. Series are decided by games won, not home runs."}
+                : "Set lineup, gloves, starter, and bullpen plan, then run a game or a best-of-7 playoff series. 2026 MLB clubs use a five-man rotation; classic packs use four. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game. Series are decided by games won, not home runs."}
         </p>
       )}
       </div>
@@ -1056,12 +1066,25 @@ function TeamPick({
         value={teamId}
         onChange={(e) => onChange(e.target.value)}
       >
-        {CLASSIC_TEAMS.map((t) => (
-          <option key={t.id} value={t.id}>
-            {classicTeamLabel(t)} · {rotationLabel(rotationSizeForTeam(t))} ·{" "}
-            {t.players.length}-man · ${teamPayroll(t).toFixed(1)}M
-          </option>
-        ))}
+        <optgroup label="2026 MLB">
+          {MATCHUP_TEAMS.filter((t) => t.year === 2026)
+            .slice()
+            .sort((a, b) => a.nickname.localeCompare(b.nickname))
+            .map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.city} {t.nickname} · {rotationLabel(rotationSizeForTeam(t))} ·{" "}
+                {t.players.length}-man · ${teamPayroll(t).toFixed(1)}M
+              </option>
+            ))}
+        </optgroup>
+        <optgroup label="Classic">
+          {MATCHUP_TEAMS.filter((t) => t.year !== 2026).map((t) => (
+            <option key={t.id} value={t.id}>
+              {classicTeamLabel(t)} · {rotationLabel(rotationSizeForTeam(t))} ·{" "}
+              {t.players.length}-man · ${teamPayroll(t).toFixed(1)}M
+            </option>
+          ))}
+        </optgroup>
       </select>
       <span className="mt-2 block text-xs text-[color:var(--lg-mute)]">
         {blurb}
@@ -1373,9 +1396,9 @@ function LeagueDesk({
       <p className="mt-2 max-w-2xl text-sm text-[color:var(--lg-mute)]">
         Claim one classic club. Empty clubs get AI managers that compete to win
         under the same ${league.salaryCap}M hard cap and {league.rosterSize}-man
-        roster rules. After a round, run October as best-of-7 series with each
-        club&apos;s era rotation (four-man classic, five-man modern). Wins are
-        games, not home runs.
+        roster rules. 2026 MLB clubs live in free matchup, not this table. After
+        a round, run October as best-of-7 with four-man starter rotations. Wins
+        are games, not home runs.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {!league.humanTeamId

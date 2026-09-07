@@ -24,10 +24,10 @@ export default function LockgmSimPage() {
         pinch-hit pauses apply to every game. Hard salary caps bind every
         signing. Re-run the 1982 playoffs (Brewers, Angels, Cardinals, Braves)
         or 1985 (Blue Jays, Royals, Cardinals, Dodgers) as seven-game series
-        with four-man starter rotations, or free-match classic packs including
-        Harvey&apos;s Wallbangers, Murderers&apos; Row, and the Big Red Machine.
-        Modern-year clubs would use a five-man. October is won by games — not
-        the home-run column.
+        with four-man starter rotations, or free-match any of the 30 2026 MLB
+        clubs (five-man rotations) plus classic packs including Harvey&apos;s
+        Wallbangers, Murderers&apos; Row, and the Big Red Machine. October is
+        won by games — not the home-run column.
       </p>
       <p className="mt-3 text-sm font-semibold">
         <Link
