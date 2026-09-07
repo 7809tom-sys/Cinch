@@ -5,6 +5,10 @@
 import type { ClassicTeam } from "../types";
 import { finalizeClassicTeam } from "../roster-build";
 import {
+  applyCallupPatch,
+  MLB_2026_CALLUPS,
+} from "./mlb-2026-callups";
+import {
   buildMlb2026Team,
   type Mlb26Spec,
 } from "./mlb-2026-build";
@@ -1256,26 +1260,26 @@ const SPECS: Mlb26Spec[] = [
     nickname: "Brewers",
     abbrev: "MIL",
     blurb:
-      "2026 Brewers — Chourio out of the opener; Misiorowski leads a young five-man. LockedGM pack.",
+      "2026 Brewers — Chourio and Pratt in the grass after the June call-up; Misiorowski leads a young five-man. LockedGM pack.",
     lineup: [
       "Brice Turang",
+      "Jackson Chourio",
       "William Contreras",
       "Christian Yelich",
       "Andrew Vaughn",
-      "Jake Bauers",
+      "Cooper Pratt",
       "Sal Frelick",
-      "David Hamilton",
       "Garrett Mitchell",
-      "Joey Ortiz",
+      "Jake Bauers",
     ],
     defense: {
       C: "William Contreras",
       "1B": "Andrew Vaughn",
       "2B": "Brice Turang",
-      "3B": "David Hamilton",
-      SS: "Joey Ortiz",
+      "3B": "Joey Ortiz",
+      SS: "Cooper Pratt",
       LF: "Jake Bauers",
-      CF: "Garrett Mitchell",
+      CF: "Jackson Chourio",
       RF: "Sal Frelick",
     },
     rotation: [
@@ -1288,9 +1292,11 @@ const SPECS: Mlb26Spec[] = [
     bullpen: ["Trevor Megill", "Abner Uribe", "Jared Koenig"],
     bats: [
       { name: "Brice Turang", bats: "L", pos: ["2B"], g: [14, 10, 13, 16, 15, 13, 1, -1] },
+      { name: "Jackson Chourio", bats: "R", pos: ["CF", "RF"], g: [14, 15, 12, 16, 14, 14] },
       { name: "William Contreras", bats: "R", pos: ["C"], g: [15, 14, 14, 9, 13, 14] },
       { name: "Christian Yelich", bats: "L", pos: ["DH", "LF"], g: [14, 14, 15, 13, 11, 13, 1, -1] },
       { name: "Andrew Vaughn", bats: "R", pos: ["1B"], g: [13, 14, 11, 7, 11, 11] },
+      { name: "Cooper Pratt", bats: "R", pos: ["SS"], g: [13, 11, 13, 14, 13, 13] },
       { name: "Jake Bauers", bats: "L", pos: ["LF", "1B"], g: [11, 13, 13, 11, 11, 12, 1, -1] },
       { name: "Sal Frelick", bats: "L", pos: ["RF", "CF"], g: [14, 9, 13, 15, 15, 14, 1, -1] },
       { name: "David Hamilton", bats: "L", pos: ["3B", "SS", "2B"], g: [12, 10, 11, 16, 13, 12, 1, -1] },
@@ -1433,14 +1439,14 @@ const SPECS: Mlb26Spec[] = [
     nickname: "Pirates",
     abbrev: "PIT",
     blurb:
-      "2026 Pirates — Skenes still the ace; Lowe, Ozuna, and O'Hearn are the new thump. LockedGM five-man pack.",
+      "2026 Pirates — Griffin at short after the April debut; Skenes still the ace. LockedGM five-man pack.",
     lineup: [
       "Oneil Cruz",
+      "Konnor Griffin",
       "Brandon Lowe",
       "Bryan Reynolds",
       "Marcell Ozuna",
       "Ryan O'Hearn",
-      "Jared Triolo",
       "Spencer Horwitz",
       "Nick Gonzales",
       "Henry Davis",
@@ -1450,7 +1456,7 @@ const SPECS: Mlb26Spec[] = [
       "1B": "Spencer Horwitz",
       "2B": "Brandon Lowe",
       "3B": "Nick Gonzales",
-      SS: "Jared Triolo",
+      SS: "Konnor Griffin",
       LF: "Bryan Reynolds",
       CF: "Oneil Cruz",
       RF: "Ryan O'Hearn",
@@ -1465,6 +1471,7 @@ const SPECS: Mlb26Spec[] = [
     bullpen: ["David Bednar", "Dennis Santana", "Colin Holderman"],
     bats: [
       { name: "Oneil Cruz", bats: "L", pos: ["CF", "SS"], g: [13, 16, 12, 16, 12, 16, 1, -1] },
+      { name: "Konnor Griffin", bats: "R", pos: ["SS"], g: [14, 14, 13, 16, 14, 15] },
       { name: "Brandon Lowe", bats: "L", pos: ["2B"], g: [13, 16, 13, 10, 12, 12, 2, -2] },
       { name: "Bryan Reynolds", bats: "S", pos: ["LF", "RF"], g: [14, 14, 13, 11, 12, 13] },
       { name: "Marcell Ozuna", bats: "R", pos: ["DH"], g: [13, 16, 14, 7, 8, 12] },
@@ -1783,7 +1790,9 @@ const SPECS: Mlb26Spec[] = [
 ];
 
 export const MLB_2026_TEAMS: ClassicTeam[] = SPECS.map((spec) =>
-  finalizeClassicTeam(buildMlb2026Team(spec)),
+  finalizeClassicTeam(
+    buildMlb2026Team(applyCallupPatch(spec, MLB_2026_CALLUPS[spec.id])),
+  ),
 );
 
 export const MLB_2026_TEAM_IDS = MLB_2026_TEAMS.map((t) => t.id);

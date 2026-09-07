@@ -68,6 +68,7 @@ import {
   type PlayoffRoundResult,
 } from "@/lib/lockgm/strat-sim";
 import { HighlightReel } from "./highlight-reel";
+import { MlbSeasonDesk } from "./mlb-season-desk";
 
 type SeriesSummary = {
   awayWins: number;
@@ -105,7 +106,7 @@ function seriesHrLine(series: BestOfSeriesResult): string {
   return `${hi?.abbrev ?? "HI"} ${hiHr} HR · ${lo?.abbrev ?? "LO"} ${loHr} HR — series is games won, not the long ball`;
 }
 
-type SimMode = "matchup" | "playoffs1985" | "playoffs1982";
+type SimMode = "matchup" | "playoffs1985" | "playoffs1982" | "season2026";
 
 function parseSimMode(modeParam: string | null): SimMode {
   if (
@@ -121,6 +122,9 @@ function parseSimMode(modeParam: string | null): SimMode {
     modeParam === "1985"
   ) {
     return "playoffs1985";
+  }
+  if (modeParam === "season2026" || modeParam === "season" || modeParam === "2026") {
+    return "season2026";
   }
   return "matchup";
 }
@@ -458,6 +462,17 @@ export function ClassicMatchup() {
         >
           1985 Playoffs
         </button>
+        <button
+          type="button"
+          onClick={() => setMode("season2026")}
+          className={`rounded-md px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 ${
+            mode === "season2026"
+              ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+              : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+          }`}
+        >
+          2026 Season
+        </button>
       </div>
 
       {mode === "playoffs1982" ? (
@@ -492,6 +507,20 @@ export function ClassicMatchup() {
           onFeatureGame={(game, hl) => {
             setResult(game);
             setSeries(null);
+            setBroadcastIdx(0);
+            if (hl) setHighlight(hl);
+          }}
+        />
+      ) : null}
+
+      {mode === "season2026" ? (
+        <MlbSeasonDesk
+          seed={seed}
+          setSeed={setSeed}
+          onFeatureGame={(game, hl) => {
+            setResult(game);
+            setSeries(null);
+            setPlayoffSeries(null);
             setBroadcastIdx(0);
             if (hl) setHighlight(hl);
           }}
@@ -725,6 +754,8 @@ export function ClassicMatchup() {
             ? "Run the 1982 bracket to open a featured box + radio call."
             : mode === "playoffs1985"
               ? "Run the 1985 bracket to open a featured box + radio call."
+              : mode === "season2026"
+                ? "Run the 162-game 2026 season to open a featured box + radio call."
               : pinchRec
                 ? "The engine stopped in the 7th or later — a platoon split is clearly better off the bench."
                 : "Set lineup, gloves, starter, and bullpen plan, then run a game or a best-of-7 playoff series. 2026 MLB clubs use a five-man rotation; classic packs use four. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game. Series are decided by games won, not home runs."}

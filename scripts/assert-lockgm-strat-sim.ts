@@ -73,6 +73,12 @@ import {
   startLiveGame,
   CLEAR_SPLIT_EDGE,
   PINCH_HIT_FROM_INNING,
+  MLB_SEASON_GAMES,
+  buildMlb2026Schedule,
+  simulateMlb2026Season,
+  gamesPlayedByTeam,
+  IL_STINTS_PER_162,
+  injuryRoleFor,
 } from "../src/lib/lockgm/strat-sim";
 
 function assert(condition: boolean, message: string) {
@@ -160,6 +166,74 @@ assert(
   !JSON.stringify(MLB_2026_TEAMS.map((t) => t.blurb)).match(/Strat-O-Matic/i),
   "2026 blurbs avoid Strat-O-Matic",
 );
+
+const mil26 = classicTeamById("brewers-2026")!;
+assert(
+  mil26.players.some((p) => p.id === "mil26-cooper-pratt"),
+  "2026 Brewers include Cooper Pratt",
+);
+assert(mil26.lineup.includes("mil26-cooper-pratt"), "Pratt hits in MIL lineup");
+assert(mil26.defense.SS === "mil26-cooper-pratt", "Pratt is the Brewers shortstop");
+assert(
+  mil26.players.some((p) => p.id === "mil26-jackson-chourio"),
+  "2026 Brewers include Chourio",
+);
+const pit26 = classicTeamById("pirates-2026")!;
+assert(
+  pit26.players.some((p) => p.id === "pit26-konnor-griffin"),
+  "2026 Pirates include Konnor Griffin",
+);
+const min26 = classicTeamById("twins-2026")!;
+assert(
+  min26.players.some((p) => /culpepper/i.test(p.name)),
+  "Twins include July+ call-up Culpepper",
+);
+assert(
+  min26.players.some((p) => /jenkins/i.test(p.name)),
+  "Twins include July+ call-up Walker Jenkins",
+);
+const sea26 = classicTeamById("mariners-2026")!;
+assert(
+  sea26.players.some((p) => /kade anderson/i.test(p.name) && p.pitcher?.role === "SP"),
+  "Mariners include Kade Anderson",
+);
+const sd26 = classicTeamById("padres-2026")!;
+assert(
+  sd26.players.some((p) => /ethan salas/i.test(p.name)),
+  "Padres include Ethan Salas",
+);
+assert(IL_STINTS_PER_162.SP > IL_STINTS_PER_162.INF, "SP IL rate exceeds infielders");
+assert(
+  injuryRoleFor(mil26.players.find((p) => p.id === "mil26-cooper-pratt")!) === "INF",
+  "Pratt IL role is infielder",
+);
+
+const slate = buildMlb2026Schedule(2026);
+assert(slate.length === (30 * MLB_SEASON_GAMES) / 2, "2430-game MLB slate");
+for (const team of MLB_2026_TEAMS) {
+  const g = slate.filter((x) => x.awayId === team.id || x.homeId === team.id).length;
+  assert(g === MLB_SEASON_GAMES, `${team.id} is scheduled 162 games`);
+}
+
+const skipPratt = aiSetLineup(mil26, new Set(["mil26-cooper-pratt"]));
+assert(
+  !skipPratt.lineup.includes("mil26-cooper-pratt"),
+  "IL skip drops Pratt from the card",
+);
+
+const season26 = simulateMlb2026Season(26);
+assert(season26.gamesPlayed === slate.length, "season plays the full slate");
+assert(
+  MLB_2026_TEAMS.every((t) => gamesPlayedByTeam(season26, t.id) === MLB_SEASON_GAMES),
+  "every club logs 162 decisions",
+);
+const prattLine = season26.batters.find((b) => b.playerId === "mil26-cooper-pratt");
+assert(!!prattLine && prattLine.ab > 200, "Pratt accumulates season at-bats");
+assert(
+  season26.pitchers.some((p) => p.ipOuts > 300),
+  "starters log season-long innings",
+);
+assert(season26.injuryLog.length > 0, "IL wire records last-decade-rate draws");
 assert(!!classicTeamById("brewers-1985"), "1985 Brewers pack loads");
 assert(!!classicTeamById("yankees-1927"), "1927 Yankees pack loads");
 assert(!!classicTeamById("reds-1975"), "1975 Reds pack loads");

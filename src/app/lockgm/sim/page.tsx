@@ -26,8 +26,10 @@ export default function LockgmSimPage() {
         or 1985 (Blue Jays, Royals, Cardinals, Dodgers) as seven-game series
         with four-man starter rotations, or free-match any of the 30 2026 MLB
         clubs (five-man rotations) plus classic packs including Harvey&apos;s
-        Wallbangers, Murderers&apos; Row, and the Big Red Machine. October is
-        won by games — not the home-run column.
+        Wallbangers, Murderers&apos; Row, and the Big Red Machine. Midseason
+        call-ups such as Cooper Pratt are on the 2026 30-man packs. Sim a full
+        162-game season with last-decade IL odds and accumulated stats. October
+        is won by games — not the home-run column.
       </p>
       <p className="mt-3 text-sm font-semibold">
         <Link
