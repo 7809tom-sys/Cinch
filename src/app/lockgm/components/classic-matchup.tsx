@@ -278,6 +278,12 @@ export function ClassicMatchup() {
   }, [broadcastIdx]);
 
   const radioPlays = result ? result.plays.slice(0, broadcastIdx + 1) : [];
+  const outcomeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pinchRec && !result) return;
+    outcomeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pinchRec, result]);
 
   function onClaim(teamId: string) {
     const r = claimTeam(league, teamId);
@@ -396,7 +402,7 @@ export function ClassicMatchup() {
             disabled={pending || awayId === homeId || !awayCap.ok || !homeCap.ok}
             className="inline-flex h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5 disabled:opacity-40"
           >
-            Simulate game
+            {pending ? "Working…" : "Simulate game"}
           </button>
           <button
             type="button"
@@ -428,25 +434,7 @@ export function ClassicMatchup() {
       </section>
       ) : null}
 
-      {mode === "matchup" ? (
-      <LeagueDesk
-        league={league}
-        onClaim={onClaim}
-        onRound={onLeagueRound}
-        onCapBuster={onCapBuster}
-        onSyncCard={syncHumanCardFromAway}
-        capMsg={capMsg}
-      />
-      ) : null}
-
-      {highlight ? (
-        <HighlightReel
-          kind={highlight.highlight!}
-          label={highlight.radioCall}
-          onDone={onHighlightDone}
-        />
-      ) : null}
-
+      <div ref={outcomeRef} className="space-y-10">
       {mode === "matchup" && series ? (
         <section className="lg-rise border-t border-[color:var(--lg-line)] pt-6">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
@@ -575,6 +563,26 @@ export function ClassicMatchup() {
               : "Set lineup, gloves, starter, and bullpen plan, then run a game. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game."}
         </p>
       )}
+      </div>
+
+      {mode === "matchup" ? (
+      <LeagueDesk
+        league={league}
+        onClaim={onClaim}
+        onRound={onLeagueRound}
+        onCapBuster={onCapBuster}
+        onSyncCard={syncHumanCardFromAway}
+        capMsg={capMsg}
+      />
+      ) : null}
+
+      {highlight ? (
+        <HighlightReel
+          kind={highlight.highlight!}
+          label={highlight.radioCall}
+          onDone={onHighlightDone}
+        />
+      ) : null}
     </div>
   );
 }
