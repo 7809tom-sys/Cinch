@@ -1,7 +1,7 @@
 /**
- * LockedGM Live Matchup rooms — invite signed-up GMs or new signups,
- * claim classic clubs, and run a shared real-time broadcast with a
- * local-ad ribbon above the scoreboard.
+ * LockedGM Live Matchup rooms — two humans claim classic clubs, schedule
+ * tip-off, lock the same /sim manager cards, and run a shared real-time
+ * broadcast with a local-ad ribbon above the scoreboard.
  */
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { readJsonStore, writeJsonStore } from "@/lib/kv-store";
@@ -13,16 +13,24 @@ import {
   classicTeamLabel,
   defaultManagerCard,
   simulateGame,
+  validateDefense,
+  validateLineup,
+  validatePitching,
   type GameResult,
   type ManagerCard,
 } from "@/lib/lockgm/strat-sim";
 import { listActiveLocalAds, type LocalAd } from "@/lib/lockgm/local-ads";
 import {
   LIVE_MATCHUP_MS_PER_PLAY,
+  bothSeatsLocked,
   broadcastPlayIndex,
   isBroadcastComplete,
   matchupInviteLink,
   normalizeMatchupCode,
+  sortLiveStandings,
+  tipTimeReached,
+  type LiveStandingRow,
+  type MatchupRoomStatus,
   type MatchupSeat,
   type MatchupSide,
   type PublicLiveMatchup,
@@ -30,12 +38,21 @@ import {
 
 export {
   LIVE_MATCHUP_MS_PER_PLAY,
+  bothSeatsLocked,
   broadcastPlayIndex,
   isBroadcastComplete,
   matchupInviteLink,
   normalizeMatchupCode,
+  sortLiveStandings,
+  tipTimeReached,
 };
-export type { MatchupSeat, MatchupSide, PublicLiveMatchup };
+export type {
+  LiveStandingRow,
+  MatchupRoomStatus,
+  MatchupSeat,
+  MatchupSide,
+  PublicLiveMatchup,
+};
 
 export const MAX_OPEN_ROOMS_PER_HOST = 8;
 export const MAX_PENDING_MEMBER_INVITES = 12;
@@ -74,10 +91,12 @@ export type LiveMatchupRoom = {
   hostDisplayName: string;
   name: string;
   market: string;
-  status: "lobby" | "live" | "final";
+  status: MatchupRoomStatus;
+  scheduledAt: string | null;
   seats: Record<MatchupSide, MatchupSeat>;
   seed: number;
   broadcast: LiveBroadcast | null;
+  standingsApplied: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -85,6 +104,7 @@ export type LiveMatchupRoom = {
 type LiveMatchupStore = {
   rooms: LiveMatchupRoom[];
   invites: MatchupRoomInvite[];
+  standings: LiveStandingRow[];
 };
 
 function now(): string {
@@ -99,6 +119,48 @@ function emptySeat(side: MatchupSide): MatchupSeat {
     teamId: null,
     ready: false,
     reservedGmId: null,
+    card: null,
+    locked: false,
+    lockedAt: null,
+    wins: 0,
+    losses: 0,
+    ties: 0,
+  };
+}
+
+function normalizeSeat(side: MatchupSide, raw: Partial<MatchupSeat> | undefined): MatchupSeat {
+  const base = emptySeat(side);
+  if (!raw) return base;
+  return {
+    ...base,
+    ...raw,
+    side,
+    card: raw.card ?? null,
+    locked: Boolean(raw.locked ?? raw.ready),
+    lockedAt: raw.lockedAt ?? null,
+    wins: Number.isFinite(raw.wins) ? Number(raw.wins) : 0,
+    losses: Number.isFinite(raw.losses) ? Number(raw.losses) : 0,
+    ties: Number.isFinite(raw.ties) ? Number(raw.ties) : 0,
+  };
+}
+
+function normalizeRoom(raw: LiveMatchupRoom): LiveMatchupRoom {
+  const status: MatchupRoomStatus =
+    raw.status === "scheduled" ||
+    raw.status === "live" ||
+    raw.status === "final" ||
+    raw.status === "lobby"
+      ? raw.status
+      : "lobby";
+  return {
+    ...raw,
+    status,
+    scheduledAt: raw.scheduledAt ?? null,
+    standingsApplied: Boolean(raw.standingsApplied),
+    seats: {
+      away: normalizeSeat("away", raw.seats?.away),
+      home: normalizeSeat("home", raw.seats?.home),
+    },
   };
 }
 
@@ -106,10 +168,14 @@ async function readStore(): Promise<LiveMatchupStore> {
   const loaded = await readJsonStore<LiveMatchupStore>(STORE_KEY, {
     rooms: [],
     invites: [],
+    standings: [],
   });
   return {
-    rooms: Array.isArray(loaded.rooms) ? loaded.rooms : [],
+    rooms: Array.isArray(loaded.rooms)
+      ? loaded.rooms.map((room) => normalizeRoom(room))
+      : [],
     invites: Array.isArray(loaded.invites) ? loaded.invites : [],
+    standings: Array.isArray(loaded.standings) ? loaded.standings : [],
   };
 }
 
@@ -139,6 +205,7 @@ export function publicRoomView(
     status: room.status,
     seats: room.seats,
     seed: room.seed,
+    scheduledAt: room.scheduledAt,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     inviteLink: matchupInviteLink(room.code),
@@ -233,12 +300,14 @@ export async function createLiveMatchupRoom(input: {
     name: (input.name?.trim() || "Live Classic Matchup").slice(0, 80),
     market: (input.market?.trim().toLowerCase() || "local").slice(0, 40),
     status: "lobby",
+    scheduledAt: null,
     seats: {
       away: emptySeat("away"),
       home: emptySeat("home"),
     },
     seed: Number.isFinite(input.seed) ? Number(input.seed) : 19850501,
     broadcast: null,
+    standingsApplied: false,
     createdAt: stamp,
     updatedAt: stamp,
   };
@@ -276,6 +345,7 @@ export async function getLiveMatchupRoom(
 export async function getPublicLiveMatchup(
   roomIdOrCode: string,
 ): Promise<PublicLiveMatchup | null> {
+  await advanceLiveMatchup(roomIdOrCode);
   const room = await getLiveMatchupRoom(roomIdOrCode);
   if (!room) return null;
   const ads = await listActiveLocalAds(room.market);
@@ -449,6 +519,143 @@ export async function claimMatchupSeat(input: {
   return room;
 }
 
+function requireCard(teamId: string, card: ManagerCard | null | undefined): ManagerCard {
+  const pack = classicTeamById(teamId);
+  if (!pack) throw new Error("Unknown classic club.");
+  const resolved = card ?? defaultManagerCard(pack);
+  const lineup = validateLineup(pack, resolved.lineup);
+  if (!lineup.ok) throw new Error(lineup.message);
+  const defense = validateDefense(pack, resolved.defense);
+  if (!defense.ok) throw new Error(defense.message);
+  const pitching = validatePitching(
+    pack,
+    resolved.rotation ?? pack.rotation,
+    resolved.bullpen ?? pack.bullpen,
+    resolved.pitchingPlan,
+  );
+  if (!pitching.ok) throw new Error(pitching.message);
+  const cap = checkSalaryCap(applyManagerCard(pack, resolved));
+  if (!cap.ok) throw new Error(cap.message);
+  return resolved;
+}
+
+function upsertStanding(
+  store: LiveMatchupStore,
+  seat: MatchupSeat,
+  stamp: string,
+): void {
+  if (!seat.gmId || !seat.teamId) return;
+  const existing = store.standings.find(
+    (row) => row.gmId === seat.gmId && row.teamId === seat.teamId,
+  );
+  if (existing) {
+    existing.displayName = seat.displayName || existing.displayName;
+    existing.wins = seat.wins;
+    existing.losses = seat.losses;
+    existing.ties = seat.ties;
+    existing.updatedAt = stamp;
+    return;
+  }
+  store.standings.push({
+    gmId: seat.gmId,
+    displayName: seat.displayName || seat.gmId,
+    teamId: seat.teamId,
+    wins: seat.wins,
+    losses: seat.losses,
+    ties: seat.ties,
+    updatedAt: stamp,
+  });
+}
+
+function applyResultToStandings(
+  store: LiveMatchupStore,
+  room: LiveMatchupRoom,
+  result: GameResult,
+): void {
+  if (room.standingsApplied) return;
+  const away = room.seats.away;
+  const home = room.seats.home;
+  if (result.winner === "away") {
+    away.wins += 1;
+    home.losses += 1;
+  } else if (result.winner === "home") {
+    home.wins += 1;
+    away.losses += 1;
+  } else {
+    away.ties += 1;
+    home.ties += 1;
+  }
+  const stamp = now();
+  room.standingsApplied = true;
+  upsertStanding(store, away, stamp);
+  upsertStanding(store, home, stamp);
+}
+
+function runFirstPitch(store: LiveMatchupStore, room: LiveMatchupRoom): void {
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("Matchup already started.");
+  }
+  const away = room.seats.away;
+  const home = room.seats.home;
+  if (!away.gmId || !home.gmId) {
+    throw new Error("Both seats need a GM before first pitch.");
+  }
+  if (!away.teamId || !home.teamId) {
+    throw new Error("Both GMs must pick a classic club.");
+  }
+  if (!away.locked || !home.locked) {
+    throw new Error("Both GMs must lock their /sim cards before first pitch.");
+  }
+
+  const awayPack = classicTeamById(away.teamId)!;
+  const homePack = classicTeamById(home.teamId)!;
+  const awayCard = requireCard(away.teamId, away.card);
+  const homeCard = requireCard(home.teamId, home.card);
+  const awayTeam = applyManagerCard(awayPack, awayCard);
+  const homeTeam = applyManagerCard(homePack, homeCard);
+
+  const result = simulateGame(awayTeam, homeTeam, {
+    seed: room.seed,
+    pinchHitMode: "auto",
+  });
+
+  room.broadcast = {
+    startedAt: now(),
+    seed: room.seed,
+    awayTeamId: away.teamId,
+    homeTeamId: home.teamId,
+    result,
+    msPerPlay: LIVE_MATCHUP_MS_PER_PLAY,
+  };
+  room.status = "live";
+  room.updatedAt = now();
+  applyResultToStandings(store, room, result);
+}
+
+function maybeAutoTip(store: LiveMatchupStore, room: LiveMatchupRoom): boolean {
+  if (room.status !== "scheduled") return false;
+  if (!bothSeatsLocked(room.seats)) return false;
+  if (!tipTimeReached(room.scheduledAt)) return false;
+  runFirstPitch(store, room);
+  return true;
+}
+
+function maybeFinalize(store: LiveMatchupStore, room: LiveMatchupRoom): boolean {
+  if (!room.broadcast || room.status !== "live") return false;
+  if (
+    !isBroadcastComplete(
+      room.broadcast.startedAt,
+      room.broadcast.result.plays.length,
+      room.broadcast.msPerPlay,
+    )
+  ) {
+    return false;
+  }
+  room.status = "final";
+  room.updatedAt = now();
+  return true;
+}
+
 export async function pickMatchupTeam(input: {
   roomId: string;
   gmId: string;
@@ -457,7 +664,7 @@ export async function pickMatchupTeam(input: {
   const store = await readStore();
   const room = findRoom(store, input.roomId);
   if (!room) throw new Error("Matchup room not found.");
-  if (room.status !== "lobby") {
+  if (room.status === "live" || room.status === "final") {
     throw new Error("Teams lock once the matchup goes live.");
   }
 
@@ -482,7 +689,10 @@ export async function pickMatchupTeam(input: {
   room.seats[seat.side] = {
     ...seat,
     teamId: team.id,
+    card,
     ready: false,
+    locked: false,
+    lockedAt: null,
   };
   room.updatedAt = now();
   await writeStore(store);
@@ -494,18 +704,111 @@ export async function setMatchupReady(input: {
   gmId: string;
   ready: boolean;
 }): Promise<LiveMatchupRoom> {
+  if (input.ready) {
+    return lockMatchupCard({
+      roomId: input.roomId,
+      gmId: input.gmId,
+    });
+  }
+  return unlockMatchupCard({
+    roomId: input.roomId,
+    gmId: input.gmId,
+  });
+}
+
+export async function scheduleLiveMatchup(input: {
+  roomId: string;
+  hostGmId: string;
+  scheduledAt?: string | null;
+}): Promise<LiveMatchupRoom> {
   const store = await readStore();
   const room = findRoom(store, input.roomId);
   if (!room) throw new Error("Matchup room not found.");
-  if (room.status !== "lobby") throw new Error("Matchup already started.");
+  if (room.hostGmId !== input.hostGmId.trim().toUpperCase()) {
+    throw new Error("Only the host can schedule first pitch.");
+  }
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("This matchup already started.");
+  }
+
+  const away = room.seats.away;
+  const home = room.seats.home;
+  if (!away.gmId || !home.gmId) {
+    throw new Error("Both humans must claim a seat before you schedule.");
+  }
+  if (!away.teamId || !home.teamId) {
+    throw new Error("Both GMs must claim a club on the board before you schedule.");
+  }
+
+  const tip = input.scheduledAt?.trim()
+    ? new Date(input.scheduledAt)
+    : new Date();
+  if (Number.isNaN(tip.getTime())) {
+    throw new Error("Enter a valid tip-off time.");
+  }
+
+  room.scheduledAt = tip.toISOString();
+  room.status = "scheduled";
+  room.updatedAt = now();
+  maybeAutoTip(store, room);
+  await writeStore(store);
+  return room;
+}
+
+export async function lockMatchupCard(input: {
+  roomId: string;
+  gmId: string;
+  card?: ManagerCard | null;
+}): Promise<LiveMatchupRoom> {
+  const store = await readStore();
+  const room = findRoom(store, input.roomId);
+  if (!room) throw new Error("Matchup room not found.");
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("Cards already locked for this game.");
+  }
+  if (room.status !== "scheduled") {
+    throw new Error("Schedule first pitch before locking your card.");
+  }
 
   const seat = seatForGm(room, input.gmId.trim().toUpperCase());
   if (!seat) throw new Error("You are not seated in this matchup.");
-  if (input.ready && !seat.teamId) {
-    throw new Error("Pick a classic club before readying up.");
+  if (!seat.teamId) throw new Error("Claim a classic club before locking.");
+
+  const card = requireCard(seat.teamId, input.card ?? seat.card);
+  const stamp = now();
+  room.seats[seat.side] = {
+    ...seat,
+    card,
+    locked: true,
+    lockedAt: stamp,
+    ready: true,
+  };
+  room.updatedAt = stamp;
+  maybeAutoTip(store, room);
+  await writeStore(store);
+  return room;
+}
+
+export async function unlockMatchupCard(input: {
+  roomId: string;
+  gmId: string;
+}): Promise<LiveMatchupRoom> {
+  const store = await readStore();
+  const room = findRoom(store, input.roomId);
+  if (!room) throw new Error("Matchup room not found.");
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("Cannot unlock after first pitch.");
   }
 
-  room.seats[seat.side] = { ...seat, ready: input.ready };
+  const seat = seatForGm(room, input.gmId.trim().toUpperCase());
+  if (!seat) throw new Error("You are not seated in this matchup.");
+
+  room.seats[seat.side] = {
+    ...seat,
+    locked: false,
+    lockedAt: null,
+    ready: false,
+  };
   room.updatedAt = now();
   await writeStore(store);
   return room;
@@ -523,71 +826,50 @@ export async function startLiveMatchup(input: {
   if (room.hostGmId !== input.hostGmId.trim().toUpperCase()) {
     throw new Error("Only the host can start the matchup.");
   }
-  if (room.status !== "lobby") throw new Error("Matchup already started.");
-
-  const away = room.seats.away;
-  const home = room.seats.home;
-  if (!away.gmId || !home.gmId) {
-    throw new Error("Both seats need a GM before first pitch.");
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("Matchup already started.");
   }
-  if (!away.teamId || !home.teamId) {
-    throw new Error("Both GMs must pick a classic club.");
-  }
-  if (!away.ready || !home.ready) {
-    throw new Error("Both GMs must ready up before first pitch.");
+  if (room.status !== "scheduled") {
+    throw new Error("Schedule the game before first pitch.");
   }
 
-  const awayPack = classicTeamById(away.teamId)!;
-  const homePack = classicTeamById(home.teamId)!;
-  const awayCard = input.awayCard ?? defaultManagerCard(awayPack);
-  const homeCard = input.homeCard ?? defaultManagerCard(homePack);
-  const awayTeam = applyManagerCard(awayPack, awayCard);
-  const homeTeam = applyManagerCard(homePack, homeCard);
-
-  const awayCap = checkSalaryCap(awayTeam);
-  const homeCap = checkSalaryCap(homeTeam);
-  if (!awayCap.ok || !homeCap.ok) {
-    throw new Error("Hard salary cap blocks first pitch.");
+  if (input.awayCard && room.seats.away.teamId) {
+    room.seats.away.card = requireCard(room.seats.away.teamId, input.awayCard);
+    room.seats.away.locked = true;
+    room.seats.away.ready = true;
+  }
+  if (input.homeCard && room.seats.home.teamId) {
+    room.seats.home.card = requireCard(room.seats.home.teamId, input.homeCard);
+    room.seats.home.locked = true;
+    room.seats.home.ready = true;
   }
 
-  const result = simulateGame(awayTeam, homeTeam, {
-    seed: room.seed,
-    pinchHitMode: "auto",
-  });
-
-  room.broadcast = {
-    startedAt: now(),
-    seed: room.seed,
-    awayTeamId: away.teamId,
-    homeTeamId: home.teamId,
-    result,
-    msPerPlay: LIVE_MATCHUP_MS_PER_PLAY,
-  };
-  room.status = "live";
-  room.updatedAt = now();
+  runFirstPitch(store, room);
   await writeStore(store);
+  return room;
+}
+
+export async function advanceLiveMatchup(
+  roomId: string,
+): Promise<LiveMatchupRoom | null> {
+  const store = await readStore();
+  const room = findRoom(store, roomId);
+  if (!room) return null;
+  const started = maybeAutoTip(store, room);
+  const finished = maybeFinalize(store, room);
+  if (started || finished) await writeStore(store);
   return room;
 }
 
 export async function finalizeLiveMatchupIfComplete(
   roomId: string,
 ): Promise<LiveMatchupRoom | null> {
+  return advanceLiveMatchup(roomId);
+}
+
+export async function listLiveLeagueStandings(): Promise<LiveStandingRow[]> {
   const store = await readStore();
-  const room = findRoom(store, roomId);
-  if (!room || !room.broadcast || room.status !== "live") return room ?? null;
-  if (
-    !isBroadcastComplete(
-      room.broadcast.startedAt,
-      room.broadcast.result.plays.length,
-      room.broadcast.msPerPlay,
-    )
-  ) {
-    return room;
-  }
-  room.status = "final";
-  room.updatedAt = now();
-  await writeStore(store);
-  return room;
+  return sortLiveStandings(store.standings);
 }
 
 export async function getMatchupInviteLanding(code: string): Promise<{

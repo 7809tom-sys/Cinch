@@ -50,7 +50,8 @@ export default function LockgmSimPage() {
         </Link>
         <span className="text-[color:var(--lg-mute)]">
           {" "}
-          with invites and a local ad ribbon above the scoreboard.
+          with invites, a pre-game lock screen from these cards, and a local ad
+          ribbon above the scoreboard.
         </span>
       </p>
       <div className="mt-10">

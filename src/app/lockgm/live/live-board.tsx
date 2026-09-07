@@ -3,32 +3,103 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CLASSIC_TEAMS, classicTeamById, classicTeamLabel } from "@/lib/lockgm/strat-sim";
+import {
+  CLASSIC_TEAMS,
+  classicTeamById,
+  classicTeamLabel,
+  defaultManagerCard,
+  type ManagerCard,
+} from "@/lib/lockgm/strat-sim";
 import {
   broadcastPlayIndex,
   isBroadcastComplete,
+  type LiveStandingRow,
   type PublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup-shared";
 import {
   claimLiveMatchupAction,
   createLiveMatchupAction,
   inviteMemberByGmIdAction,
+  lockCardAction,
   pickTeamAction,
   refreshLiveMatchupAction,
-  setReadyAction,
+  scheduleMatchupAction,
   startMatchupAction,
+  unlockCardAction,
 } from "@/app/lockgm/live/actions";
 import { AdRibbon } from "@/app/lockgm/components/ad-ribbon";
+import { ManagerDesk } from "@/app/lockgm/components/manager-desk";
+
+function recordLine(wins: number, losses: number, ties: number): string {
+  return ties > 0 ? `${wins}–${losses}–${ties}` : `${wins}–${losses}`;
+}
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function LiveStandingsTable({
+  standings,
+  empty = "Standings are empty until two GMs lock and first pitch runs.",
+}: {
+  standings: LiveStandingRow[];
+  empty?: string;
+}) {
+  if (standings.length === 0) {
+    return <p className="mt-4 text-sm text-[color:var(--lg-mute)]">{empty}</p>;
+  }
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[20rem] text-left text-sm">
+        <thead>
+          <tr className="border-b border-[color:var(--lg-line)] text-xs tracking-wide text-[color:var(--lg-mute)]">
+            <th className="py-2 pr-3 font-bold">GM</th>
+            <th className="py-2 pr-3 font-bold">Club</th>
+            <th className="py-2 pr-3 font-bold">W</th>
+            <th className="py-2 pr-3 font-bold">L</th>
+            <th className="py-2 font-bold">T</th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map((row) => {
+            const team = classicTeamById(row.teamId);
+            return (
+              <tr
+                key={`${row.gmId}-${row.teamId}`}
+                className="border-b border-[color:var(--lg-line)]/70"
+              >
+                <td className="py-2 pr-3 font-semibold">{row.displayName}</td>
+                <td className="py-2 pr-3 text-[color:var(--lg-mute)]">
+                  {team ? classicTeamLabel(team) : row.teamId}
+                </td>
+                <td className="py-2 pr-3 tabular-nums">{row.wins}</td>
+                <td className="py-2 pr-3 tabular-nums">{row.losses}</td>
+                <td className="py-2 tabular-nums">{row.ties}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export function LiveMatchupLobby({
   gmId,
   initialRooms,
+  initialStandings,
 }: {
   gmId: string;
   initialRooms: PublicLiveMatchup[];
+  initialStandings: LiveStandingRow[];
 }) {
   const router = useRouter();
   const [rooms, setRooms] = useState(initialRooms);
+  const [standings] = useState(initialStandings);
   const [name, setName] = useState("Friday Night Live");
   const [market, setMarket] = useState("local");
   const [message, setMessage] = useState<string | null>(null);
@@ -45,7 +116,7 @@ export function LiveMatchupLobby({
         result.room,
         ...current.filter((r) => r.id !== result.room.id),
       ]);
-      setMessage("Room opened — invite a GM or share the link.");
+      setMessage("Room opened — invite a GM, claim clubs, then schedule.");
       router.push(`/lockgm/live/${result.room.id}`);
     });
   }
@@ -57,9 +128,9 @@ export function LiveMatchupLobby({
           HOST A LIVE MATCHUP
         </p>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[color:var(--lg-mute)]">
-          Invite a signed-up GM by public ID, or share a link so a friend can
-          create an account, claim a seat, and pick a classic club. The local
-          ad ribbon sits above the scoreboard once you go live.
+          Two humans claim classic clubs, one invites or shares a join link,
+          you schedule tip-off, both lock the same /sim cards, then first pitch
+          runs and the standings move.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
@@ -95,6 +166,13 @@ export function LiveMatchupLobby({
         ) : null}
       </section>
 
+      <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-6">
+        <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+          LIVE LEAGUE STANDINGS
+        </p>
+        <LiveStandingsTable standings={standings} />
+      </section>
+
       <section>
         <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
           YOUR OPEN ROOMS · {gmId}
@@ -115,6 +193,9 @@ export function LiveMatchupLobby({
                   <p className="font-bold text-[color:var(--lg-text)]">{room.name}</p>
                   <p className="text-xs text-[color:var(--lg-mute)]">
                     {room.status.toUpperCase()} · {room.code} · market {room.market}
+                    {room.scheduledAt
+                      ? ` · tip ${new Date(room.scheduledAt).toLocaleString()}`
+                      : ""}
                   </p>
                 </div>
                 <Link
@@ -141,9 +222,13 @@ export function LiveMatchupRoomBoard({
 }) {
   const [room, setRoom] = useState(initialRoom);
   const [inviteGmId, setInviteGmId] = useState("");
+  const [tipLocal, setTipLocal] = useState(() =>
+    toDatetimeLocal(initialRoom.scheduledAt),
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [draftCard, setDraftCard] = useState<ManagerCard | null>(null);
 
   const mySeat =
     room.seats.away.gmId === gmId
@@ -152,6 +237,7 @@ export function LiveMatchupRoomBoard({
         ? room.seats.home
         : null;
   const isHost = room.hostGmId === gmId;
+  const myTeam = mySeat?.teamId ? classicTeamById(mySeat.teamId) : null;
 
   useEffect(() => {
     const poll = window.setInterval(() => {
@@ -167,6 +253,18 @@ export function LiveMatchupRoomBoard({
     const tick = window.setInterval(() => setNowMs(Date.now()), 400);
     return () => window.clearInterval(tick);
   }, [room.status, room.broadcast]);
+
+  useEffect(() => {
+    setTipLocal(toDatetimeLocal(room.scheduledAt));
+  }, [room.scheduledAt]);
+
+  useEffect(() => {
+    if (!myTeam) {
+      setDraftCard(null);
+      return;
+    }
+    setDraftCard(mySeat?.card ?? defaultManagerCard(myTeam));
+  }, [myTeam?.id, mySeat?.locked]);
 
   const playIdx = useMemo(() => {
     if (!room.broadcast) return 0;
@@ -192,7 +290,9 @@ export function LiveMatchupRoomBoard({
       nowMs,
     );
 
-  function run(action: Promise<{ ok: boolean; room?: PublicLiveMatchup; error?: string }>) {
+  function run(
+    action: Promise<{ ok: boolean; room?: PublicLiveMatchup; error?: string }>,
+  ) {
     startTransition(async () => {
       const result = await action;
       if (!result.ok) {
@@ -207,7 +307,9 @@ export function LiveMatchupRoomBoard({
   async function copyInvite() {
     try {
       await navigator.clipboard.writeText(room.inviteLink);
-      setMessage("Invite link copied — send it to a signed-up GM or a new signup.");
+      setMessage(
+        "Invite link copied — send it to a signed-up GM or a new signup.",
+      );
     } catch {
       setMessage("Copy failed. Select the invite link and copy it manually.");
     }
@@ -238,6 +340,23 @@ export function LiveMatchupRoomBoard({
   const homeTeam = room.seats.home.teamId
     ? classicTeamById(room.seats.home.teamId)
     : null;
+  const bothClaimed = Boolean(
+    room.seats.away.gmId &&
+      room.seats.home.gmId &&
+      room.seats.away.teamId &&
+      room.seats.home.teamId,
+  );
+  const roomStandings: LiveStandingRow[] = [room.seats.away, room.seats.home]
+    .filter((seat) => seat.gmId && seat.teamId)
+    .map((seat) => ({
+      gmId: seat.gmId!,
+      displayName: seat.displayName || seat.gmId!,
+      teamId: seat.teamId!,
+      wins: seat.wins,
+      losses: seat.losses,
+      ties: seat.ties,
+      updatedAt: room.updatedAt,
+    }));
 
   return (
     <div className="space-y-8">
@@ -254,6 +373,9 @@ export function LiveMatchupRoomBoard({
             </h2>
             <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
               Host {room.hostDisplayName} · code {room.code} · seed {room.seed}
+              {room.scheduledAt
+                ? ` · tip ${new Date(room.scheduledAt).toLocaleString()}`
+                : ""}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -283,54 +405,113 @@ export function LiveMatchupRoomBoard({
             seat={room.seats.away}
             teamLabel={awayTeam ? classicTeamLabel(awayTeam) : null}
             score={score.away}
-            live={room.status !== "lobby"}
+            live={room.status === "live" || room.status === "final"}
           />
           <SeatCard
             title="Home"
             seat={room.seats.home}
             teamLabel={homeTeam ? classicTeamLabel(homeTeam) : null}
             score={score.home}
-            live={room.status !== "lobby"}
+            live={room.status === "live" || room.status === "final"}
           />
         </div>
 
-        {room.status === "lobby" && mySeat ? (
-          <div className="mt-6 space-y-4 border-t border-[color:var(--lg-line)] pt-5">
-            <label className="block text-sm">
-              <span className="font-bold">Pick your classic club</span>
-              <select
-                value={mySeat.teamId ?? ""}
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  run(pickTeamAction(room.id, e.target.value));
-                }}
-                className="mt-2 block min-h-11 w-full rounded-md border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-3 text-[color:var(--lg-text)]"
-              >
-                <option value="">Select a club…</option>
-                {CLASSIC_TEAMS.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {classicTeamLabel(team)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex flex-wrap gap-3">
+        {mySeat && room.status !== "live" && room.status !== "final" ? (
+          <ClaimBoard
+            myTeamId={mySeat.teamId}
+            takenTeamId={
+              mySeat.side === "away"
+                ? room.seats.home.teamId
+                : room.seats.away.teamId
+            }
+            locked={mySeat.locked}
+            pending={pending}
+            onClaim={(teamId) => run(pickTeamAction(room.id, teamId))}
+          />
+        ) : null}
+
+        {isHost && room.status === "lobby" ? (
+          <div className="mt-6 space-y-3 border-t border-[color:var(--lg-line)] pt-5">
+            <p className="text-xs font-bold tracking-[0.16em] text-[color:var(--lg-accent)]">
+              SCHEDULE FIRST PITCH
+            </p>
+            <p className="text-sm text-[color:var(--lg-mute)]">
+              Both humans claim a club, then set tip-off. Leave the time blank
+              to tip as soon as both cards lock.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-sm">
+                <span className="font-bold">Tip-off</span>
+                <input
+                  type="datetime-local"
+                  value={tipLocal}
+                  onChange={(e) => setTipLocal(e.target.value)}
+                  className="mt-2 block min-h-11 rounded-md border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-3 text-[color:var(--lg-text)]"
+                />
+              </label>
               <button
                 type="button"
-                disabled={pending || !mySeat.teamId}
-                onClick={() => run(setReadyAction(room.id, !mySeat.ready))}
-                className="inline-flex min-h-11 items-center rounded-md border border-[color:var(--lg-line)] px-4 text-sm font-bold disabled:opacity-60"
+                disabled={pending || !bothClaimed}
+                onClick={() =>
+                  run(
+                    scheduleMatchupAction(
+                      room.id,
+                      tipLocal ? new Date(tipLocal).toISOString() : null,
+                    ),
+                  )
+                }
+                className="inline-flex min-h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)] disabled:opacity-60"
               >
-                {mySeat.ready ? "Unready" : "Ready up"}
+                Schedule game
               </button>
+            </div>
+          </div>
+        ) : null}
+
+        {room.status === "scheduled" && mySeat && myTeam && draftCard ? (
+          <div className="mt-6 space-y-4 border-t border-[color:var(--lg-line)] pt-5">
+            <p className="text-xs font-bold tracking-[0.16em] text-[color:var(--lg-accent)]">
+              PRE-GAME LOCK · SAME CARDS AS /SIM
+            </p>
+            <p className="text-sm text-[color:var(--lg-mute)]">
+              Set lineup, gloves, and pitching, then lock. First pitch runs
+              when both GMs are locked and tip-off arrives.
+            </p>
+            <ManagerDesk
+              title={`${myTeam.abbrev} lock card`}
+              team={myTeam}
+              card={draftCard}
+              onChange={setDraftCard}
+              disabled={mySeat.locked}
+            />
+            <div className="flex flex-wrap gap-3">
+              {mySeat.locked ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => run(unlockCardAction(room.id))}
+                  className="inline-flex min-h-11 items-center rounded-md border border-[color:var(--lg-line)] px-4 text-sm font-bold disabled:opacity-60"
+                >
+                  Unlock card
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => run(lockCardAction(room.id, draftCard))}
+                  className="inline-flex min-h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)] disabled:opacity-60"
+                >
+                  Lock card
+                </button>
+              )}
               {isHost ? (
                 <button
                   type="button"
                   disabled={pending}
                   onClick={() => run(startMatchupAction(room.id))}
-                  className="inline-flex min-h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)] disabled:opacity-60"
+                  className="inline-flex min-h-11 items-center rounded-md border border-[color:var(--lg-accent)] px-4 text-sm font-bold text-[color:var(--lg-accent)] disabled:opacity-60"
                 >
-                  First pitch
+                  First pitch now
                 </button>
               ) : null}
             </div>
@@ -370,6 +551,16 @@ export function LiveMatchupRoomBoard({
             {message}
           </p>
         ) : null}
+      </section>
+
+      <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
+        <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+          ROOM STANDINGS
+        </p>
+        <LiveStandingsTable
+          standings={roomStandings}
+          empty="Claim clubs to put both humans on the table. Records move when first pitch runs."
+        />
       </section>
 
       {room.broadcast ? (
@@ -420,6 +611,54 @@ export function LiveMatchupRoomBoard({
   );
 }
 
+function ClaimBoard({
+  myTeamId,
+  takenTeamId,
+  locked,
+  pending,
+  onClaim,
+}: {
+  myTeamId: string | null;
+  takenTeamId: string | null;
+  locked: boolean;
+  pending: boolean;
+  onClaim: (teamId: string) => void;
+}) {
+  return (
+    <div className="mt-6 space-y-3 border-t border-[color:var(--lg-line)] pt-5">
+      <p className="text-xs font-bold tracking-[0.16em] text-[color:var(--lg-accent)]">
+        CLAIM BOARD
+      </p>
+      <p className="text-sm text-[color:var(--lg-mute)]">
+        Two humans claim different classic clubs. The other GM&apos;s club stays
+        taken.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {CLASSIC_TEAMS.map((team) => {
+          const mine = myTeamId === team.id;
+          const taken = takenTeamId === team.id;
+          return (
+            <button
+              key={team.id}
+              type="button"
+              disabled={pending || locked || taken}
+              onClick={() => onClaim(team.id)}
+              className={`rounded-md border px-3 py-2 text-sm font-bold disabled:opacity-50 ${
+                mine
+                  ? "border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
+                  : "border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+              }`}
+            >
+              {mine ? "Your " : taken ? "Taken " : "Claim "}
+              {team.abbrev}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SeatCard({
   title,
   seat,
@@ -453,7 +692,10 @@ function SeatCard({
         {teamLabel || "No club selected"}
       </p>
       <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
-        {seat.ready ? "Ready" : "Not ready"}
+        {seat.locked ? "Card locked" : "Card not locked"}
+        {seat.gmId
+          ? ` · ${recordLine(seat.wins, seat.losses, seat.ties)}`
+          : ""}
       </p>
     </div>
   );
