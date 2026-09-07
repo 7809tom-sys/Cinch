@@ -4,6 +4,7 @@
  */
 import type { ClassicTeam, GameResult } from "./types";
 import { simulateBestOf, type BestOfSeriesResult } from "./game";
+import { PLAYOFF_WINS_NEEDED } from "./rotation";
 import {
   ANGELS_1982,
   BLUE_JAYS_1985,
@@ -130,8 +131,8 @@ function buildBracket(args: {
     nlHostsWorldSeries,
   } = args;
 
-  const alcsSeries = simulateBestOf(alTeamA, alTeamB, seed + 100, 4);
-  const nlcsSeries = simulateBestOf(nlTeamA, nlTeamB, seed + 200, 4);
+  const alcsSeries = simulateBestOf(alTeamA, alTeamB, seed + 100, PLAYOFF_WINS_NEEDED);
+  const nlcsSeries = simulateBestOf(nlTeamA, nlTeamB, seed + 200, PLAYOFF_WINS_NEEDED);
   const alcs = roundResult(alcsDef, alcsSeries);
   const nlcs = roundResult(nlcsDef, nlcsSeries);
 
@@ -149,7 +150,7 @@ function buildBracket(args: {
       higherSeedId: higher.id,
       lowerSeedId: lower.id,
     };
-    const wsSeries = simulateBestOf(higher, lower, seed + 300, 4);
+    const wsSeries = simulateBestOf(higher, lower, seed + 300, PLAYOFF_WINS_NEEDED);
     worldSeries = roundResult(wsDef, wsSeries);
     championId = wsSeries.championId;
   }

@@ -9,9 +9,10 @@ import {
   tryAddPlayer,
 } from "./salary";
 import type { ClassicTeam, ManagerCard, Player } from "./types";
-import { CLASSIC_TEAMS, classicTeamById } from "./teams";
-import { simulateGame } from "./game";
+import { CLASSIC_TEAMS, classicTeamById, classicTeamLabel } from "./teams";
+import { simulateBestOf, simulateGame, type BestOfSeriesResult } from "./game";
 import { emptyRestBook } from "./fatigue";
+import { PLAYOFF_WINS_NEEDED, rotationSizeForTeam } from "./rotation";
 import type { PitcherRestBook } from "./types";
 
 export type LeagueSlot = {
@@ -34,6 +35,17 @@ export type LeagueState = {
   slots: LeagueSlot[];
   humanTeamId: string | null;
   log: string[];
+  playoffs: LeaguePlayoffs | null;
+};
+
+export type LeaguePlayoffs = {
+  seed: number;
+  field: string[];
+  semifinalA: BestOfSeriesResult;
+  semifinalB: BestOfSeriesResult | null;
+  championship: BestOfSeriesResult | null;
+  championId: string | null;
+  championLabel: string | null;
 };
 
 /** AI sets a competitive lineup: bat best contact/power, glove the best defenders. */
@@ -92,7 +104,7 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
   return {
     lineup: lineup.length === 9 ? lineup : [...team.lineup],
     defense: Object.keys(defense).length === 8 ? defense : { ...team.defense },
-    rotation: arms.map((p) => p.id).slice(0, Math.max(3, team.rotation.length)),
+    rotation: arms.map((p) => p.id).slice(0, rotationSizeForTeam(team)),
     bullpen: [...penIds, ...extraPen].slice(
       0,
       Math.max(2, team.bullpen.length),
@@ -138,6 +150,7 @@ export function createClassicLeague(seed = 1): LeagueState {
     rosterSize: ROSTER_SIZE,
     slots,
     humanTeamId: null,
+    playoffs: null,
     log: [
       `League opened. ${slots.length} classic clubs on the board — claim one; the rest get AI managers that play to win under the same hard cap.`,
     ],
@@ -234,7 +247,7 @@ export function simulateLeagueRound(
       );
     }
   }
-  return { ...league, slots, log };
+  return { ...league, slots, log, playoffs: null };
 }
 
 export function humanSlot(league: LeagueState): LeagueSlot | undefined {
@@ -341,6 +354,127 @@ export function leagueStandings(league: LeagueState) {
     };
     return pct(b) - pct(a);
   });
+}
+
+function teamFromSlot(slot: LeagueSlot): ClassicTeam {
+  const card = slot.claimedBy === "ai" ? aiSetLineup(slot.roster) : slot.card;
+  return applyManagerCard(slot.roster, card);
+}
+
+/**
+ * Top-four October: best-of-7 semis (1v4, 2v3) then a best-of-7 final.
+ * Higher remaining seed hosts 2-3-2. Starters use the era rotation
+ * (four-man classic / five-man modern) — series are won by games, not home runs.
+ */
+export function simulateLeaguePlayoffs(
+  league: LeagueState,
+  seed: number,
+): LeagueState {
+  if (!league.humanTeamId) {
+    return {
+      ...league,
+      log: [...league.log, "Claim a club before simulating October."],
+    };
+  }
+
+  const table = leagueStandings(league);
+  const field = table.slice(0, Math.min(4, table.length));
+  if (field.length < 2) {
+    return {
+      ...league,
+      log: [...league.log, "Need at least two clubs for a playoff series."],
+    };
+  }
+
+  const byId = new Map(league.slots.map((s) => [s.teamId, s]));
+  const pack = (id: string) => teamFromSlot(byId.get(id)!);
+
+  const semifinalA = simulateBestOf(
+    pack(field[0]!.teamId),
+    pack(field[field.length === 2 ? 1 : field.length - 1]!.teamId),
+    seed + 11,
+    PLAYOFF_WINS_NEEDED,
+  );
+
+  let semifinalB: BestOfSeriesResult | null = null;
+  let championship: BestOfSeriesResult | null = null;
+  let championId: string | null = semifinalA.championId;
+
+  if (field.length >= 4) {
+    semifinalB = simulateBestOf(
+      pack(field[1]!.teamId),
+      pack(field[2]!.teamId),
+      seed + 22,
+      PLAYOFF_WINS_NEEDED,
+    );
+    if (semifinalA.championId && semifinalB.championId) {
+      const aIdx = field.findIndex((s) => s.teamId === semifinalA.championId);
+      const bIdx = field.findIndex((s) => s.teamId === semifinalB.championId);
+      const higherId =
+        aIdx <= bIdx ? semifinalA.championId : semifinalB.championId;
+      const lowerId =
+        aIdx <= bIdx ? semifinalB.championId : semifinalA.championId;
+      championship = simulateBestOf(
+        pack(higherId),
+        pack(lowerId),
+        seed + 33,
+        PLAYOFF_WINS_NEEDED,
+      );
+      championId = championship.championId;
+    } else {
+      championId = null;
+    }
+  } else if (field.length === 3) {
+    semifinalB = simulateBestOf(
+      pack(field[1]!.teamId),
+      pack(field[2]!.teamId),
+      seed + 22,
+      PLAYOFF_WINS_NEEDED,
+    );
+    if (semifinalB.championId) {
+      championship = simulateBestOf(
+        pack(field[0]!.teamId),
+        pack(semifinalB.championId),
+        seed + 33,
+        PLAYOFF_WINS_NEEDED,
+      );
+      championId = championship.championId;
+    } else {
+      championId = null;
+    }
+  } else {
+    championship = semifinalA;
+  }
+
+  const champ = championId ? classicTeamById(championId) : undefined;
+  const playoffs: LeaguePlayoffs = {
+    seed,
+    field: field.map((s) => s.teamId),
+    semifinalA,
+    semifinalB,
+    championship: field.length === 2 ? semifinalA : championship,
+    championId,
+    championLabel: champ ? classicTeamLabel(champ) : null,
+  };
+
+  const rotNote = field
+    .map((s) => {
+      const t = s.roster;
+      const n = rotationSizeForTeam(t);
+      return `${t.abbrev} ${n}-man`;
+    })
+    .join(", ");
+
+  return {
+    ...league,
+    playoffs,
+    log: [
+      ...league.log,
+      playoffs.championLabel
+        ? `October champion: ${playoffs.championLabel} (best of 7 · ${rotNote}). Series by games won — not the home-run column.`
+        : `October bracket ran (best of 7 · ${rotNote}).`,
+    ],
+  };
 }
 
 export { checkSalaryCap, teamPayroll, tryAddPlayer, ROSTER_SIZE, DEFAULT_SALARY_CAP };

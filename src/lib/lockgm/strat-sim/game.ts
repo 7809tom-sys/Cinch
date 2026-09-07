@@ -21,6 +21,10 @@ import {
   recordOutings,
 } from "./fatigue";
 import {
+  PLAYOFF_WINS_NEEDED,
+  seriesRotation,
+} from "./rotation";
+import {
   findPinchHitRecommendation,
   type PinchHitRecommendation,
 } from "./pinch-hit";
@@ -45,6 +49,7 @@ type SideState = {
   batterIdx: number;
   lineupBatters: Map<string, BatterLine>;
   pitcherLines: Map<string, PitcherLine>;
+  starterId: string;
   pitcherId: string;
   pitcherOuts: number;
   pitcherPitchBudget: number;
@@ -137,6 +142,7 @@ function initSide(team: ClassicTeam, restBook: PitcherRestBook): SideState {
     batterIdx: 0,
     lineupBatters,
     pitcherLines,
+    starterId,
     pitcherId: starterId,
     pitcherOuts: 0,
     pitcherPitchBudget: budget,
@@ -348,6 +354,7 @@ function toBox(side: SideState): TeamBox {
     lineScore: [...side.lineScore],
     batters,
     pitchers: [...side.pitcherLines.values()],
+    starterId: side.starterId,
   };
 }
 
@@ -868,6 +875,10 @@ export function formatIp(ipOuts: number): string {
   return `${whole}.${rem}`;
 }
 
+export function boxHomeRuns(box: TeamBox): number {
+  return box.batters.reduce((sum, line) => sum + line.hr, 0);
+}
+
 export function countOutsRecorded(box: TeamBox): number {
   return box.pitchers.reduce((s, p) => s + p.ipOuts, 0);
 }
@@ -905,8 +916,9 @@ function teamForSeriesGame(
   restBook: PitcherRestBook,
   gameIndex: number,
 ): ClassicTeam {
-  const pick = pickSeriesStarter(team.rotation, restBook, gameIndex);
-  return { ...team, rotation: promoteStarter(team.rotation, pick.id) };
+  const rotation = seriesRotation(team);
+  const pick = pickSeriesStarter(rotation, restBook, gameIndex);
+  return { ...team, rotation: promoteStarter(rotation, pick.id) };
 }
 
 export type BestOfGame = {
@@ -917,6 +929,8 @@ export type BestOfGame = {
   result: GameResult;
   /** Winner relative to series clubs (not box away/home). */
   seriesWinnerId: string | null;
+  awayStarterId: string;
+  homeStarterId: string;
 };
 
 export type BestOfSeriesResult = {
@@ -930,17 +944,23 @@ export type BestOfSeriesResult = {
   games: BestOfGame[];
   /** Flattened game results in series order (for radio/highlights). */
   results: GameResult[];
+  /** Era rotation the higher seed used (4-man classic / 5-man modern). */
+  higherRotation: string[];
+  /** Era rotation the lower seed used. */
+  lowerRotation: string[];
 };
 
 /**
  * Best-of-N series with 2-3-2 home field: higher seed hosts games 1, 2, 6, 7.
  * Stops when one club reaches winsNeeded (ties do not award a series win).
+ * Default is a seven-game series (first to 4). Starters cycle the era rotation
+ * (four-man classic, five-man modern) — the ace does not start every game.
  */
 export function simulateBestOf(
   higherSeed: ClassicTeam,
   lowerSeed: ClassicTeam,
   seed: number,
-  winsNeeded = 4,
+  winsNeeded = PLAYOFF_WINS_NEEDED,
 ): BestOfSeriesResult {
   const maxGames = winsNeeded * 2 - 1;
   const games: BestOfGame[] = [];
@@ -948,6 +968,8 @@ export function simulateBestOf(
   let lowerWins = 0;
   let ties = 0;
   let restBook: PitcherRestBook = emptyRestBook();
+  const higherRotation = seriesRotation(higherSeed);
+  const lowerRotation = seriesRotation(lowerSeed);
 
   for (let g = 1; g <= maxGames; g++) {
     if (higherWins >= winsNeeded || lowerWins >= winsNeeded) break;
@@ -980,6 +1002,8 @@ export function simulateBestOf(
       awayTeamId: away.id,
       result,
       seriesWinnerId,
+      awayStarterId: away.rotation[0]!,
+      homeStarterId: home.rotation[0]!,
     });
   }
 
@@ -997,5 +1021,7 @@ export function simulateBestOf(
     championId,
     games,
     results: games.map((x) => x.result),
+    higherRotation,
+    lowerRotation,
   };
 }
