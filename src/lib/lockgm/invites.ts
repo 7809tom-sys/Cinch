@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { readJsonStore, writeJsonStore, isDurableStoreConfigured } from "@/lib/kv-store";
+import { isValidLockgmGmId } from "@/lib/lockgm/identity";
 
 export const LOCKGM_REFERRAL_COOKIE = "lockgm_referral";
 export const MAX_ACCEPTED_INVITES = 100;
@@ -9,7 +10,6 @@ export const MAX_INVITE_CLICKS = 10_000;
 export const MAX_INVITE_SHARES = 1_000;
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const PUBLIC_GM_ID_PATTERN = /^GM-[A-F0-9]{10}$/;
 
 type StoredAcceptance = {
   id: string;
@@ -87,9 +87,7 @@ function normalizeDimension(value: string | null | undefined, fallback: string):
   return cleaned || fallback;
 }
 
-export function isValidLockgmGmId(value: string): boolean {
-  return PUBLIC_GM_ID_PATTERN.test(value.trim().toUpperCase());
-}
+export { isValidLockgmGmId };
 
 /**
  * The merged identity branch supplies `lockgmProfile.gmId`. The deterministic
