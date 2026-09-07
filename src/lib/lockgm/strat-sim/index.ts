@@ -35,6 +35,7 @@ export {
   startLiveGame,
   formatIp,
   countOutsRecorded,
+  boxHomeRuns,
   type BestOfGame,
   type BestOfSeriesResult,
   type LiveGame,
@@ -117,6 +118,17 @@ export {
   FIELD_ORDER,
 } from "./salary";
 export {
+  MODERN_FIVE_MAN_YEAR,
+  CLASSIC_ROTATION_SIZE,
+  MODERN_ROTATION_SIZE,
+  PLAYOFF_WINS_NEEDED,
+  PLAYOFF_MAX_GAMES,
+  rotationSizeForYear,
+  rotationSizeForTeam,
+  rotationLabel,
+  seriesRotation,
+} from "./rotation";
+export {
   FIELD_POSITIONS,
   OOP_DEFENSE_RATING,
   OOP_ERROR_MULT,
@@ -133,6 +145,7 @@ export {
   createClassicLeague,
   claimTeam,
   simulateLeagueRound,
+  simulateLeaguePlayoffs,
   humanSlot,
   updateHumanCard,
   makeCapBusterFreeAgent,
@@ -141,4 +154,5 @@ export {
   aiSetLineup,
   type LeagueState,
   type LeagueSlot,
+  type LeaguePlayoffs,
 } from "./league";

@@ -30,12 +30,18 @@ import {
   moveBullpenArm,
   playoffSeriesScoreLine,
   rosterPitchers,
+  rotationLabel,
+  rotationSizeForTeam,
   selectStartingPitcher,
+  seriesRotation,
   setBullpenSlot,
   setStarterInningsTarget,
   startLiveGame,
+  boxHomeRuns,
   bullpenRoleLabel,
+  simulateBestOf,
   simulateGame,
+  simulateLeaguePlayoffs,
   simulateLeagueRound,
   simulatePlayoffs1982,
   simulatePlayoffs1985,
@@ -45,8 +51,12 @@ import {
   validateDefense,
   validateLineup,
   validatePitching,
+  PLAYOFF_WINS_NEEDED,
+  type BestOfGame,
+  type BestOfSeriesResult,
   type ClassicTeam,
   type GameResult,
+  type LeaguePlayoffs,
   type LeagueState,
   type LiveGame,
   type ManagerCard,
@@ -63,6 +73,35 @@ type SeriesSummary = {
   ties: number;
   results: GameResult[];
 };
+
+function lastName(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1] ?? name;
+}
+
+function playerName(team: ClassicTeam | undefined, id: string): string {
+  return team?.players.find((p) => p.id === id)?.name ?? id;
+}
+
+function seriesHrLine(series: BestOfSeriesResult): string {
+  const hi = classicTeamById(series.higherSeedId);
+  const lo = classicTeamById(series.lowerSeedId);
+  let hiHr = 0;
+  let loHr = 0;
+  for (const g of series.games) {
+    const hiBox =
+      g.result.home.teamId === series.higherSeedId
+        ? g.result.home
+        : g.result.away;
+    const loBox =
+      g.result.home.teamId === series.lowerSeedId
+        ? g.result.home
+        : g.result.away;
+    hiHr += boxHomeRuns(hiBox);
+    loHr += boxHomeRuns(loBox);
+  }
+  return `${hi?.abbrev ?? "HI"} ${hiHr} HR · ${lo?.abbrev ?? "LO"} ${loHr} HR — series is games won, not the long ball`;
+}
 
 type SimMode = "matchup" | "playoffs1985" | "playoffs1982";
 
@@ -123,6 +162,9 @@ export function ClassicMatchup() {
   const [seed, setSeed] = useState(initial.seed);
   const [result, setResult] = useState<GameResult | null>(null);
   const [series, setSeries] = useState<SeriesSummary | null>(null);
+  const [playoffSeries, setPlayoffSeries] = useState<BestOfSeriesResult | null>(
+    null,
+  );
   const [pending, startTransition] = useTransition();
   const [didAuto, setDidAuto] = useState(false);
 
@@ -183,6 +225,7 @@ export function ClassicMatchup() {
         setLiveBoard(live.scoreboard());
         setResult(null);
         setSeries(null);
+        setPlayoffSeries(null);
         return;
       }
       if (step.kind === "done") {
@@ -231,6 +274,7 @@ export function ClassicMatchup() {
     startTransition(() => {
       const s = simulateSeries(away, home, seed, 10);
       setSeries(s);
+      setPlayoffSeries(null);
       setResult(s.results[0] ?? null);
       setBroadcastIdx(0);
     });
@@ -240,9 +284,31 @@ export function ClassicMatchup() {
     startTransition(() => {
       const s = simulateSeries(away, home, seed, 30);
       setSeries(s);
+      setPlayoffSeries(null);
       setResult(s.results[0] ?? null);
       setBroadcastIdx(0);
     });
+  }
+
+  function runPlayoffSeven() {
+    startTransition(() => {
+      // Home club is the higher seed (2-3-2 hosts G1/2/6/7).
+      const s = simulateBestOf(home, away, seed, PLAYOFF_WINS_NEEDED);
+      setPlayoffSeries(s);
+      setSeries(null);
+      const game = s.results[0] ?? null;
+      setResult(game);
+      setBroadcastIdx(0);
+      const hl = game?.plays.find((p) => p.highlight);
+      if (hl) setHighlight(hl);
+    });
+  }
+
+  function openPlayoffGame(g: BestOfGame) {
+    setResult(g.result);
+    setBroadcastIdx(0);
+    const hl = g.result.plays.find((p) => p.highlight);
+    if (hl) setHighlight(hl);
   }
 
   useEffect(() => {
@@ -315,6 +381,25 @@ export function ClassicMatchup() {
     setLeague((L) => simulateLeagueRound(L, seed));
   }
 
+  function onLeaguePlayoffs() {
+    startTransition(() => {
+      const next = simulateLeaguePlayoffs(league, seed);
+      setLeague(next);
+      const game =
+        next.playoffs?.championship?.results[0] ??
+        next.playoffs?.semifinalA.results[0] ??
+        null;
+      if (game) {
+        setResult(game);
+        setSeries(null);
+        setPlayoffSeries(next.playoffs?.championship ?? null);
+        setBroadcastIdx(0);
+        const hl = game.plays.find((p) => p.highlight);
+        if (hl) setHighlight(hl);
+      }
+    });
+  }
+
   function onCapBuster() {
     const r = attemptSignFreeAgent(league, makeCapBusterFreeAgent());
     setLeague(r.league);
@@ -369,7 +454,7 @@ export function ClassicMatchup() {
         <PlayoffsDesk
           year={1982}
           teams={PLAYOFF_1982_TEAMS}
-          blurb="Pre–wild-card field: Milwaukee vs California (ALCS), St. Louis vs Atlanta (NLCS), then World Series. Best-of-7 with 2-3-2 home field. Historical team names for experiment — LockedGM ratings only."
+          blurb="Pre–wild-card field: Milwaukee vs California (ALCS), St. Louis vs Atlanta (NLCS), then World Series. Best-of-7 with 2-3-2 home field and four-man starter rotations. Historical team names for experiment — LockedGM ratings only. Series are won by games, not home-run totals."
           simulate={simulatePlayoffs1982}
           seed={seed}
           setSeed={setSeed}
@@ -388,7 +473,7 @@ export function ClassicMatchup() {
         <PlayoffsDesk
           year={1985}
           teams={PLAYOFF_1985_TEAMS}
-          blurb="Pre–wild-card field: Toronto vs Kansas City (ALCS), St. Louis vs Los Angeles (NLCS), then World Series. Best-of-7 with 2-3-2 home field. Historical team names for experiment — LockedGM ratings only."
+          blurb="Pre–wild-card field: Toronto vs Kansas City (ALCS), St. Louis vs Los Angeles (NLCS), then World Series. Best-of-7 with 2-3-2 home field and four-man starter rotations. Historical team names for experiment — LockedGM ratings only. Series are won by games, not home-run totals."
           simulate={simulatePlayoffs1985}
           seed={seed}
           setSeed={setSeed}
@@ -468,6 +553,14 @@ export function ClassicMatchup() {
           </button>
           <button
             type="button"
+            onClick={runPlayoffSeven}
+            disabled={pending || awayId === homeId || !awayCap.ok || !homeCap.ok}
+            className="inline-flex h-11 items-center rounded-md border border-[color:var(--lg-line)] px-4 text-sm font-bold hover:border-[color:var(--lg-accent)] disabled:opacity-40"
+          >
+            Playoff series (best of 7)
+          </button>
+          <button
+            type="button"
             onClick={runSeasonSample}
             disabled={pending || awayId === homeId}
             className="inline-flex h-11 items-center rounded-md border border-[color:var(--lg-line)] px-4 text-sm font-bold hover:border-[color:var(--lg-accent)] disabled:opacity-40"
@@ -489,6 +582,14 @@ export function ClassicMatchup() {
       ) : null}
 
       <div ref={outcomeRef} className="space-y-10">
+      {mode === "matchup" && playoffSeries ? (
+        <PlayoffSeriesPanel
+          series={playoffSeries}
+          onPickGame={openPlayoffGame}
+          featuredSeed={result?.seed}
+        />
+      ) : null}
+
       {mode === "matchup" && series ? (
         <section className="lg-rise border-t border-[color:var(--lg-line)] pt-6">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
@@ -616,7 +717,7 @@ export function ClassicMatchup() {
               ? "Run the 1985 bracket to open a featured box + radio call."
               : pinchRec
                 ? "The engine stopped in the 7th or later — a platoon split is clearly better off the bench."
-                : "Set lineup, gloves, starter, and bullpen plan, then run a game. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game."}
+                : "Set lineup, gloves, starter, and bullpen plan, then run a game or a best-of-7 playoff series. Classic clubs use a four-man rotation; modern-year clubs use five. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game. Series are decided by games won, not home runs."}
         </p>
       )}
       </div>
@@ -626,8 +727,15 @@ export function ClassicMatchup() {
         league={league}
         onClaim={onClaim}
         onRound={onLeagueRound}
+        onPlayoffs={onLeaguePlayoffs}
         onCapBuster={onCapBuster}
         onSyncCard={syncHumanCardFromAway}
+        onFeatureGame={(game, hl) => {
+          setResult(game);
+          setSeries(null);
+          setBroadcastIdx(0);
+          if (hl) setHighlight(hl);
+        }}
         capMsg={capMsg}
       />
       ) : null}
@@ -640,6 +748,76 @@ export function ClassicMatchup() {
         />
       ) : null}
     </div>
+  );
+}
+
+function PlayoffSeriesPanel({
+  series,
+  onPickGame,
+  featuredSeed,
+}: {
+  series: BestOfSeriesResult;
+  onPickGame: (g: BestOfGame) => void;
+  featuredSeed?: number;
+}) {
+  const higher = classicTeamById(series.higherSeedId);
+  const lower = classicTeamById(series.lowerSeedId);
+  const hiSize = higher ? rotationSizeForTeam(higher) : series.higherRotation.length;
+  const loSize = lower ? rotationSizeForTeam(lower) : series.lowerRotation.length;
+  const hiAbbr = higher?.abbrev ?? series.higherSeedId;
+  const loAbbr = lower?.abbrev ?? series.lowerSeedId;
+
+  function starterLabel(team: ClassicTeam | undefined, id: string) {
+    return lastName(playerName(team, id));
+  }
+
+  return (
+    <section className="lg-rise border-t border-[color:var(--lg-line)] pt-6">
+      <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+        PLAYOFF SERIES · BEST OF 7
+      </p>
+      <p className="mt-2 lockgm-display text-3xl font-extrabold">
+        {hiAbbr} {series.higherWins} – {series.lowerWins} {loAbbr}
+      </p>
+      <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
+        First to {series.winsNeeded} · 2-3-2 home field · {hiAbbr}{" "}
+        {rotationLabel(hiSize)} · {loAbbr} {rotationLabel(loSize)}
+      </p>
+      <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
+        {seriesHrLine(series)}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {series.games.map((g) => {
+          const homeT = classicTeamById(g.homeTeamId);
+          const awayT = classicTeamById(g.awayTeamId);
+          const active = featuredSeed === g.result.seed;
+          return (
+            <button
+              key={g.gameNumber}
+              type="button"
+              onClick={() => onPickGame(g)}
+              className={`rounded-md px-2.5 py-1.5 text-xs font-bold ${
+                active
+                  ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                  : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+              }`}
+            >
+              G{g.gameNumber} · {starterLabel(awayT, g.awayStarterId)} @{" "}
+              {starterLabel(homeT, g.homeStarterId)}
+            </button>
+          );
+        })}
+      </div>
+      {series.championId ? (
+        <p className="mt-3 text-sm font-semibold">
+          Winner: {classicTeamLabel(classicTeamById(series.championId)!)}
+        </p>
+      ) : (
+        <p className="mt-3 text-sm text-[color:var(--lg-warn)]">
+          No series winner yet (ties do not award a game).
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -716,7 +894,8 @@ function PlayoffsDesk({
           >
             <span className="font-bold">{classicTeamLabel(t)}</span>
             <span className="mt-0.5 block text-xs text-[color:var(--lg-mute)]">
-              {t.players.length}-man · ${teamPayroll(t).toFixed(1)}M · {t.blurb}
+              {t.players.length}-man roster · {rotationLabel(rotationSizeForTeam(t))} · $
+              {teamPayroll(t).toFixed(1)}M · {t.blurb}
             </span>
           </li>
         ))}
@@ -827,21 +1006,31 @@ function RoundCard({
           : "No series winner yet"}
       </p>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {round.series.games.map((g, i) => (
-          <button
-            key={g.gameNumber}
-            type="button"
-            onClick={() => onPickGame(i)}
-            className={`rounded-md px-2.5 py-1 text-xs font-bold ${
-              active && focusGame === i
-                ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
-                : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
-            }`}
-          >
-            G{g.gameNumber}
-          </button>
-        ))}
+        {round.series.games.map((g, i) => {
+          const homeT = classicTeamById(g.homeTeamId);
+          const sp = lastName(playerName(homeT, g.homeStarterId));
+          return (
+            <button
+              key={g.gameNumber}
+              type="button"
+              onClick={() => onPickGame(i)}
+              className={`rounded-md px-2.5 py-1 text-xs font-bold ${
+                active && focusGame === i
+                  ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                  : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+              }`}
+            >
+              G{g.gameNumber} · {sp}
+            </button>
+          );
+        })}
       </div>
+      {round.series.higherRotation.length ? (
+        <p className="mt-2 text-[11px] text-[color:var(--lg-mute)]">
+          {rotationLabel(round.series.higherRotation.length)} · home SP on each
+          game button
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -869,8 +1058,8 @@ function TeamPick({
       >
         {CLASSIC_TEAMS.map((t) => (
           <option key={t.id} value={t.id}>
-            {classicTeamLabel(t)} · {t.players.length}-man · $
-            {teamPayroll(t).toFixed(1)}M
+            {classicTeamLabel(t)} · {rotationLabel(rotationSizeForTeam(t))} ·{" "}
+            {t.players.length}-man · ${teamPayroll(t).toFixed(1)}M
           </option>
         ))}
       </select>
@@ -940,6 +1129,14 @@ function ManagerDesk({
       <div className="mt-4 border-t border-[color:var(--lg-line)]/70 pt-3">
         <p className="text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
           Pitching card
+        </p>
+        <p className="mt-1 text-[11px] text-[color:var(--lg-mute)]">
+          {rotationLabel(rotationSizeForTeam(team))} for series / October
+          {seriesRotation(team).length
+            ? `: ${seriesRotation(team)
+                .map((id) => lastName(playerName(team, id)))
+                .join(" → ")}`
+            : ""}
         </p>
         <label className="mt-2 block text-xs">
           <span className="font-bold text-[color:var(--lg-mute)]">
@@ -1148,18 +1345,23 @@ function LeagueDesk({
   league,
   onClaim,
   onRound,
+  onPlayoffs,
   onCapBuster,
   onSyncCard,
+  onFeatureGame,
   capMsg,
 }: {
   league: LeagueState;
   onClaim: (id: string) => void;
   onRound: () => void;
+  onPlayoffs: () => void;
   onCapBuster: () => void;
   onSyncCard: () => void;
+  onFeatureGame: (game: GameResult, highlight?: PlayEvent) => void;
   capMsg: string | null;
 }) {
   const standings = leagueStandings(league);
+  const playoffs: LeaguePlayoffs | null = league.playoffs;
   return (
     <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
       <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
@@ -1171,7 +1373,9 @@ function LeagueDesk({
       <p className="mt-2 max-w-2xl text-sm text-[color:var(--lg-mute)]">
         Claim one classic club. Empty clubs get AI managers that compete to win
         under the same ${league.salaryCap}M hard cap and {league.rosterSize}-man
-        roster rules.
+        roster rules. After a round, run October as best-of-7 series with each
+        club&apos;s era rotation (four-man classic, five-man modern). Wins are
+        games, not home runs.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {!league.humanTeamId
@@ -1193,6 +1397,13 @@ function LeagueDesk({
                 className="rounded-md bg-[color:var(--lg-accent)] px-4 py-2 text-sm font-bold text-[color:var(--lg-bg)]"
               >
                 Sim league round
+              </button>
+              <button
+                type="button"
+                onClick={onPlayoffs}
+                className="rounded-md border border-[color:var(--lg-line)] px-4 py-2 text-sm font-bold hover:border-[color:var(--lg-accent)]"
+              >
+                Sim October (best of 7)
               </button>
               <button
                 type="button"
@@ -1257,12 +1468,113 @@ function LeagueDesk({
           })}
         </tbody>
       </table>
+      {playoffs ? (
+        <div className="mt-6 space-y-3">
+          <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+            OCTOBER · BEST OF 7
+          </p>
+          {playoffs.championLabel ? (
+            <p className="lockgm-display text-2xl font-extrabold">
+              Champion: {playoffs.championLabel}
+            </p>
+          ) : (
+            <p className="text-sm text-[color:var(--lg-warn)]">
+              Bracket incomplete (series ties).
+            </p>
+          )}
+          <p className="text-xs text-[color:var(--lg-mute)]">
+            Top four by table · 2-3-2 home field · era starter rotations ·
+            games won, not home-run totals.
+          </p>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <LeagueSeriesCard
+              title="Semifinal A"
+              series={playoffs.semifinalA}
+              onPickGame={(g) => {
+                const hl = g.result.plays.find((p) => p.highlight);
+                onFeatureGame(g.result, hl);
+              }}
+            />
+            {playoffs.semifinalB ? (
+              <LeagueSeriesCard
+                title="Semifinal B"
+                series={playoffs.semifinalB}
+                onPickGame={(g) => {
+                  const hl = g.result.plays.find((p) => p.highlight);
+                  onFeatureGame(g.result, hl);
+                }}
+              />
+            ) : (
+              <div className="border border-[color:var(--lg-line)] p-3 text-xs text-[color:var(--lg-mute)]">
+                Semifinal B not required for this field.
+              </div>
+            )}
+            {playoffs.championship ? (
+              <LeagueSeriesCard
+                title="Championship"
+                series={playoffs.championship}
+                onPickGame={(g) => {
+                  const hl = g.result.plays.find((p) => p.highlight);
+                  onFeatureGame(g.result, hl);
+                }}
+              />
+            ) : (
+              <div className="border border-[color:var(--lg-line)] p-3 text-xs text-[color:var(--lg-mute)]">
+                Final pending semifinal winners.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
       <ul className="mt-4 max-h-40 space-y-1 overflow-y-auto text-xs text-[color:var(--lg-mute)]">
         {league.log.slice(-8).map((line, i) => (
           <li key={`${i}-${line.slice(0, 12)}`}>{line}</li>
         ))}
       </ul>
     </section>
+  );
+}
+
+function LeagueSeriesCard({
+  title,
+  series,
+  onPickGame,
+}: {
+  title: string;
+  series: BestOfSeriesResult;
+  onPickGame: (g: BestOfGame) => void;
+}) {
+  const hi = classicTeamById(series.higherSeedId);
+  const lo = classicTeamById(series.lowerSeedId);
+  const champ = series.championId
+    ? classicTeamById(series.championId)
+    : undefined;
+  return (
+    <div className="border border-[color:var(--lg-line)] p-3">
+      <p className="lockgm-display text-base font-bold">{title}</p>
+      <p className="mt-1 text-sm font-semibold tabular-nums">
+        {hi?.abbrev ?? series.higherSeedId} {series.higherWins} –{" "}
+        {series.lowerWins} {lo?.abbrev ?? series.lowerSeedId}
+      </p>
+      <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
+        {champ
+          ? `Winner: ${classicTeamLabel(champ)}`
+          : "No series winner yet"}{" "}
+        · {rotationLabel(series.higherRotation.length)}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {series.games.map((g) => (
+          <button
+            key={g.gameNumber}
+            type="button"
+            onClick={() => onPickGame(g)}
+            className="rounded-md border border-[color:var(--lg-line)] px-2 py-1 text-xs font-bold hover:border-[color:var(--lg-accent)]"
+          >
+            G{g.gameNumber}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1386,6 +1698,9 @@ function PitcherTable({ box }: { box: GameResult["away"] }) {
             >
               <td className="py-1.5 font-medium">
                 {p.name}
+                {p.playerId === box.starterId ? (
+                  <span className="ml-1 text-[color:var(--lg-mute)]">SP</span>
+                ) : null}
                 {p.fatigued ? (
                   <span className="ml-1 text-[color:var(--lg-warn)]">(tired)</span>
                 ) : null}

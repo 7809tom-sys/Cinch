@@ -37,10 +37,19 @@ import {
   setStarterInningsTarget,
   simulateBestOf,
   simulateGame,
+  simulateLeaguePlayoffs,
   simulateLeagueRound,
   simulatePlayoffs1982,
   simulatePlayoffs1985,
   simulateSeries,
+  seriesRotation,
+  rotationSizeForTeam,
+  rotationSizeForYear,
+  CLASSIC_ROTATION_SIZE,
+  MODERN_ROTATION_SIZE,
+  PLAYOFF_WINS_NEEDED,
+  PLAYOFF_MAX_GAMES,
+  boxHomeRuns,
   teamPayroll,
   tryAddPlayer,
   validatePitching,
@@ -514,6 +523,156 @@ assert(
     bracket82.featuredGame.plays.every((p) => p.radioCall.length > 10),
   "1982 featured playoff game has radio calls",
 );
+
+assert(rotationSizeForYear(1985) === CLASSIC_ROTATION_SIZE, "1985 uses four-man");
+assert(rotationSizeForYear(1994) === MODERN_ROTATION_SIZE, "1994+ uses five-man");
+assert(rotationSizeForTeam(BREWERS_1985) === 4, "classic Brewers are four-man");
+assert(
+  seriesRotation(BREWERS_1985).length === 4,
+  "classic series rotation is four starters",
+);
+assert(
+  seriesRotation(BREWERS_1985).join() === BREWERS_1985.rotation.slice(0, 4).join(),
+  "classic rotation keeps authored order",
+);
+
+const modernBrewers = { ...BREWERS_1985, year: 2024 };
+const modernReds = { ...REDS_1975, year: 2024 };
+const modernBrewRot = seriesRotation(modernBrewers);
+assert(modernBrewRot.length === 5, "modern-year club fills a five-man");
+assert(
+  modernBrewRot.slice(0, 4).join() === BREWERS_1985.rotation.slice(0, 4).join(),
+  "modern five-man keeps the four authored SPs in front",
+);
+assert(
+  !BREWERS_1985.bullpen.includes(modernBrewRot[4]!),
+  "fifth starter is not the fireman",
+);
+
+const sevenClassic = simulateSeries(BREWERS_1985, REDS_1975, 198510, 7);
+const brewExpected = seriesRotation(BREWERS_1985);
+const cinExpected = seriesRotation(REDS_1975);
+for (let i = 0; i < 7; i++) {
+  const g = sevenClassic.results[i]!;
+  assert(
+    g.away.starterId === brewExpected[i % 4],
+    `Brewers G${i + 1} starter is four-man slot ${i % 4}`,
+  );
+  assert(
+    g.home.starterId === cinExpected[i % 4],
+    `Reds G${i + 1} starter is four-man slot ${i % 4}`,
+  );
+}
+
+const sevenModern = simulateSeries(modernBrewers, modernReds, 202410, 7);
+const brew5 = seriesRotation(modernBrewers);
+const cin5 = seriesRotation(modernReds);
+for (let i = 0; i < 7; i++) {
+  const g = sevenModern.results[i]!;
+  assert(
+    g.away.starterId === brew5[i % 5],
+    `modern Brewers G${i + 1} starter is five-man slot ${i % 5}`,
+  );
+  assert(
+    g.home.starterId === cin5[i % 5],
+    `modern Reds G${i + 1} starter is five-man slot ${i % 5}`,
+  );
+}
+
+const bo7 = simulateBestOf(BLUE_JAYS_1985, ROYALS_1985, 19851031, PLAYOFF_WINS_NEEDED);
+assert(bo7.winsNeeded === 4, "playoff series is first-to-4");
+assert(
+  bo7.games.length >= 4 && bo7.games.length <= PLAYOFF_MAX_GAMES,
+  "best-of-7 lasts 4–7 games",
+);
+assert(
+  bo7.higherRotation.length === 4 && bo7.lowerRotation.length === 4,
+  "1985 LCS uses four-man staffs",
+);
+const jaysSlots = seriesRotation(BLUE_JAYS_1985);
+for (let i = 0; i < bo7.games.length; i++) {
+  const g = bo7.games[i]!;
+  const jaysStarter =
+    g.homeTeamId === BLUE_JAYS_1985.id ? g.homeStarterId : g.awayStarterId;
+  assert(
+    jaysStarter === jaysSlots[i % 4],
+    `ALCS G${i + 1} Jays starter follows four-man (${jaysSlots[i % 4]})`,
+  );
+}
+
+function hrsScoredRuns(game: ReturnType<typeof simulateGame>): boolean {
+  let prevAway = 0;
+  let prevHome = 0;
+  for (const p of game.plays) {
+    if (p.outcome === "HR") {
+      const battingAway = p.half === "top";
+      const before = battingAway ? prevAway : prevHome;
+      const after = battingAway ? p.score.away : p.score.home;
+      if (after <= before) return false;
+    }
+    prevAway = p.score.away;
+    prevHome = p.score.home;
+  }
+  return true;
+}
+
+const hrGame = simulateGame(YANKEES_1927, CARDINALS_1985, { seed: 1927 });
+assert(hrsScoredRuns(hrGame), "every home run plates at least one run");
+assert(
+  typeof hrGame.away.starterId === "string" && hrGame.away.starterId.length > 0,
+  "box records the starting pitcher",
+);
+
+function seriesHr(series: ReturnType<typeof simulateBestOf>, teamId: string) {
+  let n = 0;
+  for (const g of series.games) {
+    const box =
+      g.result.home.teamId === teamId ? g.result.home : g.result.away;
+    n += boxHomeRuns(box);
+  }
+  return n;
+}
+
+let seriesNotByHr = false;
+for (let s = 1; s <= 60; s++) {
+  const ser = simulateBestOf(CARDINALS_1985, YANKEES_1927, 27000 + s, 4);
+  if (!ser.championId) continue;
+  const loser =
+    ser.championId === ser.higherSeedId ? ser.lowerSeedId : ser.higherSeedId;
+  if (seriesHr(ser, loser) > seriesHr(ser, ser.championId)) {
+    seriesNotByHr = true;
+    break;
+  }
+}
+assert(
+  seriesNotByHr,
+  "a club can win a seven-game series without winning the home-run column",
+);
+
+let octLeague = createClassicLeague(9);
+const octClaim = claimTeam(octLeague, "cardinals-1985");
+assert(octClaim.ok, "human can claim Cardinals for October");
+octLeague = simulateLeagueRound(octClaim.league, 44);
+octLeague = simulateLeaguePlayoffs(octLeague, 198510);
+assert(!!octLeague.playoffs, "league October bracket is stored");
+assert(
+  octLeague.playoffs!.semifinalA.winsNeeded === 4,
+  "league semis are best-of-7",
+);
+assert(
+  !!octLeague.playoffs!.championship &&
+    octLeague.playoffs!.championship.winsNeeded === 4,
+  "league final is best-of-7",
+);
+assert(
+  octLeague.playoffs!.semifinalA.higherRotation.length === 4,
+  "league October uses four-man on classic clubs",
+);
+
+const brewAiCard = aiSetLineup(BREWERS_1985);
+assert(brewAiCard.rotation?.length === 4, "AI classic card is a four-man");
+const aiModern = aiSetLineup(modernBrewers);
+assert(aiModern.rotation?.length === 5, "AI modern card is a five-man");
 
 // League claim + AI + cap buster
 let league = createClassicLeague(3);

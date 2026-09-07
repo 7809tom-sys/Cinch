@@ -164,6 +164,8 @@ export type TeamBox = {
   lineScore: number[];
   batters: BatterLine[];
   pitchers: PitcherLine[];
+  /** Rotation arm that started this game (era 4-man / 5-man). */
+  starterId: string;
 };
 
 export type GameResult = {

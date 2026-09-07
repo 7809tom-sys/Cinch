@@ -5,7 +5,7 @@ import { ClassicMatchup } from "../components/classic-matchup";
 export const metadata: Metadata = {
   title: "Classic Matchup — LockedGM",
   description:
-    "LockedGM Classic Matchup: 1982 and 1985 playoff re-sims, original LockedGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
+    "LockedGM Classic Matchup: seven-game playoff series, era 4-man/5-man rotations, 1982 and 1985 playoff re-sims, original LockedGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
 };
 
 export default function LockgmSimPage() {
@@ -23,9 +23,11 @@ export default function LockgmSimPage() {
         booth calls, and short highlight snippets. Fireman rest and 7th-inning
         pinch-hit pauses apply to every game. Hard salary caps bind every
         signing. Re-run the 1982 playoffs (Brewers, Angels, Cardinals, Braves)
-        or 1985 (Blue Jays, Royals, Cardinals, Dodgers), or free-match classic
-        packs including Harvey&apos;s Wallbangers, Murderers&apos; Row, and the
-        Big Red Machine.
+        or 1985 (Blue Jays, Royals, Cardinals, Dodgers) as seven-game series
+        with four-man starter rotations, or free-match classic packs including
+        Harvey&apos;s Wallbangers, Murderers&apos; Row, and the Big Red Machine.
+        Modern-year clubs would use a five-man. October is won by games — not
+        the home-run column.
       </p>
       <p className="mt-3 text-sm font-semibold">
         <Link
