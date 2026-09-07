@@ -178,9 +178,15 @@ export function InvitePanel({
           email, legal name, or private account details.
         </p>
         <p className="mt-4 border-t border-[color:var(--lg-line)] pt-4 text-xs leading-relaxed text-[color:var(--lg-mute)]">
-          League invites are the next durable step: the same flow can carry a
-          league ID once league membership primitives are wired. Until then,
-          this is a friend invite to LockedGM, not a claim on a contest roster.
+          For a real-time Classic Matchup seat claim — invite a signed-up GM by
+          public ID or share a room link so a new signup can pick a team — open{" "}
+          <a
+            href="/lockgm/live"
+            className="font-semibold text-[color:var(--lg-accent)] underline-offset-2 hover:underline"
+          >
+            Live Matchup
+          </a>
+          . This friends desk remains the privacy-safe LockedGM referral invite.
         </p>
       </div>
     </section>

@@ -78,13 +78,33 @@
   animation: lg-rise 0.45s ease-out both;
 }
 
+@keyframes lg-ad-slide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lg-ad-slide {
+  animation: lg-ad-slide 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lg-ad-ribbon {
+  box-shadow: inset 0 1px 0 rgba(200, 245, 66, 0.12);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lg-rise,
   .lg-rise-2,
   .lg-rise-3,
   .lg-live,
   .lg-radio > p:last-child,
-  .lg-highlight-wrap {
+  .lg-highlight-wrap,
+  .lg-ad-slide {
     animation: none;
   }
 }

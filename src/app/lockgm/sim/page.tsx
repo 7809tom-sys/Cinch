@@ -40,7 +40,17 @@ export default function LockgmSimPage() {
         </Link>
         <span className="text-[color:var(--lg-mute)]">
           {" "}
-          — LockedGM 1–20 classroom for hitters, gloves, and pitchers.
+          — LockedGM 1–20 classroom for hitters, gloves, and pitchers.{" "}
+        </span>
+        <Link
+          href="/lockgm/live"
+          className="text-[color:var(--lg-accent)] underline-offset-2 hover:underline"
+        >
+          Host a Live Matchup
+        </Link>
+        <span className="text-[color:var(--lg-mute)]">
+          {" "}
+          with invites and a local ad ribbon above the scoreboard.
         </span>
       </p>
       <div className="mt-10">

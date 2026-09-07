@@ -40,10 +40,12 @@ source/campaign/code into the profile attribution record.
   code/source/campaign only. It contains no personal data and is the integration
   endpoint for the separate admin analytics surface.
 
-League/contest membership primitives are not present on the base branch. The
-friends UI therefore labels league invites as a durable follow-up: add a
-league identifier and membership authorization to the same landing/cookie
-contract before allowing a code to claim a roster slot.
+League/contest membership for Classic Matchup now lives on **Live Matchup**
+(`/lockgm/live`) — invite a signed-up GM by public ID or share a room link so
+a new signup can claim a seat and pick a team. See
+[`docs/lockgm-live-matchup.md`](./lockgm-live-matchup.md). The friends UI still
+owns privacy-safe LockedGM referral invites; it points hosts to Live Matchup
+for seat claims.
 
 ## Local/demo mode
 

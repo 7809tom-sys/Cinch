@@ -10,6 +10,7 @@ const NAV = [
   { href: "/lockgm/reports", label: "My reports" },
   { href: "/lockgm/draft", label: "Draft day" },
   { href: "/lockgm/sim", label: "Classic Matchup" },
+  { href: "/lockgm/live", label: "Live Matchup" },
   { href: "/lockgm/ratings", label: "Ratings" },
   { href: "/lockgm/cap", label: "Budget" },
   { href: "/lockgm/scouting", label: "Scouting" },

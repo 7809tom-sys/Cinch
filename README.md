@@ -110,6 +110,8 @@ Live at **[cinchseed.com/lockgm](https://cinchseed.com/lockgm)** — Shadow GM d
 
 - `/lockgm` — landing
 - `/lockgm/draft` — live draft sync + auto player removal
+- `/lockgm/sim` — Classic Matchup (solo / series desk)
+- `/lockgm/live` — real-time matchup rooms, invites, local ad ribbon
 - `/lockgm/cap` — salary cap / trade desk
 - `/lockgm/scouting` — HS→college pipeline + premium reports
 - `/lockgm/pricing` — Shadow / War Room / Pipeline tiers
