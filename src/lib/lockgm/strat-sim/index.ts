@@ -161,3 +161,27 @@ export {
   type LeagueSlot,
   type LeaguePlayoffs,
 } from "./league";
+export {
+  MLB_SEASON_GAMES,
+  MLB_2026_DIVISIONS,
+  buildMlb2026Schedule,
+  simulateMlb2026Season,
+  battingAvg,
+  era,
+  ipLabel,
+  winPct,
+  gamesPlayedByTeam,
+  type ScheduledGame,
+  type SeasonTeamRecord,
+  type SeasonBatter,
+  type SeasonPitcher,
+  type MlbSeasonResult,
+} from "./season";
+export {
+  IL_STINTS_PER_162,
+  injuryRoleFor,
+  emptyInjuryBook,
+  type InjuryRole,
+  type IlStint,
+  type InjuryBook,
+} from "./injuries";

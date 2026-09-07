@@ -49,14 +49,19 @@ export type LeaguePlayoffs = {
 };
 
 /** AI sets a competitive lineup: bat best contact/power, glove the best defenders. */
-export function aiSetLineup(team: ClassicTeam): ManagerCard {
-  const batters = team.players
+export function aiSetLineup(
+  team: ClassicTeam,
+  skipIds?: ReadonlySet<string>,
+): ManagerCard {
+  const skip = skipIds ?? new Set<string>();
+  const pool = team.players.filter((p) => !skip.has(p.id));
+  const batters = pool
     .filter((p) => p.batter && !p.pitcher)
     .sort((a, b) => batScore(b) - batScore(a));
   const lineup = batters.slice(0, 9).map((p) => p.id);
   // If fewer than 9 pure bats, fill from two-way / pitchers with batter ratings
   if (lineup.length < 9) {
-    for (const p of team.players) {
+    for (const p of pool) {
       if (lineup.length >= 9) break;
       if (!lineup.includes(p.id) && p.batter) lineup.push(p.id);
     }
@@ -67,7 +72,7 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
   const used = new Set<string>();
   for (const pos of positions) {
     // Prefer LockedGM-eligible gloves only; DH does not grant field eligibility.
-    const candidates = team.players
+    const candidates = pool
       .filter(
         (p) =>
           p.batter &&
@@ -80,7 +85,7 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
     // Injury fallback — any unused batter (will take OOP penalty in the engine).
     const pick =
       candidates[0] ||
-      team.players
+      pool
         .filter((p) => p.batter && !used.has(p.id))
         .sort(
           (a, b) => (b.batter?.defense ?? 0) - (a.batter?.defense ?? 0),
@@ -91,18 +96,25 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
     }
   }
 
-  const arms = team.players
+  const arms = pool
     .filter((p) => p.pitcher?.role === "SP")
     .sort((a, b) => (b.pitcher?.stuff ?? 0) - (a.pitcher?.stuff ?? 0));
-  const pens = team.players.filter((p) => p.pitcher?.role === "RP");
-  const penIds = team.bullpen.filter((id) => pens.some((p) => p.id === id));
+  const pens = pool.filter((p) => p.pitcher?.role === "RP");
+  const penIds = team.bullpen.filter(
+    (id) => !skip.has(id) && pens.some((p) => p.id === id),
+  );
   const extraPen = pens
     .filter((p) => !penIds.includes(p.id))
     .sort((a, b) => (b.pitcher?.stuff ?? 0) - (a.pitcher?.stuff ?? 0))
     .map((p) => p.id);
 
+  const healthyLineup =
+    lineup.length === 9
+      ? lineup
+      : team.lineup.filter((id) => !skip.has(id)).slice(0, 9);
+
   return {
-    lineup: lineup.length === 9 ? lineup : [...team.lineup],
+    lineup: healthyLineup.length === 9 ? healthyLineup : lineup,
     defense: Object.keys(defense).length === 8 ? defense : { ...team.defense },
     rotation: arms.map((p) => p.id).slice(0, rotationSizeForTeam(team)),
     bullpen: [...penIds, ...extraPen].slice(
