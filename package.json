@@ -15,6 +15,7 @@
     "assert:lockgm-updated-reports": "npx tsx scripts/assert-lockgm-updated-reports.ts",
     "assert:lockgm-fantasy-scouting": "npx tsx scripts/assert-lockgm-fantasy-scouting.ts",
     "assert:lockgm-identity": "npx tsx scripts/assert-lockgm-identity.ts",
+    "assert:lockgm-custom-gm-id": "npx tsx scripts/assert-lockgm-custom-gm-id.ts",
     "assert:lockgm-invites": "npx tsx scripts/assert-lockgm-invites.ts",
     "assert:lockgm-strat-sim": "npx tsx scripts/assert-lockgm-strat-sim.ts",
     "assert:lockgm-classic-matchup": "npx tsx scripts/assert-lockgm-strat-sim.ts",
