@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { GoogleSignInButton } from "@/components/google-sign-in";
 import { SiteFooter } from "@/components/site-footer";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import {
@@ -53,53 +52,41 @@ export default async function LoginPage({
       <main className="relative isolate overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_#fff6e8_0%,_transparent_55%),linear-gradient(180deg,#f3efe6_0%,#e7ddd0_100%)]" />
         <div className="grain pointer-events-none absolute inset-0 opacity-[0.05]" />
-        <div className="relative mx-auto grid w-full max-w-6xl gap-12 px-6 py-16 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
-          <div>
-            <p className="animate-rise font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-              YOUR SEED PORTAL
-            </p>
-            <h1 className="animate-rise-delay mt-3 font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-tight text-brand-deep sm:text-6xl">
-              Cinch
-            </h1>
-            <p className="animate-rise-delay-2 mt-4 max-w-md text-lg leading-relaxed text-muted">
-              Log in if you already have an account, or sign up in a few
-              seconds. Once you&apos;re in, enable Face ID / Touch ID for
-              one-tap sign-in next time.
-            </p>
-          </div>
-          <div className="animate-sprout border border-brand/10 bg-foam/95 px-6 py-7 shadow-[0_20px_60px_rgba(11,46,42,0.08)]">
+        <div className="relative mx-auto flex w-full max-w-md flex-col items-center px-6 py-16 sm:px-8 lg:py-24">
+          <p className="animate-rise text-center font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+            YOUR SEED PORTAL
+          </p>
+          <h1 className="animate-rise-delay mt-3 text-center font-[family-name:var(--font-display)] text-4xl font-extrabold tracking-tight text-brand-deep">
+            Cinch
+          </h1>
+
+          <div className="animate-sprout mt-8 w-full border border-brand/10 bg-foam/95 px-6 py-7 shadow-[0_20px_60px_rgba(11,46,42,0.08)]">
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-brand-deep">
-              Log in or sign up
+              Sign in
             </h2>
             <p className="mt-2 text-sm text-muted">
-              Not ordered yet?{" "}
-              <Link
-                href="/browse"
-                className="font-semibold text-brand hover:text-brand-deep"
-              >
-                Drop a site and purchase
-              </Link>
-              .
+              One email field to start — we&apos;ll take you straight to log
+              in or account setup.
             </p>
 
             <div className="mt-6">
-              <LoginForm initialError={webauthnError} />
+              <LoginForm
+                initialError={webauthnError}
+                googleClientId={googleOk && clientId ? clientId : null}
+              />
             </div>
-
-            {googleOk && clientId ? (
-              <div className="mt-8 border-t border-brand/10 pt-5">
-                <p className="mb-3 text-sm font-semibold text-brand-deep">
-                  Or continue with Google
-                </p>
-                <GoogleSignInButton
-                  clientId={clientId}
-                  endpoint="/api/auth/google/customer"
-                  redirectTo="/portal"
-                  buttonText="continue_with"
-                />
-              </div>
-            ) : null}
           </div>
+
+          <p className="mt-6 text-center text-sm text-muted">
+            Not ordered yet?{" "}
+            <Link
+              href="/browse"
+              className="font-semibold text-brand hover:text-brand-deep"
+            >
+              Drop a site and purchase
+            </Link>
+            .
+          </p>
         </div>
       </main>
 
