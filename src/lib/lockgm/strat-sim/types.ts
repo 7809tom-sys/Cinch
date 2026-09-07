@@ -95,7 +95,7 @@ export type PlayEvent = {
   half: "top" | "bottom";
   batter: string;
   pitcher: string;
-  outcome: AtBatOutcome;
+  outcome?: AtBatOutcome;
   /** Short box-score style line. */
   description: string;
   /** Radio booth call for the broadcast pane. */
@@ -104,6 +104,13 @@ export type PlayEvent = {
   score: { away: number; home: number };
   /** Optional highlight clip trigger (HR / web gem). */
   highlight?: HighlightKind;
+  /** 7th-inning+ pinch-hit substitution (not an at-bat). */
+  substitution?: {
+    kind: "pinch-hit";
+    out: string;
+    inn: string;
+    reason: string;
+  };
 };
 
 export type BatterLine = {
@@ -116,6 +123,10 @@ export type BatterLine = {
   bb: number;
   so: number;
   hr: number;
+  /** True when this line entered as a 7th-inning+ pinch hitter. */
+  pinchHit?: boolean;
+  /** Name of the batter this PH replaced. */
+  pinchHitFor?: string;
 };
 
 export type PitcherLine = {
@@ -129,7 +140,19 @@ export type PitcherLine = {
   so: number;
   hr: number;
   decision?: "W" | "L" | "S" | "H";
+  /** True when this appearance ignored required rest (emergency). */
+  fatigued?: boolean;
 };
+
+/** Per-arm fireman rest ledger carried across series games. */
+export type PitcherRestEntry = {
+  consecutiveGames: number;
+  restGamesRemaining: number;
+  lastOutingOuts: number;
+  pitchedLastGame: boolean;
+};
+
+export type PitcherRestBook = Record<string, PitcherRestEntry>;
 
 export type TeamBox = {
   teamId: string;
@@ -151,6 +174,8 @@ export type GameResult = {
   winner: "away" | "home" | "tie";
   plays: PlayEvent[];
   summary: string;
+  /** Fireman rest ledger after this game (carry into the next series game). */
+  pitcherRest: PitcherRestBook;
 };
 
 export type SimOptions = {
@@ -159,12 +184,26 @@ export type SimOptions = {
   regulationInnings?: number;
   /** Cap extras to keep demos bounded (default 18 total innings). */
   maxInnings?: number;
+  /**
+   * Incoming fireman rest ledger (from prior games in the same series).
+   * Empty / omitted = every arm is fully rested.
+   */
+  restBook?: PitcherRestBook;
+  /**
+   * 7th-inning+ pinch-hit policy. `auto` (default) takes a clear platoon
+   * edge; `pause` stops for a manager decision; `off` never pinch-hits.
+   */
+  pinchHitMode?: "auto" | "pause" | "off";
 };
 
 /**
  * Pre-game pitching change plan the engine follows (v1 mid-game control).
  * Interactive pause/step pitching is a follow-up; this plan hooks the starter
  * and sequences the bullpen without rewriting the full sim loop.
+ *
+ * Bullpen[0] is the fireman (high leverage, 7th–9th). Earlier hooks skip that
+ * arm while anyone else is available. Rest/fatigue is enforced from the series
+ * rest ledger, not this plan.
  */
 export type PitchingPlan = {
   /**

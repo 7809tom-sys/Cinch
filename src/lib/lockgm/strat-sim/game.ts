@@ -10,6 +10,20 @@ import {
   isOutOfPosition,
 } from "./eligibility";
 import { teamDefenseRating } from "./salary";
+import {
+  canEnter,
+  emptyRestBook,
+  fatiguedPitcher,
+  isHighLeverage,
+  pickBullpenArm,
+  pickSeriesStarter,
+  promoteStarter,
+  recordOutings,
+} from "./fatigue";
+import {
+  findPinchHitRecommendation,
+  type PinchHitRecommendation,
+} from "./pinch-hit";
 import type {
   AtBatOutcome,
   BatterLine,
@@ -17,6 +31,7 @@ import type {
   FieldPos,
   GameResult,
   PitcherLine,
+  PitcherRestBook,
   PlayEvent,
   Player,
   SimOptions,
@@ -33,12 +48,19 @@ type SideState = {
   pitcherId: string;
   pitcherOuts: number;
   pitcherPitchBudget: number;
+  pitcherFatigued: boolean;
+  pitcherBattersFaced: number;
+  pitcherOutCap: number | null;
+  usedPitchers: Set<string>;
+  restBook: PitcherRestBook;
   rotationIdx: number;
   bullpenIdx: number;
   runs: number;
   hits: number;
   errors: number;
   lineScore: number[];
+  /** Player ids who have occupied each of the 9 lineup slots (starter + PHs). */
+  slotHistory: string[][];
 };
 
 function playerMap(team: ClassicTeam): Map<string, Player> {
@@ -73,7 +95,7 @@ function emptyPitcher(p: Player): PitcherLine {
   };
 }
 
-function initSide(team: ClassicTeam): SideState {
+function initSide(team: ClassicTeam, restBook: PitcherRestBook): SideState {
   const byId = playerMap(team);
   const starterId = team.rotation[0];
   if (!starterId || !byId.has(starterId)) {
@@ -88,14 +110,28 @@ function initSide(team: ClassicTeam): SideState {
     lineupBatters.set(id, emptyBatter(byId.get(id)!));
   }
 
+  const starterGate = canEnter(restBook, starterId);
+  const starterFatigued = !starterGate.ok;
   const pitcherLines = new Map<string, PitcherLine>();
-  pitcherLines.set(starterId, emptyPitcher(byId.get(starterId)!));
+  const starterLine = emptyPitcher(byId.get(starterId)!);
+  if (starterFatigued) starterLine.fatigued = true;
+  pitcherLines.set(starterId, starterLine);
 
   const starter = byId.get(starterId)!;
   const stamina = starter.pitcher?.stamina ?? 12;
+  let budget = starterFatigued ? 6 : Math.round(15 + stamina * 1.8);
+  if (starterGate.limitedOuts != null) {
+    budget = Math.min(budget, starterGate.limitedOuts);
+  }
 
   return {
-    team,
+    team: {
+      ...team,
+      lineup: [...team.lineup],
+      defense: { ...team.defense },
+      rotation: [...team.rotation],
+      bullpen: [...team.bullpen],
+    },
     byId,
     order: [...team.lineup],
     batterIdx: 0,
@@ -103,19 +139,51 @@ function initSide(team: ClassicTeam): SideState {
     pitcherLines,
     pitcherId: starterId,
     pitcherOuts: 0,
-    pitcherPitchBudget: Math.round(15 + stamina * 1.8),
+    pitcherPitchBudget: budget,
+    pitcherFatigued: starterFatigued,
+    pitcherBattersFaced: 0,
+    pitcherOutCap: starterGate.limitedOuts ?? null,
+    usedPitchers: new Set([starterId]),
+    restBook,
     rotationIdx: 0,
     bullpenIdx: 0,
     runs: 0,
     hits: 0,
     errors: 0,
     lineScore: [],
+    slotHistory: team.lineup.map((id) => [id]),
   };
 }
 
 function ensurePitcherLine(side: SideState, id: string) {
   if (!side.pitcherLines.has(id)) {
     side.pitcherLines.set(id, emptyPitcher(side.byId.get(id)!));
+  }
+}
+
+function enterPitcher(
+  fielding: SideState,
+  nextId: string,
+  fatigued: boolean,
+  limitedOuts?: number,
+) {
+  fielding.pitcherId = nextId;
+  fielding.pitcherOuts = 0;
+  fielding.pitcherBattersFaced = 0;
+  fielding.pitcherFatigued = fatigued;
+  fielding.pitcherOutCap = limitedOuts ?? null;
+  fielding.usedPitchers.add(nextId);
+  fielding.bullpenIdx += 1;
+  const rel = fielding.byId.get(nextId)!;
+  let budget = fatigued
+    ? 3
+    : Math.round(6 + (rel.pitcher?.stamina ?? 8) * 1.1);
+  if (limitedOuts != null) budget = Math.min(budget, limitedOuts);
+  fielding.pitcherPitchBudget = budget;
+  ensurePitcherLine(fielding, nextId);
+  if (fatigued) {
+    const line = fielding.pitcherLines.get(nextId)!;
+    line.fatigued = true;
   }
 }
 
@@ -133,26 +201,52 @@ function maybeChangePitcher(
     typeof planTarget === "number" &&
     fielding.pitcherOuts >= planTarget * 3;
 
+  const capHit =
+    fielding.pitcherOutCap != null &&
+    fielding.pitcherOuts >= fielding.pitcherOutCap;
   const tired =
+    capHit ||
     fielding.pitcherOuts >= fielding.pitcherPitchBudget ||
     (inning >= 7 &&
       fielding.pitcherOuts >= Math.floor(fielding.pitcherPitchBudget * 0.75));
   const blowup = scoreDiff <= -3 && inning >= 6 && rng.chance(0.35);
+  const highLev = isHighLeverage(inning, scoreDiff);
+  const firemanId = fielding.team.bullpen[0];
+  const firemanGate = firemanId
+    ? canEnter(fielding.restBook, firemanId)
+    : { ok: false };
+  const firemanReady =
+    !!firemanId &&
+    firemanGate.ok &&
+    !fielding.usedPitchers.has(firemanId) &&
+    fielding.pitcherId !== firemanId;
+
+  // Fireman takeover: once a setup/long man is already in, hand 7th–9th
+  // leverage to the rested closer. Fresh starters keep the ball until the plan
+  // / fatigue / blowup hook.
+  if (highLev && firemanReady && !isStarter) {
+    enterPitcher(
+      fielding,
+      firemanId!,
+      false,
+      firemanGate.limitedOuts,
+    );
+    return;
+  }
 
   // Pitching plan (v1 mid-game control): hook starter at target IP even if fresh.
   // Fatigue / blowups still force earlier changes. Interactive pause/step is next.
   if (!tired && !blowup && !reachedPlan) return;
-  if (fielding.bullpenIdx >= fielding.team.bullpen.length) return;
 
-  const nextId = fielding.team.bullpen[fielding.bullpenIdx]!;
-  fielding.bullpenIdx += 1;
-  fielding.pitcherId = nextId;
-  fielding.pitcherOuts = 0;
-  const rel = fielding.byId.get(nextId)!;
-  fielding.pitcherPitchBudget = Math.round(
-    6 + (rel.pitcher?.stamina ?? 8) * 1.1,
+  const pick = pickBullpenArm(
+    fielding.team.bullpen,
+    fielding.usedPitchers,
+    fielding.restBook,
+    inning,
+    scoreDiff,
   );
-  ensurePitcherLine(fielding, nextId);
+  if (!pick) return;
+  enterPitcher(fielding, pick.id, pick.fatigued, pick.limitedOuts);
 }
 
 type Bases = [string | null, string | null, string | null];
@@ -238,6 +332,13 @@ function isWalkLike(o: AtBatOutcome): boolean {
 }
 
 function toBox(side: SideState): TeamBox {
+  const batters: BatterLine[] = [];
+  for (const slot of side.slotHistory) {
+    for (const id of slot) {
+      const line = side.lineupBatters.get(id);
+      if (line) batters.push(line);
+    }
+  }
   return {
     teamId: side.team.id,
     abbrev: side.team.abbrev,
@@ -245,7 +346,7 @@ function toBox(side: SideState): TeamBox {
     hits: side.hits,
     errors: side.errors,
     lineScore: [...side.lineScore],
-    batters: side.order.map((id) => side.lineupBatters.get(id)!),
+    batters,
     pitchers: [...side.pitcherLines.values()],
   };
 }
@@ -264,118 +365,334 @@ function defenseContext(fielding: SideState, rng: Rng) {
   return { rating, position: pos, outOfPosition: oop };
 }
 
+export type LiveStep =
+  | { kind: "play"; play: PlayEvent }
+  | { kind: "pinch-hit"; rec: PinchHitRecommendation }
+  | { kind: "done"; result: GameResult };
+
+export type LiveGame = {
+  step: () => LiveStep;
+  acceptPinchHit: () => void;
+  declinePinchHit: () => void;
+  plays: () => PlayEvent[];
+  scoreboard: () => {
+    inning: number;
+    half: "top" | "bottom" | "end";
+    outs: number;
+    away: number;
+    home: number;
+  };
+};
+
+/**
+ * Interactive game: fireman rest is always on; from the 7th on the AI
+ * stops and recommends a pinch-hit when a platoon edge is clear (`pause`),
+ * or takes the switch itself (`auto`).
+ */
+export function startLiveGame(
+  awayTeam: ClassicTeam,
+  homeTeam: ClassicTeam,
+  options: SimOptions,
+): LiveGame {
+  return new LiveSim(awayTeam, homeTeam, options);
+}
+
 /**
  * Simulate one full game with seeded RNG.
  * Walk-off and extras supported; maxInnings caps runaway ties.
+ * Default pinch-hit policy is `auto` (AI takes clear 7th-inning+ splits).
  */
 export function simulateGame(
   awayTeam: ClassicTeam,
   homeTeam: ClassicTeam,
   options: SimOptions,
 ): GameResult {
-  const rng = createRng(options.seed);
-  const regulation = options.regulationInnings ?? 9;
-  const maxInnings = options.maxInnings ?? 18;
-
-  const away = initSide(awayTeam);
-  const home = initSide(homeTeam);
-  const plays: PlayEvent[] = [];
-
-  let inning = 1;
-  let endedEarly = false;
-
-  while (inning <= maxInnings) {
-    const topRuns = playHalfInning({
-      inning,
-      half: "top",
-      batting: away,
-      fielding: home,
-      rng,
-      plays,
-      walkOff: false,
-    });
-    away.lineScore.push(topRuns);
-
-    const regulationDone = inning >= regulation;
-    if (regulationDone && home.runs > away.runs) {
-      home.lineScore.push(0);
-      endedEarly = true;
-      break;
-    }
-
-    const needWalkOff = regulationDone && away.runs >= home.runs;
-    const botRuns = playHalfInning({
-      inning,
-      half: "bottom",
-      batting: home,
-      fielding: away,
-      rng,
-      plays,
-      walkOff: needWalkOff,
-    });
-    home.lineScore.push(botRuns);
-
-    if (regulationDone && home.runs !== away.runs) break;
-    if (regulationDone && home.runs === away.runs && inning >= maxInnings) break;
-
-    inning += 1;
+  const live = startLiveGame(awayTeam, homeTeam, {
+    ...options,
+    pinchHitMode: options.pinchHitMode ?? "auto",
+  });
+  for (;;) {
+    const step = live.step();
+    if (step.kind === "pinch-hit") live.acceptPinchHit();
+    else if (step.kind === "done") return step.result;
   }
-
-  assignDecisions(away, home);
-
-  const winner: GameResult["winner"] =
-    away.runs > home.runs ? "away" : home.runs > away.runs ? "home" : "tie";
-
-  const inningsPlayed = Math.max(away.lineScore.length, home.lineScore.length);
-  const summary = `${away.team.abbrev} ${away.runs}, ${home.team.abbrev} ${home.runs}${
-    winner === "tie" ? " (tie)" : ""
-  } · ${inningsPlayed} inn.${endedEarly ? " (home ahead)" : ""}`;
-
-  return {
-    seed: options.seed,
-    innings: inningsPlayed,
-    away: toBox(away),
-    home: toBox(home),
-    winner,
-    plays,
-    summary,
-  };
 }
 
-function playHalfInning(args: {
-  inning: number;
-  half: "top" | "bottom";
-  batting: SideState;
-  fielding: SideState;
-  rng: Rng;
-  plays: PlayEvent[];
-  walkOff: boolean;
-}): number {
-  const { inning, half, batting, fielding, rng, plays, walkOff } = args;
-  let outs = 0;
-  let bases: Bases = [null, null, null];
-  const startRuns = batting.runs;
+class LiveSim {
+  private rng: Rng;
+  private regulation: number;
+  private maxInnings: number;
+  private restBook: PitcherRestBook;
+  private pinchHitMode: "auto" | "pause" | "off";
+  private away: SideState;
+  private home: SideState;
+  private playsLog: PlayEvent[] = [];
+  private inning = 1;
+  private half: "top" | "bottom" = "top";
+  private halfOpen = false;
+  private outs = 0;
+  private bases: Bases = [null, null, null];
+  private startRuns = 0;
+  private walkOff = false;
+  private endedEarly = false;
+  private finished: GameResult | null = null;
+  private pendingRec: PinchHitRecommendation | null = null;
+  private declined = new Set<string>();
+  private seed: number;
+  /** After a PH is accepted, resolve that PA before scanning again. */
+  private skipScan = false;
 
-  maybeChangePitcher(fielding, inning, fielding.runs - batting.runs, rng);
+  constructor(
+    awayTeam: ClassicTeam,
+    homeTeam: ClassicTeam,
+    options: SimOptions,
+  ) {
+    this.seed = options.seed;
+    this.rng = createRng(options.seed);
+    this.regulation = options.regulationInnings ?? 9;
+    this.maxInnings = options.maxInnings ?? 18;
+    this.restBook = options.restBook ?? emptyRestBook();
+    this.pinchHitMode = options.pinchHitMode ?? "auto";
+    this.away = initSide(awayTeam, this.restBook);
+    this.home = initSide(homeTeam, this.restBook);
+  }
 
-  while (outs < 3) {
-    maybeChangePitcher(fielding, inning, fielding.runs - batting.runs, rng);
+  plays(): PlayEvent[] {
+    return this.playsLog;
+  }
 
-    const batterId = batting.order[batting.batterIdx]!;
-    batting.batterIdx = (batting.batterIdx + 1) % batting.order.length;
+  scoreboard() {
+    return {
+      inning: this.inning,
+      half: this.finished ? ("end" as const) : this.half,
+      outs: this.outs,
+      away: this.away.runs,
+      home: this.home.runs,
+    };
+  }
+
+  step(): LiveStep {
+    if (this.finished) return { kind: "done", result: this.finished };
+    if (this.pendingRec) {
+      return { kind: "pinch-hit", rec: this.pendingRec };
+    }
+
+    while (!this.finished) {
+      if (!this.halfOpen) this.beginHalf();
+
+      const batting = this.half === "top" ? this.away : this.home;
+      const fielding = this.half === "top" ? this.home : this.away;
+      const halfOver =
+        this.outs >= 3 ||
+        (this.walkOff && batting.runs > fielding.runs);
+
+      if (halfOver) {
+        this.endHalf();
+        continue;
+      }
+
+      maybeChangePitcher(
+        fielding,
+        this.inning,
+        fielding.runs - batting.runs,
+        this.rng,
+      );
+
+      const lineupIdx = batting.batterIdx;
+      const rec = this.skipScan
+        ? null
+        : this.scanPinchHit(batting, fielding, lineupIdx);
+      if (rec) {
+        if (this.pinchHitMode === "pause") {
+          this.pendingRec = rec;
+          return { kind: "pinch-hit", rec };
+        }
+        if (this.pinchHitMode === "auto") {
+          const sub = this.applyPinchHit(rec, batting);
+          this.skipScan = true;
+          this.playsLog.push(sub);
+          return { kind: "play", play: sub };
+        }
+      }
+
+      const play = this.resolvePa(batting, fielding, lineupIdx);
+      this.skipScan = false;
+      this.playsLog.push(play);
+      return { kind: "play", play };
+    }
+
+    return { kind: "done", result: this.finished! };
+  }
+
+  acceptPinchHit(): void {
+    if (!this.pendingRec) return;
+    const batting = this.half === "top" ? this.away : this.home;
+    const sub = this.applyPinchHit(this.pendingRec, batting);
+    this.playsLog.push(sub);
+    this.skipScan = true;
+    this.pendingRec = null;
+  }
+
+  declinePinchHit(): void {
+    if (!this.pendingRec) return;
+    this.declined.add(this.pinchKey(this.pendingRec));
+    this.pendingRec = null;
+  }
+
+  private pinchKey(rec: PinchHitRecommendation): string {
+    return `${rec.inning}-${rec.half}-${rec.lineupIdx}-${rec.batterId}`;
+  }
+
+  private battingFielding(): { batting: SideState; fielding: SideState } {
+    return this.half === "top"
+      ? { batting: this.away, fielding: this.home }
+      : { batting: this.home, fielding: this.away };
+  }
+
+  private beginHalf() {
+    const { batting, fielding } = this.battingFielding();
+    this.outs = 0;
+    this.bases = [null, null, null];
+    this.startRuns = batting.runs;
+    this.walkOff =
+      this.half === "bottom" &&
+      this.inning >= this.regulation &&
+      this.away.runs >= this.home.runs;
+    this.halfOpen = true;
+    maybeChangePitcher(
+      fielding,
+      this.inning,
+      fielding.runs - batting.runs,
+      this.rng,
+    );
+  }
+
+  private endHalf() {
+    const { batting } = this.battingFielding();
+    batting.lineScore.push(batting.runs - this.startRuns);
+    this.halfOpen = false;
+
+    const regulationDone = this.inning >= this.regulation;
+    if (this.half === "top") {
+      if (regulationDone && this.home.runs > this.away.runs) {
+        this.home.lineScore.push(0);
+        this.endedEarly = true;
+        this.finish();
+        return;
+      }
+      this.half = "bottom";
+      return;
+    }
+
+    if (regulationDone && this.home.runs !== this.away.runs) {
+      this.finish();
+      return;
+    }
+    if (
+      regulationDone &&
+      this.home.runs === this.away.runs &&
+      this.inning >= this.maxInnings
+    ) {
+      this.finish();
+      return;
+    }
+    this.inning += 1;
+    this.half = "top";
+  }
+
+  private scanPinchHit(
+    batting: SideState,
+    fielding: SideState,
+    lineupIdx: number,
+  ): PinchHitRecommendation | null {
+    if (this.pinchHitMode === "off") return null;
+    const batterId = batting.order[lineupIdx];
+    if (!batterId) return null;
+    const key = `${this.inning}-${this.half}-${lineupIdx}-${batterId}`;
+    if (this.declined.has(key)) return null;
+    const pitcher = fielding.byId.get(fielding.pitcherId);
+    if (!pitcher) return null;
+    const score =
+      this.half === "top"
+        ? { away: batting.runs, home: fielding.runs }
+        : { away: fielding.runs, home: batting.runs };
+    return findPinchHitRecommendation({
+      inning: this.inning,
+      half: this.half,
+      outs: this.outs,
+      score,
+      battingTeam: batting.team,
+      lineup: batting.order,
+      lineupIdx,
+      pitcher,
+    });
+  }
+
+  private applyPinchHit(
+    rec: PinchHitRecommendation,
+    batting: SideState,
+  ): PlayEvent {
+    const ph = batting.byId.get(rec.recommendedId);
+    if (!ph) throw new Error(`pinch-hit: unknown ${rec.recommendedId}`);
+    const idx = rec.lineupIdx;
+    batting.order[idx] = rec.recommendedId;
+    batting.team.lineup[idx] = rec.recommendedId;
+    const line = emptyBatter(ph);
+    line.pinchHit = true;
+    line.pinchHitFor = rec.batterName;
+    batting.lineupBatters.set(ph.id, line);
+    batting.slotHistory[idx] = [...(batting.slotHistory[idx] ?? []), ph.id];
+    if (rec.fieldPos) {
+      batting.team.defense = {
+        ...batting.team.defense,
+        [rec.fieldPos]: ph.id,
+      };
+    }
+    return {
+      inning: rec.inning,
+      half: rec.half,
+      batter: rec.recommendedName,
+      pitcher: rec.pitcherName,
+      description: `Pinch-hit: ${rec.recommendedName} for ${rec.batterName}`,
+      radioCall: `Hold the count — pinch-hitter. ${rec.reason}`,
+      outsAfter: rec.outs,
+      score: rec.score,
+      substitution: {
+        kind: "pinch-hit",
+        out: rec.batterName,
+        inn: rec.recommendedName,
+        reason: rec.reason,
+      },
+    };
+  }
+
+  private resolvePa(
+    batting: SideState,
+    fielding: SideState,
+    lineupIdx: number,
+  ): PlayEvent {
+    const batterId = batting.order[lineupIdx]!;
+    batting.batterIdx = (lineupIdx + 1) % batting.order.length;
     const batter = batting.byId.get(batterId)!;
-    const pitcher = fielding.byId.get(fielding.pitcherId)!;
+    const rawPitcher = fielding.byId.get(fielding.pitcherId)!;
+    const pitcher = fielding.pitcherFatigued
+      ? fatiguedPitcher(rawPitcher)
+      : rawPitcher;
     const bLine = batting.lineupBatters.get(batterId)!;
     const pLine = fielding.pitcherLines.get(fielding.pitcherId)!;
 
     const meta: ResolveMeta = {};
-    const def = defenseContext(fielding, rng);
-    const outcome = resolveAtBat(batter, pitcher, rng, def, meta);
+    const def = defenseContext(fielding, this.rng);
+    const outcome = resolveAtBat(batter, pitcher, this.rng, def, meta, {
+      fatigued: fielding.pitcherFatigued,
+      battersFaced: fielding.pitcherBattersFaced,
+    });
+    fielding.pitcherBattersFaced += 1;
     const speed = batter.batter?.speed ?? 10;
     let rbiThis = 0;
 
     if (isOut(outcome)) {
-      outs += 1;
+      this.outs += 1;
       bLine.ab += 1;
       if (outcome === "K") {
         bLine.so += 1;
@@ -388,15 +705,27 @@ function playHalfInning(args: {
         bLine.bb += 1;
         pLine.bb += 1;
       }
-      const adv = advanceRunners(bases, batterId, outcome, speed, rng);
-      bases = adv.bases;
+      const adv = advanceRunners(
+        this.bases,
+        batterId,
+        outcome,
+        speed,
+        this.rng,
+      );
+      this.bases = adv.bases;
       rbiThis = adv.scored.length;
       applyScored(adv.scored, batting, fielding, bLine, pLine);
     } else if (outcome === "E") {
       fielding.errors += 1;
       bLine.ab += 1;
-      const adv = advanceRunners(bases, batterId, outcome, speed, rng);
-      bases = adv.bases;
+      const adv = advanceRunners(
+        this.bases,
+        batterId,
+        outcome,
+        speed,
+        this.rng,
+      );
+      this.bases = adv.bases;
       rbiThis = adv.scored.length;
       for (const id of adv.scored) {
         batting.runs += 1;
@@ -413,8 +742,14 @@ function playHalfInning(args: {
         bLine.hr += 1;
         pLine.hr += 1;
       }
-      const adv = advanceRunners(bases, batterId, outcome, speed, rng);
-      bases = adv.bases;
+      const adv = advanceRunners(
+        this.bases,
+        batterId,
+        outcome,
+        speed,
+        this.rng,
+      );
+      this.bases = adv.bases;
       rbiThis = adv.scored.length;
       applyScored(adv.scored, batting, fielding, bLine, pLine);
     }
@@ -426,9 +761,9 @@ function playHalfInning(args: {
           ? ("defense" as const)
           : undefined;
 
-    const play: PlayEvent = {
-      inning,
-      half,
+    return {
+      inning: this.inning,
+      half: this.half,
       batter: batter.name,
       pitcher: pitcher.name,
       outcome,
@@ -439,19 +774,51 @@ function playHalfInning(args: {
         greatDefense: meta.greatDefense,
         rbi: rbiThis,
       }),
-      outsAfter: outs,
+      outsAfter: this.outs,
       score:
-        half === "top"
+        this.half === "top"
           ? { away: batting.runs, home: fielding.runs }
           : { away: fielding.runs, home: batting.runs },
       highlight,
     };
-    plays.push(play);
-
-    if (walkOff && batting.runs > fielding.runs) break;
   }
 
-  return batting.runs - startRuns;
+  private finish() {
+    assignDecisions(this.away, this.home);
+    const winner: GameResult["winner"] =
+      this.away.runs > this.home.runs
+        ? "away"
+        : this.home.runs > this.away.runs
+          ? "home"
+          : "tie";
+    const inningsPlayed = Math.max(
+      this.away.lineScore.length,
+      this.home.lineScore.length,
+    );
+    const summary = `${this.away.team.abbrev} ${this.away.runs}, ${this.home.team.abbrev} ${this.home.runs}${
+      winner === "tie" ? " (tie)" : ""
+    } · ${inningsPlayed} inn.${this.endedEarly ? " (home ahead)" : ""}`;
+    const appearances = [
+      ...this.away.pitcherLines.values(),
+      ...this.home.pitcherLines.values(),
+    ].map((p) => ({ id: p.playerId, outs: p.ipOuts }));
+    const staffIds = [
+      ...this.away.team.rotation,
+      ...this.away.team.bullpen,
+      ...this.home.team.rotation,
+      ...this.home.team.bullpen,
+    ];
+    this.finished = {
+      seed: this.seed,
+      innings: inningsPlayed,
+      away: toBox(this.away),
+      home: toBox(this.home),
+      winner,
+      plays: this.playsLog,
+      summary,
+      pitcherRest: recordOutings(this.restBook, appearances, staffIds),
+    };
+  }
 }
 
 function applyScored(
@@ -516,14 +883,30 @@ export function simulateSeries(
   let awayWins = 0;
   let homeWins = 0;
   let ties = 0;
+  let restBook: PitcherRestBook = emptyRestBook();
   for (let i = 0; i < games; i++) {
-    const r = simulateGame(awayTeam, homeTeam, { seed: seed + i * 9973 });
+    const away = teamForSeriesGame(awayTeam, restBook, i);
+    const home = teamForSeriesGame(homeTeam, restBook, i);
+    const r = simulateGame(away, home, {
+      seed: seed + i * 9973,
+      restBook,
+    });
+    restBook = r.pitcherRest;
     results.push(r);
     if (r.winner === "away") awayWins += 1;
     else if (r.winner === "home") homeWins += 1;
     else ties += 1;
   }
   return { awayWins, homeWins, ties, results };
+}
+
+function teamForSeriesGame(
+  team: ClassicTeam,
+  restBook: PitcherRestBook,
+  gameIndex: number,
+): ClassicTeam {
+  const pick = pickSeriesStarter(team.rotation, restBook, gameIndex);
+  return { ...team, rotation: promoteStarter(team.rotation, pick.id) };
 }
 
 export type BestOfGame = {
@@ -564,13 +947,21 @@ export function simulateBestOf(
   let higherWins = 0;
   let lowerWins = 0;
   let ties = 0;
+  let restBook: PitcherRestBook = emptyRestBook();
 
   for (let g = 1; g <= maxGames; g++) {
     if (higherWins >= winsNeeded || lowerWins >= winsNeeded) break;
     const higherIsHome = g === 1 || g === 2 || g === 6 || g === 7;
-    const home = higherIsHome ? higherSeed : lowerSeed;
-    const away = higherIsHome ? lowerSeed : higherSeed;
-    const result = simulateGame(away, home, { seed: seed + g * 9973 });
+    const gameIndex = g - 1;
+    const homePack = higherIsHome ? higherSeed : lowerSeed;
+    const awayPack = higherIsHome ? lowerSeed : higherSeed;
+    const home = teamForSeriesGame(homePack, restBook, gameIndex);
+    const away = teamForSeriesGame(awayPack, restBook, gameIndex);
+    const result = simulateGame(away, home, {
+      seed: seed + g * 9973,
+      restBook,
+    });
+    restBook = result.pitcherRest;
     let seriesWinnerId: string | null = null;
     if (result.winner === "home") {
       seriesWinnerId = home.id;

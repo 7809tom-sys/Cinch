@@ -16,6 +16,8 @@ export type {
   ManagerCard,
   PitcherLine,
   PitcherRatings,
+  PitcherRestBook,
+  PitcherRestEntry,
   PitchingPlan,
   PitchRole,
   PlayEvent,
@@ -30,11 +32,35 @@ export {
   simulateGame,
   simulateSeries,
   simulateBestOf,
+  startLiveGame,
   formatIp,
   countOutsRecorded,
   type BestOfGame,
   type BestOfSeriesResult,
+  type LiveGame,
+  type LiveStep,
 } from "./game";
+export {
+  emptyRestBook,
+  canEnter,
+  recordOutings,
+  dropGradeTiers,
+  fatiguedPitcher,
+  pickBullpenArm,
+  pickSeriesStarter,
+  bullpenRoleLabel,
+  FATIGUE_TIER_DROP,
+  FATIGUE_BF_THRESHOLD,
+  FIREMAN_THREE_IP_OUTS,
+} from "./fatigue";
+export {
+  findPinchHitRecommendation,
+  matchupScore,
+  PINCH_HIT_FROM_INNING,
+  CLEAR_SPLIT_EDGE,
+  type PinchHitRecommendation,
+} from "./pinch-hit";
+export { platoonMatchupAdj } from "./resolve-ab";
 export {
   CLASSIC_TEAMS,
   BREWERS_1985,

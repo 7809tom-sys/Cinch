@@ -20,7 +20,8 @@ export default function LockgmSimPage() {
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
         Original LockedGM ratings and dice resolution — lineup, gloves with
         position eligibility, starter & bullpen picks, L/R platoon edges, radio
-        booth calls, and short highlight snippets. Hard salary caps bind every
+        booth calls, and short highlight snippets. Fireman rest and 7th-inning
+        pinch-hit pauses apply to every game. Hard salary caps bind every
         signing. Re-run the 1985 playoffs (Blue Jays, Royals, Cardinals,
         Dodgers) or free-match classic packs including the 1985 Brewers,
         Murderers&apos; Row, and the Big Red Machine.

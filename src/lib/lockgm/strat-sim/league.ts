@@ -11,6 +11,8 @@ import {
 import type { ClassicTeam, ManagerCard, Player } from "./types";
 import { CLASSIC_TEAMS, classicTeamById } from "./teams";
 import { simulateGame } from "./game";
+import { emptyRestBook } from "./fatigue";
+import type { PitcherRestBook } from "./types";
 
 export type LeagueSlot = {
   teamId: string;
@@ -80,15 +82,21 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
   const arms = team.players
     .filter((p) => p.pitcher?.role === "SP")
     .sort((a, b) => (b.pitcher?.stuff ?? 0) - (a.pitcher?.stuff ?? 0));
-  const pens = team.players
-    .filter((p) => p.pitcher?.role === "RP")
-    .sort((a, b) => (b.pitcher?.stuff ?? 0) - (a.pitcher?.stuff ?? 0));
+  const pens = team.players.filter((p) => p.pitcher?.role === "RP");
+  const penIds = team.bullpen.filter((id) => pens.some((p) => p.id === id));
+  const extraPen = pens
+    .filter((p) => !penIds.includes(p.id))
+    .sort((a, b) => (b.pitcher?.stuff ?? 0) - (a.pitcher?.stuff ?? 0))
+    .map((p) => p.id);
 
   return {
     lineup: lineup.length === 9 ? lineup : [...team.lineup],
     defense: Object.keys(defense).length === 8 ? defense : { ...team.defense },
     rotation: arms.map((p) => p.id).slice(0, Math.max(3, team.rotation.length)),
-    bullpen: pens.map((p) => p.id).slice(0, Math.max(2, team.bullpen.length)),
+    bullpen: [...penIds, ...extraPen].slice(
+      0,
+      Math.max(2, team.bullpen.length),
+    ),
     pitchingPlan: {
       starterInningsTarget: Math.max(
         5,
@@ -189,6 +197,7 @@ export function simulateLeagueRound(
   const slots = league.slots.map((s) => ({ ...s }));
   const log = [...league.log];
   let gameIdx = 0;
+  let restBook: PitcherRestBook = emptyRestBook();
   for (let i = 0; i < slots.length; i++) {
     for (let j = i + 1; j < slots.length; j++) {
       const a = slots[i]!;
@@ -204,7 +213,11 @@ export function simulateLeagueRound(
       }
       const away = applyManagerCard(a.roster, a.card);
       const home = applyManagerCard(b.roster, b.card);
-      const result = simulateGame(away, home, { seed: seed + gameIdx * 104729 });
+      const result = simulateGame(away, home, {
+        seed: seed + gameIdx * 104729,
+        restBook,
+      });
+      restBook = result.pitcherRest;
       gameIdx += 1;
       if (result.winner === "away") {
         a.wins += 1;

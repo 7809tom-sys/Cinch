@@ -32,6 +32,8 @@ import {
   selectStartingPitcher,
   setBullpenSlot,
   setStarterInningsTarget,
+  startLiveGame,
+  bullpenRoleLabel,
   simulateGame,
   simulateLeagueRound,
   simulatePlayoffs1985,
@@ -43,7 +45,9 @@ import {
   validatePitching,
   type GameResult,
   type LeagueState,
+  type LiveGame,
   type ManagerCard,
+  type PinchHitRecommendation,
   type PlayEvent,
   type PlayoffBracketResult,
   type PlayoffRoundResult,
@@ -120,6 +124,15 @@ export function ClassicMatchup() {
   const [broadcastIdx, setBroadcastIdx] = useState(0);
   const [highlight, setHighlight] = useState<PlayEvent | null>(null);
   const radioRef = useRef<HTMLDivElement>(null);
+  const liveRef = useRef<LiveGame | null>(null);
+  const [pinchRec, setPinchRec] = useState<PinchHitRecommendation | null>(null);
+  const [liveBoard, setLiveBoard] = useState<{
+    inning: number;
+    half: "top" | "bottom" | "end";
+    outs: number;
+    away: number;
+    home: number;
+  } | null>(null);
 
   const awayPack = classicTeamById(awayId)!;
   const homePack = classicTeamById(homeId)!;
@@ -144,14 +157,56 @@ export function ClassicMatchup() {
 
   const onHighlightDone = useCallback(() => setHighlight(null), []);
 
+  function drainLive(live: LiveGame) {
+    for (;;) {
+      const step = live.step();
+      if (step.kind === "pinch-hit") {
+        liveRef.current = live;
+        setPinchRec(step.rec);
+        setLiveBoard(live.scoreboard());
+        setResult(null);
+        setSeries(null);
+        return;
+      }
+      if (step.kind === "done") {
+        liveRef.current = null;
+        setPinchRec(null);
+        setLiveBoard(null);
+        setResult(step.result);
+        setSeries(null);
+        setBroadcastIdx(0);
+        const firstHl = step.result.plays.find((p) => p.highlight);
+        if (firstHl) setHighlight(firstHl);
+        return;
+      }
+    }
+  }
+
   function runOne() {
     startTransition(() => {
-      const game = simulateGame(away, home, { seed });
-      setResult(game);
-      setSeries(null);
-      setBroadcastIdx(0);
-      const firstHl = game.plays.find((p) => p.highlight);
-      if (firstHl) setHighlight(firstHl);
+      const live = startLiveGame(away, home, {
+        seed,
+        pinchHitMode: "pause",
+      });
+      drainLive(live);
+    });
+  }
+
+  function onAcceptPh() {
+    const live = liveRef.current;
+    if (!live) return;
+    startTransition(() => {
+      live.acceptPinchHit();
+      drainLive(live);
+    });
+  }
+
+  function onDeclinePh() {
+    const live = liveRef.current;
+    if (!live) return;
+    startTransition(() => {
+      live.declinePinchHit();
+      drainLive(live);
     });
   }
 
@@ -404,6 +459,56 @@ export function ClassicMatchup() {
         </section>
       ) : null}
 
+      {pinchRec ? (
+        <section
+          className="border-2 border-[color:var(--lg-accent)] bg-[color:var(--lg-panel)] p-5 sm:p-6"
+          role="alertdialog"
+          aria-labelledby="pinch-hit-title"
+        >
+          <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--lg-accent)] uppercase">
+            7th-inning+ · Game paused
+          </p>
+          <h2
+            id="pinch-hit-title"
+            className="mt-2 lockgm-display text-2xl font-extrabold sm:text-3xl"
+          >
+            Split advantage — pinch-hit recommended
+          </h2>
+          {liveBoard ? (
+            <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
+              {liveBoard.half === "top" ? "Top" : "Bot"} {liveBoard.inning} ·{" "}
+              {liveBoard.outs} out{liveBoard.outs === 1 ? "" : "s"} · {away.abbrev}{" "}
+              {liveBoard.away}–{liveBoard.home} {home.abbrev}
+            </p>
+          ) : null}
+          <p className="mt-4 text-base leading-relaxed">{pinchRec.reason}</p>
+          <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
+            Due up: {pinchRec.batterName} ({pinchRec.batterBats}) vs{" "}
+            {pinchRec.pitcherName} ({pinchRec.pitcherThrows}HP). Bench:{" "}
+            {pinchRec.recommendedName} ({pinchRec.recommendedBats}) · edge{" "}
+            +{pinchRec.edge.toFixed(1)}.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={onAcceptPh}
+              disabled={pending}
+              className="inline-flex h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)]"
+            >
+              Send {pinchRec.recommendedName} up
+            </button>
+            <button
+              type="button"
+              onClick={onDeclinePh}
+              disabled={pending}
+              className="inline-flex h-11 items-center rounded-md border border-[color:var(--lg-line)] px-4 text-sm font-bold"
+            >
+              Stick with {pinchRec.batterName}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {result ? (
         <>
           <section className="lg-rise-2">
@@ -465,7 +570,9 @@ export function ClassicMatchup() {
         <p className="text-sm text-[color:var(--lg-mute)]">
           {mode === "playoffs1985"
             ? "Run the 1985 bracket to open a featured box + radio call."
-            : "Set lineup, gloves, starter, and bullpen plan, then run a game. Same seed → same box."}
+            : pinchRec
+              ? "The engine stopped in the 7th or later — a platoon split is clearly better off the bench."
+              : "Set lineup, gloves, starter, and bullpen plan, then run a game. From the 7th on, a clear split pauses for a pinch-hit. Fireman rest applies every game."}
         </p>
       )}
     </div>
@@ -710,14 +817,6 @@ function TeamPick({
   );
 }
 
-function bullpenCallLabel(idx: number): string {
-  const n = idx + 1;
-  if (n === 1) return "1st";
-  if (n === 2) return "2nd";
-  if (n === 3) return "3rd";
-  return `${n}th`;
-}
-
 function ManagerDesk({
   title,
   team,
@@ -763,8 +862,8 @@ function ManagerDesk({
       <p className="lockgm-display text-lg font-bold">{title}</p>
       <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
         Lineup + fielders + pitching · L/R platoon baked into every AB ·
-        eligible gloves only · OOP injury fill-ins crush defense · plan hooks
-        the starter by IP target
+        eligible gloves only · OOP injury fill-ins crush defense · fireman rest
+        every game · 7th-inning+ pinch-hit pause on a clear split
       </p>
 
       <div className="mt-4 border-t border-[color:var(--lg-line)]/70 pt-3">
@@ -809,27 +908,30 @@ function ManagerDesk({
           </select>
         </label>
         <p className="mt-1 text-[11px] leading-snug text-[color:var(--lg-mute)]">
-          Engine follows this plan between ABs. Interactive inning-break
-          pitching is next — not required for seeded Free matchup control.
+          Engine follows this plan between ABs. From the 7th on, a clear
+          platoon edge stops the game for a pinch-hit. Fireman rest (innings
+          scale, no 3 days in a row) applies to every game, not just a series.
         </p>
 
         <p className="mt-3 text-xs font-bold text-[color:var(--lg-mute)]">
-          Bullpen entry order
+          Bullpen roles (fireman first)
         </p>
         <p className="mt-0.5 text-[11px] text-[color:var(--lg-mute)]">
-          1st call enters first when the starter is hooked. Last slot is a
-          natural closer seat for late leads.
+          Fireman is saved for high leverage 7th–9th. Early hooks go to setup /
+          long relief. Tired arms sit; an emergency appearance is crushed two
+          grade tiers.
         </p>
         <div className="mt-2 space-y-2">
           {bullpen.map((id, idx) => {
             const options = arms.filter(
               (p) => p.id === id || p.id !== starterId,
             );
-            const isCloserSeat = idx === bullpen.length - 1;
+            const arm = team.players.find((p) => p.id === id);
+            const role = bullpenRoleLabel(idx, arm?.throws);
             return (
               <div key={`bp-${idx}`} className="flex items-center gap-1.5">
-                <span className="w-14 shrink-0 text-[11px] font-bold text-[color:var(--lg-accent)]">
-                  {isCloserSeat ? "Closer" : bullpenCallLabel(idx)}
+                <span className="w-[4.6rem] shrink-0 text-[11px] font-bold text-[color:var(--lg-accent)]">
+                  {role}
                 </span>
                 <select
                   className="min-w-0 flex-1 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5 text-xs"
@@ -1167,7 +1269,14 @@ function BatterTable({ box }: { box: GameResult["away"] }) {
               key={b.playerId}
               className="border-t border-[color:var(--lg-line)]/60"
             >
-              <td className="py-1.5 font-medium">{b.name}</td>
+              <td className="py-1.5 font-medium">
+                {b.name}
+                {b.pinchHit ? (
+                  <span className="ml-1 text-[color:var(--lg-accent)]">
+                    (PH{b.pinchHitFor ? ` for ${b.pinchHitFor}` : ""})
+                  </span>
+                ) : null}
+              </td>
               <td className="px-1 text-right tabular-nums">{b.ab}</td>
               <td className="px-1 text-right tabular-nums">{b.r}</td>
               <td className="px-1 text-right tabular-nums">{b.h}</td>
@@ -1206,6 +1315,9 @@ function PitcherTable({ box }: { box: GameResult["away"] }) {
             >
               <td className="py-1.5 font-medium">
                 {p.name}
+                {p.fatigued ? (
+                  <span className="ml-1 text-[color:var(--lg-warn)]">(tired)</span>
+                ) : null}
                 {p.decision ? (
                   <span className="ml-1 text-[color:var(--lg-accent)]">
                     ({p.decision})
