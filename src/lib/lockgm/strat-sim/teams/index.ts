@@ -7,6 +7,10 @@ import { BLUE_JAYS_1985_LOOSE } from "./blue-jays-1985";
 import { ROYALS_1985_LOOSE } from "./royals-1985";
 import { CARDINALS_1985_LOOSE } from "./cardinals-1985";
 import { DODGERS_1985_LOOSE } from "./dodgers-1985";
+import { BREWERS_1982_LOOSE } from "./brewers-1982";
+import { ANGELS_1982_LOOSE } from "./angels-1982";
+import { CARDINALS_1982_LOOSE } from "./cardinals-1982";
+import { BRAVES_1982_LOOSE } from "./braves-1982";
 
 export const BREWERS_1985: ClassicTeam = finalizeClassicTeam(BREWERS_1985_LOOSE);
 export const YANKEES_1927: ClassicTeam = finalizeClassicTeam(YANKEES_1927_LOOSE);
@@ -17,6 +21,11 @@ export const ROYALS_1985: ClassicTeam = finalizeClassicTeam(ROYALS_1985_LOOSE);
 export const CARDINALS_1985: ClassicTeam =
   finalizeClassicTeam(CARDINALS_1985_LOOSE);
 export const DODGERS_1985: ClassicTeam = finalizeClassicTeam(DODGERS_1985_LOOSE);
+export const BREWERS_1982: ClassicTeam = finalizeClassicTeam(BREWERS_1982_LOOSE);
+export const ANGELS_1982: ClassicTeam = finalizeClassicTeam(ANGELS_1982_LOOSE);
+export const CARDINALS_1982: ClassicTeam =
+  finalizeClassicTeam(CARDINALS_1982_LOOSE);
+export const BRAVES_1982: ClassicTeam = finalizeClassicTeam(BRAVES_1982_LOOSE);
 
 /** All LockGM classic experiment packs (card/dice-inspired demos). */
 export const CLASSIC_TEAMS: ClassicTeam[] = [
@@ -25,6 +34,10 @@ export const CLASSIC_TEAMS: ClassicTeam[] = [
   ROYALS_1985,
   CARDINALS_1985,
   DODGERS_1985,
+  BREWERS_1982,
+  ANGELS_1982,
+  CARDINALS_1982,
+  BRAVES_1982,
   YANKEES_1927,
   REDS_1975,
 ];
@@ -35,6 +48,14 @@ export const PLAYOFF_1985_TEAM_IDS = [
   "royals-1985",
   "cardinals-1985",
   "dodgers-1985",
+] as const;
+
+/** 1982 pre–wild-card playoff field (4 clubs). */
+export const PLAYOFF_1982_TEAM_IDS = [
+  "brewers-1982",
+  "angels-1982",
+  "cardinals-1982",
+  "braves-1982",
 ] as const;
 
 export function classicTeamById(id: string): ClassicTeam | undefined {

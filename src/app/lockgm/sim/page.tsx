@@ -3,9 +3,9 @@ import Link from "next/link";
 import { ClassicMatchup } from "../components/classic-matchup";
 
 export const metadata: Metadata = {
-  title: "Classic Matchup — LockGM",
+  title: "Classic Matchup — LockedGM",
   description:
-    "LockGM Classic Matchup: 1985 playoff re-sim, original LockGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
+    "LockedGM Classic Matchup: 1982 and 1985 playoff re-sims, original LockedGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
 };
 
 export default function LockgmSimPage() {
@@ -15,15 +15,16 @@ export default function LockgmSimPage() {
         CLASSIC MATCHUP
       </p>
       <h1 className="mt-3 lockgm-display text-4xl font-extrabold text-[color:var(--lg-text)] sm:text-5xl">
-        LockGM Baseball Engine
+        LockedGM Baseball Engine
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-        Original LockGM ratings and dice resolution — lineup, gloves with
+        Original LockedGM ratings and dice resolution — lineup, gloves with
         position eligibility, starter & bullpen picks, L/R platoon edges, radio
         booth calls, and short highlight snippets. Hard salary caps bind every
-        signing. Re-run the 1985 playoffs (Blue Jays, Royals, Cardinals,
-        Dodgers) or free-match classic packs including the 1985 Brewers,
-        Murderers&apos; Row, and the Big Red Machine.
+        signing. Re-run the 1982 playoffs (Brewers, Angels, Cardinals, Braves)
+        or 1985 (Blue Jays, Royals, Cardinals, Dodgers), or free-match classic
+        packs including the 1985 Brewers, Murderers&apos; Row, and the Big Red
+        Machine.
       </p>
       <p className="mt-3 text-sm font-semibold">
         <Link
@@ -34,7 +35,7 @@ export default function LockgmSimPage() {
         </Link>
         <span className="text-[color:var(--lg-mute)]">
           {" "}
-          — LockGM 1–20 classroom for hitters, gloves, and pitchers.
+          — LockedGM 1–20 classroom for hitters, gloves, and pitchers.
         </span>
       </p>
       <div className="mt-10">

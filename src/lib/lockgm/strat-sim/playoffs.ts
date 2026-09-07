@@ -1,11 +1,15 @@
 /**
- * LockGM Classic Matchup — 1985 playoff bracket re-sim.
- * Pre–wild-card four-team field; trademark-safe historical experiment.
+ * LockedGM Classic Matchup — playoff bracket re-sims.
+ * Pre–wild-card four-team fields; trademark-safe historical experiments.
  */
 import type { ClassicTeam, GameResult } from "./types";
 import { simulateBestOf, type BestOfSeriesResult } from "./game";
 import {
+  ANGELS_1982,
   BLUE_JAYS_1985,
+  BRAVES_1982,
+  BREWERS_1982,
+  CARDINALS_1982,
   CARDINALS_1985,
   DODGERS_1985,
   ROYALS_1985,
@@ -45,6 +49,28 @@ export const PLAYOFF_1985_TEAMS: ClassicTeam[] = [
   DODGERS_1985,
 ];
 
+/** Historical 1982 path: ALCS MIL–CAL, NLCS STL–ATL, WS (Cardinals over Brewers). */
+export const PLAYOFF_1982_ALCS: PlayoffRoundDef = {
+  id: "alcs",
+  name: "ALCS",
+  higherSeedId: "brewers-1982",
+  lowerSeedId: "angels-1982",
+};
+
+export const PLAYOFF_1982_NLCS: PlayoffRoundDef = {
+  id: "nlcs",
+  name: "NLCS",
+  higherSeedId: "cardinals-1982",
+  lowerSeedId: "braves-1982",
+};
+
+export const PLAYOFF_1982_TEAMS: ClassicTeam[] = [
+  BREWERS_1982,
+  ANGELS_1982,
+  CARDINALS_1982,
+  BRAVES_1982,
+];
+
 export type PlayoffRoundResult = {
   def: PlayoffRoundDef;
   series: BestOfSeriesResult;
@@ -78,25 +104,36 @@ function roundResult(
   };
 }
 
-/**
- * Re-sim the 1985 playoffs: ALCS + NLCS in parallel path, then World Series.
- * Higher seeds: TOR (ALCS), STL (NLCS), NL champ hosts WS (historical 1985).
- */
-export function simulatePlayoffs1985(seed: number): PlayoffBracketResult {
-  const alcsSeries = simulateBestOf(
-    BLUE_JAYS_1985,
-    ROYALS_1985,
-    seed + 100,
-    4,
-  );
-  const nlcsSeries = simulateBestOf(
-    CARDINALS_1985,
-    DODGERS_1985,
-    seed + 200,
-    4,
-  );
-  const alcs = roundResult(PLAYOFF_1985_ALCS, alcsSeries);
-  const nlcs = roundResult(PLAYOFF_1985_NLCS, nlcsSeries);
+function buildBracket(args: {
+  seed: number;
+  year: number;
+  label: string;
+  alTeamA: ClassicTeam;
+  alTeamB: ClassicTeam;
+  nlTeamA: ClassicTeam;
+  nlTeamB: ClassicTeam;
+  alcsDef: PlayoffRoundDef;
+  nlcsDef: PlayoffRoundDef;
+  /** When true, NL champion hosts World Series (2-3-2). */
+  nlHostsWorldSeries: boolean;
+}): PlayoffBracketResult {
+  const {
+    seed,
+    year,
+    label,
+    alTeamA,
+    alTeamB,
+    nlTeamA,
+    nlTeamB,
+    alcsDef,
+    nlcsDef,
+    nlHostsWorldSeries,
+  } = args;
+
+  const alcsSeries = simulateBestOf(alTeamA, alTeamB, seed + 100, 4);
+  const nlcsSeries = simulateBestOf(nlTeamA, nlTeamB, seed + 200, 4);
+  const alcs = roundResult(alcsDef, alcsSeries);
+  const nlcs = roundResult(nlcsDef, nlcsSeries);
 
   let worldSeries: PlayoffRoundResult | null = null;
   let championId: string | null = null;
@@ -104,14 +141,15 @@ export function simulatePlayoffs1985(seed: number): PlayoffBracketResult {
   if (alcsSeries.championId && nlcsSeries.championId) {
     const alChamp = classicTeamById(alcsSeries.championId)!;
     const nlChamp = classicTeamById(nlcsSeries.championId)!;
-    // 1985: NL hosted World Series (2-3-2).
+    const higher = nlHostsWorldSeries ? nlChamp : alChamp;
+    const lower = nlHostsWorldSeries ? alChamp : nlChamp;
     const wsDef: PlayoffRoundDef = {
       id: "ws",
       name: "World Series",
-      higherSeedId: nlChamp.id,
-      lowerSeedId: alChamp.id,
+      higherSeedId: higher.id,
+      lowerSeedId: lower.id,
     };
-    const wsSeries = simulateBestOf(nlChamp, alChamp, seed + 300, 4);
+    const wsSeries = simulateBestOf(higher, lower, seed + 300, 4);
     worldSeries = roundResult(wsDef, wsSeries);
     championId = wsSeries.championId;
   }
@@ -125,8 +163,8 @@ export function simulatePlayoffs1985(seed: number): PlayoffBracketResult {
 
   return {
     seed,
-    year: 1985,
-    label: "1985 Playoffs",
+    year,
+    label,
     alcs,
     nlcs,
     worldSeries,
@@ -134,6 +172,44 @@ export function simulatePlayoffs1985(seed: number): PlayoffBracketResult {
     championLabel: champ ? classicTeamLabel(champ) : null,
     featuredGame: featured,
   };
+}
+
+/**
+ * Re-sim the 1985 playoffs: ALCS + NLCS in parallel path, then World Series.
+ * Higher seeds: TOR (ALCS), STL (NLCS), NL champ hosts WS (historical 1985 model).
+ */
+export function simulatePlayoffs1985(seed: number): PlayoffBracketResult {
+  return buildBracket({
+    seed,
+    year: 1985,
+    label: "1985 Playoffs",
+    alTeamA: BLUE_JAYS_1985,
+    alTeamB: ROYALS_1985,
+    nlTeamA: CARDINALS_1985,
+    nlTeamB: DODGERS_1985,
+    alcsDef: PLAYOFF_1985_ALCS,
+    nlcsDef: PLAYOFF_1985_NLCS,
+    nlHostsWorldSeries: true,
+  });
+}
+
+/**
+ * Re-sim the 1982 playoffs: ALCS + NLCS, then World Series.
+ * Higher seeds: MIL (ALCS), STL (NLCS); NL champ hosts WS (historical 1982 G1 in St. Louis).
+ */
+export function simulatePlayoffs1982(seed: number): PlayoffBracketResult {
+  return buildBracket({
+    seed,
+    year: 1982,
+    label: "1982 Playoffs",
+    alTeamA: BREWERS_1982,
+    alTeamB: ANGELS_1982,
+    nlTeamA: CARDINALS_1982,
+    nlTeamB: BRAVES_1982,
+    alcsDef: PLAYOFF_1982_ALCS,
+    nlcsDef: PLAYOFF_1982_NLCS,
+    nlHostsWorldSeries: true,
+  });
 }
 
 export function playoffSeriesScoreLine(round: PlayoffRoundResult): string {

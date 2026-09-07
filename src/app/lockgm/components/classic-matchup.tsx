@@ -11,6 +11,7 @@ import {
 import {
   CLASSIC_TEAMS,
   FIELD_ORDER,
+  PLAYOFF_1982_TEAMS,
   PLAYOFF_1985_TEAMS,
   applyManagerCard,
   attemptSignFreeAgent,
@@ -34,6 +35,7 @@ import {
   setStarterInningsTarget,
   simulateGame,
   simulateLeagueRound,
+  simulatePlayoffs1982,
   simulatePlayoffs1985,
   simulateSeries,
   teamPayroll,
@@ -41,6 +43,7 @@ import {
   validateDefense,
   validateLineup,
   validatePitching,
+  type ClassicTeam,
   type GameResult,
   type LeagueState,
   type ManagerCard,
@@ -57,7 +60,25 @@ type SeriesSummary = {
   results: GameResult[];
 };
 
-type SimMode = "matchup" | "playoffs1985";
+type SimMode = "matchup" | "playoffs1985" | "playoffs1982";
+
+function parseSimMode(modeParam: string | null): SimMode {
+  if (
+    modeParam === "playoffs1982" ||
+    modeParam === "1982" ||
+    modeParam === "playoffs82"
+  ) {
+    return "playoffs1982";
+  }
+  if (
+    modeParam === "playoffs1985" ||
+    modeParam === "playoffs" ||
+    modeParam === "1985"
+  ) {
+    return "playoffs1985";
+  }
+  return "matchup";
+}
 
 function readInitialFromUrl(): {
   awayId: string;
@@ -80,11 +101,7 @@ function readInitialFromUrl(): {
   const homeId = q.get("home") || CLASSIC_TEAMS[1]!.id;
   const seed = Number(q.get("seed") || 19850501) || 19850501;
   const auto = q.get("auto") === "1";
-  const modeParam = q.get("mode");
-  const mode: SimMode =
-    modeParam === "playoffs1985" || modeParam === "playoffs" || modeParam === "1985"
-      ? "playoffs1985"
-      : "matchup";
+  const mode = parseSimMode(q.get("mode"));
   return {
     awayId: classicTeamById(awayId) ? awayId : CLASSIC_TEAMS[0]!.id,
     homeId: classicTeamById(homeId) ? homeId : CLASSIC_TEAMS[1]!.id,
@@ -175,10 +192,13 @@ export function ClassicMatchup() {
 
   useEffect(() => {
     if (!initial.auto || didAuto) return;
-    if (initial.mode === "playoffs1985") {
+    if (initial.mode === "playoffs1985" || initial.mode === "playoffs1982") {
       setDidAuto(true);
-      setMode("playoffs1985");
-      const b = simulatePlayoffs1985(seed);
+      setMode(initial.mode);
+      const b =
+        initial.mode === "playoffs1982"
+          ? simulatePlayoffs1982(seed)
+          : simulatePlayoffs1985(seed);
       const game =
         b.worldSeries?.series.results[0] ?? b.alcs.series.results[0] ?? null;
       if (game) {
@@ -262,6 +282,17 @@ export function ClassicMatchup() {
         </button>
         <button
           type="button"
+          onClick={() => setMode("playoffs1982")}
+          className={`rounded-md px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 ${
+            mode === "playoffs1982"
+              ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+              : "border border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+          }`}
+        >
+          1982 Playoffs
+        </button>
+        <button
+          type="button"
           onClick={() => setMode("playoffs1985")}
           className={`rounded-md px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5 ${
             mode === "playoffs1985"
@@ -273,8 +304,31 @@ export function ClassicMatchup() {
         </button>
       </div>
 
+      {mode === "playoffs1982" ? (
+        <PlayoffsDesk
+          year={1982}
+          teams={PLAYOFF_1982_TEAMS}
+          blurb="Pre–wild-card field: Milwaukee vs California (ALCS), St. Louis vs Atlanta (NLCS), then World Series. Best-of-7 with 2-3-2 home field. Historical team names for experiment — LockedGM ratings only."
+          simulate={simulatePlayoffs1982}
+          seed={seed}
+          setSeed={setSeed}
+          pending={pending}
+          startTransition={startTransition}
+          onFeatureGame={(game, hl) => {
+            setResult(game);
+            setSeries(null);
+            setBroadcastIdx(0);
+            if (hl) setHighlight(hl);
+          }}
+        />
+      ) : null}
+
       {mode === "playoffs1985" ? (
-        <Playoffs1985Desk
+        <PlayoffsDesk
+          year={1985}
+          teams={PLAYOFF_1985_TEAMS}
+          blurb="Pre–wild-card field: Toronto vs Kansas City (ALCS), St. Louis vs Los Angeles (NLCS), then World Series. Best-of-7 with 2-3-2 home field. Historical team names for experiment — LockedGM ratings only."
+          simulate={simulatePlayoffs1985}
           seed={seed}
           setSeed={setSeed}
           pending={pending}
@@ -291,7 +345,7 @@ export function ClassicMatchup() {
       {mode === "matchup" ? (
       <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
         <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-          LockGM Classic Matchup · LockGM grades & dice
+          LockedGM Classic Matchup · LockedGM grades & dice
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <TeamPick
@@ -463,22 +517,32 @@ export function ClassicMatchup() {
         </>
       ) : (
         <p className="text-sm text-[color:var(--lg-mute)]">
-          {mode === "playoffs1985"
-            ? "Run the 1985 bracket to open a featured box + radio call."
-            : "Set lineup, gloves, starter, and bullpen plan, then run a game. Same seed → same box."}
+          {mode === "playoffs1982"
+            ? "Run the 1982 bracket to open a featured box + radio call."
+            : mode === "playoffs1985"
+              ? "Run the 1985 bracket to open a featured box + radio call."
+              : "Set lineup, gloves, starter, and bullpen plan, then run a game. Same seed → same box."}
         </p>
       )}
     </div>
   );
 }
 
-function Playoffs1985Desk({
+function PlayoffsDesk({
+  year,
+  teams,
+  blurb,
+  simulate,
   seed,
   setSeed,
   pending,
   startTransition,
   onFeatureGame,
 }: {
+  year: 1982 | 1985;
+  teams: ClassicTeam[];
+  blurb: string;
+  simulate: (seed: number) => PlayoffBracketResult;
   seed: number;
   setSeed: (n: number) => void;
   pending: boolean;
@@ -491,10 +555,9 @@ function Playoffs1985Desk({
 
   function runBracket() {
     startTransition(() => {
-      const b = simulatePlayoffs1985(seed);
+      const b = simulate(seed);
       setBracket(b);
-      const round =
-        b.worldSeries ?? b.alcs;
+      const round = b.worldSeries ?? b.alcs;
       const game = round.series.results[0];
       setFocusRound(b.worldSeries ? "ws" : "alcs");
       setFocusGame(0);
@@ -505,7 +568,11 @@ function Playoffs1985Desk({
     });
   }
 
-  function openGame(round: PlayoffRoundResult, gameIdx: number, roundId: "alcs" | "nlcs" | "ws") {
+  function openGame(
+    round: PlayoffRoundResult,
+    gameIdx: number,
+    roundId: "alcs" | "nlcs" | "ws",
+  ) {
     const g = round.series.games[gameIdx];
     if (!g) return;
     setFocusRound(roundId);
@@ -517,19 +584,17 @@ function Playoffs1985Desk({
   return (
     <section className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] p-5 sm:p-6">
       <p className="text-xs font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-        LockGM Classic Matchup · 1985 Playoffs
+        LockedGM Classic Matchup · {year} Playoffs
       </p>
       <h2 className="mt-2 lockgm-display text-2xl font-extrabold sm:text-3xl">
         Re-sim the four-team October
       </h2>
       <p className="mt-2 max-w-2xl text-sm text-[color:var(--lg-mute)]">
-        Pre–wild-card field: Toronto vs Kansas City (ALCS), St. Louis vs Los
-        Angeles (NLCS), then World Series. Best-of-7 with 2-3-2 home field.
-        Historical team names for experiment — LockGM ratings only.
+        {blurb}
       </p>
 
       <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {PLAYOFF_1985_TEAMS.map((t) => (
+        {teams.map((t) => (
           <li
             key={t.id}
             className="border border-[color:var(--lg-line)]/70 px-3 py-2 text-sm"
@@ -558,7 +623,7 @@ function Playoffs1985Desk({
           disabled={pending}
           className="inline-flex h-11 items-center rounded-md bg-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5 disabled:opacity-40"
         >
-          Sim 1985 playoffs
+          Sim {year} playoffs
         </button>
       </div>
 
@@ -598,9 +663,7 @@ function Playoffs1985Desk({
                 round={bracket.worldSeries}
                 active={focusRound === "ws"}
                 focusGame={focusRound === "ws" ? focusGame : -1}
-                onPickGame={(i) =>
-                  openGame(bracket.worldSeries!, i, "ws")
-                }
+                onPickGame={(i) => openGame(bracket.worldSeries!, i, "ws")}
               />
             ) : (
               <div className="border border-[color:var(--lg-line)] p-4 text-sm text-[color:var(--lg-mute)]">
