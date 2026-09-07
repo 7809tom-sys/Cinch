@@ -70,6 +70,7 @@ export {
   validateLineup,
   validateDefense,
   validatePitching,
+  fieldersForPosition,
   rosterPitchers,
   selectStartingPitcher,
   moveBullpenArm,
@@ -80,6 +81,19 @@ export {
   teamDefenseRating,
   FIELD_ORDER,
 } from "./salary";
+export {
+  FIELD_POSITIONS,
+  OOP_DEFENSE_RATING,
+  OOP_ERROR_MULT,
+  eligibleFieldPositions,
+  isEligibleAt,
+  primaryFieldPosition,
+  eligibilityBadge,
+  effectiveDefenseAt,
+  isOutOfPosition,
+  listDefenseAssignments,
+  countOutOfPosition,
+} from "./eligibility";
 export {
   createClassicLeague,
   claimTeam,

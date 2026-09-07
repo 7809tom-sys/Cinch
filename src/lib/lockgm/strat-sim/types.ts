@@ -43,6 +43,11 @@ export type Player = {
   name: string;
   bats: Hand;
   throws: Hand;
+  /**
+   * LockGM-eligible positions — only spots where the player has a positional
+   * rating / enough playing time. No listing = not eligible (OOP if forced).
+   * First field spot is treated as the primary position.
+   */
   positions: FieldPos[];
   /** Honest annual salary in millions USD (binding for cap checks). */
   salary: number;
