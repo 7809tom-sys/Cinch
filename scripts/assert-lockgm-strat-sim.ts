@@ -3,12 +3,18 @@
  * Run: npm run assert:lockgm-strat-sim
  */
 import {
+  ANGELS_1982,
   BLUE_JAYS_1985,
+  BRAVES_1982,
+  BREWERS_1982,
   BREWERS_1985,
+  CARDINALS_1982,
   CARDINALS_1985,
   CLASSIC_TEAMS,
   DEFAULT_SALARY_CAP,
   DODGERS_1985,
+  PLAYOFF_1982_TEAM_IDS,
+  PLAYOFF_1982_TEAMS,
   PLAYOFF_1985_TEAM_IDS,
   PLAYOFF_1985_TEAMS,
   REDS_1975,
@@ -32,6 +38,7 @@ import {
   simulateBestOf,
   simulateGame,
   simulateLeagueRound,
+  simulatePlayoffs1982,
   simulatePlayoffs1985,
   simulateSeries,
   teamPayroll,
@@ -64,7 +71,7 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-assert(CLASSIC_TEAMS.length >= 7, "at least 7 classic team packs");
+assert(CLASSIC_TEAMS.length >= 11, "at least 11 classic team packs");
 assert(!!classicTeamById("brewers-1985"), "1985 Brewers pack loads");
 assert(!!classicTeamById("yankees-1927"), "1927 Yankees pack loads");
 assert(!!classicTeamById("reds-1975"), "1975 Reds pack loads");
@@ -72,10 +79,19 @@ assert(!!classicTeamById("blue-jays-1985"), "1985 Blue Jays pack loads");
 assert(!!classicTeamById("royals-1985"), "1985 Royals pack loads");
 assert(!!classicTeamById("cardinals-1985"), "1985 Cardinals pack loads");
 assert(!!classicTeamById("dodgers-1985"), "1985 Dodgers pack loads");
+assert(!!classicTeamById("brewers-1982"), "1982 Brewers pack loads");
+assert(!!classicTeamById("angels-1982"), "1982 Angels pack loads");
+assert(!!classicTeamById("cardinals-1982"), "1982 Cardinals pack loads");
+assert(!!classicTeamById("braves-1982"), "1982 Braves pack loads");
 assert(PLAYOFF_1985_TEAMS.length === 4, "1985 playoff field has 4 clubs");
 assert(
   PLAYOFF_1985_TEAM_IDS.every((id) => !!classicTeamById(id)),
   "all 1985 playoff ids resolve",
+);
+assert(PLAYOFF_1982_TEAMS.length === 4, "1982 playoff field has 4 clubs");
+assert(
+  PLAYOFF_1982_TEAM_IDS.every((id) => !!classicTeamById(id)),
+  "all 1982 playoff ids resolve",
 );
 
 for (const team of CLASSIC_TEAMS) {
@@ -136,6 +152,22 @@ assert(
 assert(
   DODGERS_1985.players.some((p) => /Hershiser/i.test(p.name)),
   "Dodgers pack includes Hershiser",
+);
+assert(
+  BREWERS_1982.players.some((p) => /Yount/i.test(p.name)),
+  "1982 Brewers pack includes Yount",
+);
+assert(
+  ANGELS_1982.players.some((p) => /Carew/i.test(p.name)),
+  "1982 Angels pack includes Carew",
+);
+assert(
+  CARDINALS_1982.players.some((p) => /Ozzie Smith/i.test(p.name)),
+  "1982 Cardinals pack includes Ozzie Smith",
+);
+assert(
+  BRAVES_1982.players.some((p) => /Murphy/i.test(p.name)),
+  "1982 Braves pack includes Murphy",
 );
 
 // Hard cap blocks overspend
@@ -457,6 +489,32 @@ assert(
   "featured playoff game has radio calls",
 );
 
+const bracket82 = simulatePlayoffs1982(19821020);
+assert(bracket82.year === 1982, "1982 bracket year tag");
+assert(bracket82.alcs.series.games.length >= 4, "1982 bracket ALCS played");
+assert(bracket82.nlcs.series.games.length >= 4, "1982 bracket NLCS played");
+assert(!!bracket82.worldSeries, "1982 World Series scheduled after LCS");
+assert(
+  bracket82.alcs.series.games[0]?.homeTeamId === BREWERS_1982.id,
+  "1982 ALCS higher seed Brewers host G1",
+);
+assert(
+  bracket82.nlcs.series.games[0]?.homeTeamId === CARDINALS_1982.id,
+  "1982 NLCS higher seed Cardinals host G1",
+);
+const bracket82b = simulatePlayoffs1982(19821020);
+assert(
+  bracket82.championId === bracket82b.championId &&
+    bracket82.alcs.series.higherWins === bracket82b.alcs.series.higherWins &&
+    bracket82.nlcs.series.lowerWins === bracket82b.nlcs.series.lowerWins,
+  "same seed reproduces 1982 playoff bracket",
+);
+assert(
+  bracket82.featuredGame != null &&
+    bracket82.featuredGame.plays.every((p) => p.radioCall.length > 10),
+  "1982 featured playoff game has radio calls",
+);
+
 // League claim + AI + cap buster
 let league = createClassicLeague(3);
 assert(
@@ -485,32 +543,32 @@ assert(teamPayroll(BREWERS_1985) > 0, "payroll helper works");
 
 // Trademark-safety smoke: user-facing strings in this module surface should not say Strat-O-Matic
 assert(
-  BREWERS_1985.bullpen[0] === "mil85-fingers" &&
-    BREWERS_1985.bullpen.includes("mil85-bernard") &&
-    BREWERS_1985.bullpen.includes("mil85-ladd") &&
-    BREWERS_1985.bullpen.includes("mil85-mcclure") &&
-    BREWERS_1985.bullpen.includes("mil85-slaton"),
-  "Brewers pen is Kuenn fireman hierarchy (Fingers, Bernard, Ladd, McClure, Slaton)",
+  BREWERS_1982.bullpen[0] === "mil82-fingers" &&
+    BREWERS_1982.bullpen.includes("mil82-bernard") &&
+    BREWERS_1982.bullpen.includes("mil82-ladd") &&
+    BREWERS_1982.bullpen.includes("mil82-mcclure") &&
+    BREWERS_1982.bullpen.includes("mil82-slaton"),
+  "1982 Brewers pen is Kuenn fireman hierarchy (Fingers, Bernard, Ladd, McClure, Slaton)",
 );
 
 // Fireman rest is engine law — 3+ IP sits two games; never 3 days in a row
 const rest0 = emptyRestBook();
-const after3 = recordOutings(rest0, [{ id: "mil85-fingers", outs: 9 }], [
-  "mil85-fingers",
-  "mil85-bernard",
+const after3 = recordOutings(rest0, [{ id: "mil82-fingers", outs: 9 }], [
+  "mil82-fingers",
+  "mil82-bernard",
 ]);
-assert(!canEnter(after3, "mil85-fingers").ok, "3.0 IP fireman sits the next game");
-assert(canEnter(after3, "mil85-bernard").ok, "unused setup arm is eligible next game");
-const afterSit1 = recordOutings(after3, [{ id: "mil85-bernard", outs: 3 }], [
-  "mil85-fingers",
-  "mil85-bernard",
+assert(!canEnter(after3, "mil82-fingers").ok, "3.0 IP fireman sits the next game");
+assert(canEnter(after3, "mil82-bernard").ok, "unused setup arm is eligible next game");
+const afterSit1 = recordOutings(after3, [{ id: "mil82-bernard", outs: 3 }], [
+  "mil82-fingers",
+  "mil82-bernard",
 ]);
-assert(!canEnter(afterSit1, "mil85-fingers").ok, "3.0 IP still sitting game 2 of rest");
-const afterSit2 = recordOutings(afterSit1, [{ id: "mil85-bernard", outs: 3 }], [
-  "mil85-fingers",
-  "mil85-bernard",
+assert(!canEnter(afterSit1, "mil82-fingers").ok, "3.0 IP still sitting game 2 of rest");
+const afterSit2 = recordOutings(afterSit1, [{ id: "mil82-bernard", outs: 3 }], [
+  "mil82-fingers",
+  "mil82-bernard",
 ]);
-assert(canEnter(afterSit2, "mil85-fingers").ok, "fireman eligible after two sit games");
+assert(canEnter(afterSit2, "mil82-fingers").ok, "fireman eligible after two sit games");
 
 const afterShort = recordOutings(emptyRestBook(), [{ id: "arm", outs: 3 }]);
 const day2short = recordOutings(afterShort, [{ id: "arm", outs: 3 }]);
@@ -518,9 +576,9 @@ assert(!canEnter(day2short, "arm").ok, "two consecutive 1.0 IP days lock the 3rd
 
 assert(dropGradeTiers(15) <= 9, "fatigue drops plus grades two classroom tiers");
 
-const five = simulateSeries(BREWERS_1985, YANKEES_1927, 1982, 5);
+const five = simulateSeries(BREWERS_1982, YANKEES_1927, 1982, 5);
 const fingersMask = five.results.map((g) =>
-  [...g.away.pitchers, ...g.home.pitchers].some((p) => p.playerId === "mil85-fingers"),
+  [...g.away.pitchers, ...g.home.pitchers].some((p) => p.playerId === "mil82-fingers"),
 );
 assert(
   fingersMask.filter(Boolean).length < five.results.length,
@@ -663,9 +721,16 @@ const brandBlob = JSON.stringify({
   e: ROYALS_1985.blurb,
   f: CARDINALS_1985.blurb,
   g: DODGERS_1985.blurb,
+  h: BREWERS_1982.blurb,
+  i: ANGELS_1982.blurb,
+  j: CARDINALS_1982.blurb,
+  k: BRAVES_1982.blurb,
 });
 assert(!/Strat-O-Matic/i.test(brandBlob), "classic blurbs avoid Strat-O-Matic");
-
+assert(
+  /LockedGM/.test(BREWERS_1982.blurb) && /LockedGM/.test(ANGELS_1982.blurb),
+  "1982 packs use LockedGM brand in blurbs",
+);
 if (process.exitCode) {
   console.error("assert:lockgm-strat-sim failed");
   process.exit(1);

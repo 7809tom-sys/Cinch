@@ -5,7 +5,7 @@ import { ClassicMatchup } from "../components/classic-matchup";
 export const metadata: Metadata = {
   title: "Classic Matchup — LockedGM",
   description:
-    "LockedGM Classic Matchup: 1985 playoff re-sim, original LockedGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
+    "LockedGM Classic Matchup: 1982 and 1985 playoff re-sims, original LockedGM ratings, dice resolution, radio calls, hard salary caps, and 30-man classic leagues.",
 };
 
 export default function LockgmSimPage() {
@@ -22,9 +22,10 @@ export default function LockgmSimPage() {
         position eligibility, starter & bullpen picks, L/R platoon edges, radio
         booth calls, and short highlight snippets. Fireman rest and 7th-inning
         pinch-hit pauses apply to every game. Hard salary caps bind every
-        signing. Re-run the 1985 playoffs (Blue Jays, Royals, Cardinals,
-        Dodgers) or free-match classic packs including the 1985 Brewers,
-        Murderers&apos; Row, and the Big Red Machine.
+        signing. Re-run the 1982 playoffs (Brewers, Angels, Cardinals, Braves)
+        or 1985 (Blue Jays, Royals, Cardinals, Dodgers), or free-match classic
+        packs including Harvey&apos;s Wallbangers, Murderers&apos; Row, and the
+        Big Red Machine.
       </p>
       <p className="mt-3 text-sm font-semibold">
         <Link
