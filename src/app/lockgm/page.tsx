@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { SPORTS } from "@/lib/lockgm/sports";
 import { getCurrentCustomer } from "@/lib/customer-auth";
-import { getLockgmContent } from "@/lib/lockgm-content";
+
+const MORE_TOOLS = [
+  { href: "/lockgm/reports", label: "Scout Alpha / SR-###" },
+  { href: "/lockgm/reports", label: "Numbered board" },
+  { href: "/lockgm/draft", label: "Draft day" },
+  { href: "/lockgm/office", label: "GM office" },
+  { href: "/lockgm/pricing", label: "Tiers" },
+  { href: "/lockgm/profile", label: "Build identity" },
+] as const;
 
 export default async function LockgmHomePage() {
-  const [content, customer] = await Promise.all([
-    getLockgmContent(),
-    getCurrentCustomer(),
-  ]);
+  const customer = await getCurrentCustomer();
 
   return (
     <main>
@@ -25,52 +30,48 @@ export default async function LockgmHomePage() {
             LockedGM
           </p>
           <h1 className="lg-rise-2 mt-5 max-w-xl lockgm-display text-3xl font-bold leading-[1.05] text-[color:var(--lg-text)] sm:text-5xl">
-            {content.hero.headline}
+            Claim a 2026 club. Call the games.
           </h1>
           <p className="lg-rise-3 mt-5 max-w-lg text-base leading-relaxed text-[color:var(--lg-mute)] sm:text-lg">
-            {content.hero.subhead}
+            Thirty MLB teams. One GM each. Lineups lock on Classic Matchup.
           </p>
-          <div className="lg-rise-3 mt-9 flex flex-wrap gap-3">
-            <Link
-              href="/lockgm/reports"
-              className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
-            >
-              {content.hero.primaryCtaLabel}
-            </Link>
-            <Link
-              href="/lockgm/draft"
-              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold text-[color:var(--lg-text)] hover:border-[color:var(--lg-accent)]"
-            >
-              {content.hero.secondaryCtaLabel}
-            </Link>
-          </div>
           {customer ? null : (
-            <p className="lg-rise-3 mt-5 text-sm text-[color:var(--lg-mute)]">
-              New here?{" "}
+            <p className="lg-rise-3 mt-6 text-base">
               <Link
                 href="/login"
-                className="font-bold text-[color:var(--lg-accent)] hover:underline"
+                className="inline-flex min-h-12 items-center rounded-md border border-[color:var(--lg-accent)] px-5 text-sm font-bold text-[color:var(--lg-accent)] hover:bg-[color:var(--lg-accent)] hover:text-[color:var(--lg-bg)]"
               >
-                Sign in or create your GM login
+                Sign in / Create login
               </Link>
             </p>
           )}
+          <div className="lg-rise-3 mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/lockgm/league"
+              className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
+            >
+              Claim your 2026 club
+            </Link>
+            <Link
+              href="/lockgm/sim"
+              className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
+            >
+              Classic Matchup sim
+            </Link>
+          </div>
         </div>
       </section>
 
-      <section className="border-t border-[color:var(--lg-line)] px-6 py-16 sm:px-8">
+      <section className="border-t border-[color:var(--lg-line)] px-6 py-12 sm:px-8">
         <div className="mx-auto max-w-6xl">
-          <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-            {content.worldSports.kicker}
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--lg-mute)]">
+            Eight sports
           </p>
-          <h2 className="mt-3 max-w-2xl lockgm-display text-3xl font-extrabold sm:text-4xl">
-            {content.worldSports.headline}
-          </h2>
-          <ul className="mt-8 flex flex-wrap gap-3">
+          <ul className="mt-4 flex flex-wrap gap-2">
             {SPORTS.map((s) => (
               <li
                 key={s.id}
-                className="border border-[color:var(--lg-line)] px-3 py-2 text-sm font-bold text-[color:var(--lg-text)]"
+                className="border border-[color:var(--lg-line)] px-3 py-1.5 text-sm text-[color:var(--lg-mute)]"
               >
                 {s.name}
               </li>
@@ -79,75 +80,26 @@ export default async function LockgmHomePage() {
         </div>
       </section>
 
-      <section className="bg-[color:var(--lg-panel)] px-6 py-20 sm:px-8">
+      <section className="border-t border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] px-6 py-16 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-            HOW PRO GMS WORK HERE
+            MORE TOOLS
           </p>
-          <h2 className="mt-3 max-w-2xl lockgm-display text-3xl font-extrabold sm:text-4xl">
-            Research. Tabulate. Beat the clock.
+          <h2 className="mt-3 max-w-xl lockgm-display text-2xl font-extrabold sm:text-3xl">
+            Scouting, draft, and the front office.
           </h2>
-          <ul className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-            {content.features.map((item, index) => (
-              <li
-                key={item.title}
-                className="border-t border-[color:var(--lg-line)] pt-5"
-              >
-                <p className="lockgm-display text-2xl font-bold text-[color:var(--lg-accent)]">
-                  {item.title}
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-[color:var(--lg-mute)]">
-                  {item.body}
-                </p>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {MORE_TOOLS.map((item) => (
+              <li key={item.label}>
                 <Link
-                  href={index === 2 ? "/lockgm/draft" : "/lockgm/reports"}
-                  className="mt-4 inline-flex text-sm font-bold text-[color:var(--lg-text)] hover:text-[color:var(--lg-accent)]"
+                  href={item.href}
+                  className="flex min-h-12 items-center border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-4 text-sm font-bold text-[color:var(--lg-text)] hover:border-[color:var(--lg-accent)]"
                 >
-                  Open →
+                  {item.label}
                 </Link>
               </li>
             ))}
           </ul>
-        </div>
-      </section>
-
-      <section className="px-6 py-20 sm:px-8">
-        <div className="mx-auto max-w-6xl">
-          <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
-            FRONT OFFICE
-          </p>
-          <h2 className="mt-3 max-w-xl lockgm-display text-3xl font-extrabold sm:text-4xl">
-            {content.frontOffice.headline}
-          </h2>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-[color:var(--lg-mute)]">
-            {content.frontOffice.body}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/lockgm/office"
-              className="inline-flex h-12 items-center rounded-md bg-[color:var(--lg-accent)] px-6 text-sm font-bold text-[color:var(--lg-bg)]"
-            >
-              Open GM office
-            </Link>
-            <Link
-              href="/lockgm/sim"
-              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
-            >
-              Classic matchup sim
-            </Link>
-            <Link
-              href="/lockgm/pricing"
-              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
-            >
-              See tiers
-            </Link>
-            <Link
-              href="/lockgm/profile"
-              className="inline-flex h-12 items-center rounded-md border border-[color:var(--lg-line)] px-5 text-sm font-bold"
-            >
-              Build your GM identity
-            </Link>
-          </div>
         </div>
       </section>
     </main>
