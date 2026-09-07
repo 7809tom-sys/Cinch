@@ -87,6 +87,12 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
     defense: Object.keys(defense).length === 8 ? defense : { ...team.defense },
     rotation: arms.map((p) => p.id).slice(0, Math.max(3, team.rotation.length)),
     bullpen: pens.map((p) => p.id).slice(0, Math.max(2, team.bullpen.length)),
+    pitchingPlan: {
+      starterInningsTarget: Math.max(
+        5,
+        Math.min(8, Math.round((arms[0]?.pitcher?.stamina ?? 12) * 0.45)),
+      ),
+    },
   };
 }
 

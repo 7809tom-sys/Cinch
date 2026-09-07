@@ -1,8 +1,16 @@
-import type { ClassicTeam, FieldPos, ManagerCard, Player } from "./types";
+import type {
+  ClassicTeam,
+  FieldPos,
+  ManagerCard,
+  PitchingPlan,
+  Player,
+} from "./types";
 
 export const ROSTER_SIZE = 30;
 /** Default hard cap in millions — overspend is blocked, not soft-warned. */
 export const DEFAULT_SALARY_CAP = 92;
+/** Default starter leash when the manager card omits a pitching plan. */
+export const DEFAULT_STARTER_INNINGS_TARGET = 6;
 
 export type CapCheck = {
   ok: boolean;
@@ -77,6 +85,10 @@ export function tryAddPlayer(
   };
 }
 
+export function defaultPitchingPlan(): PitchingPlan {
+  return { starterInningsTarget: DEFAULT_STARTER_INNINGS_TARGET };
+}
+
 export function applyManagerCard(
   team: ClassicTeam,
   card: ManagerCard,
@@ -87,6 +99,11 @@ export function applyManagerCard(
     defense: { ...card.defense },
     rotation: card.rotation ? [...card.rotation] : team.rotation,
     bullpen: card.bullpen ? [...card.bullpen] : team.bullpen,
+    pitchingPlan: card.pitchingPlan
+      ? { ...card.pitchingPlan }
+      : team.pitchingPlan
+        ? { ...team.pitchingPlan }
+        : defaultPitchingPlan(),
   };
 }
 
@@ -132,12 +149,166 @@ export function validateDefense(
   return { ok: true, message: "Defense set." };
 }
 
+export function validatePitching(
+  team: ClassicTeam,
+  rotation: string[],
+  bullpen: string[],
+  plan?: PitchingPlan,
+): { ok: boolean; message: string } {
+  const ids = new Set(team.players.map((p) => p.id));
+  if (rotation.length < 1) {
+    return { ok: false, message: "Pick a starting pitcher." };
+  }
+  const starterId = rotation[0]!;
+  if (!ids.has(starterId)) {
+    return { ok: false, message: "Unknown starting pitcher." };
+  }
+  const starter = team.players.find((p) => p.id === starterId);
+  if (!starter?.pitcher) {
+    return { ok: false, message: "Starter must have pitcher ratings." };
+  }
+  const seen = new Set<string>([starterId]);
+  for (const id of bullpen) {
+    if (!ids.has(id)) return { ok: false, message: `Unknown bullpen arm ${id}.` };
+    if (seen.has(id)) return { ok: false, message: "Duplicate in pitching staff." };
+    const arm = team.players.find((p) => p.id === id);
+    if (!arm?.pitcher) {
+      return { ok: false, message: `${arm?.name ?? id} is not a pitcher.` };
+    }
+    seen.add(id);
+  }
+  if (bullpen.length < 1) {
+    return { ok: false, message: "Bullpen needs at least one arm." };
+  }
+  const target = plan?.starterInningsTarget ?? DEFAULT_STARTER_INNINGS_TARGET;
+  if (target < 1 || target > 9) {
+    return { ok: false, message: "Starter innings target must be 1–9." };
+  }
+  return {
+    ok: true,
+    message: `SP set · ${bullpen.length}-arm pen · ${target} IP target`,
+  };
+}
+
+/** Roster pitchers available for SP/bullpen picks (rated arms only). */
+export function rosterPitchers(team: ClassicTeam): Player[] {
+  return team.players
+    .filter((p) => p.pitcher)
+    .sort((a, b) => {
+      const roleRank = (p: Player) => (p.pitcher?.role === "SP" ? 0 : 1);
+      const rr = roleRank(a) - roleRank(b);
+      if (rr !== 0) return rr;
+      return (b.pitcher?.stuff ?? 0) - (a.pitcher?.stuff ?? 0);
+    });
+}
+
+/**
+ * Set today's starter. If the pick was a bullpen arm, the previous starter
+ * slides into the pen; otherwise rotation depth is reshuffled around #1.
+ */
+export function selectStartingPitcher(
+  card: ManagerCard,
+  team: ClassicTeam,
+  pitcherId: string,
+): ManagerCard {
+  const rotation = [...(card.rotation ?? team.rotation)];
+  let bullpen = [...(card.bullpen ?? team.bullpen)];
+  const prevStarter = rotation[0];
+  const cameFromPen = bullpen.includes(pitcherId);
+
+  bullpen = bullpen.filter((id) => id !== pitcherId);
+  const without = rotation.filter((id) => id !== pitcherId);
+  const nextRotation = [pitcherId, ...without];
+
+  if (
+    cameFromPen &&
+    prevStarter &&
+    prevStarter !== pitcherId &&
+    !bullpen.includes(prevStarter)
+  ) {
+    bullpen = [prevStarter, ...bullpen];
+  }
+
+  return {
+    ...card,
+    rotation: nextRotation,
+    bullpen,
+  };
+}
+
+/** Reorder bullpen entry sequence (0 = first call). */
+export function moveBullpenArm(
+  card: ManagerCard,
+  team: ClassicTeam,
+  fromIdx: number,
+  toIdx: number,
+): ManagerCard {
+  const bullpen = [...(card.bullpen ?? team.bullpen)];
+  if (
+    fromIdx < 0 ||
+    toIdx < 0 ||
+    fromIdx >= bullpen.length ||
+    toIdx >= bullpen.length ||
+    fromIdx === toIdx
+  ) {
+    return card;
+  }
+  const [arm] = bullpen.splice(fromIdx, 1);
+  bullpen.splice(toIdx, 0, arm!);
+  return { ...card, bullpen };
+}
+
+/** Replace a bullpen slot with another roster pitcher (not today's SP). */
+export function setBullpenSlot(
+  card: ManagerCard,
+  team: ClassicTeam,
+  slotIdx: number,
+  pitcherId: string,
+): ManagerCard {
+  const rotation = [...(card.rotation ?? team.rotation)];
+  const bullpen = [...(card.bullpen ?? team.bullpen)];
+  if (slotIdx < 0 || slotIdx >= bullpen.length) return card;
+  if (pitcherId === rotation[0]) return card;
+  const swapAt = bullpen.indexOf(pitcherId);
+  if (swapAt >= 0) {
+    bullpen[swapAt] = bullpen[slotIdx]!;
+  }
+  bullpen[slotIdx] = pitcherId;
+  return {
+    ...card,
+    rotation: rotation.filter(
+      (id, i) => i === 0 || (!bullpen.includes(id) && id !== pitcherId),
+    ),
+    bullpen,
+  };
+}
+
+export function setStarterInningsTarget(
+  card: ManagerCard,
+  target: number,
+): ManagerCard {
+  const clamped = Math.max(
+    1,
+    Math.min(9, Math.round(target) || DEFAULT_STARTER_INNINGS_TARGET),
+  );
+  return {
+    ...card,
+    pitchingPlan: {
+      ...(card.pitchingPlan ?? defaultPitchingPlan()),
+      starterInningsTarget: clamped,
+    },
+  };
+}
+
 export function defaultManagerCard(team: ClassicTeam): ManagerCard {
   return {
     lineup: [...team.lineup],
     defense: { ...team.defense },
     rotation: [...team.rotation],
     bullpen: [...team.bullpen],
+    pitchingPlan: team.pitchingPlan
+      ? { ...team.pitchingPlan }
+      : defaultPitchingPlan(),
   };
 }
 

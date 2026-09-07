@@ -23,8 +23,12 @@ import {
   classicTeamById,
   countOutsRecorded,
   createClassicLeague,
+  defaultManagerCard,
   makeCapBusterFreeAgent,
+  moveBullpenArm,
   playoffSeriesScoreLine,
+  selectStartingPitcher,
+  setStarterInningsTarget,
   simulateBestOf,
   simulateGame,
   simulateLeagueRound,
@@ -32,6 +36,7 @@ import {
   simulateSeries,
   teamPayroll,
   tryAddPlayer,
+  validatePitching,
 } from "../src/lib/lockgm/strat-sim";
 
 function assert(condition: boolean, message: string) {
@@ -184,6 +189,92 @@ const aiCard = aiSetLineup(REDS_1975);
 const aiReds = applyManagerCard(REDS_1975, aiCard);
 const gAi = simulateGame(BREWERS_1985, aiReds, { seed: 55 });
 assert(gAi.plays.length > 30, "AI-managed lineup produces a full game");
+
+// Starter selection changes seeded first pitcher
+const brewCard = defaultManagerCard(BREWERS_1985);
+const defaultStarterId = BREWERS_1985.rotation[0]!;
+const altStarterId = BREWERS_1985.rotation[1]!;
+assert(defaultStarterId !== altStarterId, "Brewers rotation has alternate SP");
+const defaultStarterName = BREWERS_1985.players.find(
+  (p) => p.id === defaultStarterId,
+)!.name;
+const altStarterName = BREWERS_1985.players.find(
+  (p) => p.id === altStarterId,
+)!.name;
+const brewDefault = applyManagerCard(BREWERS_1985, brewCard);
+const gSpDefault = simulateGame(REDS_1975, brewDefault, { seed: 4242 });
+assert(
+  gSpDefault.plays[0]?.pitcher === defaultStarterName,
+  "default rotation[0] starts (home fielding in top 1)",
+);
+assert(
+  gSpDefault.home.pitchers[0]?.playerId === defaultStarterId,
+  "box starter id matches default rotation[0]",
+);
+
+const brewAltCard = selectStartingPitcher(brewCard, BREWERS_1985, altStarterId);
+assert(brewAltCard.rotation?.[0] === altStarterId, "selectStartingPitcher promotes SP");
+const brewAlt = applyManagerCard(BREWERS_1985, brewAltCard);
+const gSpAlt = simulateGame(REDS_1975, brewAlt, { seed: 4242 });
+assert(
+  gSpAlt.home.pitchers[0]?.playerId === altStarterId,
+  "alternate starter appears first in home pitching box",
+);
+assert(
+  gSpAlt.plays[0]?.pitcher === altStarterName,
+  "alternate starter faces first PA at same seed",
+);
+assert(
+  gSpAlt.home.pitchers[0]?.playerId !== gSpDefault.home.pitchers[0]?.playerId,
+  "starter selection changes seeded game pitching",
+);
+
+// Bullpen order is modeled — reversing entry order changes first reliever when plan hooks early
+const shortPlan = setStarterInningsTarget(brewCard, 1);
+const pen = [...(shortPlan.bullpen ?? BREWERS_1985.bullpen)];
+assert(pen.length >= 2, "Brewers bullpen has 2+ arms for order test");
+const firstPen = pen[0]!;
+let reversed = shortPlan;
+for (let i = 0; i < pen.length - 1; i++) {
+  reversed = moveBullpenArm(reversed, BREWERS_1985, 0, pen.length - 1);
+}
+assert(
+  reversed.bullpen?.[0] !== firstPen,
+  "moveBullpenArm reorders pen away from original first call",
+);
+const gPenA = simulateGame(
+  REDS_1975,
+  applyManagerCard(BREWERS_1985, shortPlan),
+  { seed: 777 },
+);
+const gPenB = simulateGame(
+  REDS_1975,
+  applyManagerCard(BREWERS_1985, reversed),
+  { seed: 777 },
+);
+const relieverA = gPenA.home.pitchers[1]?.playerId;
+const relieverB = gPenB.home.pitchers[1]?.playerId;
+assert(
+  !!relieverA && !!relieverB,
+  "short IP plan brings a reliever into the box",
+);
+assert(
+  relieverA === shortPlan.bullpen?.[0],
+  "first-call bullpen arm is the first reliever after early hook",
+);
+assert(
+  relieverB === reversed.bullpen?.[0],
+  "reordered bullpen changes which arm enters first",
+);
+assert(relieverA !== relieverB, "bullpen order affects seeded relief appearance");
+
+const pitchOk = validatePitching(
+  BREWERS_1985,
+  brewAltCard.rotation!,
+  brewAltCard.bullpen!,
+  brewAltCard.pitchingPlan,
+);
+assert(pitchOk.ok, "validatePitching accepts managed staff");
 
 const long = simulateGame(YANKEES_1927, REDS_1975, {
   seed: 7,
