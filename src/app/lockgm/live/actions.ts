@@ -294,6 +294,7 @@ export async function inviteMemberByGmIdAction(
   | {
       ok: true;
       room: PublicLiveMatchup;
+      league: Mlb2026LeagueBoard;
       inviteLink: string;
       inviteeGmId: string;
       inviteeDisplayName: string;
