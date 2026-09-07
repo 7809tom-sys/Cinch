@@ -107,14 +107,16 @@ export function Mlb2026ClaimBoard({
                   </p>
                   {slot.status === "open" ? (
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={pending || Boolean(mine)}
-                        onClick={() => run(claim2026ClubAction(teamId))}
-                        className="inline-flex min-h-10 items-center rounded-md bg-[color:var(--lg-accent)] px-3 text-xs font-bold text-[color:var(--lg-bg)] disabled:opacity-50"
-                      >
-                        Claim {team.abbrev}
-                      </button>
+                      {mine ? null : (
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => run(claim2026ClubAction(teamId))}
+                          className="inline-flex min-h-10 items-center rounded-md bg-[color:var(--lg-accent)] px-3 text-xs font-bold text-[color:var(--lg-bg)] disabled:opacity-50"
+                        >
+                          Claim {team.abbrev}
+                        </button>
+                      )}
                       <button
                         type="button"
                         disabled={pending}
