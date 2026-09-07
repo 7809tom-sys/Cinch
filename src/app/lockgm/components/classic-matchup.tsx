@@ -20,7 +20,10 @@ import {
   classicTeamLabel,
   createClassicLeague,
   defaultManagerCard,
+  eligibilityBadge,
+  fieldersForPosition,
   formatIp,
+  isEligibleAt,
   leagueStandings,
   makeCapBusterFreeAgent,
   moveBullpenArm,
@@ -735,6 +738,8 @@ function ManagerDesk({
   const lineupCheck = validateLineup(team, card.lineup);
   const defCheck = validateDefense(team, card.defense);
   const pitchCheck = validatePitching(team, rotation, bullpen, card.pitchingPlan);
+  const cardHealthy =
+    lineupCheck.ok && defCheck.ok && pitchCheck.ok && !(defCheck.oopCount ?? 0);
 
   function setLineupSlot(idx: number, playerId: string) {
     const next = [...card.lineup];
@@ -757,8 +762,9 @@ function ManagerDesk({
     <div className="border border-[color:var(--lg-line)] p-4">
       <p className="lockgm-display text-lg font-bold">{title}</p>
       <p className="mt-1 text-xs text-[color:var(--lg-mute)]">
-        Lineup + fielders + pitching · L/R platoon baked into every AB · gloves
-        change outs/errors · plan hooks the starter by IP target
+        Lineup + fielders + pitching · L/R platoon baked into every AB ·
+        eligible gloves only · OOP injury fill-ins crush defense · plan hooks
+        the starter by IP target
       </p>
 
       <div className="mt-4 border-t border-[color:var(--lg-line)]/70 pt-3">
@@ -883,7 +889,8 @@ function ManagerDesk({
               >
                 {batters.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.bats}) C{p.batter?.contact}/P{p.batter?.power} $
+                    {p.name} [{eligibilityBadge(p)}] ({p.bats}) C
+                    {p.batter?.contact}/P{p.batter?.power} $
                     {p.salary.toFixed(1)}M
                   </option>
                 ))}
@@ -897,29 +904,63 @@ function ManagerDesk({
         <p className="text-xs font-bold tracking-wide text-[color:var(--lg-accent)] uppercase">
           Fielders
         </p>
+        <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--lg-mute)]">
+          Eligible gloves only have LockGM positional ratings. Injury OOP
+          fill-ins are allowed but score real bad (errors + range collapse).
+        </p>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          {FIELD_ORDER.map((pos) => (
-            <label key={pos} className="text-xs">
-              <span className="font-bold text-[color:var(--lg-mute)]">{pos}</span>
-              <select
-                className="mt-1 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-2 py-1.5"
-                value={card.defense[pos] || ""}
-                onChange={(e) => setDefense(pos, e.target.value)}
-              >
-                {batters.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} D{p.batter?.defense ?? "-"}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ))}
+          {FIELD_ORDER.map((pos) => {
+            const assignedId = card.defense[pos] || "";
+            const assigned = team.players.find((p) => p.id === assignedId);
+            const oop =
+              assigned != null && !isEligibleAt(assigned, pos);
+            const { eligible, ineligible } = fieldersForPosition(team, pos);
+            return (
+              <label key={pos} className="text-xs">
+                <span className="flex items-center justify-between gap-1 font-bold text-[color:var(--lg-mute)]">
+                  <span>{pos}</span>
+                  {oop ? (
+                    <span className="text-[10px] font-bold tracking-wide text-[color:var(--lg-warn)] uppercase">
+                      OOP
+                    </span>
+                  ) : null}
+                </span>
+                <select
+                  className={`mt-1 w-full border bg-[color:var(--lg-bg)] px-2 py-1.5 ${
+                    oop
+                      ? "border-[color:var(--lg-warn)]"
+                      : "border-[color:var(--lg-line)]"
+                  }`}
+                  value={assignedId}
+                  onChange={(e) => setDefense(pos, e.target.value)}
+                >
+                  <optgroup label={`Eligible at ${pos}`}>
+                    {eligible.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} [{eligibilityBadge(p)}] D
+                        {p.batter?.defense ?? "-"}
+                      </option>
+                    ))}
+                  </optgroup>
+                  {ineligible.length > 0 ? (
+                    <optgroup label="Injury fill-in (OOP — severe penalty)">
+                      {ineligible.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          ⚠ {p.name} [{eligibilityBadge(p)}] unrated@{pos}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null}
+                </select>
+              </label>
+            );
+          })}
         </div>
       </div>
 
       <p
         className={`mt-3 text-xs ${
-          lineupCheck.ok && defCheck.ok && pitchCheck.ok
+          cardHealthy
             ? "text-[color:var(--lg-mute)]"
             : "text-[color:var(--lg-warn)]"
         }`}

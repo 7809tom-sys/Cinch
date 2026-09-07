@@ -156,14 +156,14 @@ export const DEFENSE_RATINGS: RatingClassroomDef[] = [
     name: "LockGM Defense (glove)",
     group: "defense",
     definition:
-      "Fielding reliability at the assigned position — converting soft hits into outs and suppressing errors on the LockGM chart.",
+      "Fielding reliability at the assigned position — converting soft hits into outs and suppressing errors on the LockGM chart. A player is only eligible at positions listed on their LockGM card (playing-time / rating threshold). No listing = unrated = not eligible.",
     highMeans:
       "More soft contact becomes outs; fewer errors that extend innings.",
     lowMeans:
-      "Balls find grass that average gloves would catch; error risk rises.",
+      "Balls find grass that average gloves would catch; error risk rises. Forced out-of-position (OOP) injury fill-ins use the floor grade and score real bad for the team.",
     managerUse:
-      "Glove your best defenders up the middle (C/SS/2B/CF). Never start a liability glove at short or center just for bat unless the game state screams offense.",
-    bands: "Everyday up-the-middle gloves target 12+; stars 15–18.",
+      "Glove your best defenders up the middle (C/SS/2B/CF). Only start players at eligible spots — OOP fill-ins crush run prevention.",
+    bands: "Everyday up-the-middle gloves target 12+; stars 15–18. OOP effective grade = 1.",
   },
   {
     id: "arm",

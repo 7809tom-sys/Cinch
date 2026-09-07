@@ -5,6 +5,10 @@ import {
   resolveAtBat,
   type ResolveMeta,
 } from "./resolve-ab";
+import {
+  effectiveDefenseAt,
+  isOutOfPosition,
+} from "./eligibility";
 import { teamDefenseRating } from "./salary";
 import type {
   AtBatOutcome,
@@ -252,8 +256,12 @@ function defenseContext(fielding: SideState, rng: Rng) {
   const pos = positions[rng.int(0, positions.length - 1)]!;
   const id = fielding.team.defense[pos];
   const fielder = id ? fielding.byId.get(id) : undefined;
-  const rating = fielder?.batter?.defense ?? avg;
-  return { rating, position: pos };
+  if (!fielder) {
+    return { rating: avg, position: pos, outOfPosition: false };
+  }
+  const oop = isOutOfPosition(fielder, pos);
+  const rating = effectiveDefenseAt(fielder, pos);
+  return { rating, position: pos, outOfPosition: oop };
 }
 
 /**

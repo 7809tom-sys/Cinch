@@ -1,3 +1,9 @@
+import {
+  countOutOfPosition,
+  effectiveDefenseAt,
+  isEligibleAt,
+  listDefenseAssignments,
+} from "./eligibility";
 import type {
   ClassicTeam,
   FieldPos,
@@ -139,14 +145,44 @@ export function validateLineup(
 export function validateDefense(
   team: ClassicTeam,
   defense: Partial<Record<FieldPos, string>>,
-): { ok: boolean; message: string } {
+): { ok: boolean; message: string; oopCount?: number } {
   const ids = new Set(team.players.map((p) => p.id));
   for (const pos of FIELD_ORDER) {
     const id = defense[pos];
     if (!id) return { ok: false, message: `Missing fielder at ${pos}.` };
     if (!ids.has(id)) return { ok: false, message: `Unknown fielder at ${pos}.` };
   }
-  return { ok: true, message: "Defense set." };
+  const oopCount = countOutOfPosition(team.players, defense);
+  if (oopCount > 0) {
+    const oop = listDefenseAssignments(team.players, defense).filter(
+      (r) => !r.eligible,
+    );
+    const sample = oop
+      .slice(0, 2)
+      .map((r) => `${r.playerName}@${r.position}`)
+      .join(", ");
+    return {
+      ok: true,
+      oopCount,
+      message: `Defense set · ${oopCount} OOP injury fill-in${oopCount === 1 ? "" : "s"} (severe glove penalty: ${sample}${oopCount > 2 ? "…" : ""})`,
+    };
+  }
+  return { ok: true, oopCount: 0, message: "Defense set · all eligible." };
+}
+
+/** Prefer eligible gloves for a spot; falls back to any batter for injury OOP. */
+export function fieldersForPosition(
+  team: ClassicTeam,
+  pos: FieldPos,
+): { eligible: Player[]; ineligible: Player[] } {
+  const batters = team.players.filter((p) => p.batter);
+  const eligible = batters
+    .filter((p) => isEligibleAt(p, pos))
+    .sort((a, b) => (b.batter?.defense ?? 0) - (a.batter?.defense ?? 0));
+  const ineligible = batters
+    .filter((p) => !isEligibleAt(p, pos))
+    .sort((a, b) => (b.batter?.defense ?? 0) - (a.batter?.defense ?? 0));
+  return { eligible, ineligible };
 }
 
 export function validatePitching(
@@ -312,7 +348,7 @@ export function defaultManagerCard(team: ClassicTeam): ManagerCard {
   };
 }
 
-/** Average defense rating for the eight fielders (excludes pitcher/DH). */
+/** Average effective defense for the eight fielders (OOP grades crushed). */
 export function teamDefenseRating(team: ClassicTeam): number {
   const byId = new Map(team.players.map((p) => [p.id, p]));
   let sum = 0;
@@ -321,8 +357,8 @@ export function teamDefenseRating(team: ClassicTeam): number {
     const id = team.defense[pos];
     if (!id) continue;
     const p = byId.get(id);
-    const d = p?.batter?.defense ?? 10;
-    sum += d;
+    if (!p) continue;
+    sum += effectiveDefenseAt(p, pos);
     n += 1;
   }
   return n ? sum / n : 11;

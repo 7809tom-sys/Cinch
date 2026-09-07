@@ -37,6 +37,14 @@ import {
   teamPayroll,
   tryAddPlayer,
   validatePitching,
+  validateDefense,
+  effectiveDefenseAt,
+  eligibilityBadge,
+  isEligibleAt,
+  isOutOfPosition,
+  OOP_DEFENSE_RATING,
+  fieldersForPosition,
+  countOutOfPosition,
 } from "../src/lib/lockgm/strat-sim";
 
 function assert(condition: boolean, message: string) {
@@ -275,6 +283,96 @@ const pitchOk = validatePitching(
   brewAltCard.pitchingPlan,
 );
 assert(pitchOk.ok, "validatePitching accepts managed staff");
+
+// --- Position eligibility + OOP defense penalties ---
+const white = ROYALS_1985.players.find((p) => /Frank White/i.test(p.name))!;
+const mcrae = ROYALS_1985.players.find((p) => /Hal McRae/i.test(p.name))!;
+const brett = ROYALS_1985.players.find((p) => /George Brett/i.test(p.name))!;
+assert(isEligibleAt(white, "2B"), "Frank White eligible at 2B");
+assert(!isEligibleAt(white, "SS"), "Frank White not eligible at SS (no rating)");
+assert(!isEligibleAt(mcrae, "LF"), "DH-only McRae not eligible in LF");
+assert(eligibilityBadge(white) === "2B", "White eligibility badge is 2B");
+assert(
+  eligibilityBadge(brett) === "3B/1B",
+  "Brett eligibility badge lists 3B/1B",
+);
+assert(
+  effectiveDefenseAt(white, "2B") === white.batter!.defense,
+  "eligible assignment keeps published defense",
+);
+assert(
+  effectiveDefenseAt(white, "SS") === OOP_DEFENSE_RATING,
+  "ineligible SS assignment collapses to OOP floor",
+);
+assert(
+  isOutOfPosition(mcrae, "CF"),
+  "McRae at CF is out-of-position",
+);
+
+const { eligible: eligible2b, ineligible: ineligible2b } = fieldersForPosition(
+  ROYALS_1985,
+  "2B",
+);
+assert(
+  eligible2b.some((p) => p.id === white.id),
+  "fieldersForPosition lists White as eligible 2B",
+);
+assert(
+  !eligible2b.some((p) => p.id === mcrae.id),
+  "McRae not in eligible 2B pool",
+);
+assert(
+  ineligible2b.some((p) => p.id === mcrae.id),
+  "McRae available only as OOP injury fill-in at 2B",
+);
+
+// Pack defaults should be fully eligible
+for (const team of CLASSIC_TEAMS) {
+  const oop = countOutOfPosition(team.players, team.defense);
+  assert(oop === 0, `${team.id} default defense has zero OOP`);
+  const defOk = validateDefense(team, team.defense);
+  assert(defOk.ok && (defOk.oopCount ?? 0) === 0, `${team.id} defense validates clean`);
+}
+
+// Forced OOP card: McRae at SS — still sims, but glove dies (errors/hits rise)
+const royalsCard = defaultManagerCard(ROYALS_1985);
+const oopCard = {
+  ...royalsCard,
+  defense: { ...royalsCard.defense, SS: mcrae.id },
+};
+const oopVal = validateDefense(ROYALS_1985, oopCard.defense);
+assert(oopVal.ok, "OOP injury fill-in is allowed (not hard-blocked)");
+assert((oopVal.oopCount ?? 0) >= 1, "validateDefense reports OOP count");
+assert(/OOP|injury/i.test(oopVal.message), "OOP warning message surfaced");
+
+const cleanRoyals = applyManagerCard(ROYALS_1985, royalsCard);
+const oopRoyals = applyManagerCard(ROYALS_1985, oopCard);
+const seedOop = 19850901;
+let cleanErrors = 0;
+let oopErrors = 0;
+let cleanRunsAllowed = 0;
+let oopRunsAllowed = 0;
+for (let s = seedOop; s < seedOop + 40; s++) {
+  // Away bats vs home fielding — home is Royals gloves under test
+  const gClean = simulateGame(BREWERS_1985, cleanRoyals, { seed: s });
+  const gOop = simulateGame(BREWERS_1985, oopRoyals, { seed: s });
+  cleanErrors += gClean.home.errors;
+  oopErrors += gOop.home.errors;
+  cleanRunsAllowed += gClean.away.runs;
+  oopRunsAllowed += gOop.away.runs;
+}
+assert(
+  oopErrors > cleanErrors,
+  `OOP defense allows more errors (${oopErrors} > ${cleanErrors}) across seeded sample`,
+);
+assert(
+  oopRunsAllowed > cleanRunsAllowed,
+  `OOP defense allows more runs (${oopRunsAllowed} > ${cleanRunsAllowed}) — scores real bad`,
+);
+assert(
+  simulateGame(BREWERS_1985, oopRoyals, { seed: seedOop }).plays.length > 30,
+  "OOP card still produces a full seeded game",
+);
 
 const long = simulateGame(YANKEES_1927, REDS_1975, {
   seed: 7,

@@ -1,6 +1,7 @@
 import type { BatterRatings, FieldPos, Hand, PitcherRatings, Player } from "./types";
 import type { Rng } from "./rng";
 import type { AtBatOutcome } from "./types";
+import { OOP_ERROR_MULT } from "./eligibility";
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
@@ -28,6 +29,11 @@ export type DefenseContext = {
   /** Average / relevant fielder defense rating (1–20). */
   rating: number;
   position?: FieldPos;
+  /**
+   * True when the involved fielder is out-of-position / unrated at the spot.
+   * Inflates errors and suppresses range on the LockGM chart.
+   */
+  outOfPosition?: boolean;
 };
 
 export type ResolveMeta = {
@@ -63,6 +69,7 @@ export function resolveAtBat(
   const control = clamp(p.control, 1, 20);
   const gb = clamp(p.gb, 1, 20);
   const def = clamp(defense?.rating ?? 11, 1, 20);
+  const oop = !!defense?.outOfPosition;
 
   // Chart ownership — higher contact vs stuff → more batter-chart outcomes.
   const batterEdge = (contact - stuff + 20) / 40; // ~0..1
@@ -71,18 +78,20 @@ export function resolveAtBat(
   const roll = rng.int(1, 1000);
 
   let outcome = onBatterChart
-    ? resolveBatterChart(roll, contact, power, eye, def, rng)
-    : resolvePitcherChart(roll, stuff, control, gb, eye, def, rng);
+    ? resolveBatterChart(roll, contact, power, eye, def, rng, oop)
+    : resolvePitcherChart(roll, stuff, control, gb, eye, def, rng, oop);
 
   // Elite glove: chance to rob a soft single / turn E into an out.
+  // OOP / unrated gloves never rob hits — they score real bad.
   if (
+    !oop &&
     (outcome === "1B" || outcome === "E") &&
     def >= 15 &&
     rng.chance(0.08 + (def - 15) * 0.03)
   ) {
     outcome = rng.chance(0.55) ? "FO" : "GO";
     if (meta) meta.greatDefense = true;
-  } else if (outcome === "2B" && def >= 17 && rng.chance(0.06)) {
+  } else if (!oop && outcome === "2B" && def >= 17 && rng.chance(0.06)) {
     outcome = "FO";
     if (meta) meta.greatDefense = true;
   }
@@ -97,6 +106,7 @@ function resolveBatterChart(
   eye: number,
   defense: number,
   rng: Rng,
+  outOfPosition = false,
 ): AtBatOutcome {
   // Tuned for roughly mid-4s–5s R/G across classic packs.
   const hr = 6.5 + power * 1.7;
@@ -105,15 +115,21 @@ function resolveBatterChart(
   const single = 44 + contact * 1.95;
   const bb = 10.5 + eye * 1.25;
   const hbp = 3.5;
-  // Poor defense inflates errors; gloves suppress them.
-  const err = clamp(7.5 - defense * 0.28, 1.5, 8);
-  const out = 145 + (defense - 11) * 2.2;
+  const oopErrMult = outOfPosition ? OOP_ERROR_MULT : 1;
+  const err = clamp(7.5 - defense * 0.28, 1.5, 8) * oopErrMult;
+  // OOP collapses range — fewer converted outs, more balls find grass.
+  const out = Math.max(
+    40,
+    145 + (defense - 11) * 2.2 - (outOfPosition ? 55 : 0),
+  );
+  const singleBump = outOfPosition ? 18 : 0;
+  const doubleBump = outOfPosition ? 8 : 0;
 
   const weights: { o: AtBatOutcome; w: number }[] = [
     { o: "HR", w: hr },
     { o: "3B", w: triple },
-    { o: "2B", w: double },
-    { o: "1B", w: single },
+    { o: "2B", w: double + doubleBump },
+    { o: "1B", w: single + singleBump },
     { o: "BB", w: bb },
     { o: "HBP", w: hbp },
     { o: "E", w: err },
@@ -134,13 +150,22 @@ function resolvePitcherChart(
   eye: number,
   defense: number,
   rng: Rng,
+  outOfPosition = false,
 ): AtBatOutcome {
   const k = 43 + stuff * 3.25;
   const bb = clamp(46 - control * 1.95 + eye * 0.4, 7, 55);
   const hbp = 5;
-  const hitLeak = clamp(30 - stuff * 0.82 - (defense - 11) * 0.35, 5, 32);
-  const outPool = 145 + control * 1.7 + (defense - 11) * 1.4;
+  const hitLeak = clamp(
+    30 - stuff * 0.82 - (defense - 11) * 0.35 + (outOfPosition ? 14 : 0),
+    5,
+    48,
+  );
+  const outPool = Math.max(
+    50,
+    145 + control * 1.7 + (defense - 11) * 1.4 - (outOfPosition ? 40 : 0),
+  );
   const gbShare = gb / 20;
+  const err = outOfPosition ? 12 : 0;
 
   const weights: { o: AtBatOutcome; w: number }[] = [
     { o: "K", w: k },
@@ -149,6 +174,7 @@ function resolvePitcherChart(
     { o: "1B", w: hitLeak * 0.74 },
     { o: "2B", w: hitLeak * 0.19 },
     { o: "HR", w: hitLeak * 0.07 },
+    { o: "E", w: err },
     { o: "GO", w: outPool * gbShare },
     { o: "FO", w: outPool * (1 - gbShare) * 0.7 },
     { o: "LO", w: outPool * (1 - gbShare) * 0.3 },

@@ -52,16 +52,18 @@ export function aiSetLineup(team: ClassicTeam): ManagerCard {
   const positions = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF"] as const;
   const used = new Set<string>();
   for (const pos of positions) {
+    // Prefer LockGM-eligible gloves only; DH does not grant field eligibility.
     const candidates = team.players
       .filter(
         (p) =>
           p.batter &&
           !used.has(p.id) &&
-          (p.positions.includes(pos) || p.positions.includes("DH")),
+          p.positions.includes(pos),
       )
       .sort(
         (a, b) => (b.batter?.defense ?? 0) - (a.batter?.defense ?? 0),
       );
+    // Injury fallback — any unused batter (will take OOP penalty in the engine).
     const pick =
       candidates[0] ||
       team.players
