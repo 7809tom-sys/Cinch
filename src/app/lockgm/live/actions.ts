@@ -10,12 +10,17 @@ import {
   finalizeLiveMatchupIfComplete,
   getPublicLiveMatchup,
   inviteSignedUpGm,
+  listLiveLeagueStandings,
   listOpenLiveMatchupsForGm,
+  lockMatchupCard,
   matchupInviteLink,
   pickMatchupTeam,
   publicRoomView,
+  scheduleLiveMatchup,
   setMatchupReady,
   startLiveMatchup,
+  unlockMatchupCard,
+  type LiveStandingRow,
   type MatchupSide,
   type PublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup";
@@ -27,6 +32,7 @@ import {
   upsertLocalAd,
 } from "@/lib/lockgm/local-ads";
 import { resolveLockgmPublicGmId } from "@/lib/lockgm/invites";
+import type { ManagerCard } from "@/lib/lockgm/strat-sim";
 
 type OkRoom = { ok: true; room: PublicLiveMatchup };
 type Err = { ok: false; error: string };
@@ -90,6 +96,15 @@ export async function listMyLiveMatchupsAction(): Promise<
   if (!identity.ok) return identity;
   const rooms = await listOpenLiveMatchupsForGm(identity.gmId);
   return { ok: true, rooms };
+}
+
+export async function listLiveStandingsAction(): Promise<
+  { ok: true; standings: LiveStandingRow[] } | Err
+> {
+  const identity = await requireGm();
+  if (!identity.ok) return identity;
+  const standings = await listLiveLeagueStandings();
+  return { ok: true, standings };
 }
 
 export async function refreshLiveMatchupAction(
@@ -169,6 +184,73 @@ export async function setReadyAction(
   }
 }
 
+export async function scheduleMatchupAction(
+  roomId: string,
+  scheduledAt?: string | null,
+): Promise<OkRoom | Err> {
+  const identity = await requireGm();
+  if (!identity.ok) return identity;
+  try {
+    const room = await scheduleLiveMatchup({
+      roomId,
+      hostGmId: identity.gmId,
+      scheduledAt,
+    });
+    revalidatePath(`/lockgm/live/${room.id}`);
+    revalidatePath("/lockgm/live");
+    const ads = await listActiveLocalAds(room.market);
+    return { ok: true, room: publicRoomView(room, ads) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not schedule game.",
+    };
+  }
+}
+
+export async function lockCardAction(
+  roomId: string,
+  card?: ManagerCard | null,
+): Promise<OkRoom | Err> {
+  const identity = await requireGm();
+  if (!identity.ok) return identity;
+  try {
+    const room = await lockMatchupCard({
+      roomId,
+      gmId: identity.gmId,
+      card,
+    });
+    revalidatePath(`/lockgm/live/${room.id}`);
+    revalidatePath("/lockgm/live");
+    const ads = await listActiveLocalAds(room.market);
+    return { ok: true, room: publicRoomView(room, ads) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not lock card.",
+    };
+  }
+}
+
+export async function unlockCardAction(roomId: string): Promise<OkRoom | Err> {
+  const identity = await requireGm();
+  if (!identity.ok) return identity;
+  try {
+    const room = await unlockMatchupCard({
+      roomId,
+      gmId: identity.gmId,
+    });
+    revalidatePath(`/lockgm/live/${room.id}`);
+    const ads = await listActiveLocalAds(room.market);
+    return { ok: true, room: publicRoomView(room, ads) };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not unlock card.",
+    };
+  }
+}
+
 export async function startMatchupAction(roomId: string): Promise<OkRoom | Err> {
   const identity = await requireGm();
   if (!identity.ok) return identity;
@@ -178,6 +260,7 @@ export async function startMatchupAction(roomId: string): Promise<OkRoom | Err> 
       hostGmId: identity.gmId,
     });
     revalidatePath(`/lockgm/live/${room.id}`);
+    revalidatePath("/lockgm/live");
     const ads = await listActiveLocalAds(room.market);
     return { ok: true, room: publicRoomView(room, ads) };
   } catch (error) {
