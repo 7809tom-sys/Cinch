@@ -21,9 +21,11 @@ const NAV = [
 export function LockgmChrome({
   children,
   isAdmin,
+  isSignedIn,
 }: {
   children: React.ReactNode;
   isAdmin: boolean;
+  isSignedIn: boolean;
 }) {
   const { sport, franchise } = useSport();
 
@@ -60,6 +62,14 @@ export function LockgmChrome({
                 GM admin
               </Link>
             ) : null}
+            {isSignedIn ? null : (
+              <Link
+                href="/login"
+                className="rounded-md border border-[color:var(--lg-accent)] px-3 py-1.5 font-bold text-[color:var(--lg-accent)] transition-colors hover:bg-[color:var(--lg-accent)] hover:text-[color:var(--lg-bg)]"
+              >
+                Sign in / Create login
+              </Link>
+            )}
             <Link
               href="/lockgm/draft"
               className="rounded-md bg-[color:var(--lg-accent)] px-3 py-1.5 text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5"
@@ -80,6 +90,11 @@ export function LockgmChrome({
             <Link href="/" className="hover:text-[color:var(--lg-text)]">
               Built on Cinch Seed
             </Link>
+            {isSignedIn ? null : (
+              <Link href="/login" className="hover:text-[color:var(--lg-text)]">
+                Sign in / Create login
+              </Link>
+            )}
             <Link
               href="/lockgm/reports"
               className="hover:text-[color:var(--lg-text)]"

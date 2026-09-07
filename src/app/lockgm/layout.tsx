@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Barlow_Condensed, IBM_Plex_Sans } from "next/font/google";
+import { getCurrentCustomer } from "@/lib/customer-auth";
 import { getMasterSession } from "@/lib/master-auth";
 import { SportProvider } from "@/lib/lockgm/sport-context";
 import { LockgmChrome } from "./components/lockgm-chrome";
@@ -28,14 +29,19 @@ export default async function LockgmLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const master = await getMasterSession();
+  const [master, customer] = await Promise.all([
+    getMasterSession(),
+    getCurrentCustomer(),
+  ]);
 
   return (
     <div
       className={`${display.variable} ${body.variable} lockgm-root min-h-full`}
     >
       <SportProvider>
-        <LockgmChrome isAdmin={Boolean(master)}>{children}</LockgmChrome>
+        <LockgmChrome isAdmin={Boolean(master)} isSignedIn={Boolean(customer)}>
+          {children}
+        </LockgmChrome>
       </SportProvider>
     </div>
   );
