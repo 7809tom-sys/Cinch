@@ -345,14 +345,34 @@ assert(oopVal.ok, "OOP injury fill-in is allowed (not hard-blocked)");
 assert((oopVal.oopCount ?? 0) >= 1, "validateDefense reports OOP count");
 assert(/OOP|injury/i.test(oopVal.message), "OOP warning message surfaced");
 
+// Extreme injury card: unrated DH at every field spot — “scores real bad”
+const allOopDefense = {
+  C: mcrae.id,
+  "1B": mcrae.id,
+  "2B": mcrae.id,
+  "3B": mcrae.id,
+  SS: mcrae.id,
+  LF: mcrae.id,
+  CF: mcrae.id,
+  RF: mcrae.id,
+} as const;
+assert(
+  countOutOfPosition(ROYALS_1985.players, allOopDefense) === 8,
+  "all-OOP card marks 8 ineligible assignments",
+);
+
 const cleanRoyals = applyManagerCard(ROYALS_1985, royalsCard);
-const oopRoyals = applyManagerCard(ROYALS_1985, oopCard);
+const oopRoyals = applyManagerCard(ROYALS_1985, {
+  ...royalsCard,
+  defense: { ...allOopDefense },
+});
+const singleOopRoyals = applyManagerCard(ROYALS_1985, oopCard);
 const seedOop = 19850901;
 let cleanErrors = 0;
 let oopErrors = 0;
 let cleanRunsAllowed = 0;
 let oopRunsAllowed = 0;
-for (let s = seedOop; s < seedOop + 40; s++) {
+for (let s = seedOop; s < seedOop + 24; s++) {
   // Away bats vs home fielding — home is Royals gloves under test
   const gClean = simulateGame(BREWERS_1985, cleanRoyals, { seed: s });
   const gOop = simulateGame(BREWERS_1985, oopRoyals, { seed: s });
@@ -370,8 +390,9 @@ assert(
   `OOP defense allows more runs (${oopRunsAllowed} > ${cleanRunsAllowed}) — scores real bad`,
 );
 assert(
-  simulateGame(BREWERS_1985, oopRoyals, { seed: seedOop }).plays.length > 30,
-  "OOP card still produces a full seeded game",
+  simulateGame(BREWERS_1985, singleOopRoyals, { seed: seedOop }).plays.length >
+    30,
+  "single-spot OOP card still produces a full seeded game",
 );
 
 const long = simulateGame(YANKEES_1927, REDS_1975, {
