@@ -13,6 +13,16 @@ const LOCKGM_DOMAIN = process.env.LOCKGM_DOMAIN?.trim().toLowerCase();
 /** Any request for a file (has an extension), Next internals, or an API route. */
 const STATIC_OR_INTERNAL_RE = /^\/(?:_next|api)(?:\/|$)|\.[a-zA-Z0-9]+$/;
 
+/**
+ * Shared Cinch Seed customer-account pages that must keep working verbatim
+ * on the LockGM domain (not get swallowed into the /lockgm rewrite below).
+ * LockGM accounts ARE Cinch Seed customer accounts (see lockgmProfile on
+ * CustomerAccount), so signing in/up has to resolve to the real /login and
+ * /portal pages — otherwise "lockedgm.com/login" 404s as "/lockgm/login",
+ * which doesn't exist, and visitors have no way to create a login.
+ */
+const PASSTHROUGH_RE = /^\/(?:login|portal)(?:\/|$)/;
+
 function isLockgmHost(hostname: string): boolean {
   if (!LOCKGM_DOMAIN) return false;
   const clean = hostname.toLowerCase().replace(/^www\./, "");
@@ -26,7 +36,7 @@ export function proxy(request: NextRequest) {
   if (!isLockgmHost(hostname)) return NextResponse.next();
 
   const { pathname } = request.nextUrl;
-  if (STATIC_OR_INTERNAL_RE.test(pathname)) {
+  if (STATIC_OR_INTERNAL_RE.test(pathname) || PASSTHROUGH_RE.test(pathname)) {
     return NextResponse.next();
   }
 
