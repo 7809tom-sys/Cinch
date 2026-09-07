@@ -161,7 +161,7 @@ export function claimTeam(
   league: LeagueState,
   teamId: string,
 ): { league: LeagueState; ok: boolean; message: string } {
-  if (!classicTeamById(teamId)) {
+  if (!CLASSIC_TEAMS.some((t) => t.id === teamId)) {
     return { league, ok: false, message: "Unknown classic club." };
   }
   if (league.humanTeamId) {

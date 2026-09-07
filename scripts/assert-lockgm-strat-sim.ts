@@ -11,7 +11,11 @@ import {
   CARDINALS_1982,
   CARDINALS_1985,
   CLASSIC_TEAMS,
+  DEFAULT_MATCHUP_AWAY_ID,
+  DEFAULT_MATCHUP_HOME_ID,
   DEFAULT_SALARY_CAP,
+  MATCHUP_TEAMS,
+  MLB_2026_TEAMS,
   DODGERS_1985,
   PLAYOFF_1982_TEAM_IDS,
   PLAYOFF_1982_TEAMS,
@@ -81,6 +85,81 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(CLASSIC_TEAMS.length >= 11, "at least 11 classic team packs");
+assert(MLB_2026_TEAMS.length === 30, "all 30 MLB clubs for 2026");
+assert(
+  MATCHUP_TEAMS.length === MLB_2026_TEAMS.length + CLASSIC_TEAMS.length,
+  "matchup list is 2026 plus classic",
+);
+assert(
+  new Set(MLB_2026_TEAMS.map((t) => t.id)).size === 30,
+  "2026 team ids are unique",
+);
+assert(
+  classicTeamById(DEFAULT_MATCHUP_AWAY_ID)?.id === "yankees-2026",
+  "default matchup away is 2026 Yankees",
+);
+assert(
+  classicTeamById(DEFAULT_MATCHUP_HOME_ID)?.id === "dodgers-2026",
+  "default matchup home is 2026 Dodgers",
+);
+
+for (const team of MLB_2026_TEAMS) {
+  assert(team.year === 2026, `${team.id} is 2026`);
+  assert(rotationSizeForTeam(team) === 5, `${team.id} five-man`);
+  assert(seriesRotation(team).length === 5, `${team.id} series rotation is five`);
+  assert(team.rotation.length >= 5, `${team.id} authored five SPs`);
+  assert(team.players.length === ROSTER_SIZE, `${team.id} is 30-man`);
+  assert(team.lineup.length === 9, `${team.id} has 9-man lineup`);
+  const ids = new Set(team.players.map((p) => p.id));
+  assert(
+    team.lineup.every((id) => ids.has(id)),
+    `${team.id} lineup players exist`,
+  );
+  assert(
+    team.rotation.every((id) => ids.has(id)),
+    `${team.id} rotation players exist`,
+  );
+  const cap = checkSalaryCap(team);
+  assert(cap.ok, `${team.id} under hard cap ($${cap.payroll}M / $${cap.cap}M)`);
+  assert(!!classicTeamById(team.id), `${team.id} lookup`);
+}
+
+const mets26 = classicTeamById("mets-2026")!;
+assert(!!mets26, "Mets 2026 pack loads");
+assert(
+  !mets26.players.some((p) => /d[ií]az/i.test(p.name) && p.pitcher?.role === "RP"),
+  "Mets 2026 do not still list Díaz in the pen",
+);
+const athletics26 = classicTeamById("athletics-2026")!;
+assert(athletics26.city === "Sacramento", "2026 Athletics are Sacramento");
+const nyy26 = classicTeamById("yankees-2026")!;
+assert(
+  nyy26.players.some((p) => p.id === "nyy26-aaron-judge"),
+  "2026 Yankees include Judge",
+);
+const lad26 = classicTeamById("dodgers-2026")!;
+const ohtani = lad26.players.find((p) => p.id === "lad26-shohei-ohtani");
+assert(!!ohtani?.batter && !!ohtani.pitcher, "Ohtani is two-way");
+assert((ohtani!.batter!.power ?? 0) >= 16, "Ohtani keeps hitter power grades");
+assert(ohtani!.pitcher!.role === "SP", "Ohtani is an SP");
+assert(lad26.rotation.includes("lad26-shohei-ohtani"), "Ohtani is in LAD rotation");
+assert(lad26.lineup.includes("lad26-shohei-ohtani"), "Ohtani hits in LAD lineup");
+
+const modernSeries = simulateBestOf(nyy26, lad26, 20260327, 4);
+assert(modernSeries.higherRotation.length === 5, "2026 series uses five-man");
+assert(modernSeries.lowerRotation.length === 5, "2026 visitor also five-man");
+assert(
+  modernSeries.games.length >= 4 && modernSeries.games.length <= 7,
+  "Yankees-Dodgers 2026 series is best of 7",
+);
+assert(
+  MLB_2026_TEAMS.every((t) => /LockedGM/.test(t.blurb)),
+  "2026 packs use LockedGM brand in blurbs",
+);
+assert(
+  !JSON.stringify(MLB_2026_TEAMS.map((t) => t.blurb)).match(/Strat-O-Matic/i),
+  "2026 blurbs avoid Strat-O-Matic",
+);
 assert(!!classicTeamById("brewers-1985"), "1985 Brewers pack loads");
 assert(!!classicTeamById("yankees-1927"), "1927 Yankees pack loads");
 assert(!!classicTeamById("reds-1975"), "1975 Reds pack loads");
