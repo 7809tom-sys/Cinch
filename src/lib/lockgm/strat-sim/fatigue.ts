@@ -9,7 +9,8 @@
  * Innings scale (outs): 1.0 = 3 outs, 1.1 = 4, 2.2 = 8, 3.0 = 9.
  */
 
-import type { PitcherRestBook, PitcherRestEntry, Player } from "./types";
+import type { AtBatOutcome, PitcherRestBook, PitcherRestEntry, Player } from "./types";
+import type { Rng } from "./rng";
 
 /** 3.0 IP in baseball notation. */
 export const FIREMAN_THREE_IP_OUTS = 9;
@@ -224,10 +225,36 @@ function unusedArms(bullpen: string[], used: ReadonlySet<string>): string[] {
 }
 
 /**
+ * Depth RPs (and leftover SPs) who are not in today's rotation or authored
+ * pen. Used when the bullpen is empty so a reliever is not asked to start a
+ * third inning. Never includes rotation arms — those stay on the four-man /
+ * five-man law.
+ */
+export function emergencyReliefPool(
+  players: Player[],
+  rotation: readonly string[],
+  bullpen: readonly string[],
+  used: ReadonlySet<string>,
+): string[] {
+  const skip = new Set<string>([...rotation, ...bullpen, ...used]);
+  return players
+    .filter((p) => p.pitcher && !skip.has(p.id))
+    .sort((a, b) => {
+      const ra = a.pitcher!.role === "RP" ? 0 : 1;
+      const rb = b.pitcher!.role === "RP" ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      return (b.pitcher?.stamina ?? 0) - (a.pitcher?.stamina ?? 0);
+    })
+    .map((p) => p.id);
+}
+
+/**
  * Role-aware relief call:
  * - High leverage (7th–9th, game within 3): fireman (bullpen[0]) first.
  * - Early hook / blowup: skip the fireman while anyone else is up.
- * Legal rest wins; only an empty eligible list forces a tired arm.
+ * Legal rest wins. A tired unused arm may enter in an emergency, but a third
+ * consecutive game is never forced — last man stays in before that.
+ * `extras` are depth arms (not rotation) when the authored pen is spent.
  */
 export function pickBullpenArm(
   bullpen: string[],
@@ -235,27 +262,36 @@ export function pickBullpenArm(
   book: PitcherRestBook,
   inning: number,
   scoreDiff: number,
+  extras: readonly string[] = [],
 ): BullpenPick | null {
-  const unused = unusedArms(bullpen, used);
-  if (unused.length === 0) return null;
-
   const firemanId = bullpen[0];
   const highLev = isHighLeverage(inning, scoreDiff);
-  const ranked = highLev
-    ? unused
-    : [
-        ...unused.filter((id) => id !== firemanId),
-        ...unused.filter((id) => id === firemanId),
-      ];
 
-  for (const id of ranked) {
-    const gate = canEnter(book, id);
-    if (gate.ok) {
-      return { id, fatigued: false, limitedOuts: gate.limitedOuts };
+  const rank = (ids: readonly string[]): string[] => {
+    const unused = unusedArms([...ids], used);
+    if (highLev) return unused;
+    return [
+      ...unused.filter((id) => id !== firemanId),
+      ...unused.filter((id) => id === firemanId),
+    ];
+  };
+
+  const pickFrom = (ids: readonly string[]): BullpenPick | null => {
+    const ranked = rank(ids);
+    for (const id of ranked) {
+      const gate = canEnter(book, id);
+      if (gate.ok) {
+        return { id, fatigued: false, limitedOuts: gate.limitedOuts };
+      }
     }
-  }
+    for (const id of ranked) {
+      if (restEntry(book, id).consecutiveGames >= 2) continue;
+      return { id, fatigued: true };
+    }
+    return null;
+  };
 
-  return { id: ranked[0]!, fatigued: true };
+  return pickFrom(bullpen) ?? pickFrom(extras);
 }
 
 export function bullpenRoleLabel(idx: number, throws?: "L" | "R" | "S"): string {
@@ -264,4 +300,52 @@ export function bullpenRoleLabel(idx: number, throws?: "L" | "R" | "S"): string 
   if (idx === 2) return "Setup / 2nd";
   if (throws === "L") return "LHP specialist";
   return "Long relief";
+}
+
+/** Relievers may finish 2.0 IP; they do not start a third inning. */
+export const RELIEVER_MAX_OUTS = 6;
+
+/** Typical pitches in one PA — the sim has no pitch-by-pitch layer. */
+export function pitchesForPa(outcome: AtBatOutcome, rng: Rng): number {
+  if (outcome === "K") return rng.int(4, 7);
+  if (outcome === "BB") return rng.int(5, 8);
+  if (outcome === "HBP") return rng.int(2, 4);
+  return rng.int(3, 5);
+}
+
+export function starterPitchCap(stamina: number, fatigued: boolean): number {
+  if (fatigued) return 40;
+  return Math.round(68 + Math.max(1, stamina) * 2.4);
+}
+
+export function relieverOutingLimits(input: {
+  penIndex: number;
+  stamina: number;
+  fatigued: boolean;
+  limitedOuts?: number;
+}): { outsBudget: number; pitchCap: number } {
+  const stamina = Math.max(1, input.stamina);
+  if (input.fatigued) {
+    const outsBudget = Math.min(3, input.limitedOuts ?? 3);
+    return { outsBudget, pitchCap: Math.min(14, outsBudget * 5) };
+  }
+
+  let outsBudget: number;
+  let pitchCap: number;
+  if (input.penIndex <= 0) {
+    outsBudget = 4;
+    pitchCap = Math.round(16 + stamina * 0.8);
+  } else if (input.penIndex <= 2) {
+    outsBudget = 5;
+    pitchCap = Math.round(18 + stamina * 0.9);
+  } else {
+    outsBudget = RELIEVER_MAX_OUTS;
+    pitchCap = Math.round(26 + stamina * 1.1);
+  }
+  if (input.limitedOuts != null) {
+    outsBudget = Math.min(outsBudget, input.limitedOuts);
+    pitchCap = Math.min(pitchCap, Math.max(8, input.limitedOuts * 5));
+  }
+  outsBudget = Math.min(outsBudget, RELIEVER_MAX_OUTS);
+  return { outsBudget, pitchCap };
 }

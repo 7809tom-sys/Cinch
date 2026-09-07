@@ -1465,6 +1465,7 @@ function PitcherTable({ box }: { box: GameResult["away"] }) {
             <th className="px-1 text-right font-semibold">ER</th>
             <th className="px-1 text-right font-semibold">BB</th>
             <th className="px-1 text-right font-semibold">SO</th>
+            <th className="px-1 text-right font-semibold">P</th>
           </tr>
         </thead>
         <tbody>
@@ -1495,6 +1496,7 @@ function PitcherTable({ box }: { box: GameResult["away"] }) {
               <td className="px-1 text-right tabular-nums">{p.er}</td>
               <td className="px-1 text-right tabular-nums">{p.bb}</td>
               <td className="px-1 text-right tabular-nums">{p.so}</td>
+              <td className="px-1 text-right tabular-nums">{p.p}</td>
             </tr>
           ))}
         </tbody>

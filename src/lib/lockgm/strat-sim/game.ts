@@ -13,12 +13,17 @@ import { teamDefenseRating } from "./salary";
 import {
   canEnter,
   emptyRestBook,
+  emergencyReliefPool,
   fatiguedPitcher,
   isHighLeverage,
   pickBullpenArm,
   pickSeriesStarter,
+  pitchesForPa,
   promoteStarter,
   recordOutings,
+  relieverOutingLimits,
+  RELIEVER_MAX_OUTS,
+  starterPitchCap,
 } from "./fatigue";
 import {
   PLAYOFF_WINS_NEEDED,
@@ -52,6 +57,10 @@ type SideState = {
   starterId: string;
   pitcherId: string;
   pitcherOuts: number;
+  pitcherPitches: number;
+  /** Outs this arm is allowed this appearance. */
+  pitcherOutsBudget: number;
+  /** Pitch count this arm is allowed this appearance. */
   pitcherPitchBudget: number;
   pitcherFatigued: boolean;
   pitcherBattersFaced: number;
@@ -91,6 +100,7 @@ function emptyPitcher(p: Player): PitcherLine {
     playerId: p.id,
     name: p.name,
     ipOuts: 0,
+    p: 0,
     h: 0,
     r: 0,
     er: 0,
@@ -124,9 +134,13 @@ function initSide(team: ClassicTeam, restBook: PitcherRestBook): SideState {
 
   const starter = byId.get(starterId)!;
   const stamina = starter.pitcher?.stamina ?? 12;
-  let budget = starterFatigued ? 6 : Math.round(15 + stamina * 1.8);
+  let outsBudget = starterFatigued ? 6 : Math.round(15 + stamina * 1.8);
   if (starterGate.limitedOuts != null) {
-    budget = Math.min(budget, starterGate.limitedOuts);
+    outsBudget = Math.min(outsBudget, starterGate.limitedOuts);
+  }
+  let pitchCap = starterPitchCap(stamina, starterFatigued);
+  if (starterGate.limitedOuts != null) {
+    pitchCap = Math.min(pitchCap, Math.max(12, starterGate.limitedOuts * 5));
   }
 
   return {
@@ -145,7 +159,9 @@ function initSide(team: ClassicTeam, restBook: PitcherRestBook): SideState {
     starterId,
     pitcherId: starterId,
     pitcherOuts: 0,
-    pitcherPitchBudget: budget,
+    pitcherPitches: 0,
+    pitcherOutsBudget: outsBudget,
+    pitcherPitchBudget: pitchCap,
     pitcherFatigued: starterFatigued,
     pitcherBattersFaced: 0,
     pitcherOutCap: starterGate.limitedOuts ?? null,
@@ -175,17 +191,22 @@ function enterPitcher(
 ) {
   fielding.pitcherId = nextId;
   fielding.pitcherOuts = 0;
+  fielding.pitcherPitches = 0;
   fielding.pitcherBattersFaced = 0;
   fielding.pitcherFatigued = fatigued;
   fielding.pitcherOutCap = limitedOuts ?? null;
   fielding.usedPitchers.add(nextId);
   fielding.bullpenIdx += 1;
   const rel = fielding.byId.get(nextId)!;
-  let budget = fatigued
-    ? 3
-    : Math.round(6 + (rel.pitcher?.stamina ?? 8) * 1.1);
-  if (limitedOuts != null) budget = Math.min(budget, limitedOuts);
-  fielding.pitcherPitchBudget = budget;
+  const penIndex = fielding.team.bullpen.indexOf(nextId);
+  const limits = relieverOutingLimits({
+    penIndex: penIndex < 0 ? 3 : penIndex,
+    stamina: rel.pitcher?.stamina ?? 8,
+    fatigued,
+    limitedOuts,
+  });
+  fielding.pitcherOutsBudget = limits.outsBudget;
+  fielding.pitcherPitchBudget = limits.pitchCap;
   ensurePitcherLine(fielding, nextId);
   if (fatigued) {
     const line = fielding.pitcherLines.get(nextId)!;
@@ -199,8 +220,7 @@ function maybeChangePitcher(
   scoreDiff: number,
   rng: Rng,
 ) {
-  const starterId = fielding.team.rotation[0];
-  const isStarter = fielding.pitcherId === starterId;
+  const isStarter = fielding.pitcherId === fielding.starterId;
   const planTarget = fielding.team.pitchingPlan?.starterInningsTarget;
   const reachedPlan =
     isStarter &&
@@ -210,12 +230,32 @@ function maybeChangePitcher(
   const capHit =
     fielding.pitcherOutCap != null &&
     fielding.pitcherOuts >= fielding.pitcherOutCap;
+  const pitchTired =
+    fielding.pitcherPitches >= fielding.pitcherPitchBudget;
+  const outsTired = fielding.pitcherOuts >= fielding.pitcherOutsBudget;
+  const lateStarter =
+    isStarter &&
+    inning >= 7 &&
+    fielding.pitcherOuts >= Math.floor(fielding.pitcherOutsBudget * 0.75);
+  const anotherInning =
+    !isStarter &&
+    fielding.pitcherOuts > 0 &&
+    fielding.pitcherOuts % 3 === 0 &&
+    fielding.pitcherPitches >= Math.floor(fielding.pitcherPitchBudget * 0.55);
+  const thirdInning = !isStarter && fielding.pitcherOuts >= RELIEVER_MAX_OUTS;
   const tired =
     capHit ||
-    fielding.pitcherOuts >= fielding.pitcherPitchBudget ||
-    (inning >= 7 &&
-      fielding.pitcherOuts >= Math.floor(fielding.pitcherPitchBudget * 0.75));
-  const blowup = scoreDiff <= -3 && inning >= 6 && rng.chance(0.35);
+    pitchTired ||
+    outsTired ||
+    lateStarter ||
+    anotherInning ||
+    thirdInning;
+  // Hook a starter who is getting crushed — not a new reliever every batter.
+  const blowup =
+    isStarter &&
+    scoreDiff <= -3 &&
+    inning >= 6 &&
+    rng.chance(0.35);
   const highLev = isHighLeverage(inning, scoreDiff);
   const firemanId = fielding.team.bullpen[0];
   const firemanGate = firemanId
@@ -240,16 +280,33 @@ function maybeChangePitcher(
     return;
   }
 
+  // A reliever who just entered must face a batter. beginHalf and the PA
+  // loop both call this; without the guard we burned the whole 30-man.
+  if (
+    !isStarter &&
+    fielding.pitcherBattersFaced === 0 &&
+    fielding.pitcherOuts === 0
+  ) {
+    return;
+  }
+
   // Pitching plan (v1 mid-game control): hook starter at target IP even if fresh.
   // Fatigue / blowups still force earlier changes. Interactive pause/step is next.
   if (!tired && !blowup && !reachedPlan) return;
 
+  const extras = emergencyReliefPool(
+    fielding.team.players,
+    fielding.team.rotation,
+    fielding.team.bullpen,
+    fielding.usedPitchers,
+  );
   const pick = pickBullpenArm(
     fielding.team.bullpen,
     fielding.usedPitchers,
     fielding.restBook,
     inning,
     scoreDiff,
+    extras,
   );
   if (!pick) return;
   enterPitcher(fielding, pick.id, pick.fatigued, pick.limitedOuts);
@@ -339,8 +396,11 @@ function isWalkLike(o: AtBatOutcome): boolean {
 
 function toBox(side: SideState): TeamBox {
   const batters: BatterLine[] = [];
+  const seen = new Set<string>();
   for (const slot of side.slotHistory) {
     for (const id of slot) {
+      if (seen.has(id)) continue;
+      seen.add(id);
       const line = side.lineupBatters.get(id);
       if (line) batters.push(line);
     }
@@ -353,7 +413,9 @@ function toBox(side: SideState): TeamBox {
     errors: side.errors,
     lineScore: [...side.lineScore],
     batters,
-    pitchers: [...side.pitcherLines.values()],
+    pitchers: [...side.pitcherLines.values()].filter(
+      (p) => p.p > 0 || p.ipOuts > 0 || p.h > 0 || p.bb > 0 || p.so > 0,
+    ),
     starterId: side.starterId,
   };
 }
@@ -644,10 +706,16 @@ class LiveSim {
     const idx = rec.lineupIdx;
     batting.order[idx] = rec.recommendedId;
     batting.team.lineup[idx] = rec.recommendedId;
-    const line = emptyBatter(ph);
-    line.pinchHit = true;
-    line.pinchHitFor = rec.batterName;
-    batting.lineupBatters.set(ph.id, line);
+    const existing = batting.lineupBatters.get(ph.id);
+    if (existing) {
+      existing.pinchHit = true;
+      if (!existing.pinchHitFor) existing.pinchHitFor = rec.batterName;
+    } else {
+      const line = emptyBatter(ph);
+      line.pinchHit = true;
+      line.pinchHitFor = rec.batterName;
+      batting.lineupBatters.set(ph.id, line);
+    }
     batting.slotHistory[idx] = [...(batting.slotHistory[idx] ?? []), ph.id];
     if (rec.fieldPos) {
       batting.team.defense = {
@@ -694,6 +762,9 @@ class LiveSim {
       fatigued: fielding.pitcherFatigued,
       battersFaced: fielding.pitcherBattersFaced,
     });
+    const thrown = pitchesForPa(outcome, this.rng);
+    pLine.p += thrown;
+    fielding.pitcherPitches += thrown;
     fielding.pitcherBattersFaced += 1;
     const speed = batter.batter?.speed ?? 10;
     let rbiThis = 0;
@@ -808,7 +879,9 @@ class LiveSim {
     const appearances = [
       ...this.away.pitcherLines.values(),
       ...this.home.pitcherLines.values(),
-    ].map((p) => ({ id: p.playerId, outs: p.ipOuts }));
+    ]
+      .filter((p) => p.p > 0 || p.ipOuts > 0)
+      .map((p) => ({ id: p.playerId, outs: p.ipOuts }));
     const staffIds = [
       ...this.away.team.rotation,
       ...this.away.team.bullpen,

@@ -66,6 +66,7 @@ import {
   fieldersForPosition,
   countOutOfPosition,
   canEnter,
+  pickBullpenArm,
   recordOutings,
   dropGradeTiers,
   emptyRestBook,
@@ -73,6 +74,11 @@ import {
   startLiveGame,
   CLEAR_SPLIT_EDGE,
   PINCH_HIT_FROM_INNING,
+  pitchesForPa,
+  relieverOutingLimits,
+  RELIEVER_MAX_OUTS,
+  FIREMAN_THREE_IP_OUTS,
+  createRng,
   MLB_SEASON_GAMES,
   buildMlb2026Schedule,
   simulateMlb2026Season,
@@ -885,6 +891,10 @@ assert(canEnter(afterSit2, "mil82-fingers").ok, "fireman eligible after two sit 
 const afterShort = recordOutings(emptyRestBook(), [{ id: "arm", outs: 3 }]);
 const day2short = recordOutings(afterShort, [{ id: "arm", outs: 3 }]);
 assert(!canEnter(day2short, "arm").ok, "two consecutive 1.0 IP days lock the 3rd");
+assert(
+  pickBullpenArm(["arm"], new Set(), day2short, 9, 0) == null,
+  "third consecutive fireman is not an emergency option",
+);
 
 assert(dropGradeTiers(15) <= 9, "fatigue drops plus grades two classroom tiers");
 
@@ -912,6 +922,47 @@ assert(
   royalsPen.home.pitchers[1]?.playerId !== ROYALS_1985.bullpen[0],
   "Royals fireman is also skipped on an early hook — rest rules are not Brewers-only",
 );
+
+const pitchRng = createRng(11);
+assert(pitchesForPa("K", pitchRng) >= 4, "strikeouts cost real pitches");
+assert(pitchesForPa("BB", pitchRng) >= 5, "walks cost real pitches");
+const firemanLimits = relieverOutingLimits({
+  penIndex: 0,
+  stamina: 8,
+  fatigued: false,
+});
+assert(firemanLimits.outsBudget <= 4, "fireman outing is about one inning");
+assert(firemanLimits.pitchCap <= 30, "fireman pitch count is a short burst");
+const longLimits = relieverOutingLimits({
+  penIndex: 4,
+  stamina: 9,
+  fatigued: false,
+});
+assert(longLimits.outsBudget <= RELIEVER_MAX_OUTS, "long relief never starts a 3rd inning");
+assert(longLimits.outsBudget < FIREMAN_THREE_IP_OUTS, "relievers do not go 3.0 IP");
+
+for (let seed = 1; seed <= 24; seed++) {
+  const counted = simulateGame(BREWERS_1985, YANKEES_1927, { seed: seed * 17 });
+  for (const box of [counted.away, counted.home]) {
+    for (const arm of box.pitchers) {
+      const faced =
+        arm.ipOuts > 0 || arm.h > 0 || arm.bb > 0 || arm.so > 0 || arm.hr > 0;
+      if (faced) {
+        assert(arm.p > 0, `${arm.name} records a pitch count`);
+      }
+      if (arm.playerId !== box.starterId && faced) {
+        assert(
+          arm.ipOuts < FIREMAN_THREE_IP_OUTS,
+          `${arm.name} reliever outing ${arm.ipOuts} outs is under 3.0 IP`,
+        );
+        assert(
+          arm.ipOuts <= RELIEVER_MAX_OUTS,
+          `${arm.name} reliever does not start a third inning`,
+        );
+      }
+    }
+  }
+}
 
 // 7th-inning pinch-hit: clear split pauses / auto takes it
 const weakLeft = {
