@@ -7,6 +7,7 @@ import { listCustomers } from "@/lib/customers";
 import { isValidLockgmGmId } from "@/lib/lockgm/identity";
 import {
   claimMatchupSeat,
+  chooseMatchupSide,
   createLiveMatchupRoom,
   finalizeLiveMatchupIfComplete,
   getPublicLiveMatchup,
@@ -170,6 +171,29 @@ export async function pickTeamAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Could not pick team.",
+    };
+  }
+}
+
+export async function chooseSideAction(
+  roomId: string,
+  side: MatchupSide,
+): Promise<OkRoom | Err> {
+  const identity = await requireGm();
+  if (!identity.ok) return identity;
+  try {
+    const room = await chooseMatchupSide({
+      roomId,
+      gmId: identity.gmId,
+      side,
+    });
+    revalidatePath(`/lockgm/live/${room.id}`);
+    const ads = await listActiveLocalAds(room.market);
+    return withLeague(publicRoomView(room, ads));
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not pick a side.",
     };
   }
 }

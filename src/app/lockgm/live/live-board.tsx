@@ -15,10 +15,12 @@ import {
   broadcastPlayIndex,
   isBroadcastComplete,
   type LiveStandingRow,
+  type MatchupSide,
   type PublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup-shared";
 import {
   claimLiveMatchupAction,
+  chooseSideAction,
   createLiveMatchupAction,
   inviteMemberByGmIdAction,
   lockCardAction,
@@ -478,6 +480,41 @@ export function LiveMatchupRoomBoard({
             live={room.status === "live" || room.status === "final"}
           />
         </div>
+
+        {mySeat && room.status !== "live" && room.status !== "final" ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] p-4">
+            <p className="text-sm text-[color:var(--lg-mute)]">
+              Talk it over, then pick who is home. Home bats last. Either GM
+              can take a side or swap.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={pending || mySeat.side === "away"}
+                onClick={() => run(chooseSideAction(room.id, "away"))}
+                className={`inline-flex h-10 items-center rounded-md border px-4 text-xs font-bold disabled:opacity-50 ${
+                  mySeat.side === "away"
+                    ? "border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
+                    : "border-[color:var(--lg-line)]"
+                }`}
+              >
+                {mySeat.side === "away" ? "You are Away" : "Take Away"}
+              </button>
+              <button
+                type="button"
+                disabled={pending || mySeat.side === "home"}
+                onClick={() => run(chooseSideAction(room.id, "home"))}
+                className={`inline-flex h-10 items-center rounded-md px-4 text-xs font-bold disabled:opacity-50 ${
+                  mySeat.side === "home"
+                    ? "border border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
+                    : "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                }`}
+              >
+                {mySeat.side === "home" ? "You are Home" : "Take Home"}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {room.status !== "live" && room.status !== "final" ? (
           <>

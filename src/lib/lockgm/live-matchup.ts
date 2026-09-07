@@ -775,6 +775,38 @@ export async function pickMatchupTeam(input: {
   return room;
 }
 
+export async function chooseMatchupSide(input: {
+  roomId: string;
+  gmId: string;
+  side: MatchupSide;
+}): Promise<LiveMatchupRoom> {
+  const store = await readStore();
+  const room = findRoom(store, input.roomId);
+  if (!room) throw new Error("Matchup room not found.");
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("Sides lock once the matchup goes live.");
+  }
+
+  const gmId = input.gmId.trim().toUpperCase();
+  const seat = seatForGm(room, gmId);
+  if (!seat) throw new Error("Claim a seat before picking home or away.");
+  if (seat.side === input.side) return room;
+
+  const from = seat.side;
+  const want = input.side;
+  const other = room.seats[want];
+  if (other.gmId && other.gmId !== gmId) {
+    room.seats[from] = { ...other, side: from };
+    room.seats[want] = { ...seat, side: want };
+  } else {
+    room.seats[want] = { ...seat, side: want };
+    room.seats[from] = emptySeat(from);
+  }
+  room.updatedAt = now();
+  await writeStore(store);
+  return room;
+}
+
 export async function setMatchupReady(input: {
   roomId: string;
   gmId: string;

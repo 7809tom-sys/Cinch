@@ -18,6 +18,7 @@ import {
   pickMatchupTeam,
   publicRoomView,
   scheduleLiveMatchup,
+  chooseMatchupSide,
   type LiveMatchupRoom,
 } from "../src/lib/lockgm/live-matchup";
 import {
@@ -398,6 +399,37 @@ async function assertShared2026LiveClaims() {
   assert.equal(hostSeesGuest?.seats.home.gmId, GUEST4);
   assert.equal(hostSeesGuest?.seats.home.displayName, "Walk-up Guest");
   assert.equal(hostSeesGuest?.seats.home.teamId, walkupClub);
+
+  const guestTakesAway = await chooseMatchupSide({
+    roomId: walkup.id,
+    gmId: GUEST4,
+    side: "away",
+  });
+  assert.equal(guestTakesAway.seats.away.gmId, GUEST4, "guest can take Away");
+  assert.equal(guestTakesAway.seats.home.gmId, HOST4, "host moves to Home");
+  const hostTakesAway = await chooseMatchupSide({
+    roomId: walkup.id,
+    gmId: HOST4,
+    side: "away",
+  });
+  assert.equal(hostTakesAway.seats.away.gmId, HOST4, "host can take Away back");
+  assert.equal(hostTakesAway.seats.home.gmId, GUEST4);
+
+  const hostSolo = await createLiveMatchupRoom({
+    hostGmId: `GM-L26V${stamp}`,
+    hostDisplayName: "Solo Host",
+    name: "host takes home first",
+    market: "assert",
+    seed: 20260911,
+  });
+  assert.equal(hostSolo.seats.away.gmId, `GM-L26V${stamp}`);
+  const hostHome = await chooseMatchupSide({
+    roomId: hostSolo.id,
+    gmId: `GM-L26V${stamp}`,
+    side: "home",
+  });
+  assert.equal(hostHome.seats.home.gmId, `GM-L26V${stamp}`, "host can sit Home");
+  assert.equal(hostHome.seats.away.gmId, null);
 }
 
 main().catch((error) => {
