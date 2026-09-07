@@ -156,6 +156,14 @@ function readInitialFromUrl(): {
   };
 }
 
+function matchupPack(id: string): ClassicTeam {
+  return (
+    classicTeamById(id) ??
+    classicTeamById(DEFAULT_MATCHUP_AWAY_ID) ??
+    MATCHUP_TEAMS[0]!
+  );
+}
+
 export function ClassicMatchup() {
   const initial = readInitialFromUrl();
   const [mode, setMode] = useState<SimMode>(initial.mode);
@@ -171,10 +179,10 @@ export function ClassicMatchup() {
   const [didAuto, setDidAuto] = useState(false);
 
   const [awayCard, setAwayCard] = useState<ManagerCard>(() =>
-    defaultManagerCard(classicTeamById(initial.awayId)!),
+    defaultManagerCard(matchupPack(initial.awayId)),
   );
   const [homeCard, setHomeCard] = useState<ManagerCard>(() =>
-    defaultManagerCard(classicTeamById(initial.homeId)!),
+    defaultManagerCard(matchupPack(initial.homeId)),
   );
 
   const [league, setLeague] = useState<LeagueState>(() =>
@@ -195,8 +203,8 @@ export function ClassicMatchup() {
     home: number;
   } | null>(null);
 
-  const awayPack = classicTeamById(awayId)!;
-  const homePack = classicTeamById(homeId)!;
+  const awayPack = matchupPack(awayId);
+  const homePack = matchupPack(homeId);
   const away = useMemo(
     () => applyManagerCard(awayPack, awayCard),
     [awayPack, awayCard],
@@ -210,10 +218,10 @@ export function ClassicMatchup() {
   const homeCap = checkSalaryCap(home);
 
   useEffect(() => {
-    setAwayCard(defaultManagerCard(classicTeamById(awayId)!));
+    setAwayCard(defaultManagerCard(matchupPack(awayId)));
   }, [awayId]);
   useEffect(() => {
-    setHomeCard(defaultManagerCard(classicTeamById(homeId)!));
+    setHomeCard(defaultManagerCard(matchupPack(homeId)));
   }, [homeId]);
 
   const onHighlightDone = useCallback(() => setHighlight(null), []);
