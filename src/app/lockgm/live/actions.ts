@@ -1,5 +1,6 @@
 "use server";
 
+import { connection } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { listCustomers } from "@/lib/customers";
@@ -119,6 +120,7 @@ export async function listLiveStandingsAction(): Promise<
 export async function refreshLiveMatchupAction(
   roomId: string,
 ): Promise<OkRoom | Err> {
+  await connection();
   const room = await asPublic(roomId);
   if (!room) return { ok: false, error: "Matchup not found." };
   return withLeague(room);
