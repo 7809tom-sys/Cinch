@@ -35,6 +35,11 @@ import {
   type MatchupSide,
   type PublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup-shared";
+import {
+  claimMlb2026Club,
+  getMlb2026LeagueBoard,
+  seatForGm as leagueSeatForGm,
+} from "@/lib/lockgm/mlb-2026-league";
 
 export {
   LIVE_MATCHUP_MS_PER_PLAY,
@@ -267,6 +272,42 @@ function seatForGm(room: LiveMatchupRoom, gmId: string): MatchupSeat | null {
   return null;
 }
 
+/**
+ * Fill empty lobby seats from the shared 2026 league board so every client
+ * sees the same claimed club + GM, including claims made on /lockgm/league.
+ */
+async function applyLeagueClaimsToRoomSeats(
+  room: LiveMatchupRoom,
+): Promise<boolean> {
+  if (room.status === "live" || room.status === "final") return false;
+  const board = await getMlb2026LeagueBoard();
+  let changed = false;
+  for (const side of ["away", "home"] as const) {
+    const seat = room.seats[side];
+    if (!seat.gmId || seat.teamId) continue;
+    const slot = leagueSeatForGm(board, seat.gmId);
+    if (!slot) continue;
+    const otherSide: MatchupSide = side === "away" ? "home" : "away";
+    if (room.seats[otherSide].teamId === slot.teamId) continue;
+    const team = classicTeamById(slot.teamId);
+    if (!team) continue;
+    const card = defaultManagerCard(team);
+    const payroll = checkSalaryCap(applyManagerCard(team, card));
+    if (!payroll.ok) continue;
+    room.seats[side] = {
+      ...seat,
+      teamId: team.id,
+      card,
+      ready: false,
+      locked: false,
+      lockedAt: null,
+    };
+    changed = true;
+  }
+  if (changed) room.updatedAt = now();
+  return changed;
+}
+
 export async function createLiveMatchupRoom(input: {
   hostGmId: string;
   hostDisplayName: string;
@@ -318,6 +359,7 @@ export async function createLiveMatchupRoom(input: {
     ready: false,
   };
   void guestSide;
+  await applyLeagueClaimsToRoomSeats(room);
 
   store.rooms.push(room);
   store.invites.push({
@@ -339,7 +381,12 @@ export async function getLiveMatchupRoom(
   roomIdOrCode: string,
 ): Promise<LiveMatchupRoom | null> {
   const store = await readStore();
-  return findRoom(store, roomIdOrCode) ?? null;
+  const room = findRoom(store, roomIdOrCode);
+  if (!room) return null;
+  if (await applyLeagueClaimsToRoomSeats(room)) {
+    await writeStore(store);
+  }
+  return room;
 }
 
 export async function getPublicLiveMatchup(
@@ -469,10 +516,13 @@ export async function claimMatchupSeat(input: {
 
   const existing = seatForGm(room, gmId);
   if (existing) {
+    const synced = await applyLeagueClaimsToRoomSeats(room);
     if (invite && !invite.claimedByGmId) {
       invite.claimedByGmId = gmId;
       invite.claimedAt = now();
       room.updatedAt = now();
+      await writeStore(store);
+    } else if (synced) {
       await writeStore(store);
     }
     return room;
@@ -509,6 +559,7 @@ export async function claimMatchupSeat(input: {
     ready: false,
   };
   room.updatedAt = now();
+  await applyLeagueClaimsToRoomSeats(room);
 
   if (invite) {
     invite.claimedByGmId = gmId;
@@ -660,6 +711,7 @@ export async function pickMatchupTeam(input: {
   roomId: string;
   gmId: string;
   teamId: string;
+  displayName?: string;
 }): Promise<LiveMatchupRoom> {
   const store = await readStore();
   const room = findRoom(store, input.roomId);
@@ -669,11 +721,30 @@ export async function pickMatchupTeam(input: {
   }
 
   const gmId = input.gmId.trim().toUpperCase();
-  const seat = seatForGm(room, gmId);
-  if (!seat) throw new Error("Claim a seat before picking a club.");
-
   const team = classicTeamById(input.teamId);
   if (!team) throw new Error("Unknown classic club.");
+
+  const seat = seatForGm(room, gmId);
+  const displayName =
+    input.displayName?.trim().slice(0, 80) || seat?.displayName || gmId;
+
+  if (team.year === 2026) {
+    await claimMlb2026Club({
+      teamId: team.id,
+      gmId,
+      displayName,
+    });
+  }
+
+  if (!seat) {
+    if (team.year !== 2026) {
+      throw new Error("Claim a seat before picking a club.");
+    }
+    if (await applyLeagueClaimsToRoomSeats(room)) {
+      await writeStore(store);
+    }
+    return room;
+  }
 
   const otherSide: MatchupSide = seat.side === "away" ? "home" : "away";
   if (room.seats[otherSide].teamId === team.id) {
@@ -695,6 +766,7 @@ export async function pickMatchupTeam(input: {
     lockedAt: null,
   };
   room.updatedAt = now();
+  await applyLeagueClaimsToRoomSeats(room);
   await writeStore(store);
   return room;
 }

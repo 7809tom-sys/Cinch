@@ -3,10 +3,11 @@ import {
   finalizeLiveMatchupIfComplete,
   getPublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup";
+import { getMlb2026LeagueBoard } from "@/lib/lockgm/mlb-2026-league";
 
 export const dynamic = "force-dynamic";
 
-/** Poll endpoint for live matchup room state (scoreboard + ad ribbon). */
+/** Poll endpoint for live matchup room state (scoreboard + 2026 claims). */
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -17,5 +18,6 @@ export async function GET(
   if (!room) {
     return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
   }
-  return NextResponse.json({ ok: true, room });
+  const league = await getMlb2026LeagueBoard();
+  return NextResponse.json({ ok: true, room, league });
 }

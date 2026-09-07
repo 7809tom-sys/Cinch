@@ -9,6 +9,7 @@ import {
   claimMatchupSeat,
   createLiveMatchupRoom,
   createMatchupRoomCode,
+  getLiveMatchupRoom,
   isBroadcastComplete,
   listLiveLeagueStandings,
   lockMatchupCard,
@@ -19,6 +20,10 @@ import {
   scheduleLiveMatchup,
   type LiveMatchupRoom,
 } from "../src/lib/lockgm/live-matchup";
+import {
+  claimMlb2026Club,
+  getMlb2026LeagueBoard,
+} from "../src/lib/lockgm/mlb-2026-league";
 import type { LocalAd } from "../src/lib/lockgm/local-ads";
 import { defaultManagerCard, classicTeamById } from "../src/lib/lockgm/strat-sim";
 
@@ -221,7 +226,148 @@ async function main() {
   assert.ok(advanced);
   assert.equal(advanced.status, "live");
 
+  await assertShared2026LiveClaims();
+
   console.log("LockedGM live matchup assertions passed.");
+}
+
+async function assertShared2026LiveClaims() {
+  const stamp = Date.now().toString(36).toUpperCase().slice(-5);
+  const HOST = `GM-L26H${stamp}`;
+  const GUEST = `GM-L26G${stamp}`;
+  const HOST2 = `GM-L26P${stamp}`;
+  const GUEST2 = `GM-L26Q${stamp}`;
+  const HOST3 = `GM-L26R${stamp}`;
+  const GUEST3 = `GM-L26S${stamp}`;
+
+  const board = await getMlb2026LeagueBoard();
+  const open = board.slots.filter((slot) => slot.status === "open");
+  assert.ok(open.length >= 5, "need open 2026 clubs for live lobby claims");
+  const guestClub = open[0]!.teamId;
+  const hostClub = open[1]!.teamId;
+  const takenClub = open[2]!.teamId;
+  const hostPreclaim = open[3]!.teamId;
+  const lateClub = open[4]!.teamId;
+
+  await claimMlb2026Club({
+    teamId: guestClub,
+    gmId: GUEST,
+    displayName: "Live Guest",
+  });
+
+  const hostView = await getMlb2026LeagueBoard();
+  const guestView = await getMlb2026LeagueBoard();
+  const slotFromHost = hostView.slots.find((slot) => slot.teamId === guestClub);
+  const slotFromGuest = guestView.slots.find((slot) => slot.teamId === guestClub);
+  assert.equal(slotFromHost?.gmId, GUEST);
+  assert.equal(slotFromHost?.displayName, "Live Guest");
+  assert.equal(slotFromGuest?.gmId, slotFromHost?.gmId);
+  assert.equal(slotFromGuest?.displayName, slotFromHost?.displayName);
+
+  const live = await createLiveMatchupRoom({
+    hostGmId: HOST,
+    hostDisplayName: "Live Host",
+    name: "2026 claim sync",
+    market: "assert",
+    seed: 20260907,
+  });
+  assert.equal(live.seats.away.gmId, HOST);
+  assert.equal(live.seats.away.teamId, null, "host has no 2026 club yet");
+  assert.equal(live.seats.home.gmId, null);
+
+  await assert.rejects(
+    () =>
+      pickMatchupTeam({
+        roomId: live.id,
+        gmId: HOST,
+        teamId: guestClub,
+        displayName: "Live Host",
+      }),
+    /already claimed/,
+    "taken 2026 clubs stay unavailable even before the other GM sits",
+  );
+
+  const joined = await claimMatchupSeat({
+    code: live.code,
+    gmId: GUEST,
+    displayName: "Live Guest",
+  });
+  assert.equal(joined.seats.home.gmId, GUEST);
+  assert.equal(
+    joined.seats.home.teamId,
+    guestClub,
+    "guest seat auto-selects their claimed 2026 club",
+  );
+
+  const hostRefresh = await getLiveMatchupRoom(live.id);
+  assert.ok(hostRefresh);
+  assert.equal(hostRefresh!.seats.home.teamId, guestClub);
+  assert.equal(hostRefresh!.seats.home.displayName, "Live Guest");
+
+  const afterHostPick = await pickMatchupTeam({
+    roomId: live.id,
+    gmId: HOST,
+    teamId: hostClub,
+    displayName: "Live Host",
+  });
+  assert.equal(afterHostPick.seats.away.teamId, hostClub);
+  const leagueAfter = await getMlb2026LeagueBoard();
+  assert.equal(
+    leagueAfter.slots.find((slot) => slot.teamId === hostClub)?.gmId,
+    HOST,
+  );
+  assert.equal(
+    leagueAfter.slots.find((slot) => slot.teamId === guestClub)?.gmId,
+    GUEST,
+  );
+
+  await claimMlb2026Club({
+    teamId: takenClub,
+    gmId: GUEST2,
+    displayName: "Other GM",
+  });
+  await claimMlb2026Club({
+    teamId: hostPreclaim,
+    gmId: HOST2,
+    displayName: "Preclaim Host",
+  });
+  const preclaimed = await createLiveMatchupRoom({
+    hostGmId: HOST2,
+    hostDisplayName: "Preclaim Host",
+    name: "preclaimed seat",
+    market: "assert",
+    seed: 20260908,
+  });
+  assert.equal(
+    preclaimed.seats.away.teamId,
+    hostPreclaim,
+    "host seat auto-selects a club already claimed on the 2026 board",
+  );
+
+  const lateRoom = await createLiveMatchupRoom({
+    hostGmId: HOST3,
+    hostDisplayName: "Late Host",
+    name: "late claim poll",
+    market: "assert",
+    seed: 20260909,
+  });
+  const lateJoined = await claimMatchupSeat({
+    code: lateRoom.code,
+    gmId: GUEST3,
+    displayName: "Late Guest",
+  });
+  assert.equal(lateJoined.seats.home.teamId, null);
+  await claimMlb2026Club({
+    teamId: lateClub,
+    gmId: GUEST3,
+    displayName: "Late Guest",
+  });
+  const afterPoll = await getLiveMatchupRoom(lateRoom.id);
+  assert.equal(
+    afterPoll?.seats.home.teamId,
+    lateClub,
+    "host poll applies a 2026 claim made after the guest sat",
+  );
 }
 
 main().catch((error) => {

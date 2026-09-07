@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
-  CLASSIC_TEAMS,
+  MLB_2026_DIVISIONS,
   classicTeamById,
   classicTeamLabel,
   defaultManagerCard,
   type ManagerCard,
 } from "@/lib/lockgm/strat-sim";
+import type { Mlb2026LeagueBoard } from "@/lib/lockgm/mlb-2026-league";
 import {
   broadcastPlayIndex,
   isBroadcastComplete,
@@ -216,11 +217,14 @@ export function LiveMatchupLobby({
 export function LiveMatchupRoomBoard({
   gmId,
   initialRoom,
+  initialLeague,
 }: {
   gmId: string;
   initialRoom: PublicLiveMatchup;
+  initialLeague: Mlb2026LeagueBoard;
 }) {
   const [room, setRoom] = useState(initialRoom);
+  const [league, setLeague] = useState(initialLeague);
   const [inviteGmId, setInviteGmId] = useState("");
   const [tipLocal, setTipLocal] = useState(() =>
     toDatetimeLocal(initialRoom.scheduledAt),
@@ -238,14 +242,27 @@ export function LiveMatchupRoomBoard({
         : null;
   const isHost = room.hostGmId === gmId;
   const myTeam = mySeat?.teamId ? classicTeamById(mySeat.teamId) : null;
+  const myLeagueSlot = league.slots.find((slot) => slot.gmId === gmId) ?? null;
+  const myClaimedTeam = myLeagueSlot
+    ? classicTeamById(myLeagueSlot.teamId)
+    : null;
 
   useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const result = await refreshLiveMatchupAction(room.id);
+      if (cancelled || !result.ok) return;
+      setRoom(result.room);
+      setLeague(result.league);
+    }
+    void load();
     const poll = window.setInterval(() => {
-      void refreshLiveMatchupAction(room.id).then((result) => {
-        if (result.ok) setRoom(result.room);
-      });
+      void load();
     }, 2500);
-    return () => window.clearInterval(poll);
+    return () => {
+      cancelled = true;
+      window.clearInterval(poll);
+    };
   }, [room.id]);
 
   useEffect(() => {
@@ -291,7 +308,12 @@ export function LiveMatchupRoomBoard({
     );
 
   function run(
-    action: Promise<{ ok: boolean; room?: PublicLiveMatchup; error?: string }>,
+    action: Promise<{
+      ok: boolean;
+      room?: PublicLiveMatchup;
+      league?: Mlb2026LeagueBoard;
+      error?: string;
+    }>,
   ) {
     startTransition(async () => {
       const result = await action;
@@ -300,6 +322,7 @@ export function LiveMatchupRoomBoard({
         return;
       }
       if (result.room) setRoom(result.room);
+      if (result.league) setLeague(result.league);
       setMessage(null);
     });
   }
@@ -323,6 +346,7 @@ export function LiveMatchupRoomBoard({
         return;
       }
       setRoom(result.room);
+      if (result.league) setLeague(result.league);
       setMessage(
         `Reserved a seat for ${result.inviteeDisplayName} (${result.inviteeGmId}). Share their invite link.`,
       );
@@ -416,18 +440,38 @@ export function LiveMatchupRoomBoard({
           />
         </div>
 
-        {mySeat && room.status !== "live" && room.status !== "final" ? (
-          <ClaimBoard
-            myTeamId={mySeat.teamId}
-            takenTeamId={
-              mySeat.side === "away"
-                ? room.seats.home.teamId
-                : room.seats.away.teamId
-            }
-            locked={mySeat.locked}
-            pending={pending}
-            onClaim={(teamId) => run(pickTeamAction(room.id, teamId))}
-          />
+        {room.status !== "live" && room.status !== "final" ? (
+          <>
+            {mySeat && !mySeat.teamId && myLeagueSlot && myClaimedTeam ? (
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border border-[color:var(--lg-accent)] bg-[color:var(--lg-bg)] p-4">
+                <p className="text-sm text-[color:var(--lg-text)]">
+                  You already claimed{" "}
+                  <span className="font-bold">
+                    {classicTeamLabel(myClaimedTeam)}
+                  </span>
+                  . Put it on your {mySeat.side} seat?
+                </p>
+                <button
+                  type="button"
+                  disabled={pending || mySeat.locked}
+                  onClick={() =>
+                    run(pickTeamAction(room.id, myLeagueSlot.teamId))
+                  }
+                  className="inline-flex h-10 items-center rounded-md bg-[color:var(--lg-accent)] px-4 text-xs font-bold text-[color:var(--lg-bg)] disabled:opacity-60"
+                >
+                  Use my claimed club
+                </button>
+              </div>
+            ) : null}
+            <ClaimBoard
+              gmId={gmId}
+              league={league}
+              myTeamId={mySeat?.teamId ?? myLeagueSlot?.teamId ?? null}
+              locked={Boolean(mySeat?.locked)}
+              pending={pending}
+              onClaim={(teamId) => run(pickTeamAction(room.id, teamId))}
+            />
+          </>
         ) : null}
 
         {isHost && room.status === "lobby" ? (
@@ -612,49 +656,79 @@ export function LiveMatchupRoomBoard({
 }
 
 function ClaimBoard({
+  gmId,
+  league,
   myTeamId,
-  takenTeamId,
   locked,
   pending,
   onClaim,
 }: {
+  gmId: string;
+  league: Mlb2026LeagueBoard;
   myTeamId: string | null;
-  takenTeamId: string | null;
   locked: boolean;
   pending: boolean;
   onClaim: (teamId: string) => void;
 }) {
+  const alreadyClaimed = league.slots.some((slot) => slot.gmId === gmId);
+
   return (
-    <div className="mt-6 space-y-3 border-t border-[color:var(--lg-line)] pt-5">
-      <p className="text-xs font-bold tracking-[0.16em] text-[color:var(--lg-accent)]">
-        CLAIM BOARD
-      </p>
-      <p className="text-sm text-[color:var(--lg-mute)]">
-        Two humans claim different classic clubs. The other GM&apos;s club stays
-        taken.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {CLASSIC_TEAMS.map((team) => {
-          const mine = myTeamId === team.id;
-          const taken = takenTeamId === team.id;
-          return (
-            <button
-              key={team.id}
-              type="button"
-              disabled={pending || locked || taken}
-              onClick={() => onClaim(team.id)}
-              className={`rounded-md border px-3 py-2 text-sm font-bold disabled:opacity-50 ${
-                mine
-                  ? "border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
-                  : "border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
-              }`}
-            >
-              {mine ? "Your " : taken ? "Taken " : "Claim "}
-              {team.abbrev}
-            </button>
-          );
-        })}
+    <div className="mt-6 space-y-4 border-t border-[color:var(--lg-line)] pt-5">
+      <div>
+        <p className="text-xs font-bold tracking-[0.16em] text-[color:var(--lg-accent)]">
+          CLAIM BOARD · 2026
+        </p>
+        <p className="mt-2 text-sm text-[color:var(--lg-mute)]">
+          Same 2026 claims every GM sees. Claimed clubs show the GM and stay
+          taken. One GM, one club.
+        </p>
       </div>
+      {Object.entries(MLB_2026_DIVISIONS).map(([division, ids]) => (
+        <div key={division}>
+          <p className="text-[11px] font-bold tracking-[0.16em] text-[color:var(--lg-mute)]">
+            {division.toUpperCase()}
+          </p>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {ids.map((teamId) => {
+              const team = classicTeamById(teamId);
+              const slot =
+                league.slots.find((row) => row.teamId === teamId) ?? null;
+              if (!team) return null;
+              const status = slot?.status ?? "open";
+              const mine =
+                myTeamId === team.id || slot?.gmId === gmId;
+              const taken = !mine && (status === "claimed" || status === "ai");
+              const gmLabel =
+                status === "claimed"
+                  ? slot?.displayName || slot?.gmId || "Claimed"
+                  : status === "ai"
+                    ? "AI manager"
+                    : "Open";
+              return (
+                <button
+                  key={team.id}
+                  type="button"
+                  disabled={pending || locked || taken || (alreadyClaimed && !mine)}
+                  onClick={() => onClaim(team.id)}
+                  className={`rounded-md border px-3 py-2 text-left text-sm disabled:opacity-50 ${
+                    mine
+                      ? "border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
+                      : "border-[color:var(--lg-line)] hover:border-[color:var(--lg-accent)]"
+                  }`}
+                >
+                  <span className="block font-bold">
+                    {mine ? "Your " : taken ? "Taken " : "Claim "}
+                    {team.abbrev}
+                  </span>
+                  <span className="mt-1 block text-[11px] font-medium text-[color:var(--lg-mute)]">
+                    {gmLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
