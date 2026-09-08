@@ -1,4 +1,8 @@
 import { PROVIDER_ACCOUNTS, type ProviderAccount } from "./agents";
+import {
+  loadStoredProviderKeys,
+  resolveProviderApiKey,
+} from "./provider-keys";
 
 export type ProviderTestResult = {
   providerId: string;
@@ -51,8 +55,43 @@ async function testGoogle(apiKey: string): Promise<string> {
   return "Google AI key works (models list OK).";
 }
 
-async function runProviderProbe(provider: ProviderAccount): Promise<ProviderTestResult> {
-  const apiKey = process.env[provider.envKey]?.trim();
+async function testDeepSeek(apiKey: string): Promise<string> {
+  const response = await fetch("https://api.deepseek.com/models", {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`DeepSeek ${response.status}: ${body.slice(0, 160)}`);
+  }
+  return "DeepSeek key works (models list OK).";
+}
+
+async function testManus(apiKey: string): Promise<string> {
+  const response = await fetch("https://api.manus.ai/v2/task.list", {
+    headers: {
+      "x-manus-api-key": apiKey,
+      "content-type": "application/json",
+    },
+    cache: "no-store",
+  });
+  if (response.status === 401 || response.status === 403) {
+    const body = await response.text();
+    throw new Error(`Manus ${response.status}: ${body.slice(0, 160)}`);
+  }
+  // 404/405 still means the key was accepted enough to reach the API.
+  if (!response.ok && response.status >= 500) {
+    const body = await response.text();
+    throw new Error(`Manus ${response.status}: ${body.slice(0, 160)}`);
+  }
+  return "Manus key reached the API.";
+}
+
+async function runProviderProbe(
+  provider: ProviderAccount,
+  storedKeys: Partial<Record<string, string>>,
+): Promise<ProviderTestResult> {
+  const apiKey = resolveProviderApiKey(provider.id, storedKeys);
   const base = {
     providerId: provider.id,
     name: provider.name,
@@ -66,7 +105,7 @@ async function runProviderProbe(provider: ProviderAccount): Promise<ProviderTest
       ...base,
       configured: false,
       ok: false,
-      message: "Not set in environment yet.",
+      message: "Not set in environment or Seed settings yet.",
     };
   }
 
@@ -75,6 +114,8 @@ async function runProviderProbe(provider: ProviderAccount): Promise<ProviderTest
     if (provider.id === "openai") message = await testOpenAI(apiKey);
     else if (provider.id === "anthropic") message = await testAnthropic(apiKey);
     else if (provider.id === "google") message = await testGoogle(apiKey);
+    else if (provider.id === "deepseek") message = await testDeepSeek(apiKey);
+    else if (provider.id === "manus") message = await testManus(apiKey);
     else message = "Provider probe not implemented.";
 
     return { ...base, configured: true, ok: true, message };
@@ -89,9 +130,10 @@ async function runProviderProbe(provider: ProviderAccount): Promise<ProviderTest
 }
 
 export async function runAllProviderTests(): Promise<ProviderTestResult[]> {
+  const storedKeys = await loadStoredProviderKeys();
   const results: ProviderTestResult[] = [];
   for (const provider of PROVIDER_ACCOUNTS) {
-    results.push(await runProviderProbe(provider));
+    results.push(await runProviderProbe(provider, storedKeys));
   }
   return results;
 }

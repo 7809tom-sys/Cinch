@@ -162,6 +162,12 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                         {assignee
                           ? ` · assigned to ${assignee.name}`
                           : " · unassigned"}
+                        {task.route
+                          ? ` · ${task.route.lane} lane · ${task.route.providerId}/${task.route.model}`
+                          : ""}
+                        {task.tags && task.tags.length > 0
+                          ? ` · tags ${task.tags.join(", ")}`
+                          : ""}
                       </p>
                     </li>
                   );

@@ -39,7 +39,32 @@ Installable Progressive Web App (Add to Home Screen / Install app) via
 - `/admin/test` — provider key tests + pre-launch Seed checklist
 - Connect API: `https://cinchseed.com/v1/watch.js` — see below
 
-Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_AI_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`
+Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_AI_API_KEY`, `MANUS_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`. Provider keys can also be pasted in **Admin → Agents & providers** (Seed settings). Never hardcode secrets. Cursor is **not** a Seed provider.
+
+### Conductor routing table (cost-down)
+
+Conductor tries the **cheapest capable** model first (DeepSeek / Claude Haiku / Gemini Flash-class). It escalates to **Claude Sonnet or GPT** only on provider failure or when the task is tagged `rule_heavy` | `placement` | `legal_copy` | `cabinet_rules`. If a provider is sleeping or errors, Conductor assigns the next capable agent/provider and **stops** after a finite failover — it does not spin. Prefer modular library reuse over regenerating from scratch.
+
+| Provider | Env / Seed settings key | When Conductor uses it |
+| --- | --- | --- |
+| Anthropic (Claude) | `ANTHROPIC_API_KEY` | Default for Quill copy and hard Pixel/Forge (Sonnet). Haiku is a cheap fallback. |
+| OpenAI (GPT) | `OPENAI_API_KEY` | Alternate for code/rules when Claude is down or already failed. |
+| DeepSeek | `DEEPSEEK_API_KEY` | Cheap lane for drafts, boilerplate, simple code. **No** customer PII, invoices, or private affiliate data. |
+| Google (Flash-class) | `GOOGLE_AI_API_KEY` | Cheap + vision (Atlas screenshots / mockups). |
+| Manus | `MANUS_API_KEY` | Optional. Only for whole-site / multi-step `build_site` tasks. |
+| Cursor | — | **Not a Seed provider.** Human/IDE stays off the agent roster. |
+
+Lane defaults:
+
+| Agent | Default lane | Notes |
+| --- | --- | --- |
+| Quill | Claude (expensive) | Rule-heavy + copy. |
+| Pixel / Forge | DeepSeek when easy | `rule_heavy` examples: SB36 void, island wall 30 → Claude/GPT. |
+| Atlas | Cheap + vision | Flash-class when the task needs image/screenshot review. |
+| Lumen / Sentry | Cheap checklist | A Sentry fail escalates to Claude/GPT. |
+| Manus | Whole-site only | Conductor assigns Manus only when the task is a full-site build. |
+
+See Admin → Agents & providers for the live sample routes (cheap vs expensive). Run `npm run assert:conductor-routing` to verify the policy.
 
 ### Connect API — link an existing website to its Seed
 

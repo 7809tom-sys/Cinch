@@ -1,9 +1,20 @@
 import { randomUUID } from "crypto";
 import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
+import {
+  isRouteBlocked,
+  routeConductorTask,
+  type ConductorRoute,
+  type SeedProviderId,
+} from "./conductor-routing";
 import { getCustomerByEmail } from "./customers";
 import { sendMessage } from "./messages";
 import { upsertLibraryModule } from "./module-library";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "./pricing";
+import { listUnavailableProviders, markProviderError } from "./provider-health";
+import {
+  listConfiguredProviderIds,
+  loadStoredProviderKeys,
+} from "./provider-keys";
 import {
   publishDevelopedSeedToMarketplace,
   refreshDevelopedSeedPreview,
@@ -21,12 +32,6 @@ import {
   type ProjectTask,
   type SeedProject,
 } from "./store";
-
-function costRank(hint: "low" | "medium" | "high") {
-  if (hint === "low") return 0;
-  if (hint === "medium") return 1;
-  return 2;
-}
 
 async function creatorAccountIdFor(project: SeedProject): Promise<string | undefined> {
   if (!project.customerEmail) return undefined;
@@ -85,28 +90,52 @@ export async function listSeedInLibrary(
   return project;
 }
 
-function canHandle(task: ProjectTask, agentId: string) {
-  const agent = getAgent(agentId);
-  if (!agent || agent.isProjectManager) return false;
-  if (agent.skillLevel < task.minSkillLevel) return false;
-  return task.requiredSkills.every((skill) => agent.skills.includes(skill));
+export type ChooseRouteOptions = {
+  storedKeys?: Partial<Record<string, string>>;
+  configuredProviders?: SeedProviderId[];
+  unavailableProviders?: SeedProviderId[];
+};
+
+/** Conductor picks agent + cheapest capable provider for this task. */
+export function chooseRoute(
+  project: SeedProject,
+  task: ProjectTask,
+  options: ChooseRouteOptions = {},
+): ConductorRoute | null {
+  const configured =
+    options.configuredProviders ??
+    listConfiguredProviderIds(options.storedKeys);
+  const result = routeConductorTask(
+    {
+      title: task.title,
+      detail: task.detail,
+      requiredSkills: task.requiredSkills,
+      minSkillLevel: task.minSkillLevel,
+      tags: task.tags,
+      failedProviders: (task.route?.attempts ?? [])
+        .map((attempt) => attempt.providerId)
+        .filter((id): id is SeedProviderId => Boolean(id)),
+      escalate: task.escalate,
+    },
+    {
+      invitedAgentIds: project.invitedAgentIds,
+      configuredProviders: configured,
+      unavailableProviders:
+        options.unavailableProviders ?? listUnavailableProviders(),
+      requireConfigured: configured.length > 0,
+    },
+  );
+  if (isRouteBlocked(result)) return null;
+  return result;
 }
 
 /** Project manager picks the lowest-cost capable invited agent. */
 export function chooseAssignee(
   project: SeedProject,
   task: ProjectTask,
+  options: ChooseRouteOptions = {},
 ): string | null {
-  const candidates = project.invitedAgentIds
-    .filter((id) => canHandle(task, id))
-    .map((id) => getAgent(id)!)
-    .sort((a, b) => {
-      const cost = costRank(a.costHint) - costRank(b.costHint);
-      if (cost !== 0) return cost;
-      return a.skillLevel - b.skillLevel;
-    });
-
-  return candidates[0]?.id ?? null;
+  return chooseRoute(project, task, options)?.agentId ?? null;
 }
 
 export async function runProjectManagerAssignment(
@@ -119,31 +148,40 @@ export async function runProjectManagerAssignment(
   const pm = getProjectManager();
   let assigned = 0;
   const limit = options.limit ?? Number.POSITIVE_INFINITY;
+  const storedKeys = await loadStoredProviderKeys();
+  const routeOptions: ChooseRouteOptions = {
+    storedKeys,
+    configuredProviders: listConfiguredProviderIds(storedKeys),
+    unavailableProviders: listUnavailableProviders(),
+  };
 
   // Only touch queued work — never re-assign (or demote) tasks already in flight.
   for (const task of project.tasks) {
     if (assigned >= limit) break;
     if (task.status !== "queued") continue;
 
-    const assigneeId = chooseAssignee(project, task);
-    if (!assigneeId) continue;
+    const route = chooseRoute(project, task, routeOptions);
+    if (!route) continue;
 
-    const agent = getAgent(assigneeId)!;
-    task.assigneeId = assigneeId;
+    const agent = getAgent(route.agentId)!;
+    task.assigneeId = route.agentId;
     task.assignedBy = pm.id;
     task.status = "assigned";
     task.updatedAt = now();
+    task.tags = route.tags;
+    task.route = route;
     assigned += 1;
 
     pushActivity(
       project,
-      `${pm.name} assigned “${task.title}” to ${agent.name} (${agent.role}, ${agent.costHint} cost).`,
+      `${pm.name} assigned “${task.title}” to ${agent.name} via ${route.providerId}/${route.model} (${route.lane} lane). ${route.reason}`,
       pm.id,
     );
   }
 
   const blockedQueued = project.tasks.filter(
-    (task) => task.status === "queued" && !chooseAssignee(project, task),
+    (task) =>
+      task.status === "queued" && !chooseAssignee(project, task, routeOptions),
   ).length;
 
   if (assigned === 0 && !options.silentIfUnchanged && blockedQueued > 0) {
@@ -156,6 +194,54 @@ export async function runProjectManagerAssignment(
 
   await saveProject(project);
   return project;
+}
+
+/**
+ * Provider slept or errored — mark it unavailable, re-queue the task, and
+ * assign the next capable provider. Never retries the same provider in a loop.
+ */
+export async function failoverTaskAfterProviderFailure(
+  projectId: string,
+  taskId: string,
+  error: string,
+): Promise<SeedProject> {
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const task = project.tasks.find((item) => item.id === taskId);
+  if (!task) throw new Error("Task not found.");
+
+  const pm = getProjectManager();
+  const failedId = task.route?.providerId;
+  if (failedId) {
+    markProviderError(failedId, error);
+    const prior = task.route?.attempts ?? [];
+    task.route = task.route
+      ? {
+          ...task.route,
+          attempts: [
+            ...prior,
+            { providerId: failedId, model: task.route.model, error },
+          ],
+        }
+      : task.route;
+  }
+
+  task.status = "queued";
+  task.assigneeId = null;
+  task.assignedBy = null;
+  task.updatedAt = now();
+
+  pushActivity(
+    project,
+    `${pm.name} failed over “${task.title}” after ${failedId ?? "provider"} error — next capable agent/provider, no spin.`,
+    pm.id,
+  );
+  await saveProject(project);
+  return runProjectManagerAssignment(projectId, {
+    limit: 1,
+    silentIfUnchanged: true,
+  });
 }
 
 export async function advanceAssignedWork(
