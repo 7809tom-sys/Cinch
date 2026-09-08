@@ -5,7 +5,17 @@ import {
   freeAdminEmails,
   resolveAccessRole,
 } from "@/lib/access";
-import { listAgentsWithKeyStatus, PROVIDER_ACCOUNTS } from "@/lib/agents";
+import {
+  listAgentsWithKeyStatus,
+  PROVIDER_ACCOUNTS,
+  type SeedProviderId,
+} from "@/lib/agents";
+import {
+  clearStoredProviderKey,
+  listProviderKeyStatuses,
+  loadStoredProviderKeys,
+  saveProviderKey,
+} from "@/lib/provider-keys";
 import {
   extractJsonText,
   generateWithAi,
@@ -121,9 +131,10 @@ export async function getAdminSnapshot() {
     lockgmContent,
     messageThreads,
     durableStoreHealth,
+    providerKeyStatuses,
   ] = await Promise.all([
     listProjects(),
-    Promise.resolve(listAgentsWithKeyStatus()),
+    loadStoredProviderKeys().then((keys) => listAgentsWithKeyStatus(keys)),
     getSiteSettings(),
     getLibraryMemberSnapshot(),
     listCustomers(),
@@ -136,6 +147,7 @@ export async function getAdminSnapshot() {
     getLockgmContent(),
     listThreadSummaries(),
     checkDurableStoreHealth(),
+    listProviderKeyStatuses(),
   ]);
 
   const purchaseRevenueUsd = purchases.reduce(
@@ -254,6 +266,7 @@ export async function getAdminSnapshot() {
     launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
     aiGenerationConfigured: isAiGenerationConfigured(),
     durableStoreHealth,
+    providerKeyStatuses,
     platformProducts: [
       {
         id: "lockgm",
@@ -275,7 +288,8 @@ export async function getAdminSnapshot() {
 
 export async function getProjectSnapshot(projectId: string) {
   const project = await getProject(projectId);
-  const agents = listAgentsWithKeyStatus();
+  const storedKeys = await loadStoredProviderKeys();
+  const agents = listAgentsWithKeyStatus(storedKeys);
   const watch = project ? await getSeedWatchSnapshot(project.id) : null;
   const platforms = PLATFORM_ADAPTERS.map((adapter) => ({
     id: adapter.id,
@@ -414,6 +428,44 @@ export async function restaffSeedAction(projectId: string) {
   revalidatePath("/admin");
   revalidatePath(`/portal/${projectId}`);
   return { ok: true as const };
+}
+
+export async function saveProviderKeyAction(formData: FormData) {
+  try {
+    const providerId = String(formData.get("providerId") ?? "") as SeedProviderId;
+    const apiKey = String(formData.get("apiKey") ?? "");
+    if (!PROVIDER_ACCOUNTS.some((account) => account.id === providerId)) {
+      return { ok: false as const, error: "Unknown provider." };
+    }
+    const statuses = await saveProviderKey(providerId, apiKey);
+    revalidatePath("/admin");
+    revalidatePath("/admin/test");
+    return { ok: true as const, statuses };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error ? error.message : "Could not save provider key.",
+    };
+  }
+}
+
+export async function clearProviderKeyAction(providerId: SeedProviderId) {
+  try {
+    if (!PROVIDER_ACCOUNTS.some((account) => account.id === providerId)) {
+      return { ok: false as const, error: "Unknown provider." };
+    }
+    const statuses = await clearStoredProviderKey(providerId);
+    revalidatePath("/admin");
+    revalidatePath("/admin/test");
+    return { ok: true as const, statuses };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error ? error.message : "Could not clear provider key.",
+    };
+  }
 }
 
 export async function saveAnalyticsAction(formData: FormData) {

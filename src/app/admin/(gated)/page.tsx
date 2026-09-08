@@ -8,6 +8,8 @@ import { LockgmContentPanel } from "@/app/admin/lockgm-content-panel";
 import { LockgmDomainPanel } from "@/app/admin/lockgm-domain-panel";
 import { logoutMasterAction } from "@/app/admin/master-actions";
 import Link from "next/link";
+import { ConductorRoutingPanel } from "@/app/admin/conductor-routing-panel";
+import { ProviderKeysForm } from "@/app/admin/provider-keys-form";
 import { providerForEnvKey } from "@/lib/agents";
 import { formatUsd } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
@@ -84,6 +86,7 @@ export default async function AdminPage() {
     platformProducts,
     aiGenerationConfigured,
     durableStoreHealth,
+    providerKeyStatuses,
   } = snap;
 
   const configuredCount = metrics.keysConfigured;
@@ -1048,11 +1051,22 @@ export default async function AdminPage() {
             Roster and API keys
           </h2>
           <p className="mt-3 text-sm text-muted">
-            {configuredCount}/{agents.length} agents have keys configured.{" "}
+            {configuredCount}/{agents.length} agents have a capable provider key
+            (env or Seed settings). Cost-down routing prefers DeepSeek / Haiku /
+            Flash, then Claude or GPT. Cursor is not on this roster.{" "}
             <Link href="/admin/test" className="font-semibold text-brand">
               Run provider tests →
             </Link>
           </p>
+
+          <div className="mt-6 border border-brand/10 bg-foam px-4 py-5 sm:px-6">
+            <h3 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              Provider keys
+            </h3>
+            <ProviderKeysForm initialStatuses={providerKeyStatuses} />
+          </div>
+
+          <ConductorRoutingPanel />
 
           <ul className="mt-6 grid gap-4 sm:grid-cols-2">
             {agents.map((agent) => {

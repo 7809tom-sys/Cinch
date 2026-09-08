@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ConductorRoutingPanel } from "@/app/admin/conductor-routing-panel";
 import { launchMode, runAllProviderTests } from "@/lib/provider-tests";
 import { ProviderTestPanel } from "./provider-test-panel";
 
@@ -74,7 +75,7 @@ export default async function AdminTestPage() {
             </li>
             <li>Invite 2–3 specialists from the roster.</li>
             <li>Run <strong>PM: plan build tasks</strong>.</li>
-            <li>Run <strong>PM: assign by skill + cost</strong>.</li>
+            <li>Run <strong>PM: assign by skill + cost</strong> — cheap vs expensive lanes should match the table below.</li>
             <li>Run <strong>Advance agent work</strong> and confirm modules appear.</li>
           </ol>
           <Link
@@ -83,6 +84,7 @@ export default async function AdminTestPage() {
           >
             Open Seed studio
           </Link>
+          <ConductorRoutingPanel />
         </section>
 
         <section className="mt-8 border border-brand/10 bg-brand-deep px-6 py-6 text-foam">

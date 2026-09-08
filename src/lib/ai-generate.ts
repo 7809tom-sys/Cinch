@@ -1,8 +1,9 @@
-import { PROVIDER_ACCOUNTS } from "./agents";
+import { PROVIDER_ACCOUNTS, type SeedProviderId } from "./agents";
 
 /**
- * Real text-generation calls to whichever AI provider has a configured key
- * (checked in the same order agents are branded: OpenAI, Anthropic, Google).
+ * Real text-generation calls. Cost-down: try the cheapest capable chat
+ * provider first (DeepSeek / Flash / Haiku-class), then Claude / GPT.
+ * Manus is a build-site agent, not a chat completion lane.
  *
  * This is separate from `provider-tests.ts`, which only probes a provider's
  * models-list endpoint to confirm a key is valid — it never generates text.
@@ -10,19 +11,33 @@ import { PROVIDER_ACCOUNTS } from "./agents";
  * an instruction and get back real AI-drafted content.
  */
 
-export type AiProviderId = "openai" | "anthropic" | "google";
+export type AiProviderId = Extract<
+  SeedProviderId,
+  "openai" | "anthropic" | "google" | "deepseek"
+>;
+
+const CHEAP_FIRST: AiProviderId[] = [
+  "deepseek",
+  "google",
+  "anthropic",
+  "openai",
+];
 
 const DEFAULT_MODELS: Record<AiProviderId, string> = {
-  openai: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
-  anthropic: process.env.ANTHROPIC_MODEL?.trim() || "claude-3-5-sonnet-20241022",
+  deepseek: process.env.DEEPSEEK_MODEL?.trim() || "deepseek-chat",
   google: process.env.GOOGLE_AI_MODEL?.trim() || "gemini-1.5-flash",
+  anthropic: process.env.ANTHROPIC_MODEL?.trim() || "claude-3-5-sonnet-20241022",
+  openai: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
 };
 
+function providerKey(id: AiProviderId): string | undefined {
+  const account = PROVIDER_ACCOUNTS.find((item) => item.id === id);
+  return account ? process.env[account.envKey]?.trim() : undefined;
+}
+
 export function configuredAiProvider(): AiProviderId | null {
-  for (const provider of PROVIDER_ACCOUNTS) {
-    if (process.env[provider.envKey]?.trim()) {
-      return provider.id as AiProviderId;
-    }
+  for (const id of CHEAP_FIRST) {
+    if (providerKey(id)) return id;
   }
   return null;
 }
@@ -140,33 +155,76 @@ export function extractJsonText(raw: string): string {
   return (fenced ? fenced[1] : raw).trim();
 }
 
+async function callDeepSeek(apiKey: string, input: AiGenerateInput): Promise<string> {
+  const model = DEFAULT_MODELS.deepseek;
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.6,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: input.systemPrompt },
+        { role: "user", content: input.userPrompt },
+      ],
+    }),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`DeepSeek ${response.status}: ${body.slice(0, 300)}`);
+  }
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error("DeepSeek returned an empty response.");
+  return text;
+}
+
+async function callProvider(
+  provider: AiProviderId,
+  apiKey: string,
+  input: AiGenerateInput,
+): Promise<string> {
+  if (provider === "openai") return callOpenAI(apiKey, input);
+  if (provider === "anthropic") return callAnthropic(apiKey, input);
+  if (provider === "deepseek") return callDeepSeek(apiKey, input);
+  return callGoogle(apiKey, input);
+}
+
 export async function generateWithAi(
   input: AiGenerateInput,
 ): Promise<AiGenerateResult> {
-  const provider = configuredAiProvider();
-  if (!provider) {
+  const available = CHEAP_FIRST.filter((id) => providerKey(id));
+  if (available.length === 0) {
     return {
       ok: false,
       error:
-        "No AI provider is configured. Add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_AI_API_KEY in your Vercel project's environment variables and redeploy.",
+        "No AI provider is configured. Add DEEPSEEK_API_KEY, GOOGLE_AI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY in env or Seed settings.",
     };
   }
 
-  const apiKey =
-    PROVIDER_ACCOUNTS.find((p) => p.id === provider)!.envKey &&
-    process.env[PROVIDER_ACCOUNTS.find((p) => p.id === provider)!.envKey]!.trim();
-
-  try {
-    let text: string;
-    if (provider === "openai") text = await callOpenAI(apiKey, input);
-    else if (provider === "anthropic") text = await callAnthropic(apiKey, input);
-    else text = await callGoogle(apiKey, input);
-
-    return { ok: true, text, provider, model: DEFAULT_MODELS[provider] };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : "AI generation failed.",
-    };
+  const errors: string[] = [];
+  for (const provider of available) {
+    const apiKey = providerKey(provider);
+    if (!apiKey) continue;
+    try {
+      const text = await callProvider(provider, apiKey, input);
+      return { ok: true, text, provider, model: DEFAULT_MODELS[provider] };
+    } catch (error) {
+      errors.push(
+        `${provider}: ${error instanceof Error ? error.message : "failed"}`,
+      );
+    }
   }
+
+  return {
+    ok: false,
+    error: errors[0] || "AI generation failed.",
+  };
 }

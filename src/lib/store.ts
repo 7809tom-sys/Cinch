@@ -1,6 +1,12 @@
 import { randomBytes, randomUUID, timingSafeEqual } from "crypto";
 import { getProjectManager, type AgentSkill } from "./agents";
 import {
+  briefAsksForWholeSiteBuild,
+  inferTaskTags,
+  type ConductorRoute,
+  type TaskTag,
+} from "./conductor-routing";
+import {
   applyModuleReuse,
   selectModulesForSeedBuild,
   SEED_BUILD_MODULARS_FIRST_RULE,
@@ -37,6 +43,9 @@ export type ProjectTask = {
   assigneeId: string | null;
   assignedBy: string | null;
   updatedAt: string;
+  tags?: TaskTag[];
+  route?: ConductorRoute;
+  escalate?: boolean;
 };
 
 export type ActivityEvent = {
@@ -682,6 +691,15 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     },
   ];
 
+  if (briefAsksForWholeSiteBuild(project.brief)) {
+    backlog.unshift({
+      title: "Build the whole site",
+      detail: `Conductor assigned a full-site / multi-step build. Prefer modular library reuse; send the remaining assembly to Manus when that key is configured. ${modularsFirst}`,
+      requiredSkills: ["architecture", "research"],
+      minSkillLevel: 3,
+    });
+  }
+
   if (seedNeedsBusinessAdmin(project.brief) && !briefAsksForEcommerce(project.brief)) {
     backlog.splice(6, 0, {
       title: "Build business admin panel",
@@ -727,6 +745,11 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     assigneeId: null,
     assignedBy: null,
     updatedAt: stamp,
+    tags: inferTaskTags({
+      title: item.title,
+      detail: item.detail,
+      tags: "tags" in item ? item.tags : undefined,
+    }),
   }));
 
   pushActivity(
@@ -870,6 +893,7 @@ export async function appendNextBuildWave(
     assigneeId: null,
     assignedBy: null,
     updatedAt: stamp,
+    tags: inferTaskTags({ title: item.title, detail: item.detail }),
   }));
 
   project.tasks.push(...additions);
