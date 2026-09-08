@@ -713,18 +713,18 @@ export async function pickMatchupTeam(input: {
   teamId: string;
   displayName?: string;
 }): Promise<LiveMatchupRoom> {
-  const store = await readStore();
-  const room = findRoom(store, input.roomId);
+  const gmId = input.gmId.trim().toUpperCase();
+  const team = classicTeamById(input.teamId);
+  if (!team) throw new Error("Unknown classic club.");
+
+  let store = await readStore();
+  let room = findRoom(store, input.roomId);
   if (!room) throw new Error("Matchup room not found.");
   if (room.status === "live" || room.status === "final") {
     throw new Error("Teams lock once the matchup goes live.");
   }
 
-  const gmId = input.gmId.trim().toUpperCase();
-  const team = classicTeamById(input.teamId);
-  if (!team) throw new Error("Unknown classic club.");
-
-  const seat = seatForGm(room, gmId);
+  let seat = seatForGm(room, gmId);
   const displayName =
     input.displayName?.trim().slice(0, 80) || seat?.displayName || gmId;
 
@@ -737,13 +737,17 @@ export async function pickMatchupTeam(input: {
   }
 
   if (!seat) {
-    if (team.year !== 2026) {
+    const seatedRoom = await claimMatchupSeat({
+      code: room.code,
+      gmId,
+      displayName,
+    });
+    store = await readStore();
+    room = findRoom(store, input.roomId) ?? seatedRoom;
+    seat = seatForGm(room, gmId);
+    if (!seat) {
       throw new Error("Claim a seat before picking a club.");
     }
-    if (await applyLeagueClaimsToRoomSeats(room)) {
-      await writeStore(store);
-    }
-    return room;
   }
 
   const otherSide: MatchupSide = seat.side === "away" ? "home" : "away";
@@ -767,6 +771,38 @@ export async function pickMatchupTeam(input: {
   };
   room.updatedAt = now();
   await applyLeagueClaimsToRoomSeats(room);
+  await writeStore(store);
+  return room;
+}
+
+export async function chooseMatchupSide(input: {
+  roomId: string;
+  gmId: string;
+  side: MatchupSide;
+}): Promise<LiveMatchupRoom> {
+  const store = await readStore();
+  const room = findRoom(store, input.roomId);
+  if (!room) throw new Error("Matchup room not found.");
+  if (room.status === "live" || room.status === "final") {
+    throw new Error("Sides lock once the matchup goes live.");
+  }
+
+  const gmId = input.gmId.trim().toUpperCase();
+  const seat = seatForGm(room, gmId);
+  if (!seat) throw new Error("Claim a seat before picking home or away.");
+  if (seat.side === input.side) return room;
+
+  const from = seat.side;
+  const want = input.side;
+  const other = room.seats[want];
+  if (other.gmId && other.gmId !== gmId) {
+    room.seats[from] = { ...other, side: from };
+    room.seats[want] = { ...seat, side: want };
+  } else {
+    room.seats[want] = { ...seat, side: want };
+    room.seats[from] = emptySeat(from);
+  }
+  room.updatedAt = now();
   await writeStore(store);
   return room;
 }

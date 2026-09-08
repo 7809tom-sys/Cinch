@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import {
   finalizeLiveMatchupIfComplete,
   getPublicLiveMatchup,
@@ -12,6 +12,7 @@ export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  await connection();
   const { id } = await context.params;
   await finalizeLiveMatchupIfComplete(id);
   const room = await getPublicLiveMatchup(id);
@@ -19,5 +20,8 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "not_found" }, { status: 404 });
   }
   const league = await getMlb2026LeagueBoard();
-  return NextResponse.json({ ok: true, room, league });
+  return NextResponse.json(
+    { ok: true, room, league },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

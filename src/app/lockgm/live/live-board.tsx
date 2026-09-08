@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   MLB_2026_DIVISIONS,
   classicTeamById,
@@ -15,10 +15,12 @@ import {
   broadcastPlayIndex,
   isBroadcastComplete,
   type LiveStandingRow,
+  type MatchupSide,
   type PublicLiveMatchup,
 } from "@/lib/lockgm/live-matchup-shared";
 import {
   claimLiveMatchupAction,
+  chooseSideAction,
   createLiveMatchupAction,
   inviteMemberByGmIdAction,
   lockCardAction,
@@ -214,6 +216,16 @@ export function LiveMatchupLobby({
   );
 }
 
+function teamForSeat(
+  seat: PublicLiveMatchup["seats"]["away"],
+  league: Mlb2026LeagueBoard,
+) {
+  if (seat.teamId) return classicTeamById(seat.teamId) ?? null;
+  if (!seat.gmId) return null;
+  const slot = league.slots.find((row) => row.gmId === seat.gmId);
+  return slot ? classicTeamById(slot.teamId) ?? null : null;
+}
+
 export function LiveMatchupRoomBoard({
   gmId,
   initialRoom,
@@ -241,19 +253,52 @@ export function LiveMatchupRoomBoard({
         ? room.seats.home
         : null;
   const isHost = room.hostGmId === gmId;
-  const myTeam = mySeat?.teamId ? classicTeamById(mySeat.teamId) : null;
+  const myTeam = mySeat ? teamForSeat(mySeat, league) : null;
   const myLeagueSlot = league.slots.find((slot) => slot.gmId === gmId) ?? null;
   const myClaimedTeam = myLeagueSlot
     ? classicTeamById(myLeagueSlot.teamId)
     : null;
+  const joinedRoom = useRef(room.id);
+
+  useEffect(() => {
+    joinedRoom.current = "";
+  }, [room.id]);
+
+  useEffect(() => {
+    if (mySeat || room.status !== "lobby") return;
+    if (joinedRoom.current === room.id) return;
+    joinedRoom.current = room.id;
+    void claimLiveMatchupAction(room.code).then((result) => {
+      if (!result.ok) {
+        joinedRoom.current = "";
+        return;
+      }
+      setRoom(result.room);
+      setLeague(result.league);
+    });
+  }, [gmId, mySeat, room.code, room.id, room.status]);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const result = await refreshLiveMatchupAction(room.id);
-      if (cancelled || !result.ok) return;
-      setRoom(result.room);
-      setLeague(result.league);
+      try {
+        const response = await fetch(`/api/lockgm/live/${room.id}`, {
+          cache: "no-store",
+        });
+        const result = (await response.json()) as {
+          ok: boolean;
+          room?: PublicLiveMatchup;
+          league?: Mlb2026LeagueBoard;
+        };
+        if (cancelled || !result.ok || !result.room || !result.league) return;
+        setRoom(result.room);
+        setLeague(result.league);
+      } catch {
+        const result = await refreshLiveMatchupAction(room.id);
+        if (cancelled || !result.ok) return;
+        setRoom(result.room);
+        setLeague(result.league);
+      }
     }
     void load();
     const poll = window.setInterval(() => {
@@ -358,17 +403,13 @@ export function LiveMatchupRoomBoard({
     });
   }
 
-  const awayTeam = room.seats.away.teamId
-    ? classicTeamById(room.seats.away.teamId)
-    : null;
-  const homeTeam = room.seats.home.teamId
-    ? classicTeamById(room.seats.home.teamId)
-    : null;
+  const awayTeam = teamForSeat(room.seats.away, league);
+  const homeTeam = teamForSeat(room.seats.home, league);
   const bothClaimed = Boolean(
     room.seats.away.gmId &&
       room.seats.home.gmId &&
-      room.seats.away.teamId &&
-      room.seats.home.teamId,
+      awayTeam &&
+      homeTeam,
   );
   const roomStandings: LiveStandingRow[] = [room.seats.away, room.seats.home]
     .filter((seat) => seat.gmId && seat.teamId)
@@ -439,6 +480,41 @@ export function LiveMatchupRoomBoard({
             live={room.status === "live" || room.status === "final"}
           />
         </div>
+
+        {mySeat && room.status !== "live" && room.status !== "final" ? (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] p-4">
+            <p className="text-sm text-[color:var(--lg-mute)]">
+              Talk it over, then pick who is home. Home bats last. Either GM
+              can take a side or swap.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={pending || mySeat.side === "away"}
+                onClick={() => run(chooseSideAction(room.id, "away"))}
+                className={`inline-flex h-10 items-center rounded-md border px-4 text-xs font-bold disabled:opacity-50 ${
+                  mySeat.side === "away"
+                    ? "border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
+                    : "border-[color:var(--lg-line)]"
+                }`}
+              >
+                {mySeat.side === "away" ? "You are Away" : "Take Away"}
+              </button>
+              <button
+                type="button"
+                disabled={pending || mySeat.side === "home"}
+                onClick={() => run(chooseSideAction(room.id, "home"))}
+                className={`inline-flex h-10 items-center rounded-md px-4 text-xs font-bold disabled:opacity-50 ${
+                  mySeat.side === "home"
+                    ? "border border-[color:var(--lg-accent)] text-[color:var(--lg-accent)]"
+                    : "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                }`}
+              >
+                {mySeat.side === "home" ? "You are Home" : "Take Home"}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {room.status !== "live" && room.status !== "final" ? (
           <>

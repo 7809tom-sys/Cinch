@@ -1,11 +1,13 @@
 "use server";
 
+import { connection } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCurrentCustomer } from "@/lib/customer-auth";
 import { listCustomers } from "@/lib/customers";
 import { isValidLockgmGmId } from "@/lib/lockgm/identity";
 import {
   claimMatchupSeat,
+  chooseMatchupSide,
   createLiveMatchupRoom,
   finalizeLiveMatchupIfComplete,
   getPublicLiveMatchup,
@@ -119,6 +121,7 @@ export async function listLiveStandingsAction(): Promise<
 export async function refreshLiveMatchupAction(
   roomId: string,
 ): Promise<OkRoom | Err> {
+  await connection();
   const room = await asPublic(roomId);
   if (!room) return { ok: false, error: "Matchup not found." };
   return withLeague(room);
@@ -168,6 +171,29 @@ export async function pickTeamAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Could not pick team.",
+    };
+  }
+}
+
+export async function chooseSideAction(
+  roomId: string,
+  side: MatchupSide,
+): Promise<OkRoom | Err> {
+  const identity = await requireGm();
+  if (!identity.ok) return identity;
+  try {
+    const room = await chooseMatchupSide({
+      roomId,
+      gmId: identity.gmId,
+      side,
+    });
+    revalidatePath(`/lockgm/live/${room.id}`);
+    const ads = await listActiveLocalAds(room.market);
+    return withLeague(publicRoomView(room, ads));
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not pick a side.",
     };
   }
 }
