@@ -133,6 +133,8 @@ export type PitcherLine = {
   playerId: string;
   name: string;
   ipOuts: number;
+  /** Pitches thrown this appearance. */
+  p: number;
   h: number;
   r: number;
   er: number;

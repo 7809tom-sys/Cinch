@@ -49,10 +49,15 @@ export {
   fatiguedPitcher,
   pickBullpenArm,
   pickSeriesStarter,
+  emergencyReliefPool,
   bullpenRoleLabel,
+  pitchesForPa,
+  relieverOutingLimits,
+  starterPitchCap,
   FATIGUE_TIER_DROP,
   FATIGUE_BF_THRESHOLD,
   FIREMAN_THREE_IP_OUTS,
+  RELIEVER_MAX_OUTS,
 } from "./fatigue";
 export {
   findPinchHitRecommendation,
