@@ -112,6 +112,14 @@ assert(
     "cinch-watch",
   "classifyScript recognizes watch.js",
 );
+assert(
+  classifyScript("/assets/index-abc.js").name === "Host app bundle",
+  "relative app scripts are not labeled cinchseed.com",
+);
+assert(
+  classifyScript("/registerSW.js").name === "Service worker",
+  "service worker script is named separately",
+);
 
 const host = hostFromProject(connectProject);
 assert(host.websiteUrl === JUST_PUTZIT_LIVE, "host website is the live dating site");

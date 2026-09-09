@@ -105,6 +105,7 @@ export function classifyScript(
   src: string | null | undefined,
   attrs = "",
   body = "",
+  pageUrl?: string,
 ): { catalogId: CatalogScriptId; name: string } {
   const blob = `${src ?? ""} ${attrs} ${body}`.toLowerCase();
   if (
@@ -123,8 +124,20 @@ export function classifyScript(
     return { catalogId: "google-analytics", name: "Google Analytics" };
   }
   if (src) {
+    if (
+      src.startsWith("/") ||
+      src.startsWith("./") ||
+      src.startsWith("../")
+    ) {
+      return {
+        catalogId: "other",
+        name: /registersw|sw\.js/i.test(src)
+          ? "Service worker"
+          : "Host app bundle",
+      };
+    }
     try {
-      const host = new URL(src, CINCH_SEED_ORIGIN).hostname;
+      const host = new URL(src, pageUrl || JUST_PUTZIT_LIVE).hostname;
       return { catalogId: "other", name: host || "Page script" };
     } catch {
       return { catalogId: "other", name: "Page script" };
@@ -133,7 +146,10 @@ export function classifyScript(
   return { catalogId: "other", name: "Inline script" };
 }
 
-export function parseInstalledScripts(html: string): DetectedScript[] {
+export function parseInstalledScripts(
+  html: string,
+  pageUrl?: string,
+): DetectedScript[] {
   const found: DetectedScript[] = [];
   const seen = new Set<string>();
   const tagRe = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
@@ -143,7 +159,7 @@ export function parseInstalledScripts(html: string): DetectedScript[] {
     const body = match[2] ?? "";
     const src = /src\s*=\s*["']([^"']+)["']/i.exec(attrs)?.[1] ?? null;
     if (!src && !body.trim()) continue;
-    const classified = classifyScript(src, attrs, body);
+    const classified = classifyScript(src, attrs, body, pageUrl);
     if (classified.catalogId === "other" && !src) continue;
     const key = `${classified.catalogId}:${src ?? classified.name}`;
     if (seen.has(key)) continue;
@@ -368,7 +384,7 @@ export function probeFromHtml(
       hasCinchWatch: false,
     };
   }
-  const scripts = parseInstalledScripts(html);
+  const scripts = parseInstalledScripts(html, url);
   return {
     surface,
     url,
