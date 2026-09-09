@@ -338,7 +338,7 @@ export async function createProject(input: {
     pushActivity(
       project,
       seedMode === "connect"
-        ? `${pm.name} locked the Vercel host to connect: ${referenceUrl}${githubRepoUrl ? ` (GitHub ${githubRepoUrl})` : ""}. Copy stays on Vercel — widget only.`
+        ? `${pm.name} locked the Manus host to connect: ${referenceUrl}${githubRepoUrl ? ` (GitHub ${githubRepoUrl})` : ""}. Look and administer in place. No final update without owner approval.`
         : `${pm.name} locked a reference site to model: ${referenceUrl}.`,
       pm.id,
     );
@@ -669,7 +669,7 @@ export async function planConnectExistingSite(
 
   pushActivity(
     project,
-    `${pm.name} planned a connect job for ${liveUrl}${targets.githubRepoUrl ? ` via ${targets.githubRepoUrl}` : ""} — copy stays on Vercel. Manus 1.6 may only commit watch.js.`,
+    `${pm.name} planned a connect job for ${liveUrl}${targets.githubRepoUrl ? ` via ${targets.githubRepoUrl}` : ""} — look at and administer the Manus host. Propose updates. No final update without owner approval.`,
     pm.id,
   );
   await writeStore(store);

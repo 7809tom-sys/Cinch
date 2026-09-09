@@ -51,7 +51,7 @@ Conductor tries the **cheapest capable** model first (DeepSeek / Claude Haiku / 
 | OpenAI (GPT) | `OPENAI_API_KEY` | Alternate for code/rules when Claude is down or already failed. |
 | DeepSeek | `DEEPSEEK_API_KEY` | Cheap lane for drafts, boilerplate, simple code. **No** customer PII, invoices, or private affiliate data. |
 | Google (Flash-class) | `GOOGLE_AI_API_KEY` | Cheap + vision (Atlas screenshots / mockups). |
-| Manus | `MANUS_API_KEY` | **Manus 1.6.** Whole-site `build_site` jobs, or commit `watch.js` into a GitHub repo that **Vercel already publishes** (justputzit.com). Never rewrite Vercel copy on a connect job. |
+| Manus | `MANUS_API_KEY` | **Manus 1.6.** Whole-site `build_site` jobs, or commit `watch.js` into the GitHub repo **manus.im exported** (justputzit.com). Never rewrite live copy. **No final update without owner approval.** |
 | Cursor | — | **Not a Seed provider.** Human/IDE stays off the agent roster. |
 
 Lane defaults:
@@ -62,18 +62,19 @@ Lane defaults:
 | Pixel / Forge | DeepSeek when easy | `rule_heavy` examples: SB36 void, island wall 30 → Claude/GPT. |
 | Atlas | Cheap + vision | Flash-class when the task needs image/screenshot review. |
 | Lumen / Sentry | Cheap checklist | A Sentry fail escalates to Claude/GPT. |
-| Manus 1.6 | Whole-site or Vercel/GitHub widget | `build_site`, or commit watch.js so Vercel publishes. Never rewrite live copy. |
+| Manus 1.6 | Whole-site or Manus/GitHub widget | `build_site`, or queue watch.js on the GitHub export so Manus can publish **after owner approval**. Never rewrite live copy. |
 
 See Admin → Agents & providers for the live sample routes (cheap vs expensive). Run `npm run assert:conductor-routing` to verify the policy.
 
 ### Connect API — link an existing website to its Seed
 
 **Connecting is not building.** Example: **cinchseed.com → justputzit.com**.
-Just Putz It **copy is already on Vercel**, deployed from
-`https://github.com/7809tom-sys/just-putzit`. Create a Seed in **Connect
-existing website** mode. Conductor issues the widget. **Manus 1.6** may
-commit it to `client/index.html` so Vercel publishes — it must **not**
-rewrite Vercel copy or rebuild the site:
+manus.im **hosts justputzit.com** and exported the source to
+`https://github.com/7809tom-sys/just-putzit` so Cinch can look at and
+administer it. Create a Seed in **Connect existing website** mode.
+Conductor issues the widget. **Manus 1.6** may commit it to
+`client/index.html` **only after owner approval** — it must **not**
+rewrite live copy, rebuild the site, or publish a final update on its own:
 
 Any live website — built by Cinch or not — connects with one script tag.
 Once connected, the Seed watches critical tools and pushes growth

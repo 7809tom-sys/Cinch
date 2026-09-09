@@ -231,7 +231,7 @@ export const CONDUCTOR_ROUTING_TABLE = {
       id: "manus" as const,
       name: "Manus",
       envKey: "MANUS_API_KEY",
-      role: "Manus 1.6 for whole-site build_site jobs, or to commit watch.js into a GitHub repo that Vercel already publishes. Never rewrite Vercel copy on a connect job.",
+      role: "Manus 1.6 for whole-site build_site jobs, or to commit watch.js into the GitHub repo Manus exported (justputzit.com). Never rewrite live copy. No final update without owner approval.",
     },
   ],
   excluded: EXCLUDED_SEED_PROVIDERS,
@@ -556,7 +556,7 @@ function reasonForRoute(input: {
 }): string {
   const bits: string[] = [];
   if (input.tags.includes("manus_github_install")) {
-    bits.push("Manus 1.6 commits watch.js to GitHub so Vercel publishes — do not rewrite copy");
+    bits.push("Manus 1.6 commits watch.js to GitHub so Manus publishes — after owner approval");
   } else if (input.tags.includes("build_site")) {
     bits.push("whole-site build → Manus 1.6");
   } else if (input.agentName === "Quill") {
@@ -749,11 +749,11 @@ export function sampleConductorRoutes(options: RouteTaskOptions = {}) {
       },
     },
     {
-      label: "Manus 1.6 GitHub/Vercel widget install",
+      label: "Manus 1.6 GitHub/Manus widget install",
       input: {
-        title: "Place watch.js on the live site — do not rebuild",
+        title: "Place watch.js on the live site — after owner approval",
         detail:
-          "Manus 1.6 commits watch.js into client/index.html. Vercel publishes. Do not rewrite Vercel copy.",
+          "After owner approval, Manus 1.6 commits watch.js into client/index.html so Manus publishes. Do not rewrite live copy.",
         requiredSkills: ["frontend"],
         minSkillLevel: 3,
         tags: ["connect_existing", "manus_github_install"],

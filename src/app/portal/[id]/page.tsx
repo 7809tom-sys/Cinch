@@ -106,8 +106,8 @@ export default async function PortalProjectPage({ params }: PageProps) {
               ) : (
                 "your live website"
               )}
-              . Copy is already on Vercel — paste the Connect widget
-              below. Do not rewrite that copy.
+              . manus.im hosts it — paste the Connect widget
+              below. Queue only. No final update without owner approval.
             </p>
           ) : null}
           <div className="mt-4">

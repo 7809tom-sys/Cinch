@@ -81,7 +81,7 @@ export const PROVIDER_ACCOUNTS: ProviderAccount[] = [
     envKey: "MANUS_API_KEY",
     signupUrl: "https://manus.im/",
     keysUrl: "https://open.manus.im/docs/v2/authentication",
-    blurb: "Manus 1.6. Whole-site builds, or commit watch.js to a GitHub repo that Vercel already publishes. Never rewrite Vercel copy on a connect job.",
+    blurb: "Manus 1.6. Whole-site builds, or commit watch.js to the GitHub repo Manus exported for justputzit.com. Never rewrite live copy. No final update without owner approval.",
   },
 ];
 

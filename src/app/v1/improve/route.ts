@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { mayDeliverLiveImprovements } from "@/lib/seed-connect";
 import {
   listPendingImprovements,
   markImprovementsApplied,
@@ -27,11 +28,18 @@ export async function GET(request: Request) {
     );
   }
 
-  const improvements = await listPendingImprovements(auth.project.id);
+  const awaitingOwnerApproval = !mayDeliverLiveImprovements({
+    liveUrl: auth.project.referenceUrl,
+    githubRepoUrl: auth.project.githubRepoUrl,
+  });
+  const improvements = awaitingOwnerApproval
+    ? []
+    : await listPendingImprovements(auth.project.id);
   return NextResponse.json(
     {
       ok: true,
       seed: auth.project.id,
+      awaitingOwnerApproval,
       improvements: improvements.map((item) => ({
         id: item.id,
         moduleId: item.moduleId,
@@ -59,6 +67,22 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { ok: false, error: auth.error },
       { status: auth.status, headers: cors },
+    );
+  }
+
+  if (
+    !mayDeliverLiveImprovements({
+      liveUrl: auth.project.referenceUrl,
+      githubRepoUrl: auth.project.githubRepoUrl,
+    })
+  ) {
+    return NextResponse.json(
+      {
+        ok: true,
+        applied: 0,
+        awaitingOwnerApproval: true,
+      },
+      { headers: cors },
     );
   }
 
