@@ -18,13 +18,17 @@ import {
 import {
   JUST_PUTZIT_GITHUB,
   JUST_PUTZIT_LIVE,
+  LIVE_UPDATE_OWNER_APPROVED,
+  LIVE_UPDATE_REQUIRES_APPROVAL,
   PLACE_WIDGET_TITLE,
   SEED_CONNECT_EXISTING_RULE,
   briefAsksToConnectExistingSite,
+  mayDeliverLiveImprovements,
   planConnectExistingSiteTasks,
   resolveConnectTargets,
   resolveSeedMode,
 } from "../src/lib/seed-connect";
+import { lookAtJustPutzitLive } from "../src/lib/just-putzit-look";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -77,9 +81,31 @@ assert(
   "Just Putz It plan titles are dating and activities, not a kitchen designer",
 );
 assert(
-  /vercel/i.test(SEED_CONNECT_EXISTING_RULE.summary) &&
-    /do not rewrite/i.test(SEED_CONNECT_EXISTING_RULE.summary),
-  "connect rule keeps Vercel copy and forbids rewriting it",
+  LIVE_UPDATE_OWNER_APPROVED === false,
+  "live Just Putz It updates stay unapproved until the owner says yes",
+);
+assert(
+  mayDeliverLiveImprovements({ liveUrl: JUST_PUTZIT_LIVE }) === false,
+  "Just Putz It does not deliver live patches without owner approval",
+);
+assert(
+  mayDeliverLiveImprovements({ githubRepoUrl: JUST_PUTZIT_GITHUB }) === false,
+  "the Just Putz It GitHub export does not deliver live patches without approval",
+);
+assert(
+  mayDeliverLiveImprovements({ liveUrl: "https://example.com" }) === true,
+  "unrelated hosts can still receive watch.js patches",
+);
+assert(
+  datingPlan.improvements.every((item) =>
+    /owner approv|queue only/i.test(item.liveChange),
+  ),
+  "every Just Putz It proposal waits in the queue until owner approval",
+);
+assert(
+  /manus/i.test(SEED_CONNECT_EXISTING_RULE.summary) &&
+    /owner approval/i.test(SEED_CONNECT_EXISTING_RULE.summary),
+  "connect rule uses the Manus host and waits for owner approval",
 );
 assert(
   SEED_CONNECT_EXISTING_RULE.exampleGithubRepo === JUST_PUTZIT_GITHUB,
@@ -90,7 +116,7 @@ const fromLive = resolveConnectTargets({ liveUrl: JUST_PUTZIT_LIVE });
 assert(
   fromLive.liveUrl === JUST_PUTZIT_LIVE &&
     fromLive.githubRepoUrl === JUST_PUTZIT_GITHUB,
-  "justputzit.com infers the GitHub repo Vercel deploys",
+  "justputzit.com infers the GitHub repo Manus exported",
 );
 const fromGithub = resolveConnectTargets({
   liveUrl: JUST_PUTZIT_GITHUB,
@@ -137,9 +163,9 @@ const tasks = planConnectExistingSiteTasks({
 });
 assert(
   tasks.some((task) =>
-    /copy is already on vercel|do not rewrite vercel copy/i.test(task.detail),
+    /manus\.im hosts|after owner approval|do not rewrite live copy/i.test(task.detail),
   ),
-  "connect plan says Vercel copy stays put",
+  "connect plan says Manus hosts it and waits for owner approval",
 );
 assert(
   tasks.some(
@@ -147,7 +173,7 @@ assert(
       task.title === PLACE_WIDGET_TITLE &&
       task.tags.includes("manus_github_install"),
   ),
-  "Manus 1.6 is assigned only to place watch.js on the GitHub/Vercel host",
+  "Manus 1.6 is assigned only to place watch.js on the GitHub/Manus host after approval",
 );
 assert(tasks.length >= 4, "connect plan has widget + place + heartbeat tasks");
 assert(
@@ -191,7 +217,7 @@ assert(
     seedMode: "connect",
     referenceUrl: JUST_PUTZIT_GITHUB,
   }) === JUST_PUTZIT_LIVE,
-  "Visit website never opens github.com when the copy is on Vercel",
+  "Visit website never opens github.com when Manus hosts the live site",
 );
 assert(
   !visit.includes("/site/"),
@@ -220,7 +246,7 @@ for (const task of tasks) {
   if (!isRouteBlocked(route)) {
     const isPlace = task.title === PLACE_WIDGET_TITLE;
     if (isPlace) {
-      assert(route.providerId === "manus", "place-widget on Vercel/GitHub → Manus");
+      assert(route.providerId === "manus", "place-widget on Manus/GitHub → Manus");
       assert(route.model === "manus-1.6", "place-widget uses Manus 1.6");
       assert(
         route.tags.includes("manus_github_install"),
@@ -265,9 +291,20 @@ const watchJs = buildWatchClientJs({
 assert(watchJs.includes("findScript"), "watch.js finds the tag without currentScript");
 assert(watchJs.includes("cinch-seed-community"), "watch.js paints a Community card");
 assert(watchJs.includes("data-key is missing"), "watch.js explains a missing Connect Key");
+assert(
+  /justputzit\\.com/.test(watchJs) && watchJs.includes("data-approved"),
+  "watch.js withholds live patches on justputzit.com until owner approval",
+);
+assert(
+  PLATFORM_ADAPTERS.find((adapter) => adapter.id === "manus")
+    ?.installSnippet("seed-demo", "key-demo")
+    .includes('data-require-approval="true"') ?? false,
+  "Manus snippet marks watch.js as awaiting owner approval",
+);
 
-function runWatch(scriptEl: { src?: string; attrs: Record<string, string> }) {
+function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?: string }) {
   const created: Array<{ id?: string; text?: string }> = [];
+  const fetches: string[] = [];
   const fakeScript = {
     src: scriptEl.src || "https://www.cinchseed.com/v1/watch.js",
     getAttribute(name: string) {
@@ -309,7 +346,7 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string> }) {
       },
       addEventListener() {},
     },
-    location: { href: "https://justputzit.com/" },
+    location: { href: `https://${scriptEl.host ?? "justputzit.com"}/`, hostname: scriptEl.host ?? "justputzit.com" },
     navigator: { userAgent: "assert" },
     console,
     sessionStorage: {
@@ -320,7 +357,8 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string> }) {
         store[key] = value;
       },
     },
-    fetch() {
+    fetch(url: string) {
+      fetches.push(String(url));
       return Promise.resolve({
         status: 401,
         json: async () => ({ ok: false, error: "Invalid or missing Connect key." }),
@@ -338,7 +376,7 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string> }) {
   (context.window as { location: unknown }).location = context.location;
   (context.window as { navigator: unknown }).navigator = context.navigator;
   runInContext(watchJs, context);
-  return { created, window: context.window as { __CINCH_SEED__?: { seed: string } } };
+  return { created, window: context.window as { __CINCH_SEED__?: { seed: string } }, fetches };
 }
 
 const painted = runWatch({
@@ -349,6 +387,19 @@ assert(
   "Community card mounts when currentScript is null",
 );
 assert(painted.window.__CINCH_SEED__?.seed === "seed-demo", "watch runtime exposes the Seed id");
+assert(
+  painted.fetches.every((url) => !url.includes("/v1/improve")),
+  "watch.js on justputzit.com does not pull live patches without approval",
+);
+
+const otherHost = runWatch({
+  host: "example.com",
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+assert(
+  otherHost.fetches.some((url) => url.includes("/v1/improve")),
+  "watch.js still pulls patches on hosts that do not require Just Putz It approval",
+);
 
 const missingKey = runWatch({
   attrs: { "data-seed": "seed-demo" },
@@ -358,8 +409,41 @@ assert(
   "Community card still shows when Manus omitted data-key",
 );
 
-if (process.exitCode) {
-  console.error("seed-connect assertions failed");
-} else {
-  console.log("seed-connect assertions passed");
-}
+assert(
+  /after owner approval/i.test(PLACE_WIDGET_TITLE),
+  "widget install is queued until owner approval",
+);
+assert(
+  tasks.some((task) => task.detail.includes(LIVE_UPDATE_REQUIRES_APPROVAL)),
+  "connect plan repeats the owner-approval rule",
+);
+
+lookAtJustPutzitLive(async () => {
+  return new Response(
+    `<title>Just Putzit</title><meta name="description" content="Just Putzit — meet locals for real dates and activities." /><img src="/manus-storage/icon.png" />`,
+    {
+      headers: {
+        "x-manus-proxy-mode": "transparent/1",
+        "last-modified": "Wed, 09 Sep 2026 17:37:14 GMT",
+      },
+    },
+  );
+})
+  .then((look) => {
+    assert(look.ok, "look helper reaches a live HTML response");
+    assert(look.hostedOnManus, "look helper recognizes the Manus host");
+    assert(!look.watchJsPresent, "look helper reports missing watch.js");
+    assert(/just putzit/i.test(look.title ?? ""), "look helper reads the live title");
+  })
+  .then(() => {
+    if (process.exitCode) {
+      console.error("seed-connect assertions failed");
+    } else {
+      console.log("seed-connect assertions passed");
+    }
+  })
+  .catch((error) => {
+    console.error("FAIL: look helper", error);
+    process.exitCode = 1;
+    console.error("seed-connect assertions failed");
+  });

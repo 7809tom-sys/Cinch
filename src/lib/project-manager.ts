@@ -445,8 +445,8 @@ export async function ensureProjectManagerSeedContact(
   const body =
     project.seedMode === "connect"
       ? activeTask
-        ? `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com watches ${host}. Copy is already on Vercel — we are not rewriting it. Up next: ${activeTask.title}. Manus 1.6 may only commit watch.js to the GitHub repo.`
-        : `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com watches ${host}. Copy is already on Vercel. Open this Seed for the widget snippet (Seed ID + Connect Key).`
+        ? `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com looks at and administers ${host}. manus.im hosts it — we are not rewriting it. Up next: ${activeTask.title}. Proposed updates wait for your approval.`
+        : `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com looks at and administers ${host}. manus.im hosts it. Open this Seed for the widget snippet (Seed ID + Connect Key). No final update without your approval.`
       : activeTask
         ? `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffed and working the build now (up next: ${activeTask.title}). Open this Seed anytime to watch progress — no action needed from you.`
         : `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffing and we’ll work through the task board. Open this Seed anytime to watch progress — no action needed from you.`;

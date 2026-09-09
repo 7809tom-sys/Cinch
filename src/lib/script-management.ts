@@ -4,7 +4,6 @@
  * use /site/[id]/admin. The Cinch watch widget belongs on both surfaces.
  */
 import {
-  CINCH_SEED_ORIGIN,
   CINCH_SEED_WATCH_SCRIPT,
   liveAdminUrl,
   liveWebsiteUrl,
@@ -13,11 +12,12 @@ import {
   seedDeskUrl,
 } from "./domain";
 import {
+  JUST_PUTZIT_ADMIN,
   JUST_PUTZIT_LIVE,
   type SeedMode,
 } from "./seed-connect";
 
-export const JUST_PUTZIT_ADMIN = `${JUST_PUTZIT_LIVE}/admin`;
+export { JUST_PUTZIT_ADMIN };
 /** Seed id Just Putz It already embeds via CINCH_SEED_ID. */
 export const JUST_PUTZIT_CONNECT_SEED_ID =
   "48a66d0f-d7f1-483c-82ae-675fed90dc48";

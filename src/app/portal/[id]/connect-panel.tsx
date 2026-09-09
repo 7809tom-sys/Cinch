@@ -20,7 +20,7 @@ export function ConnectPanel({
   const [pending, startTransition] = useTransition();
   const [connectKey, setConnectKey] = useState(initialKey);
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [platform, setPlatform] = useState<PlatformId>("vercel");
+  const [platform, setPlatform] = useState<PlatformId>("manus");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,11 +35,11 @@ export function ConnectPanel({
         Connect an existing website
       </h2>
       <p className="mt-2 text-sm text-muted">
-        Copy already lives on Vercel. Commit this snippet in the GitHub
-        repo HTML (Just Putz It: <code>client/index.html</code> before{" "}
-        <code>&lt;/body&gt;</code>) so Vercel publishes it. Both{" "}
-        <code>data-seed</code> and <code>data-key</code> are required. Do
-        not rewrite Vercel copy.
+        manus.im hosts the live site and exported the GitHub repo. Queue this
+        snippet in the repo HTML (Just Putz It: <code>client/index.html</code>{" "}
+        before <code>&lt;/body&gt;</code>). Both <code>data-seed</code> and{" "}
+        <code>data-key</code> are required. No final update without owner
+        approval.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

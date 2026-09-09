@@ -43,9 +43,10 @@ export function CreateSeedForm() {
           <span>
             <span className="font-semibold">Connect existing website</span>
             <span className="mt-0.5 block text-xs text-muted">
-              Link cinchseed.com to the customer’s real live website. If copy
-              is already on Vercel (Just Putz It), keep that copy. Manus 1.6
-              may only commit watch.js to the GitHub repo Vercel deploys.
+              Link cinchseed.com to the customer’s real live website. If
+              manus.im already hosts it (Just Putz It), look at and
+              administer that host. Queue watch.js on the GitHub export.
+              No final update without owner approval.
             </span>
           </span>
         </label>
@@ -100,7 +101,7 @@ export function CreateSeedForm() {
           <span className="text-sm font-medium text-brand-deep">
             GitHub repo{" "}
             <span className="font-normal text-muted">
-              (Vercel source — optional)
+              (Manus GitHub export — optional)
             </span>
           </span>
           <input
@@ -121,7 +122,7 @@ export function CreateSeedForm() {
           rows={4}
           placeholder={
             seedMode === "connect"
-              ? "Connect cinchseed.com to this Vercel site. Copy is already live — do not rebuild."
+              ? "Connect cinchseed.com to this Manus site. Look at and administer it. Do not publish a final update without owner approval."
               : "What should the invited agents build? Audience, pages, tone, must-haves…"
           }
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
