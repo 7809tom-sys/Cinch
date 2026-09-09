@@ -41,6 +41,9 @@ export default function ImproveJustPutzItPage() {
             >
               justputzit.com
             </a>
+            <Link href="/scripts" className="transition-colors hover:text-brand-deep">
+              Scripts
+            </Link>
             <Link href="/login" className="rounded-md bg-brand-deep px-3.5 py-1.5 text-foam">
               Sign in
             </Link>

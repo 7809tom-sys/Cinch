@@ -42,6 +42,9 @@ export default async function LoginPage({
             <Link href="/browse" className="transition-colors hover:text-brand-deep">
               Browse sites
             </Link>
+            <Link href="/scripts" className="transition-colors hover:text-brand-deep">
+              Scripts
+            </Link>
             <Link href="/about" className="transition-colors hover:text-brand-deep">
               About
             </Link>

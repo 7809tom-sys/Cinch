@@ -80,6 +80,55 @@ export function publicWebsiteUrl(project: {
   return `${CINCH_SEED_ORIGIN}/site/${project.id}`;
 }
 
+function adminPathForHost(host: string): string {
+  return `${host.replace(/\/$/, "")}/admin`;
+}
+
+/**
+ * In-app Admin button for a Seed.
+ * Connect Seeds open the live host’s own admin (justputzit.com/admin).
+ * Build Seeds open the Cinch-hosted business admin.
+ */
+export function liveAdminUrl(project: {
+  id: string;
+  name: string;
+  customDomain: { hostname: string; status: string } | null;
+  seedMode?: "build" | "connect" | null;
+  referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
+}): string {
+  const connected = connectedLiveHost(project);
+  if (connected) return adminPathForHost(connected);
+  const custom = project.customDomain;
+  if (custom && custom.status === "verified" && custom.hostname) {
+    return `https://${custom.hostname}/admin`;
+  }
+  return `/site/${project.id}/admin`;
+}
+
+/** Absolute admin URL for sharing and the script-management desk. */
+export function publicAdminUrl(project: {
+  id: string;
+  name: string;
+  customDomain: { hostname: string; status: string } | null;
+  seedMode?: "build" | "connect" | null;
+  referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
+}): string {
+  const connected = connectedLiveHost(project);
+  if (connected) return adminPathForHost(connected);
+  const custom = project.customDomain;
+  if (custom && custom.status === "verified" && custom.hostname) {
+    return `https://${custom.hostname}/admin`;
+  }
+  return `${CINCH_SEED_ORIGIN}/site/${project.id}/admin`;
+}
+
+/** Cinch Seed desk for this project (not the customer’s live /admin). */
+export function seedDeskUrl(projectId: string): string {
+  return `/admin/projects/${projectId}`;
+}
+
 /** Intended vanity host once wildcard DNS for *.cinchseed.com is configured. */
 export function plannedSeedHostOrigin(slug: string): string {
   return seedHostOrigin(slug);
