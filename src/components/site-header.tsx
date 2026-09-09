@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { href: "#team", label: "All-stars", external: false },
   { href: "/lockgm", label: "LockedGM", external: true },
   { href: "/browse", label: "Browse", external: true },
+  { href: "/improve", label: "Improve", external: true },
   { href: "/about", label: "About", external: true },
 ] as const;
 

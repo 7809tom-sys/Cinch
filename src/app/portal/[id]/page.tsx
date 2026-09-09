@@ -6,6 +6,7 @@ import { liveWebsiteUrl, seedHostHostname } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
 import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "@/lib/seed-site-copy";
 import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
+import { ConnectImproveBoard } from "@/components/connect-improve-board";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
 import { PortalWatchTicker } from "./watch-ticker";
@@ -308,6 +309,15 @@ export default async function PortalProjectPage({ params }: PageProps) {
             connectKey={project.connectKey}
             embedEnabled={project.embedEnabled}
           />
+
+          {project.seedMode === "connect" ? (
+            <ConnectImproveBoard
+              name={project.name}
+              brief={project.brief}
+              liveUrl={project.referenceUrl}
+              githubRepoUrl={project.githubRepoUrl}
+            />
+          ) : null}
 
           <div className="border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">

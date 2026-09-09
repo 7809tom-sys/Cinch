@@ -22,7 +22,7 @@ export type GithubRepoRef = {
 export const SEED_CONNECT_EXISTING_RULE = {
   id: "seed-connect-existing",
   summary:
-    "HARD RULE: when the job is connect cinchseed.com to an existing website, drop the Connect widget on that live host. Just Putz It copy already lives on Vercel (justputzit.com) from GitHub 7809tom-sys/just-putzit. Do not rewrite Vercel copy or rebuild the site. Manus 1.6 may only commit watch.js into the GitHub HTML so Vercel publishes it.",
+    "HARD RULE: when the job is connect cinchseed.com to an existing website, drop the Connect widget on that live host. Just Putz It is a social-activity and dating site. Copy already lives on Vercel (justputzit.com) from GitHub 7809tom-sys/just-putzit. Do not rewrite Vercel copy or rebuild the site. Manus 1.6 may only commit watch.js into the GitHub HTML so Vercel publishes it.",
   exampleHost: JUST_PUTZIT_LIVE,
   exampleGithubRepo: JUST_PUTZIT_GITHUB,
   exampleHosting: "vercel",

@@ -12,6 +12,10 @@ import {
   type SeedProviderId,
 } from "../src/lib/conductor-routing";
 import {
+  classifyConnectedSite,
+  planInPlaceImprovements,
+} from "../src/lib/connect-improvements";
+import {
   JUST_PUTZIT_GITHUB,
   JUST_PUTZIT_LIVE,
   PLACE_WIDGET_TITLE,
@@ -40,6 +44,37 @@ assert(
 assert(
   /justputzit\.com/i.test(SEED_CONNECT_EXISTING_RULE.exampleHost),
   "Just Putz It is the documented connect example",
+);
+assert(
+  /social-activity and dating/i.test(SEED_CONNECT_EXISTING_RULE.summary),
+  "Just Putz It is classified as a social-activity and dating site",
+);
+assert(
+  classifyConnectedSite({
+    name: "Just Putz It",
+    liveUrl: JUST_PUTZIT_LIVE,
+  }) === "social_activity_dating",
+  "justputzit.com classifies as social activity + dating",
+);
+assert(
+  classifyConnectedSite({
+    name: "Acme Cabinets",
+    brief: "Kitchen designer for cabinet shops",
+    liveUrl: "https://example.com",
+  }) === "generic",
+  "a cabinet site is not classified as dating",
+);
+const datingPlan = planInPlaceImprovements({
+  name: "Just Putz It",
+  liveUrl: JUST_PUTZIT_LIVE,
+});
+assert(
+  datingPlan.improvements.some((item) => /match|activity|community|date/i.test(item.title)),
+  "Just Putz It improvements target dating and activities, not a kitchen designer",
+);
+assert(
+  !datingPlan.improvements.some((item) => /kitchen designer/i.test(item.title)),
+  "Just Putz It plan titles are dating and activities, not a kitchen designer",
 );
 assert(
   /vercel/i.test(SEED_CONNECT_EXISTING_RULE.summary) &&
