@@ -35,9 +35,11 @@ export function ConnectPanel({
         Connect an existing website
       </h2>
       <p className="mt-2 text-sm text-muted">
-        Already have a live site? Paste this snippet on it and the Seed
-        starts watching critical tools and growing it in place — no rebuild
-        needed.
+        Already have a live site? Paste this snippet before{" "}
+        <code>&lt;/body&gt;</code> on that host. A Community card appears
+        on the live page so you can see the Seed is connected. Both{" "}
+        <code>data-seed</code> and <code>data-key</code> are required — no
+        rebuild.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

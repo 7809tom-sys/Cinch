@@ -103,8 +103,9 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 <span className="font-semibold">
                   {project.referenceUrl || "the live website"}
                 </span>
-                . Paste the Connect snippet on that host — do not rebuild the
-                site. Manus is not assigned.
+                . Paste the Connect snippet on that host with both the Seed
+                ID and Connect Key. A Community card should appear on the
+                live page. Do not rebuild the site. Manus is not assigned.
               </p>
             ) : null}
             <p className="mt-3 text-sm text-muted">

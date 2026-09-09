@@ -17,7 +17,7 @@ export const PLATFORM_ADAPTERS: PlatformAdapter[] = [
     blurb:
       "Paste before </body>. The Seed watches critical tools and grows functionality, efficiency, and customer care in place.",
     installSnippet: (seedId, connectKey) =>
-      `<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="generic" async></script>`,
+      `<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="generic" data-mark="true" async></script>`,
   },
   {
     id: "wordpress",
@@ -32,7 +32,7 @@ export const PLATFORM_ADAPTERS: PlatformAdapter[] = [
 add_action('wp_footer', function () {
   $seed = '${seedId}';
   $key = '${connectKey}';
-  echo '<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="' . esc_attr($seed) . '" data-key="' . esc_attr($key) . '" data-platform="wordpress" async></script>';
+  echo '<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="' . esc_attr($seed) . '" data-key="' . esc_attr($key) . '" data-platform="wordpress" data-mark="true" async></script>';
 });`,
   },
   {
@@ -45,6 +45,7 @@ add_action('wp_footer', function () {
         data-seed="${seedId}"
         data-key="${connectKey}"
         data-platform="magento"
+        data-mark="true"
         async></script>`,
   },
   {
@@ -57,6 +58,7 @@ add_action('wp_footer', function () {
         data-seed="${seedId}"
         data-key="${connectKey}"
         data-platform="shopify"
+        data-mark="true"
         data-shop="{{ shop.permanent_domain }}"
         async></script>`,
   },

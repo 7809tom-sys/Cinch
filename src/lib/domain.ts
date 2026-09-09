@@ -4,7 +4,7 @@ export const CINCH_SEED_ORIGIN = `https://www.${CINCH_SEED_DOMAIN}`;
 export const CINCH_SEED_WATCH_SCRIPT = `${CINCH_SEED_ORIGIN}/v1/watch.js`;
 
 export function seedEmbedSnippet(seedId: string, connectKey: string): string {
-  return `<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" async></script>`;
+  return `<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="generic" data-mark="true" async></script>`;
 }
 
 /** Customer sites are hosted on the Cinch cell as a subdomain. */

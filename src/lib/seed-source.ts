@@ -27,6 +27,7 @@ import {
   SEED_ENGAGEMENT_COLLABORATE_RULE,
   taskIsEngagementCollab,
 } from "./seed-engagement-rule";
+import { seedEmbedSnippet } from "./domain";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
 export type SourceFile = {
@@ -1234,7 +1235,7 @@ export function SiteChrome({
     await upsertSourceFile({
       projectId: input.projectId,
       path: "public/seed-watch.snippet.html",
-      content: `<!-- Cinch Seed watch — paste before </body> -->\n<script\n  src="https://cinchseed.com/v1/watch.js"\n  data-seed="${input.projectId}"\n  async\n></script>\n`,
+      content: `<!-- Cinch Seed watch — paste before </body>. data-seed and data-key are required. A Community card appears when the script loads. -->\n${seedEmbedSnippet(input.projectId, "YOUR_CONNECT_KEY")}\n`,
       authoredBy: input.agentId,
       agentName: agent,
       status,

@@ -3,11 +3,14 @@
  * Magento layout / footer block snippet for Cinch Seed Watch.
  * Place in a custom theme footer or CMS block so the Seed can
  * grow the storefront and keep critical tools healthy.
+ * Both data-seed and data-key are required. A Community card appears when the script loads.
  */
 ?>
 <script
-  src="https://cinchseed.com/v1/watch.js"
+  src="https://www.cinchseed.com/v1/watch.js"
   data-seed="<?= $block->escapeHtmlAttr($block->getData('cinch_seed_id') ?: '') ?>"
+  data-key="<?= $block->escapeHtmlAttr($block->getData('cinch_seed_key') ?: '') ?>"
   data-platform="magento"
+  data-mark="true"
   async
 ></script>
