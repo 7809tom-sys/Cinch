@@ -29,6 +29,7 @@ import { bootstrapSourceTree, applySeedIdentityEdit } from "./seed-source";
 import {
   planReactionsToEditedBrief,
   SEED_EDIT_MUST_REACT_RULE,
+  shouldRebuildAfterSeedEdit,
 } from "./seed-edit-rule";
 import {
   planEngagementCollaborationChain,
@@ -425,6 +426,12 @@ export async function updateProjectDetails(
     pm.id,
   );
   await writeStore(store);
+
+  // Connect Seeds watch a live host — Edit Seed updates the desk only.
+  // Do not rebuild or invent a Cinch-hosted copy of justputzit.com.
+  if (!shouldRebuildAfterSeedEdit(project.seedMode)) {
+    return { project, reactionTasksQueued: 0 };
+  }
 
   await applySeedIdentityEdit({
     projectId: project.id,

@@ -77,6 +77,11 @@ export default async function EditSeedPage({ params }: PageProps) {
             initialName={project.name}
             initialBrief={project.brief}
             websiteUrl={websiteUrl}
+            cancelHref={`/portal/${project.id}`}
+            seedMode={project.seedMode}
+            afterSaveHref={
+              project.seedMode === "connect" ? `/portal/${project.id}` : undefined
+            }
           />
         </div>
       </main>
