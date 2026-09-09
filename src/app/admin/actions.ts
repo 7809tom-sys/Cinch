@@ -358,7 +358,7 @@ export async function createSeedProjectAction(formData: FormData) {
   if (seedMode === "connect" && !referenceUrl) {
     return {
       ok: false as const,
-      error: "Connect jobs need the live website URL (e.g. https://justputzit.com).",
+      error: "Connect jobs need the real live website URL. Do not invent a host.",
     };
   }
 

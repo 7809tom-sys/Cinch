@@ -43,8 +43,9 @@ export function CreateSeedForm() {
           <span>
             <span className="font-semibold">Connect existing website</span>
             <span className="mt-0.5 block text-xs text-muted">
-              Link cinchseed.com to a live host (e.g. justputzit.com) with the
-              watch.js widget. Do not rebuild the site. Manus is not assigned.
+              Link cinchseed.com to the customer’s real live website with the
+              watch.js widget. Do not rebuild or invent a copy of that site.
+              Manus is not assigned.
             </span>
           </span>
         </label>
@@ -72,7 +73,7 @@ export function CreateSeedForm() {
           name="name"
           required
           placeholder={
-            seedMode === "connect" ? "Just Putz It" : "Acme rebuild Seed"
+            seedMode === "connect" ? "Customer live site" : "Acme rebuild Seed"
           }
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
@@ -90,7 +91,7 @@ export function CreateSeedForm() {
           name="referenceUrl"
           type="url"
           required={seedMode === "connect"}
-          placeholder="https://justputzit.com"
+          placeholder="https://www.their-live-site.com"
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
       </label>
@@ -104,7 +105,7 @@ export function CreateSeedForm() {
           rows={4}
           placeholder={
             seedMode === "connect"
-              ? "Connect cinchseed.com to justputzit.com. Community feature on the existing site — do not rebuild."
+              ? "Connect cinchseed.com to this live website. Do not rebuild or host a copy."
               : "What should the invited agents build? Audience, pages, tone, must-haves…"
           }
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"

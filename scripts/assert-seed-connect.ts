@@ -2,6 +2,7 @@
  * Guard: connecting cinchseed.com to a live host is not a site rebuild.
  * Run: npx tsx scripts/assert-seed-connect.ts
  */
+import { liveWebsiteUrl } from "../src/lib/domain";
 import {
   isRouteBlocked,
   routeConductorTask,
@@ -41,8 +42,8 @@ assert(
   "connect brief is recognized",
 );
 assert(
-  briefAsksToConnectExistingSite("Community feature", "https://justputzit.com"),
-  "justputzit.com reference is a connect job",
+  !briefAsksToConnectExistingSite("Community feature"),
+  "a URL or brand name alone does not invent a connect host",
 );
 assert(
   resolveSeedMode({
@@ -85,6 +86,22 @@ assert(
 assert(
   tasks.some((task) => /watch\.js|widget/i.test(task.title + task.detail)),
   "connect plan issues the watch.js widget",
+);
+
+const visit = liveWebsiteUrl({
+  id: "seed-does-not-matter",
+  name: "Just Putz It",
+  customDomain: null,
+  seedMode: "connect",
+  referenceUrl: "https://justputzit.com",
+});
+assert(
+  visit === "https://justputzit.com",
+  "Visit website opens the real live host, not a Cinch /site/ copy",
+);
+assert(
+  !visit.includes("/site/"),
+  "connect Visit URL is not a fake Cinch-hosted site",
 );
 
 const all: SeedProviderId[] = [

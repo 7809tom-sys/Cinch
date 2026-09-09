@@ -100,7 +100,7 @@ export type SeedProject = {
   referenceUrl: string | null;
   /**
    * build = Conductor grows a Cinch-hosted site.
-   * connect = drop the cinchseed.com widget on an existing host (e.g. justputzit.com).
+   * connect = drop the cinchseed.com widget on the customer’s real live host.
    */
   seedMode: SeedMode;
   /** Customer's own domain (bought elsewhere) pointed at this Seed */
@@ -333,11 +333,20 @@ export async function createProject(input: {
   store.projects.unshift(project);
   await writeStore(store);
 
-  await bootstrapSourceTree({
-    projectId: project.id,
-    projectName: project.name,
-    brief: project.brief,
-  });
+  if (seedMode === "connect" && !referenceUrl) {
+    throw new Error(
+      "Connect jobs need the real live website URL. Do not invent a host.",
+    );
+  }
+
+  // Connect Seeds watch an existing host — do not generate a fake Cinch-hosted copy.
+  if (seedMode !== "connect") {
+    await bootstrapSourceTree({
+      projectId: project.id,
+      projectName: project.name,
+      brief: project.brief,
+    });
+  }
 
   if (customerEmail) {
     const customer = await attachProjectToCustomer(
@@ -611,9 +620,12 @@ export async function planConnectExistingSite(
 
   const pm = getProjectManager();
   const stamp = now();
-  const liveUrl =
-    project.referenceUrl?.trim() ||
-    "https://justputzit.com";
+  const liveUrl = project.referenceUrl?.trim();
+  if (!liveUrl) {
+    throw new Error(
+      "Connect jobs need the real live website URL. Do not invent a host.",
+    );
+  }
   const drafts = planConnectExistingSiteTasks({
     siteName: project.name,
     liveUrl,

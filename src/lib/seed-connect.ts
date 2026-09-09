@@ -40,16 +40,8 @@ export function normalizeLiveSiteUrl(raw: string | null | undefined): string | n
   }
 }
 
-export function briefAsksToConnectExistingSite(
-  brief: string,
-  referenceUrl?: string | null,
-): boolean {
-  if (CONNECT_BRIEF_PATTERN.test(brief)) return true;
-  const host = normalizeLiveSiteUrl(referenceUrl);
-  if (host && /justputzit\.com$/i.test(new URL(host).host.replace(/^www\./, ""))) {
-    return true;
-  }
-  return false;
+export function briefAsksToConnectExistingSite(brief: string): boolean {
+  return CONNECT_BRIEF_PATTERN.test(brief);
 }
 
 export function resolveSeedMode(input: {
@@ -60,9 +52,7 @@ export function resolveSeedMode(input: {
   if (input.seedMode === "connect" || input.seedMode === "build") {
     return input.seedMode;
   }
-  return briefAsksToConnectExistingSite(input.brief, input.referenceUrl)
-    ? "connect"
-    : "build";
+  return briefAsksToConnectExistingSite(input.brief) ? "connect" : "build";
 }
 
 export type ConnectTaskDraft = {
