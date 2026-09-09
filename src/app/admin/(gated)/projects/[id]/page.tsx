@@ -85,20 +85,36 @@ export default async function ProjectAdminPage({ params }: PageProps) {
         <section className="min-w-0 space-y-8">
           <div>
             <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent">
-              LIVE BUILD ROOM
+              {project.seedMode === "connect"
+                ? "CONNECT EXISTING SITE"
+                : "LIVE BUILD ROOM"}
             </p>
             <h1 className="mt-3 font-[family-name:var(--font-display)] text-[1.75rem] font-bold tracking-tight break-words text-brand-deep sm:text-4xl">
-              Agents on this Seed
+              {project.seedMode === "connect"
+                ? "Widget on the live host"
+                : "Agents on this Seed"}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed break-words text-muted">
               {project.brief}
             </p>
+            {project.seedMode === "connect" ? (
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep">
+                Connecting cinchseed.com to{" "}
+                <span className="font-semibold">
+                  {project.referenceUrl || "the live website"}
+                </span>
+                . Paste the Connect snippet on that host — do not rebuild the
+                site. Manus is not assigned.
+              </p>
+            ) : null}
             <p className="mt-3 text-sm text-muted">
               Project manager:{" "}
               <span className="font-semibold text-brand-deep">
                 {pm?.name ?? "Conductor"}
               </span>{" "}
-              assigns every task by skill and cost — you only watch.
+              {project.seedMode === "connect"
+                ? "issues the widget and watches the live host — you only paste the snippet."
+                : "assigns every task by skill and cost — you only watch."}
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
               {SEED_GROWTH_TAGLINE}
@@ -401,11 +417,9 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               Connect API — Seed watch script
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-mist">
-              Drop this on WordPress, Magento, Shopify, or any HTML host. The
-              Seed watches tools like a kitchen designer, then pushes growth
-              adaptations in place. Every call needs this Seed&apos;s id + key
-              — nobody else can beacon fake data or read/apply adaptations for
-              it.
+              {project.seedMode === "connect"
+                ? `This is the widget for ${project.referenceUrl || "the live host"}. Paste it on that site (not a new Cinch-hosted rebuild). Seed ID + Connect Key go in Manus’s secure prompt only if someone is helping install — they must not build a second site.`
+                : "Drop this on WordPress, Magento, Shopify, or any HTML host. The Seed watches tools like a kitchen designer, then pushes growth adaptations in place. Every call needs this Seed’s id + key — nobody else can beacon fake data or read/apply adaptations for it."}
             </p>
             <ConnectApiControls
               projectId={project.id}

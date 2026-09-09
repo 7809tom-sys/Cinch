@@ -389,7 +389,9 @@ export async function bootstrapSeedProject(
 
   pushActivity(
     project,
-    `${pm.name} staffed the specialist crew and is assigning work. You watch — no action needed.`,
+    project.seedMode === "connect"
+      ? `${pm.name} staffed the crew to connect cinchseed.com to the live host — not to rebuild the site.`
+      : `${pm.name} staffed the specialist crew and is assigning work. You watch — no action needed.`,
     pm.id,
   );
   await saveProject(project);
@@ -439,9 +441,15 @@ export async function ensureProjectManagerSeedContact(
     project.tasks.find((task) => task.status === "queued") ??
     null;
 
-  const body = activeTask
-    ? `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffed and working the build now (up next: ${activeTask.title}). Open this Seed anytime to watch progress — no action needed from you.`
-    : `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffing and we’ll work through the task board. Open this Seed anytime to watch progress — no action needed from you.`;
+  const host = project.referenceUrl || "the live site";
+  const body =
+    project.seedMode === "connect"
+      ? activeTask
+        ? `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com watches ${host} — we are not rebuilding that site. Up next: ${activeTask.title}. Paste the Connect widget on the live host when we issue it.`
+        : `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com watches ${host} — we are not rebuilding that site. Open this Seed for the widget snippet (Seed ID + Connect Key).`
+      : activeTask
+        ? `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffed and working the build now (up next: ${activeTask.title}). Open this Seed anytime to watch progress — no action needed from you.`
+        : `Hi — ${pm.name} here, your project manager. We got your Seed “${project.name}” and we’re on it. The crew is staffing and we’ll work through the task board. Open this Seed anytime to watch progress — no action needed from you.`;
 
   if (project.customerEmail) {
     const customer = await getCustomerByEmail(project.customerEmail);
@@ -497,6 +505,22 @@ async function maybeAdvanceAfterComplete(
 ): Promise<{ project: SeedProject; progressed: boolean }> {
   let project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
+
+  if (project.seedMode === "connect") {
+    const alreadyDone = project.activity.some((event) =>
+      event.message.includes("connect job complete"),
+    );
+    if (!alreadyDone) {
+      const pm = getProjectManager();
+      pushActivity(
+        project,
+        `${pm.name} marked the connect job complete. The live host stays the site — keep the cinchseed.com widget installed.`,
+        pm.id,
+      );
+      await saveProject(project);
+    }
+    return { project, progressed: false };
+  }
 
   if (!projectHasGrowthWave(project)) {
     const beforeCount = project.tasks.length;
@@ -559,7 +583,9 @@ function watchStatusFromProject(
     return {
       statusLine: updatedTask
         ? `Updated — finished “${updatedTask}”. Build complete.`
-        : "Build complete",
+        : project.seedMode === "connect"
+          ? "Connect complete — live host is linked"
+          : "Build complete",
       workingOn: null,
       updatedTask,
     };

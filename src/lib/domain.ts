@@ -27,11 +27,24 @@ export function seedHostOrigin(slug: string): string {
  * (not a cross-host production URL that 404s for local data, and not the
  * portal source/code tree).
  */
+function connectedLiveHost(project: {
+  seedMode?: "build" | "connect" | null;
+  referenceUrl?: string | null;
+}): string | null {
+  if (project.seedMode !== "connect") return null;
+  const live = project.referenceUrl?.trim();
+  return live || null;
+}
+
 export function liveWebsiteUrl(project: {
   id: string;
   name: string;
   customDomain: { hostname: string; status: string } | null;
+  seedMode?: "build" | "connect" | null;
+  referenceUrl?: string | null;
 }): string {
+  const connected = connectedLiveHost(project);
+  if (connected) return connected;
   const custom = project.customDomain;
   if (custom && custom.status === "verified" && custom.hostname) {
     return `https://${custom.hostname}`;
@@ -47,7 +60,11 @@ export function publicWebsiteUrl(project: {
   id: string;
   name: string;
   customDomain: { hostname: string; status: string } | null;
+  seedMode?: "build" | "connect" | null;
+  referenceUrl?: string | null;
 }): string {
+  const connected = connectedLiveHost(project);
+  if (connected) return connected;
   const custom = project.customDomain;
   if (custom && custom.status === "verified" && custom.hostname) {
     return `https://${custom.hostname}`;

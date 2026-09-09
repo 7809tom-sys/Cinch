@@ -771,7 +771,9 @@ export default async function AdminPage() {
                 New Seed
               </h3>
               <p className="mt-2 text-sm text-muted">
-                Create a Seed and watch — Conductor invites specialists and assigns every task.
+                Default is <strong>connect</strong>: link cinchseed.com to the
+                customer’s real live website. Conductor will not rebuild or
+                invent a copy of that site.
               </p>
               <div className="mt-4">
                 <CreateSeedForm />

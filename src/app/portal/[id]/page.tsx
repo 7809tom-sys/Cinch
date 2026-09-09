@@ -90,6 +90,25 @@ export default async function PortalProjectPage({ params }: PageProps) {
           <p className="mt-4 max-w-2xl wrap-break-word text-base leading-relaxed text-muted [overflow-wrap:anywhere]">
             {project.brief}
           </p>
+          {project.seedMode === "connect" ? (
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep">
+              This Seed connects cinchseed.com to{" "}
+              {project.referenceUrl ? (
+                <a
+                  href={project.referenceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold underline"
+                >
+                  {project.referenceUrl}
+                </a>
+              ) : (
+                "your live website"
+              )}
+              . We are not rebuilding that site — paste the Connect widget
+              below.
+            </p>
+          ) : null}
           <div className="mt-4">
             <Link
               href={`/portal/${project.id}/edit`}
