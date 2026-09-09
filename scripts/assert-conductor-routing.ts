@@ -6,6 +6,7 @@ import {
   CONDUCTOR_ROUTING_TABLE,
   EXCLUDED_SEED_PROVIDERS,
   MAX_FAILOVER_ATTEMPTS,
+  PROVIDER_MODELS,
   inferTaskTags,
   isExcludedSeedProvider,
   isRouteBlocked,
@@ -124,8 +125,27 @@ assert(!isRouteBlocked(manus), "build-site routes");
 if (!isRouteBlocked(manus)) {
   assert(manus.tags.includes("build_site"), "whole-site task tagged build_site");
   assert(manus.providerId === "manus", "build site → Manus");
+  assert(manus.model === "manus-1.6", "whole-site build uses Manus 1.6");
   assert(manus.lane === "expensive", "Manus is not the cheap draft lane");
 }
+
+const manusWidget = byLabel["Manus 1.6 GitHub/Vercel widget install"];
+assert(!isRouteBlocked(manusWidget), "Vercel/GitHub widget install routes");
+if (!isRouteBlocked(manusWidget)) {
+  assert(manusWidget.providerId === "manus", "GitHub/Vercel widget → Manus");
+  assert(manusWidget.model === "manus-1.6", "widget install uses Manus 1.6");
+  assert(
+    manusWidget.tags.includes("manus_github_install") &&
+      !manusWidget.tags.includes("build_site"),
+    "widget install is not a full-site rebuild",
+  );
+}
+
+assert(
+  PROVIDER_MODELS.find((spec) => spec.providerId === "manus")?.defaultModel ===
+    "manus-1.6",
+  "Manus default model is 1.6",
+);
 
 const pii = byLabel["PII / invoice — not DeepSeek"];
 assert(!isRouteBlocked(pii), "PII copy routes");

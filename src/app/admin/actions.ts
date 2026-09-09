@@ -350,6 +350,7 @@ export async function createSeedProjectAction(formData: FormData) {
   const customerEmail = String(formData.get("customerEmail") ?? "").trim();
   const customerName = String(formData.get("customerName") ?? "").trim();
   const referenceUrl = String(formData.get("referenceUrl") ?? "").trim();
+  const githubRepoUrl = String(formData.get("githubRepoUrl") ?? "").trim();
   const seedMode = String(formData.get("seedMode") ?? "").trim();
 
   if (!name || !brief) {
@@ -368,6 +369,7 @@ export async function createSeedProjectAction(formData: FormData) {
     customerEmail: customerEmail || null,
     customerName: customerName || null,
     referenceUrl: referenceUrl || null,
+    githubRepoUrl: githubRepoUrl || null,
     seedMode: seedMode || null,
   });
   // PM staffs the crew, plans tasks, and assigns work — you only watch.

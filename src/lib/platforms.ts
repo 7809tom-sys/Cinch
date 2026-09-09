@@ -1,6 +1,11 @@
 import { CINCH_SEED_ORIGIN, CINCH_SEED_WATCH_SCRIPT } from "./domain";
 
-export type PlatformId = "wordpress" | "magento" | "shopify" | "generic";
+export type PlatformId =
+  | "vercel"
+  | "wordpress"
+  | "magento"
+  | "shopify"
+  | "generic";
 
 export type PlatformAdapter = {
   id: PlatformId;
@@ -11,6 +16,15 @@ export type PlatformAdapter = {
 };
 
 export const PLATFORM_ADAPTERS: PlatformAdapter[] = [
+  {
+    id: "vercel",
+    name: "Vercel (GitHub)",
+    blurb:
+      "Copy already lives on Vercel. Commit watch.js to the GitHub repo HTML (Just Putz It: client/index.html), push, and Vercel publishes it. Do not rewrite copy.",
+    installSnippet: (seedId, connectKey) =>
+      `<!-- Vercel + GitHub: paste in client/index.html before </body>, commit, push. Copy stays on Vercel. -->
+<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="vercel" data-mark="true" async></script>`,
+  },
   {
     id: "generic",
     name: "Any site",

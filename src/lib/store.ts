@@ -8,6 +8,7 @@ import {
 } from "./conductor-routing";
 import {
   planConnectExistingSiteTasks,
+  resolveConnectTargets,
   resolveSeedMode,
   type SeedMode,
 } from "./seed-connect";
@@ -98,6 +99,8 @@ export type SeedProject = {
   customerName: string | null;
   /** Optional reference / live host the Seed is modeling or connecting to */
   referenceUrl: string | null;
+  /** GitHub repo that publishes the live host (e.g. justputzit.com) */
+  githubRepoUrl: string | null;
   /**
    * build = Conductor grows a Cinch-hosted site.
    * connect = drop the cinchseed.com widget on the customer’s real live host.
@@ -139,6 +142,9 @@ async function ensureStore(): Promise<StoreShape> {
       customerEmail: project.customerEmail ?? null,
       customerName: project.customerName ?? null,
       referenceUrl: project.referenceUrl ?? null,
+      githubRepoUrl:
+        project.githubRepoUrl ??
+        resolveConnectTargets({ liveUrl: project.referenceUrl }).githubRepoUrl,
       seedMode: project.seedMode ?? "build",
       customDomain: project.customDomain ?? null,
       embedEnabled: project.embedEnabled ?? true,
@@ -275,6 +281,7 @@ export async function createProject(input: {
   customerEmail?: string | null;
   customerName?: string | null;
   referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
   seedMode?: SeedMode | string | null;
 }): Promise<SeedProject> {
   const store = await ensureStore();
@@ -282,7 +289,13 @@ export async function createProject(input: {
   const stamp = now();
   const customerEmail = input.customerEmail?.trim().toLowerCase() || null;
   const customerName = input.customerName?.trim() || null;
-  const referenceUrl = input.referenceUrl?.trim() || null;
+  const targets = resolveConnectTargets({
+    liveUrl: input.referenceUrl,
+    githubRepoUrl: input.githubRepoUrl,
+  });
+  const referenceUrl =
+    targets.liveUrl || input.referenceUrl?.trim() || null;
+  const githubRepoUrl = targets.githubRepoUrl;
   const seedMode = resolveSeedMode({
     seedMode: input.seedMode,
     brief: input.brief,
@@ -305,6 +318,7 @@ export async function createProject(input: {
     customerEmail,
     customerName,
     referenceUrl,
+    githubRepoUrl,
     seedMode,
     customDomain: null,
     sitePublishedAt: null,
@@ -324,7 +338,7 @@ export async function createProject(input: {
     pushActivity(
       project,
       seedMode === "connect"
-        ? `${pm.name} locked the live host to connect: ${referenceUrl}. Widget only — do not rebuild.`
+        ? `${pm.name} locked the Vercel host to connect: ${referenceUrl}${githubRepoUrl ? ` (GitHub ${githubRepoUrl})` : ""}. Copy stays on Vercel — widget only.`
         : `${pm.name} locked a reference site to model: ${referenceUrl}.`,
       pm.id,
     );
@@ -620,15 +634,22 @@ export async function planConnectExistingSite(
 
   const pm = getProjectManager();
   const stamp = now();
-  const liveUrl = project.referenceUrl?.trim();
+  const targets = resolveConnectTargets({
+    liveUrl: project.referenceUrl,
+    githubRepoUrl: project.githubRepoUrl,
+  });
+  const liveUrl = targets.liveUrl?.trim();
   if (!liveUrl) {
     throw new Error(
       "Connect jobs need the real live website URL. Do not invent a host.",
     );
   }
+  project.referenceUrl = liveUrl;
+  project.githubRepoUrl = targets.githubRepoUrl;
   const drafts = planConnectExistingSiteTasks({
     siteName: project.name,
     liveUrl,
+    githubRepoUrl: targets.githubRepoUrl,
   });
 
   project.seedMode = "connect";
@@ -648,7 +669,7 @@ export async function planConnectExistingSite(
 
   pushActivity(
     project,
-    `${pm.name} planned a connect job for ${liveUrl} — widget from cinchseed.com, no site rebuild, Manus stays off.`,
+    `${pm.name} planned a connect job for ${liveUrl}${targets.githubRepoUrl ? ` via ${targets.githubRepoUrl}` : ""} — copy stays on Vercel. Manus 1.6 may only commit watch.js.`,
     pm.id,
   );
   await writeStore(store);
