@@ -14,6 +14,9 @@ export const JUST_PUTZIT_LIVE = "https://justputzit.com";
 export const JUST_PUTZIT_GITHUB = "https://github.com/7809tom-sys/just-putzit";
 export const JUST_PUTZIT_HTML_PATH = "client/index.html";
 export const JUST_PUTZIT_ADMIN = `${JUST_PUTZIT_LIVE}/admin`;
+/** Seed Just Putz It already embeds. No Cinch-hosted /site/[id] clone. */
+export const JUST_PUTZIT_CONNECT_SEED_ID =
+  "48a66d0f-d7f1-483c-82ae-675fed90dc48";
 export const JUST_PUTZIT_MANUS = "https://manus.im";
 /** Live publishes wait for the owner. Propose only until then. */
 export const LIVE_UPDATE_REQUIRES_APPROVAL =

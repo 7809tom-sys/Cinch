@@ -16,6 +16,7 @@ import {
   planInPlaceImprovements,
 } from "../src/lib/connect-improvements";
 import {
+  JUST_PUTZIT_CONNECT_SEED_ID,
   JUST_PUTZIT_GITHUB,
   JUST_PUTZIT_LIVE,
   LIVE_UPDATE_OWNER_APPROVED,
@@ -29,6 +30,7 @@ import {
   resolveSeedMode,
 } from "../src/lib/seed-connect";
 import { lookAtJustPutzitLive } from "../src/lib/just-putzit-look";
+import { forbidsCinchHostedSite } from "../src/lib/hosted-site";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -222,6 +224,42 @@ assert(
 assert(
   !visit.includes("/site/"),
   "connect Visit URL is not a fake Cinch-hosted site",
+);
+
+assert(
+  forbidsCinchHostedSite({
+    id: JUST_PUTZIT_CONNECT_SEED_ID,
+    name: "Just Putz It",
+    seedMode: "build",
+  }),
+  "the leftover Just Putz It /site/ clone is forbidden even if seedMode was build",
+);
+assert(
+  forbidsCinchHostedSite({
+    id: "other",
+    name: "Just Putz It",
+    seedMode: "build",
+    referenceUrl: JUST_PUTZIT_LIVE,
+  }),
+  "justputzit.com reference forbids a Cinch-hosted copy",
+);
+assert(
+  !forbidsCinchHostedSite({
+    id: "pizza",
+    name: "Pizza Man",
+    seedMode: "build",
+  }),
+  "Cinch-hosted build Seeds still keep /site/[id]",
+);
+assert(
+  liveWebsiteUrl({
+    id: JUST_PUTZIT_CONNECT_SEED_ID,
+    name: "Just Putz It",
+    customDomain: null,
+    seedMode: "build",
+    referenceUrl: null,
+  }) === JUST_PUTZIT_LIVE,
+  "Visit for the leftover clone id opens justputzit.com, not /site/",
 );
 
 const all: SeedProviderId[] = [

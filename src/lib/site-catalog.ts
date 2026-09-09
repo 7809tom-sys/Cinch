@@ -254,6 +254,20 @@ export async function publishDevelopedSeedToMarketplace(
 }
 
 
+/** Drop a leftover marketplace card for a Seed that must not be Cinch-hosted. */
+export async function unlistDevelopedSeedByProject(
+  projectId: string,
+): Promise<boolean> {
+  const store = await ensureCatalog();
+  const before = store.sites.length;
+  store.sites = store.sites.filter(
+    (site) => site.sourceProjectId !== projectId,
+  );
+  if (store.sites.length === before) return false;
+  await writeCatalog(store);
+  return true;
+}
+
 /** Keep marketplace card in sync with the live Seed after edits. */
 export async function refreshDevelopedSeedPreview(
   project: SeedProject,

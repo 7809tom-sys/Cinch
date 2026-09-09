@@ -118,9 +118,11 @@ import {
   planBuild,
   regenerateConnectKey,
   removeAgent,
+  retireCinchHostedClone,
   setEmbedEnabled,
   updateProjectDetails,
 } from "@/lib/store";
+import { forbidsCinchHostedSite } from "@/lib/hosted-site";
 
 export async function getAdminSnapshot() {
   const [
@@ -294,6 +296,10 @@ export async function getAdminSnapshot() {
 }
 
 export async function getProjectSnapshot(projectId: string) {
+  const existing = await getProject(projectId);
+  if (existing && forbidsCinchHostedSite(existing)) {
+    await retireCinchHostedClone(existing.id);
+  }
   const project = await getProject(projectId);
   const storedKeys = await loadStoredProviderKeys();
   const agents = listAgentsWithKeyStatus(storedKeys);

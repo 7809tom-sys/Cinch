@@ -7,6 +7,9 @@ import {
   type TaskTag,
 } from "./conductor-routing";
 import {
+  JUST_PUTZIT_CONNECT_SEED_ID,
+  JUST_PUTZIT_GITHUB,
+  JUST_PUTZIT_LIVE,
   planConnectExistingSiteTasks,
   resolveConnectTargets,
   resolveSeedMode,
@@ -25,7 +28,13 @@ import {
   verifyDnsForHostname,
 } from "./dns-verify";
 import { readJsonStore, writeJsonStore } from "./kv-store";
-import { bootstrapSourceTree, applySeedIdentityEdit } from "./seed-source";
+import {
+  applySeedIdentityEdit,
+  bootstrapSourceTree,
+  deleteSourceBundle,
+} from "./seed-source";
+import { forbidsCinchHostedSite } from "./hosted-site";
+import { unlistDevelopedSeedByProject } from "./site-catalog";
 import {
   planReactionsToEditedBrief,
   SEED_EDIT_MUST_REACT_RULE,
@@ -199,6 +208,41 @@ export async function listProjects(): Promise<SeedProject[]> {
 export async function getProject(id: string): Promise<SeedProject | null> {
   const store = await ensureStore();
   return store.projects.find((project) => project.id === id) ?? null;
+}
+
+/**
+ * Delete a leftover Cinch-hosted /site/[id] clone.
+ * Connect Seeds (Just Putz It) keep the Seed desk — only the fake hosted
+ * copy is removed.
+ */
+export async function retireCinchHostedClone(projectId: string): Promise<{
+  deletedBundle: boolean;
+  unlisted: boolean;
+}> {
+  const deletedBundle = await deleteSourceBundle(projectId);
+  const unlisted = await unlistDevelopedSeedByProject(projectId);
+
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (project && forbidsCinchHostedSite(project)) {
+    const pm = getProjectManager();
+    project.seedMode = "connect";
+    project.referenceUrl = project.referenceUrl || JUST_PUTZIT_LIVE;
+    if (project.id === JUST_PUTZIT_CONNECT_SEED_ID) {
+      project.githubRepoUrl = project.githubRepoUrl || JUST_PUTZIT_GITHUB;
+    }
+    project.marketplaceListingId = null;
+    project.sitePublishedAt = null;
+    project.updatedAt = now();
+    pushActivity(
+      project,
+      `${pm.name} deleted the Cinch-hosted /site/${project.id} clone. Visit the live host — do not rebuild.`,
+      pm.id,
+    );
+    await writeStore(store);
+  }
+
+  return { deletedBundle, unlisted };
 }
 
 /** Rotate the Connect API secret — old embeds stop authenticating immediately. */

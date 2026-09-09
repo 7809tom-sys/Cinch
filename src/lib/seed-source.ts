@@ -175,6 +175,16 @@ export async function getSourceBundle(
   return store.bundles.find((item) => item.projectId === projectId) ?? null;
 }
 
+/** Remove a leftover Cinch-hosted source tree (connect Seeds must not have one). */
+export async function deleteSourceBundle(projectId: string): Promise<boolean> {
+  const store = await ensureSource();
+  const before = store.bundles.length;
+  store.bundles = store.bundles.filter((item) => item.projectId !== projectId);
+  if (store.bundles.length === before) return false;
+  await writeSource(store);
+  return true;
+}
+
 export async function upsertSourceFile(input: {
   projectId: string;
   path: string;

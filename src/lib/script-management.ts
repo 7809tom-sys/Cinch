@@ -13,14 +13,12 @@ import {
 } from "./domain";
 import {
   JUST_PUTZIT_ADMIN,
+  JUST_PUTZIT_CONNECT_SEED_ID,
   JUST_PUTZIT_LIVE,
   type SeedMode,
 } from "./seed-connect";
 
-export { JUST_PUTZIT_ADMIN };
-/** Seed id Just Putz It already embeds via CINCH_SEED_ID. */
-export const JUST_PUTZIT_CONNECT_SEED_ID =
-  "48a66d0f-d7f1-483c-82ae-675fed90dc48";
+export { JUST_PUTZIT_ADMIN, JUST_PUTZIT_CONNECT_SEED_ID };
 
 export type ScriptSurface = "website" | "admin";
 export type ScriptPresence = "installed" | "missing" | "unknown";
