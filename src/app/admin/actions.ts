@@ -349,9 +349,17 @@ export async function createSeedProjectAction(formData: FormData) {
   const brief = String(formData.get("brief") ?? "").trim();
   const customerEmail = String(formData.get("customerEmail") ?? "").trim();
   const customerName = String(formData.get("customerName") ?? "").trim();
+  const referenceUrl = String(formData.get("referenceUrl") ?? "").trim();
+  const seedMode = String(formData.get("seedMode") ?? "").trim();
 
   if (!name || !brief) {
     return { ok: false as const, error: "Name and brief are required." };
+  }
+  if (seedMode === "connect" && !referenceUrl) {
+    return {
+      ok: false as const,
+      error: "Connect jobs need the live website URL (e.g. https://justputzit.com).",
+    };
   }
 
   const project = await createProject({
@@ -359,6 +367,8 @@ export async function createSeedProjectAction(formData: FormData) {
     brief,
     customerEmail: customerEmail || null,
     customerName: customerName || null,
+    referenceUrl: referenceUrl || null,
+    seedMode: seedMode || null,
   });
   // PM staffs the crew, plans tasks, and assigns work — you only watch.
   await bootstrapSeedProject(project.id);

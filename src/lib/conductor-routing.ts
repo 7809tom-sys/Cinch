@@ -22,6 +22,7 @@ export type TaskTag =
   | "legal_copy"
   | "cabinet_rules"
   | "build_site"
+  | "connect_existing"
   | "vision"
   | "draft"
   | "checklist"
@@ -75,6 +76,7 @@ export const CONDUCTOR_POLICY = {
   modularsFirst: true,
   cursorIsNotAProvider: true,
   manusOnlyForBuildSite: true,
+  connectExistingIsNotABuild: true,
   maxFailoverAttempts: MAX_FAILOVER_ATTEMPTS,
 } as const;
 
@@ -345,6 +347,14 @@ export function inferTaskTags(input: {
     tags.add("placement");
   }
   if (BUILD_SITE_PATTERN.test(text)) tags.add("build_site");
+  if (
+    /\b(connect(?:ing)?(?:\s+\S+)?\s+to|do not (?:re)?build|existing (?:web)?site|watch\.js|connect widget|connect api)\b/i.test(
+      text,
+    )
+  ) {
+    tags.add("connect_existing");
+    tags.delete("build_site");
+  }
   if (VISION_PATTERN.test(text)) tags.add("vision");
   if (LEGAL_PATTERN.test(text)) {
     tags.add("legal_copy");
@@ -369,6 +379,7 @@ export function taskNeedsExpensiveLane(
 ): boolean {
   if (escalate || tags.includes("escalate")) return true;
   if (agentId === "copy-quill") return true;
+  if (tags.includes("connect_existing")) return false;
   if (tags.includes("build_site")) return true;
   return ESCALATE_TAGS.some((tag) => tags.includes(tag));
 }
@@ -459,6 +470,12 @@ export function providerCandidateIds(
   const expensive = taskNeedsExpensiveLane(tags, agentId, escalate);
   const defaults = laneDefaultsFor(agentId);
 
+  if (tags.includes("connect_existing")) {
+    const cheap = defaults?.preferredCheap ?? ["deepseek", "google", "anthropic"];
+    return uniqueProviders([...cheap, "anthropic", "openai"]).filter(
+      (id) => id !== "manus",
+    );
+  }
   if (tags.includes("build_site")) {
     return ["manus", "anthropic", "openai"];
   }

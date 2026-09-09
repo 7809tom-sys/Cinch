@@ -7,6 +7,11 @@ import {
   type TaskTag,
 } from "./conductor-routing";
 import {
+  planConnectExistingSiteTasks,
+  resolveSeedMode,
+  type SeedMode,
+} from "./seed-connect";
+import {
   applyModuleReuse,
   selectModulesForSeedBuild,
   SEED_BUILD_MODULARS_FIRST_RULE,
@@ -91,8 +96,13 @@ export type SeedProject = {
   /** Customer who owns this Seed (portal login) */
   customerEmail: string | null;
   customerName: string | null;
-  /** Optional reference site the Seed is modeling */
+  /** Optional reference / live host the Seed is modeling or connecting to */
   referenceUrl: string | null;
+  /**
+   * build = Conductor grows a Cinch-hosted site.
+   * connect = drop the cinchseed.com widget on an existing host (e.g. justputzit.com).
+   */
+  seedMode: SeedMode;
   /** Customer's own domain (bought elsewhere) pointed at this Seed */
   customDomain: CustomDomainConnection | null;
   /** When the customer published the live website */
@@ -129,6 +139,7 @@ async function ensureStore(): Promise<StoreShape> {
       customerEmail: project.customerEmail ?? null,
       customerName: project.customerName ?? null,
       referenceUrl: project.referenceUrl ?? null,
+      seedMode: project.seedMode ?? "build",
       customDomain: project.customDomain ?? null,
       embedEnabled: project.embedEnabled ?? true,
       connectKey: project.connectKey || generateConnectKey(),
@@ -264,6 +275,7 @@ export async function createProject(input: {
   customerEmail?: string | null;
   customerName?: string | null;
   referenceUrl?: string | null;
+  seedMode?: SeedMode | string | null;
 }): Promise<SeedProject> {
   const store = await ensureStore();
   const pm = getProjectManager();
@@ -271,6 +283,11 @@ export async function createProject(input: {
   const customerEmail = input.customerEmail?.trim().toLowerCase() || null;
   const customerName = input.customerName?.trim() || null;
   const referenceUrl = input.referenceUrl?.trim() || null;
+  const seedMode = resolveSeedMode({
+    seedMode: input.seedMode,
+    brief: input.brief,
+    referenceUrl,
+  });
 
   const project: SeedProject = {
     id: randomUUID(),
@@ -288,6 +305,7 @@ export async function createProject(input: {
     customerEmail,
     customerName,
     referenceUrl,
+    seedMode,
     customDomain: null,
     sitePublishedAt: null,
     marketplaceListingId: null,
@@ -297,13 +315,17 @@ export async function createProject(input: {
 
   pushActivity(
     project,
-    `${pm.name} opened the Seed and is ready to staff the build.`,
+    seedMode === "connect"
+      ? `${pm.name} opened a connect Seed — cinchseed.com will watch the live host, not rebuild it.`
+      : `${pm.name} opened the Seed and is ready to staff the build.`,
     pm.id,
   );
   if (referenceUrl) {
     pushActivity(
       project,
-      `${pm.name} locked a reference site to model: ${referenceUrl}.`,
+      seedMode === "connect"
+        ? `${pm.name} locked the live host to connect: ${referenceUrl}. Widget only — do not rebuild.`
+        : `${pm.name} locked a reference site to model: ${referenceUrl}.`,
       pm.id,
     );
   }
@@ -580,10 +602,54 @@ export async function removeAgent(
   return project;
 }
 
+export async function planConnectExistingSite(
+  projectId: string,
+): Promise<SeedProject> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const pm = getProjectManager();
+  const stamp = now();
+  const liveUrl =
+    project.referenceUrl?.trim() ||
+    "https://justputzit.com";
+  const drafts = planConnectExistingSiteTasks({
+    siteName: project.name,
+    liveUrl,
+  });
+
+  project.seedMode = "connect";
+  project.tasks = drafts.map((item) => ({
+    ...item,
+    id: randomUUID(),
+    status: "queued" as const,
+    assigneeId: null,
+    assignedBy: null,
+    updatedAt: stamp,
+    tags: inferTaskTags({
+      title: item.title,
+      detail: item.detail,
+      tags: item.tags,
+    }),
+  }));
+
+  pushActivity(
+    project,
+    `${pm.name} planned a connect job for ${liveUrl} — widget from cinchseed.com, no site rebuild, Manus stays off.`,
+    pm.id,
+  );
+  await writeStore(store);
+  return project;
+}
+
 export async function planBuild(projectId: string): Promise<SeedProject> {
   const store = await ensureStore();
   const project = store.projects.find((item) => item.id === projectId);
   if (!project) throw new Error("Project not found.");
+  if (project.seedMode === "connect") {
+    return planConnectExistingSite(projectId);
+  }
 
   const pm = getProjectManager();
   const stamp = now();

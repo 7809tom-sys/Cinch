@@ -11,6 +11,7 @@
     "assert:seed-edit-react": "npx tsx scripts/assert-seed-edit-react.ts",
     "assert:seed-engagement": "npx tsx scripts/assert-seed-engagement.ts",
     "assert:conductor-routing": "npx tsx scripts/assert-conductor-routing.ts",
+    "assert:seed-connect": "npx tsx scripts/assert-seed-connect.ts",
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
     "assert:lockgm-updated-reports": "npx tsx scripts/assert-lockgm-updated-reports.ts",

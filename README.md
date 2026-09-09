@@ -51,7 +51,7 @@ Conductor tries the **cheapest capable** model first (DeepSeek / Claude Haiku / 
 | OpenAI (GPT) | `OPENAI_API_KEY` | Alternate for code/rules when Claude is down or already failed. |
 | DeepSeek | `DEEPSEEK_API_KEY` | Cheap lane for drafts, boilerplate, simple code. **No** customer PII, invoices, or private affiliate data. |
 | Google (Flash-class) | `GOOGLE_AI_API_KEY` | Cheap + vision (Atlas screenshots / mockups). |
-| Manus | `MANUS_API_KEY` | Optional. Only for whole-site / multi-step `build_site` tasks. |
+| Manus | `MANUS_API_KEY` | Optional. Only for whole-site / multi-step `build_site` tasks. Never used when the Seed is **connect** (cinchseed.com → justputzit.com). |
 | Cursor | — | **Not a Seed provider.** Human/IDE stays off the agent roster. |
 
 Lane defaults:
@@ -67,6 +67,11 @@ Lane defaults:
 See Admin → Agents & providers for the live sample routes (cheap vs expensive). Run `npm run assert:conductor-routing` to verify the policy.
 
 ### Connect API — link an existing website to its Seed
+
+**Connecting is not building.** Example: **cinchseed.com → justputzit.com**.
+Create a Seed in **Connect existing website** mode. Conductor issues the
+widget only — it does **not** rebuild Just Putz It and does **not** assign
+Manus. Paste this on the live host (theme footer / before `</body>`):
 
 Any live website — built by Cinch or not — connects with one script tag.
 Once connected, the Seed watches critical tools and pushes growth
