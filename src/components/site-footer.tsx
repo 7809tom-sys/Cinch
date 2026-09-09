@@ -18,6 +18,9 @@ export function SiteFooter() {
           <Link href="/browse" className="hover:text-brand-deep">
             Browse
           </Link>
+          <Link href="/scripts" className="hover:text-brand-deep">
+            Scripts
+          </Link>
           <Link href="/about" className="hover:text-brand-deep">
             About us
           </Link>

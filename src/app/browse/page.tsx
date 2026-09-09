@@ -33,6 +33,9 @@ export default async function BrowsePage({
             Cinch
           </Link>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
+            <Link href="/scripts" className="transition-colors hover:text-brand-deep">
+              Scripts
+            </Link>
             <Link href="/about" className="transition-colors hover:text-brand-deep">
               About
             </Link>

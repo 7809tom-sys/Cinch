@@ -63,6 +63,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
               Visit website
             </a>
             <Link
+              href={`/portal/${project.id}/scripts`}
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+            >
+              Scripts
+            </Link>
+            <Link
               href={`/portal/${project.id}/source?files=1`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >

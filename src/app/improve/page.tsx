@@ -51,6 +51,9 @@ export default async function ImproveJustPutzItPage() {
             >
               justputzit.com
             </a>
+            <Link href="/scripts" className="transition-colors hover:text-brand-deep">
+              Scripts
+            </Link>
             <Link href="/admin" className="transition-colors hover:text-brand-deep">
               Seed admin
             </Link>
