@@ -1,4 +1,8 @@
-import { resolveConnectTargets } from "./seed-connect";
+import {
+  JUST_PUTZIT_CONNECT_SEED_ID,
+  JUST_PUTZIT_LIVE,
+  resolveConnectTargets,
+} from "./seed-connect";
 
 export const CINCH_SEED_DOMAIN = "cinchseed.com";
 /** Canonical public origin (www — apex redirects here on Vercel). */
@@ -30,16 +34,21 @@ export function seedHostOrigin(slug: string): string {
  * portal source/code tree).
  */
 function connectedLiveHost(project: {
+  id?: string;
+  name?: string;
   seedMode?: "build" | "connect" | null;
   referenceUrl?: string | null;
   githubRepoUrl?: string | null;
 }): string | null {
-  if (project.seedMode !== "connect") return null;
+  const justPutzIt =
+    project.id === JUST_PUTZIT_CONNECT_SEED_ID ||
+    /just\s*putz/i.test(project.name ?? "");
+  if (project.seedMode !== "connect" && !justPutzIt) return null;
   const targets = resolveConnectTargets({
     liveUrl: project.referenceUrl,
     githubRepoUrl: project.githubRepoUrl,
   });
-  return targets.liveUrl;
+  return targets.liveUrl || (justPutzIt ? JUST_PUTZIT_LIVE : null);
 }
 
 export function liveWebsiteUrl(project: {
