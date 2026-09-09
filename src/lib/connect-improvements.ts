@@ -1,7 +1,7 @@
 /**
  * In-place growth for a connected live host.
- * Just Putz It is a social-activity + dating site on Vercel.
- * Cinch adapts that site — it does not rewrite copy or rebuild it.
+ * Just Putz It is a social-activity + dating site hosted by manus.im.
+ * Cinch looks at and administers that site. Proposed updates wait for owner approval.
  */
 import {
   JUST_PUTZIT_GITHUB,
@@ -51,7 +51,7 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Put Community and tonight’s activities on Home",
     why: "Just Putz It is a social-activity and dating site. Groups and plans currently sit on /community, so Home does not show the next real outing.",
     liveChange:
-      "Adapt a Community + nearby-activity modular onto justputzit.com Home. Do not rewrite the Vercel dating copy.",
+      "Adapt a Community + nearby-activity modular onto justputzit.com Home. Do not rewrite the live dating copy. Queue only — no publish without owner approval.",
   },
   {
     id: "jpi-watch-matches",
@@ -59,7 +59,7 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Watch Matches, Activity Board, and RSVP",
     why: "Critical tools here are matching, the activity board, and booking — not a kitchen designer.",
     liveChange:
-      "Probe Matches, Activity Board, and RSVP on the live Vercel host. Queue a fix if a path breaks.",
+      "Probe Matches, Activity Board, and RSVP on the live Manus host. Queue a fix if a path breaks. Do not ship it until the owner approves.",
   },
   {
     id: "jpi-one-tap-activity",
@@ -67,7 +67,7 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "One tap from Home to a nearby activity",
     why: "Members who want to go out should not hunt through extra screens to find tonight’s plan.",
     liveChange:
-      "Add a short path: Home → nearby activity or date-night plan. Leave existing Vercel copy in place.",
+      "Add a short path: Home → nearby activity or date-night plan. Leave existing Manus copy in place. Queue only until the owner approves.",
   },
   {
     id: "jpi-remember-city",
@@ -75,7 +75,7 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Remember the member’s city",
     why: "Re-picking location every visit slows dating and activity discovery.",
     liveChange:
-      "Persist last city so Activities and Matches open closer to a real outing.",
+      "Persist last city so Activities and Matches open closer to a real outing. Queue only until the owner approves.",
   },
   {
     id: "jpi-safety-cue",
@@ -83,7 +83,7 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Safety and first-date care on first visit",
     why: "A dating + activity site needs a clear, friendly how-this-works cue without replacing the brand voice.",
     liveChange:
-      "Surface a short safety / meet-in-public cue on the live page. Do not rewrite the homepage story.",
+      "Surface a short safety / meet-in-public cue on the live page. Do not rewrite the homepage story. Queue only until the owner approves.",
   },
   {
     id: "jpi-empty-nearby",
@@ -91,7 +91,7 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Friendlier empty nearby state",
     why: "No local events should not feel like a dead end — suggest a group, a game, or another night.",
     liveChange:
-      "When no nearby activities exist, offer Community or a later plan instead of a blank board.",
+      "When no nearby activities exist, offer Community or a later plan instead of a blank board. Queue only until the owner approves.",
   },
 ];
 
@@ -151,7 +151,7 @@ export function planInPlaceImprovements(input: {
         : "Cinch improves the live site in place",
     summary:
       kind === "social_activity_dating"
-        ? "Meet locals for real dates and activities — not just text. Copy already lives on Vercel. Cinch Seed watches Matches, Community, and the Activity Board, then adapts those paths. It does not rebuild justputzit.com."
+        ? "Meet locals for real dates and activities — not just text. manus.im hosts justputzit.com and exported the GitHub repo so cinchseed.com can look at and administer it. Proposed updates wait for owner approval. Cinch does not rebuild justputzit.com."
         : "The Seed grows functionality, efficiency, and customer care on the existing host. It does not invent a Cinch-hosted copy.",
     improvements,
     axes: GROWTH_AXES,

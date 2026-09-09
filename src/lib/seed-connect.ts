@@ -1,8 +1,9 @@
 /**
  * HARD RULE: connecting cinchseed.com to a live host is not a site rebuild.
- * Example: justputzit.com already exists on GitHub
- * (https://github.com/7809tom-sys/just-putzit) — drop the Connect widget
- * in that repo’s published HTML. Do not rebuild or invent a copy.
+ * Example: manus.im exported Just Putz It to GitHub
+ * (https://github.com/7809tom-sys/just-putzit) so cinchseed.com can look
+ * at and administer the live Manus host (justputzit.com). Do not rebuild
+ * or invent a copy. No final update lands without owner approval.
  */
 import type { AgentSkill } from "./agents";
 import type { TaskTag } from "./conductor-routing";
@@ -12,6 +13,17 @@ export type SeedMode = "build" | "connect";
 export const JUST_PUTZIT_LIVE = "https://justputzit.com";
 export const JUST_PUTZIT_GITHUB = "https://github.com/7809tom-sys/just-putzit";
 export const JUST_PUTZIT_HTML_PATH = "client/index.html";
+export const JUST_PUTZIT_ADMIN = `${JUST_PUTZIT_LIVE}/admin`;
+export const JUST_PUTZIT_MANUS = "https://manus.im";
+/** Live publishes wait for the owner. Propose only until then. */
+export const LIVE_UPDATE_REQUIRES_APPROVAL =
+  "No final update lands on justputzit.com until the owner approves it.";
+/**
+ * Flip only after the owner explicitly approves a live publish.
+ * While false, Cinch looks, administers, and proposes — it does not
+ * deliver watch.js patches or tell Manus to publish.
+ */
+export const LIVE_UPDATE_OWNER_APPROVED = false;
 
 export type GithubRepoRef = {
   owner: string;
@@ -22,20 +34,21 @@ export type GithubRepoRef = {
 export const SEED_CONNECT_EXISTING_RULE = {
   id: "seed-connect-existing",
   summary:
-    "HARD RULE: when the job is connect cinchseed.com to an existing website, drop the Connect widget on that live host. Just Putz It is a social-activity and dating site. Copy already lives on Vercel (justputzit.com) from GitHub 7809tom-sys/just-putzit. Do not rewrite Vercel copy or rebuild the site. Manus 1.6 may only commit watch.js into the GitHub HTML so Vercel publishes it.",
+    "HARD RULE: when the job is connect cinchseed.com to an existing website, look at and administer that live host. Just Putz It is a social-activity and dating site. manus.im hosts justputzit.com and exported the source to GitHub 7809tom-sys/just-putzit so cinchseed.com can work it. Do not rewrite live copy or rebuild the site. Manus 1.6 may commit watch.js into the GitHub HTML so Manus publishes it — only after owner approval.",
   exampleHost: JUST_PUTZIT_LIVE,
   exampleGithubRepo: JUST_PUTZIT_GITHUB,
-  exampleHosting: "vercel",
+  exampleHosting: "manus",
   steps: [
-    "Lock the live Vercel host (justputzit.com) and the GitHub repo that deploys it.",
+    "Look at the live Manus host (justputzit.com) and the GitHub repo Manus exported.",
     "Issue the Seed ID + Connect Key and the watch.js snippet from cinchseed.com.",
-    "Manus 1.6 commits the widget into client/index.html before </body> and pushes. Vercel publishes. Do not only inject from Community.tsx. Do not rewrite copy.",
-    "Confirm heartbeat from justputzit.com. Adapt in place only.",
+    "After owner approval, Manus 1.6 may commit the widget into client/index.html so Manus publishes. Do not only inject from Community.tsx. Do not rewrite copy.",
+    "Confirm heartbeat from justputzit.com. Propose in-place updates. No final update without owner approval.",
   ],
 } as const;
 
 export const CONNECT_WIDGET_TITLE = "Issue Connect widget for the live site";
-export const PLACE_WIDGET_TITLE = "Place watch.js on the live site — do not rebuild";
+export const PLACE_WIDGET_TITLE =
+  "Place watch.js on the live site — after owner approval";
 
 const CONNECT_BRIEF_PATTERN =
   /\b(connect(?:ing)?(?:\s+\S+)?\s+to|do not (?:re)?build|existing (?:web)?site|watch\.js|connect api)\b/i;
@@ -143,6 +156,26 @@ export function resolveConnectTargets(input: {
   };
 }
 
+export function isJustPutzItHost(input: {
+  liveUrl?: string | null;
+  githubRepoUrl?: string | null;
+}): boolean {
+  const targets = resolveConnectTargets(input);
+  return (
+    targets.liveUrl === JUST_PUTZIT_LIVE ||
+    targets.githubRepoUrl === JUST_PUTZIT_GITHUB
+  );
+}
+
+/** Watch.js may apply patches only after the owner approves. */
+export function mayDeliverLiveImprovements(input: {
+  liveUrl?: string | null;
+  githubRepoUrl?: string | null;
+}): boolean {
+  if (isJustPutzItHost(input)) return LIVE_UPDATE_OWNER_APPROVED;
+  return true;
+}
+
 export function briefAsksToConnectExistingSite(brief: string): boolean {
   return CONNECT_BRIEF_PATTERN.test(brief);
 }
@@ -181,27 +214,27 @@ export function planConnectExistingSiteTasks(input: {
   const htmlPath = targets.htmlPath;
   const rule = SEED_CONNECT_EXISTING_RULE.summary;
   const githubLock = github
-    ? ` Copy is already on Vercel at ${url}. Source repo: ${github}. Manus 1.6 commits watch.js into ${htmlPath ?? "the published HTML"} before </body> and pushes so Vercel deploys it. Do not rewrite Vercel copy.`
-    : "";
+    ? ` manus.im hosts ${url}. GitHub export: ${github}. After owner approval, Manus 1.6 may commit watch.js into ${htmlPath ?? "the published HTML"} so Manus publishes. Do not rewrite live copy. ${LIVE_UPDATE_REQUIRES_APPROVAL}`
+    : ` ${LIVE_UPDATE_REQUIRES_APPROVAL}`;
 
   return [
     {
-      title: "Lock the live Vercel host — do not rebuild",
-      detail: `${rule} Target host: ${url} (${site}).${github ? ` GitHub repo: ${github}.` : ""} Copy already lives on Vercel. Confirm this is a connect job: cinchseed.com watches ${url} in place. Never start a full-site build or invent a Cinch copy.`,
+      title: "Look at the live Manus host — do not rebuild",
+      detail: `${rule} Target host: ${url} (${site}).${github ? ` GitHub repo Manus exported: ${github}.` : ""} Confirm this is a connect job: cinchseed.com looks at and administers ${url} in place. Never start a full-site build or invent a Cinch copy.`,
       requiredSkills: ["architecture", "research"],
       minSkillLevel: 3,
       tags: ["connect_existing", "draft"],
     },
     {
       title: CONNECT_WIDGET_TITLE,
-      detail: `${rule} Prepare the watch.js snippet from cinchseed.com with this Seed’s id + Connect Key for ${url}. Use the Vercel / GitHub adapter. Do not generate replacement homepage copy — that copy is already on Vercel.`,
+      detail: `${rule} Prepare the watch.js snippet from cinchseed.com with this Seed’s id + Connect Key for ${url}. Use the Manus / GitHub adapter. Do not generate replacement homepage copy — that copy is already live on Manus.`,
       requiredSkills: ["backend", "devops"],
       minSkillLevel: 3,
       tags: ["connect_existing", "draft"],
     },
     {
       title: PLACE_WIDGET_TITLE,
-      detail: `${rule}${githubLock} Both data-seed and data-key are required. A Community card must appear on ${url} after Vercel publishes. Do not only inject from Community.tsx. Do not rewrite Vercel copy.`,
+      detail: `${rule}${githubLock} Both data-seed and data-key are required. Queue the widget commit. Do not push or publish until the owner approves. Do not only inject from Community.tsx.`,
       requiredSkills: ["frontend"],
       minSkillLevel: 3,
       tags: github
@@ -209,8 +242,8 @@ export function planConnectExistingSiteTasks(input: {
         : ["connect_existing", "draft"],
     },
     {
-      title: "Confirm heartbeat from the Vercel host",
-      detail: `${rule} Checklist: ${url} (Vercel) loads watch.js, /v1/health posts with seed + key, Connect API stays enabled.${github ? ` Fail if the snippet exists only in ${github} tests or a React page and not in ${htmlPath}.` : ""} Fail if anyone rewrote Vercel copy or rebuilt ${site} as a Cinch-hosted site.`,
+      title: "Confirm heartbeat from the Manus host",
+      detail: `${rule} Checklist: ${url} (Manus) loads watch.js, /v1/health posts with seed + key, Connect API stays enabled.${github ? ` Fail if the snippet exists only in ${github} tests or a React page and not in ${htmlPath}.` : ""} Fail if anyone rewrote live copy, rebuilt ${site} as a Cinch-hosted site, or published a final update without owner approval.`,
       requiredSkills: ["qa"],
       minSkillLevel: 3,
       tags: ["connect_existing", "checklist"],

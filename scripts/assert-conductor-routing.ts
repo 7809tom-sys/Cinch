@@ -129,10 +129,10 @@ if (!isRouteBlocked(manus)) {
   assert(manus.lane === "expensive", "Manus is not the cheap draft lane");
 }
 
-const manusWidget = byLabel["Manus 1.6 GitHub/Vercel widget install"];
-assert(!isRouteBlocked(manusWidget), "Vercel/GitHub widget install routes");
+const manusWidget = byLabel["Manus 1.6 GitHub/Manus widget install"];
+assert(!isRouteBlocked(manusWidget), "Manus/GitHub widget install routes");
 if (!isRouteBlocked(manusWidget)) {
-  assert(manusWidget.providerId === "manus", "GitHub/Vercel widget → Manus");
+  assert(manusWidget.providerId === "manus", "GitHub/Manus widget → Manus");
   assert(manusWidget.model === "manus-1.6", "widget install uses Manus 1.6");
   assert(
     manusWidget.tags.includes("manus_github_install") &&

@@ -67,6 +67,15 @@ export function buildWatchClientJs(input?: {
       attr(script, "data-mark") === "false" ||
       attr(script, "data-community") === "false" ||
       boot.mark === false;
+    var host = "";
+    try {
+      host = (location && location.hostname) || "";
+    } catch (e) {}
+    var awaitingApproval =
+      /(?:^|\\.)justputzit\\.com$/i.test(host) ||
+      attr(script, "data-require-approval") === "true";
+    var ownerApproved = attr(script, "data-approved") === "true";
+    var liveUpdatesAllowed = !awaitingApproval || ownerApproved;
 
     if (!seed) {
       if (typeof console !== "undefined" && console.warn) {
@@ -229,7 +238,12 @@ export function buildWatchClientJs(input?: {
         .then(function (pack) {
           if (!updateUi) return;
           if (pack.data && pack.data.ok) {
-            setStatus("Connected. This host is live with Cinch Seed.", "ok");
+            setStatus(
+              liveUpdatesAllowed
+                ? "Connected. This host is live with Cinch Seed."
+                : "Connected. Live updates wait for owner approval.",
+              "ok"
+            );
             return;
           }
           var err = (pack.data && pack.data.error) || ("HTTP " + pack.res.status);
@@ -272,7 +286,7 @@ export function buildWatchClientJs(input?: {
     }
 
     function pullImprovements() {
-      if (!key) return;
+      if (!key || !liveUpdatesAllowed) return;
       fetch(improveUrl, { method: "GET", mode: "cors", credentials: "omit" })
         .then(function (res) { return res.json(); })
         .then(function (data) {
@@ -308,9 +322,11 @@ export function buildWatchClientJs(input?: {
         setStatus("Connecting to Cinch Seed…", "info");
       }
       beaconHealth(true);
-      pullImprovements();
+      if (liveUpdatesAllowed) {
+        pullImprovements();
+        setInterval(pullImprovements, 10 * 60 * 1000);
+      }
       setInterval(function () { beaconHealth(false); }, 5 * 60 * 1000);
-      setInterval(pullImprovements, 10 * 60 * 1000);
       window.__CINCH_SEED__ = {
         seed: seed,
         platform: platform,

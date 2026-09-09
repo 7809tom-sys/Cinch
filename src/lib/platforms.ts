@@ -1,6 +1,7 @@
 import { CINCH_SEED_ORIGIN, CINCH_SEED_WATCH_SCRIPT } from "./domain";
 
 export type PlatformId =
+  | "manus"
   | "vercel"
   | "wordpress"
   | "magento"
@@ -17,10 +18,19 @@ export type PlatformAdapter = {
 
 export const PLATFORM_ADAPTERS: PlatformAdapter[] = [
   {
+    id: "manus",
+    name: "Manus (GitHub)",
+    blurb:
+      "manus.im hosts the live site and exported the source to GitHub. Queue watch.js in client/index.html. Do not publish until the owner approves.",
+    installSnippet: (seedId, connectKey) =>
+      `<!-- Manus + GitHub: paste in client/index.html before </body>. Queue only — no live publish until the owner approves. -->
+<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="manus" data-require-approval="true" data-mark="true" async></script>`,
+  },
+  {
     id: "vercel",
     name: "Vercel (GitHub)",
     blurb:
-      "Copy already lives on Vercel. Commit watch.js to the GitHub repo HTML (Just Putz It: client/index.html), push, and Vercel publishes it. Do not rewrite copy.",
+      "Copy already lives on Vercel. Commit watch.js to the GitHub repo HTML, push, and Vercel publishes it. Do not rewrite copy.",
     installSnippet: (seedId, connectKey) =>
       `<!-- Vercel + GitHub: paste in client/index.html before </body>, commit, push. Copy stays on Vercel. -->
 <script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="vercel" data-mark="true" async></script>`,
