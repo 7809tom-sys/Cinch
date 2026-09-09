@@ -84,6 +84,12 @@ export function ScriptManagementBoard({
             >
               {deskLabel}
             </a>
+            <a
+              href={`/admin/projects/${inventory.projectId}/edit`}
+              className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
+            >
+              Edit Seed
+            </a>
           </div>
 
           <p className="mt-3 text-sm text-muted">

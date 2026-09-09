@@ -83,6 +83,12 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             >
               Scripts
             </Link>
+            <Link
+              href={`/admin/projects/${project.id}/edit`}
+              className="inline-flex min-h-9 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam hover:bg-brand"
+            >
+              Edit Seed
+            </Link>
           </div>
           <p className="min-w-0 max-w-[70%] text-right font-[family-name:var(--font-display)] text-sm font-bold leading-snug break-words text-brand-deep sm:max-w-none sm:text-lg">
             {project.name}
@@ -106,6 +112,14 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             <p className="mt-4 max-w-2xl text-base leading-relaxed break-words text-muted">
               {project.brief}
             </p>
+            <div className="mt-4">
+              <Link
+                href={`/admin/projects/${project.id}/edit`}
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"
+              >
+                Edit Seed
+              </Link>
+            </div>
             {project.seedMode === "connect" ? (
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep">
                 Connecting cinchseed.com to{" "}

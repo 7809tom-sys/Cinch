@@ -20,6 +20,13 @@ export const SEED_EDIT_MUST_REACT_RULE = {
 
 export const REACT_TO_EDITED_BRIEF_TITLE = "React to edited brief";
 
+/** Connect Seeds update the desk only — never rebuild the live host. */
+export function shouldRebuildAfterSeedEdit(
+  seedMode?: string | null,
+): boolean {
+  return seedMode !== "connect";
+}
+
 export type EditReactableProject = {
   brief: string;
   name: string;

@@ -740,30 +740,38 @@ export default async function AdminPage() {
                               : ""}
                           </p>
                         </Link>
-                        {complete ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <a
-                              href={websiteUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
-                            >
-                              Visit website
-                            </a>
-                            {project.marketplaceListingId ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link
+                            href={`/admin/projects/${project.id}/edit`}
+                            className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep hover:border-brand/40 hover:bg-mist/40"
+                          >
+                            Edit Seed
+                          </Link>
+                          {complete ? (
+                            <>
                               <a
-                                href="/browse"
-                                className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
+                                href={websiteUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
                               >
-                                View in library
+                                Visit website
                               </a>
-                            ) : (
-                              <span className="inline-flex min-h-10 items-center text-xs font-semibold text-muted">
-                                Not listed in marketplace yet
-                              </span>
-                            )}
-                          </div>
-                        ) : null}
+                              {project.marketplaceListingId ? (
+                                <a
+                                  href="/browse"
+                                  className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3 text-sm font-semibold text-brand-deep"
+                                >
+                                  View in library
+                                </a>
+                              ) : (
+                                <span className="inline-flex min-h-10 items-center text-xs font-semibold text-muted">
+                                  Not listed in marketplace yet
+                                </span>
+                              )}
+                            </>
+                          ) : null}
+                        </div>
                       </li>
                     );
                   })}

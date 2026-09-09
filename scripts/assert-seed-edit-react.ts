@@ -5,6 +5,7 @@
 import {
   planReactionsToEditedBrief,
   SEED_EDIT_MUST_REACT_RULE,
+  shouldRebuildAfterSeedEdit,
   taskIsReactToEditedBrief,
 } from "../src/lib/seed-edit-rule";
 
@@ -81,6 +82,14 @@ const unchanged = planReactionsToEditedBrief(alreadyHasShop, {
 assert(
   unchanged.tasks.length === 0,
   "unchanged Save does not queue duplicate reaction tasks",
+);
+assert(
+  shouldRebuildAfterSeedEdit("build"),
+  "build Seeds rebuild the Cinch-hosted site after Edit Seed",
+);
+assert(
+  !shouldRebuildAfterSeedEdit("connect"),
+  "connect Seeds do not rebuild the live host after Edit Seed",
 );
 
 if (process.exitCode) {

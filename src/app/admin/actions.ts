@@ -36,7 +36,12 @@ import {
   listActiveSessions,
   listCustomers,
 } from "@/lib/customers";
-import { CINCH_SEED_DOMAIN, CINCH_SEED_ORIGIN, seedHostHostname } from "@/lib/domain";
+import {
+  CINCH_SEED_DOMAIN,
+  CINCH_SEED_ORIGIN,
+  liveWebsiteUrl,
+  seedHostHostname,
+} from "@/lib/domain";
 import { checkDurableStoreHealth } from "@/lib/kv-store";
 import { getLibraryMemberSnapshot } from "@/lib/library-membership";
 import { getMasterSession } from "@/lib/master-auth";
@@ -79,6 +84,7 @@ import {
 } from "@/lib/pricing";
 import {
   advanceAssignedWork,
+  assignWorkAfterSeedEdit,
   bootstrapSeedProject,
   runProjectManagerAssignment,
   restaffSeedProject,
@@ -113,6 +119,7 @@ import {
   regenerateConnectKey,
   removeAgent,
   setEmbedEnabled,
+  updateProjectDetails,
 } from "@/lib/store";
 
 export async function getAdminSnapshot() {
@@ -300,6 +307,46 @@ export async function getProjectSnapshot(projectId: string) {
       : "",
   }));
   return { project, agents, watch, platforms };
+}
+
+export async function adminUpdateSeedAction(
+  projectId: string,
+  formData: FormData,
+) {
+  const master = await getMasterSession();
+  if (!master) {
+    return { ok: false as const, error: "Admin sign-in required." };
+  }
+
+  const name = String(formData.get("name") ?? "").trim();
+  const brief = String(formData.get("brief") ?? "").trim();
+  const result = await updateProjectDetails(projectId, { name, brief });
+  if ("error" in result) {
+    return { ok: false as const, error: result.error };
+  }
+
+  if (result.reactionTasksQueued > 0) {
+    try {
+      await assignWorkAfterSeedEdit(projectId);
+    } catch {
+      /* assignment is best-effort */
+    }
+  }
+
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath(`/admin/projects/${projectId}/edit`);
+  revalidatePath("/admin");
+  revalidatePath("/admin/scripts");
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath(`/portal/${projectId}/edit`);
+  revalidatePath("/scripts");
+
+  const base = liveWebsiteUrl(result.project);
+  const sep = base.includes("?") ? "&" : "?";
+  return {
+    ok: true as const,
+    websiteUrl: `${base}${sep}refreshed=${Date.now()}`,
+  };
 }
 
 export async function regenerateConnectKeyAction(projectId: string) {
