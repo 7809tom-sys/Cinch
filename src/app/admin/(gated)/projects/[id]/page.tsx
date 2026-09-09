@@ -7,6 +7,7 @@ import { getAgent } from "@/lib/agents";
 import { getCustomerByEmail } from "@/lib/customers";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
 import { liveWebsiteUrl, seedEmbedSnippet } from "@/lib/domain";
+import { ConnectImproveBoard } from "@/components/connect-improve-board";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
 
 export const dynamic = "force-dynamic";
@@ -293,6 +294,15 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               </p>
             )}
           </div>
+
+          {project.seedMode === "connect" ? (
+            <ConnectImproveBoard
+              name={project.name}
+              brief={project.brief}
+              liveUrl={project.referenceUrl}
+              githubRepoUrl={project.githubRepoUrl}
+            />
+          ) : null}
 
           <div className="min-w-0 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
