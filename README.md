@@ -79,12 +79,18 @@ adaptations onto the page in place; it never needs source access to the
 site.
 
 ```html
-<script src="https://cinchseed.com/v1/watch.js"
+<script src="https://www.cinchseed.com/v1/watch.js"
         data-seed="YOUR_SEED_ID"
         data-key="YOUR_CONNECT_KEY"
         data-platform="generic"
+        data-mark="true"
         async></script>
 ```
+
+A Community card appears on the live page once the script loads. If Manus
+(or anyone) pastes the tag without `data-key`, the card still shows and
+says the Connect Key is missing. Set `data-mark="false"` only if you want
+the beacon with no visible widget.
 
 Get your Seed's id + key (and ready-made WordPress/Magento/Shopify
 snippets) from the customer portal (`/portal/[id]`) or Admin → a Seed's
@@ -96,7 +102,7 @@ a Seed makes every endpoint below return `403` for it.
 
 | Endpoint | Method | Auth | Purpose |
 | --- | --- | --- | --- |
-| `/v1/watch.js` | `GET` | — (public script) | Serves the embed; reads `data-seed` / `data-key` / `data-platform` / `data-tools` |
+| `/v1/watch.js` | `GET` | — (public script) | Serves the embed; reads `data-seed` / `data-key` / `data-platform` / `data-tools` / `data-mark`; paints Community |
 | `/v1/health` | `POST` | `seed` + `key` in body | Heartbeat + critical-tool probe results |
 | `/v1/improve` | `GET` | `seed` + `key` query params | Pull pending adaptations for this Seed |
 | `/v1/improve` | `POST` | `seed` + `key` in body | Acknowledge adaptations the embed applied |

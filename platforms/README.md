@@ -14,11 +14,15 @@ Generic HTML:
 
 ```html
 <script
-  src="https://cinchseed.com/v1/watch.js"
+  src="https://www.cinchseed.com/v1/watch.js"
   data-seed="YOUR_SEED_ID"
+  data-key="YOUR_CONNECT_KEY"
   data-platform="generic"
+  data-mark="true"
   async
 ></script>
 ```
+
+The script paints a Community card on the live page. Set `data-mark="false"` to hide it. Without `data-key` the card still appears and tells you the key is missing.
 
 Optional: pass critical tools as JSON on `data-tools` so the Seed probes them every few minutes.

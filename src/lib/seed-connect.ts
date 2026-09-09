@@ -16,7 +16,7 @@ export const SEED_CONNECT_EXISTING_RULE = {
   steps: [
     "Lock the live host URL (e.g. justputzit.com).",
     "Issue the Seed ID + Connect Key and the watch.js snippet from cinchseed.com.",
-    "Paste the widget on the live site — Home, Activity Board, or a Community section.",
+    "Paste the widget on the live site (index.html / theme footer before </body>) with both data-seed and data-key. The script paints a Community card so you can see it.",
     "Confirm heartbeat / health from that host. Adapt in place only.",
   ],
 } as const;
@@ -88,7 +88,7 @@ export function planConnectExistingSiteTasks(input: {
     },
     {
       title: PLACE_WIDGET_TITLE,
-      detail: `${rule} Paste the widget on ${url} (Home, Activity Board, or a new Community section). The existing site stays the site. Cinch Seed is the brain + watch script only.`,
+      detail: `${rule} Paste the widget on ${url} in index.html or the theme footer before </body>, including data-seed and data-key. A Community card must appear on the live page. Do not drop the script into a React file that never ships. The existing site stays the site.`,
       requiredSkills: ["frontend"],
       minSkillLevel: 3,
       tags: ["connect_existing", "draft"],

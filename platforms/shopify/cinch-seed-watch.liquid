@@ -2,11 +2,14 @@
   Cinch Seed Watch — paste in theme.liquid before </body>
   or ship later as a Theme App Extension.
   The Seed grows functionality, efficiency, and customer care on the live shop.
+  Both data-seed and data-key are required. A Community card appears when the script loads.
 {% endcomment %}
 <script
-  src="https://cinchseed.com/v1/watch.js"
+  src="https://www.cinchseed.com/v1/watch.js"
   data-seed="{{ settings.cinch_seed_id | default: '' }}"
+  data-key="{{ settings.cinch_seed_key | default: '' }}"
   data-platform="shopify"
+  data-mark="true"
   data-shop="{{ shop.permanent_domain }}"
   async
 ></script>
