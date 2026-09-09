@@ -23,6 +23,7 @@ export type TaskTag =
   | "cabinet_rules"
   | "build_site"
   | "connect_existing"
+  | "manus_github_install"
   | "vision"
   | "draft"
   | "checklist"
@@ -75,7 +76,9 @@ export const CONDUCTOR_POLICY = {
   ] as const,
   modularsFirst: true,
   cursorIsNotAProvider: true,
-  manusOnlyForBuildSite: true,
+  manusOnlyForBuildSite: false,
+  manusForBuildSiteOrVercelGithubInstall: true,
+  defaultManusModel: "manus-1.6",
   connectExistingIsNotABuild: true,
   maxFailoverAttempts: MAX_FAILOVER_ATTEMPTS,
 } as const;
@@ -129,7 +132,7 @@ export const PROVIDER_MODELS: ProviderModelSpec[] = [
   {
     providerId: "manus",
     modelClass: "manus-agent",
-    defaultModel: "manus-1.5",
+    defaultModel: "manus-1.6",
     envOverride: "MANUS_MODEL",
     lane: "expensive",
     costRank: 5,
@@ -228,7 +231,7 @@ export const CONDUCTOR_ROUTING_TABLE = {
       id: "manus" as const,
       name: "Manus",
       envKey: "MANUS_API_KEY",
-      role: "Optional full-site / multi-step build jobs only when the task is tagged build_site.",
+      role: "Manus 1.6 for whole-site build_site jobs, or to commit watch.js into a GitHub repo that Vercel already publishes. Never rewrite Vercel copy on a connect job.",
     },
   ],
   excluded: EXCLUDED_SEED_PROVIDERS,
@@ -355,6 +358,14 @@ export function inferTaskTags(input: {
     tags.add("connect_existing");
     tags.delete("build_site");
   }
+  if (
+    input.tags?.includes("manus_github_install") ||
+    /place watch\.js on the live site/i.test(input.title)
+  ) {
+    tags.add("manus_github_install");
+    tags.add("connect_existing");
+    tags.delete("build_site");
+  }
   if (VISION_PATTERN.test(text)) tags.add("vision");
   if (LEGAL_PATTERN.test(text)) {
     tags.add("legal_copy");
@@ -379,6 +390,7 @@ export function taskNeedsExpensiveLane(
 ): boolean {
   if (escalate || tags.includes("escalate")) return true;
   if (agentId === "copy-quill") return true;
+  if (tags.includes("manus_github_install")) return true;
   if (tags.includes("connect_existing")) return false;
   if (tags.includes("build_site")) return true;
   return ESCALATE_TAGS.some((tag) => tags.includes(tag));
@@ -435,7 +447,10 @@ function modelFor(
   lane: RouteLane,
   tags: TaskTag[],
 ): ProviderModelSpec {
-  if (tags.includes("build_site") && providerId === "manus") {
+  if (
+    providerId === "manus" &&
+    (tags.includes("build_site") || tags.includes("manus_github_install"))
+  ) {
     return PROVIDER_MODELS.find((spec) => spec.providerId === "manus")!;
   }
   if (providerId === "anthropic") {
@@ -470,6 +485,9 @@ export function providerCandidateIds(
   const expensive = taskNeedsExpensiveLane(tags, agentId, escalate);
   const defaults = laneDefaultsFor(agentId);
 
+  if (tags.includes("manus_github_install")) {
+    return ["manus", "anthropic", "openai"];
+  }
   if (tags.includes("connect_existing")) {
     const cheap = defaults?.preferredCheap ?? ["deepseek", "google", "anthropic"];
     return uniqueProviders([...cheap, "anthropic", "openai"]).filter(
@@ -537,8 +555,10 @@ function reasonForRoute(input: {
   reusedModularHint: boolean;
 }): string {
   const bits: string[] = [];
-  if (input.tags.includes("build_site")) {
-    bits.push("whole-site build → Manus");
+  if (input.tags.includes("manus_github_install")) {
+    bits.push("Manus 1.6 commits watch.js to GitHub so Vercel publishes — do not rewrite copy");
+  } else if (input.tags.includes("build_site")) {
+    bits.push("whole-site build → Manus 1.6");
   } else if (input.agentName === "Quill") {
     bits.push("Quill lane → Claude");
   } else if (input.expensive) {
@@ -726,6 +746,17 @@ export function sampleConductorRoutes(options: RouteTaskOptions = {}) {
         detail: "Multi-step full-site build job.",
         requiredSkills: ["architecture", "research"],
         minSkillLevel: 3,
+      },
+    },
+    {
+      label: "Manus 1.6 GitHub/Vercel widget install",
+      input: {
+        title: "Place watch.js on the live site — do not rebuild",
+        detail:
+          "Manus 1.6 commits watch.js into client/index.html. Vercel publishes. Do not rewrite Vercel copy.",
+        requiredSkills: ["frontend"],
+        minSkillLevel: 3,
+        tags: ["connect_existing", "manus_github_install"],
       },
     },
     {

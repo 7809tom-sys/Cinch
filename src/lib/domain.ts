@@ -1,3 +1,5 @@
+import { resolveConnectTargets } from "./seed-connect";
+
 export const CINCH_SEED_DOMAIN = "cinchseed.com";
 /** Canonical public origin (www — apex redirects here on Vercel). */
 export const CINCH_SEED_ORIGIN = `https://www.${CINCH_SEED_DOMAIN}`;
@@ -30,10 +32,14 @@ export function seedHostOrigin(slug: string): string {
 function connectedLiveHost(project: {
   seedMode?: "build" | "connect" | null;
   referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
 }): string | null {
   if (project.seedMode !== "connect") return null;
-  const live = project.referenceUrl?.trim();
-  return live || null;
+  const targets = resolveConnectTargets({
+    liveUrl: project.referenceUrl,
+    githubRepoUrl: project.githubRepoUrl,
+  });
+  return targets.liveUrl;
 }
 
 export function liveWebsiteUrl(project: {
@@ -42,6 +48,7 @@ export function liveWebsiteUrl(project: {
   customDomain: { hostname: string; status: string } | null;
   seedMode?: "build" | "connect" | null;
   referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
 }): string {
   const connected = connectedLiveHost(project);
   if (connected) return connected;
@@ -62,6 +69,7 @@ export function publicWebsiteUrl(project: {
   customDomain: { hostname: string; status: string } | null;
   seedMode?: "build" | "connect" | null;
   referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
 }): string {
   const connected = connectedLiveHost(project);
   if (connected) return connected;

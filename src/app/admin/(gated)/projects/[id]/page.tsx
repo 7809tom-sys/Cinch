@@ -103,9 +103,9 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 <span className="font-semibold">
                   {project.referenceUrl || "the live website"}
                 </span>
-                . Paste the Connect snippet on that host with both the Seed
-                ID and Connect Key. A Community card should appear on the
-                live page. Do not rebuild the site. Manus is not assigned.
+                . Copy is already on Vercel. Paste or have Manus 1.6 commit
+                watch.js to the GitHub repo that Vercel deploys — do not
+                rewrite copy.
               </p>
             ) : null}
             <p className="mt-3 text-sm text-muted">
@@ -114,7 +114,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 {pm?.name ?? "Conductor"}
               </span>{" "}
               {project.seedMode === "connect"
-                ? "issues the widget and watches the live host — you only paste the snippet."
+                ? "issues the widget. Manus 1.6 may commit it to GitHub so Vercel publishes — copy stays put."
                 : "assigns every task by skill and cost — you only watch."}
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
@@ -419,7 +419,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-mist">
               {project.seedMode === "connect"
-                ? `This is the widget for ${project.referenceUrl || "the live host"}. Paste it on that site (not a new Cinch-hosted rebuild). Seed ID + Connect Key go in Manus’s secure prompt only if someone is helping install — they must not build a second site.`
+                ? `This is the widget for ${project.referenceUrl || "the Vercel host"}. Copy is already on Vercel. Manus 1.6 commits this snippet to the GitHub HTML so Vercel publishes it — do not rewrite copy or rebuild the site.`
                 : "Drop this on WordPress, Magento, Shopify, or any HTML host. The Seed watches tools like a kitchen designer, then pushes growth adaptations in place. Every call needs this Seed’s id + key — nobody else can beacon fake data or read/apply adaptations for it."}
             </p>
             <ConnectApiControls

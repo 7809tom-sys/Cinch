@@ -105,8 +105,8 @@ export default async function PortalProjectPage({ params }: PageProps) {
               ) : (
                 "your live website"
               )}
-              . We are not rebuilding that site — paste the Connect widget
-              below.
+              . Copy is already on Vercel — paste the Connect widget
+              below. Do not rewrite that copy.
             </p>
           ) : null}
           <div className="mt-4">

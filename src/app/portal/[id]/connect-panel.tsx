@@ -20,7 +20,7 @@ export function ConnectPanel({
   const [pending, startTransition] = useTransition();
   const [connectKey, setConnectKey] = useState(initialKey);
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [platform, setPlatform] = useState<PlatformId>("generic");
+  const [platform, setPlatform] = useState<PlatformId>("vercel");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,11 +35,11 @@ export function ConnectPanel({
         Connect an existing website
       </h2>
       <p className="mt-2 text-sm text-muted">
-        Already have a live site? Paste this snippet before{" "}
-        <code>&lt;/body&gt;</code> on that host. A Community card appears
-        on the live page so you can see the Seed is connected. Both{" "}
-        <code>data-seed</code> and <code>data-key</code> are required — no
-        rebuild.
+        Copy already lives on Vercel. Commit this snippet in the GitHub
+        repo HTML (Just Putz It: <code>client/index.html</code> before{" "}
+        <code>&lt;/body&gt;</code>) so Vercel publishes it. Both{" "}
+        <code>data-seed</code> and <code>data-key</code> are required. Do
+        not rewrite Vercel copy.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

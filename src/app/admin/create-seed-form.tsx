@@ -43,9 +43,9 @@ export function CreateSeedForm() {
           <span>
             <span className="font-semibold">Connect existing website</span>
             <span className="mt-0.5 block text-xs text-muted">
-              Link cinchseed.com to the customer’s real live website with the
-              watch.js widget. Do not rebuild or invent a copy of that site.
-              Manus is not assigned.
+              Link cinchseed.com to the customer’s real live website. If copy
+              is already on Vercel (Just Putz It), keep that copy. Manus 1.6
+              may only commit watch.js to the GitHub repo Vercel deploys.
             </span>
           </span>
         </label>
@@ -91,10 +91,26 @@ export function CreateSeedForm() {
           name="referenceUrl"
           type="url"
           required={seedMode === "connect"}
-          placeholder="https://www.their-live-site.com"
+          placeholder="https://justputzit.com"
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
       </label>
+      {seedMode === "connect" ? (
+        <label className="block">
+          <span className="text-sm font-medium text-brand-deep">
+            GitHub repo{" "}
+            <span className="font-normal text-muted">
+              (Vercel source — optional)
+            </span>
+          </span>
+          <input
+            name="githubRepoUrl"
+            type="url"
+            placeholder="https://github.com/7809tom-sys/just-putzit"
+            className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+          />
+        </label>
+      ) : null}
       <label className="block">
         <span className="text-sm font-medium text-brand-deep">
           {seedMode === "connect" ? "Connect brief" : "Build brief"}
@@ -105,7 +121,7 @@ export function CreateSeedForm() {
           rows={4}
           placeholder={
             seedMode === "connect"
-              ? "Connect cinchseed.com to this live website. Do not rebuild or host a copy."
+              ? "Connect cinchseed.com to this Vercel site. Copy is already live — do not rebuild."
               : "What should the invited agents build? Audience, pages, tone, must-haves…"
           }
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"

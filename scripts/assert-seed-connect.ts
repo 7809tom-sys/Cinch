@@ -12,9 +12,13 @@ import {
   type SeedProviderId,
 } from "../src/lib/conductor-routing";
 import {
+  JUST_PUTZIT_GITHUB,
+  JUST_PUTZIT_LIVE,
+  PLACE_WIDGET_TITLE,
   SEED_CONNECT_EXISTING_RULE,
   briefAsksToConnectExistingSite,
   planConnectExistingSiteTasks,
+  resolveConnectTargets,
   resolveSeedMode,
 } from "../src/lib/seed-connect";
 
@@ -36,6 +40,34 @@ assert(
 assert(
   /justputzit\.com/i.test(SEED_CONNECT_EXISTING_RULE.exampleHost),
   "Just Putz It is the documented connect example",
+);
+assert(
+  /vercel/i.test(SEED_CONNECT_EXISTING_RULE.summary) &&
+    /do not rewrite/i.test(SEED_CONNECT_EXISTING_RULE.summary),
+  "connect rule keeps Vercel copy and forbids rewriting it",
+);
+assert(
+  SEED_CONNECT_EXISTING_RULE.exampleGithubRepo === JUST_PUTZIT_GITHUB,
+  "Just Putz It GitHub repo is the documented source",
+);
+
+const fromLive = resolveConnectTargets({ liveUrl: JUST_PUTZIT_LIVE });
+assert(
+  fromLive.liveUrl === JUST_PUTZIT_LIVE &&
+    fromLive.githubRepoUrl === JUST_PUTZIT_GITHUB,
+  "justputzit.com infers the GitHub repo Vercel deploys",
+);
+const fromGithub = resolveConnectTargets({
+  liveUrl: JUST_PUTZIT_GITHUB,
+});
+assert(
+  fromGithub.liveUrl === JUST_PUTZIT_LIVE &&
+    fromGithub.githubRepoUrl === JUST_PUTZIT_GITHUB,
+  "pasting the GitHub repo still visits justputzit.com, not github.com",
+);
+assert(
+  fromGithub.htmlPath === "client/index.html",
+  "Just Putz It widget path is client/index.html",
 );
 
 assert(
@@ -68,6 +100,20 @@ const tasks = planConnectExistingSiteTasks({
   siteName: "Just Putz It",
   liveUrl: "https://justputzit.com",
 });
+assert(
+  tasks.some((task) =>
+    /copy is already on vercel|do not rewrite vercel copy/i.test(task.detail),
+  ),
+  "connect plan says Vercel copy stays put",
+);
+assert(
+  tasks.some(
+    (task) =>
+      task.title === PLACE_WIDGET_TITLE &&
+      task.tags.includes("manus_github_install"),
+  ),
+  "Manus 1.6 is assigned only to place watch.js on the GitHub/Vercel host",
+);
 assert(tasks.length >= 4, "connect plan has widget + place + heartbeat tasks");
 assert(
   tasks.every((task) => task.tags.includes("connect_existing")),
@@ -103,6 +149,16 @@ assert(
   "Visit website opens the real live host, not a Cinch /site/ copy",
 );
 assert(
+  liveWebsiteUrl({
+    id: "seed-does-not-matter",
+    name: "Just Putz It",
+    customDomain: null,
+    seedMode: "connect",
+    referenceUrl: JUST_PUTZIT_GITHUB,
+  }) === JUST_PUTZIT_LIVE,
+  "Visit website never opens github.com when the copy is on Vercel",
+);
+assert(
   !visit.includes("/site/"),
   "connect Visit URL is not a fake Cinch-hosted site",
 );
@@ -127,10 +183,24 @@ for (const task of tasks) {
   );
   assert(!isRouteBlocked(route), `connect task routes: ${task.title}`);
   if (!isRouteBlocked(route)) {
-    assert(
-      route.providerId !== "manus",
-      `Manus stays off connect task: ${task.title}`,
-    );
+    const isPlace = task.title === PLACE_WIDGET_TITLE;
+    if (isPlace) {
+      assert(route.providerId === "manus", "place-widget on Vercel/GitHub → Manus");
+      assert(route.model === "manus-1.6", "place-widget uses Manus 1.6");
+      assert(
+        route.tags.includes("manus_github_install"),
+        "place-widget keeps manus_github_install",
+      );
+    } else {
+      assert(
+        route.providerId !== "manus",
+        `Manus stays off non-install connect task: ${task.title}`,
+      );
+      assert(
+        !route.tags.includes("manus_github_install"),
+        `Manus install tag stays off: ${task.title}`,
+      );
+    }
     assert(
       route.tags.includes("connect_existing"),
       `routed tags keep connect_existing: ${task.title}`,
