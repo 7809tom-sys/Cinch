@@ -112,6 +112,15 @@ import {
 } from "@/lib/site-catalog";
 import { SEED_SITE_PRICE_USD } from "@/lib/site-url";
 import {
+  JUST_PUTZIT_NOT_ON_SEED,
+  isJustPutzItSeedProject,
+} from "@/lib/seed-connect";
+import {
+  composePrepBrief,
+  missingPrepFields,
+  prepBriefFromFormData,
+} from "@/lib/seed-prep";
+import {
   createProject,
   getProject,
   inviteAgent,
@@ -377,10 +386,7 @@ export async function setConnectKeyAction(projectId: string, connectKey: string)
 
 export async function syncJustPutzItConnectKeyAction(projectId: string) {
   const result = await syncJustPutzItConnectKey(projectId);
-  if (!result.ok) return { ok: false as const, error: result.error };
-  revalidatePath(`/admin/projects/${projectId}`);
-  revalidatePath(`/portal/${projectId}`);
-  return { ok: true as const, connectKey: result.project.connectKey };
+  return { ok: false as const, error: result.error };
 }
 
 export async function setEmbedEnabledAction(
@@ -419,21 +425,44 @@ export async function queueToolFixAction(
 
 export async function createSeedProjectAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const brief = String(formData.get("brief") ?? "").trim();
   const customerEmail = String(formData.get("customerEmail") ?? "").trim();
   const customerName = String(formData.get("customerName") ?? "").trim();
   const referenceUrl = String(formData.get("referenceUrl") ?? "").trim();
   const githubRepoUrl = String(formData.get("githubRepoUrl") ?? "").trim();
   const seedMode = String(formData.get("seedMode") ?? "").trim();
+  const prep = prepBriefFromFormData(formData);
+  const composed = composePrepBrief({ ...prep, name: name || prep.name });
+  const brief =
+    seedMode === "build" && prep.intent
+      ? composed
+      : String(formData.get("brief") ?? "").trim();
 
   if (!name || !brief) {
     return { ok: false as const, error: "Name and brief are required." };
+  }
+  if (seedMode === "build") {
+    const missing = missingPrepFields({ ...prep, name });
+    if (missing.length > 0) {
+      return {
+        ok: false as const,
+        error: `Finish the prep worksheet first: ${missing.join(", ")}.`,
+      };
+    }
   }
   if (seedMode === "connect" && !referenceUrl) {
     return {
       ok: false as const,
       error: "Connect jobs need the real live website URL. Do not invent a host.",
     };
+  }
+  if (
+    isJustPutzItSeedProject({
+      name,
+      liveUrl: referenceUrl,
+      githubRepoUrl,
+    })
+  ) {
+    return { ok: false as const, error: JUST_PUTZIT_NOT_ON_SEED };
   }
 
   const project = await createProject({

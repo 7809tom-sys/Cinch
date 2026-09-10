@@ -3,11 +3,10 @@ import { ScriptManagementBoard } from "@/components/script-management-board";
 import { listProjects } from "@/lib/store";
 import {
   applyHeartbeat,
-  findJustPutzItProject,
   hostFromProject,
   inventoryForHost,
-  justPutzItHost,
 } from "@/lib/script-management";
+import { isJustPutzItSeedProject } from "@/lib/seed-connect";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 
 export const dynamic = "force-dynamic";
@@ -19,14 +18,10 @@ export const metadata = {
 };
 
 export default async function AdminScriptManagementPage() {
-  const projects = await listProjects();
-  const justPutzIt = findJustPutzItProject(projects);
-  const hosts = [
-    ...(justPutzIt
-      ? []
-      : [justPutzItHost()]),
-    ...projects.map(hostFromProject),
-  ];
+  const projects = (await listProjects()).filter(
+    (project) => !isJustPutzItSeedProject(project),
+  );
+  const hosts = projects.map(hostFromProject);
 
   const inventories = await Promise.all(
     hosts.map(async (host) => {

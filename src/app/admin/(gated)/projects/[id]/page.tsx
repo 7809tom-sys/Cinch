@@ -90,12 +90,6 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               Playbook
             </Link>
             <Link
-              href="/suggestions"
-              className="text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
-            >
-              Suggestions
-            </Link>
-            <Link
               href={`/admin/projects/${project.id}/dialog`}
               className="text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
             >
@@ -136,12 +130,6 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                 className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"
               >
                 Seed playbook
-              </Link>
-              <Link
-                href="/suggestions"
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"
-              >
-                Please do suggestions
               </Link>
               <Link
                 href={`/admin/projects/${project.id}/dialog`}

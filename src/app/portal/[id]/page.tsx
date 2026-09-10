@@ -69,12 +69,6 @@ export default async function PortalProjectPage({ params }: PageProps) {
               Playbook
             </Link>
             <Link
-              href="/suggestions"
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
-            >
-              Suggestions
-            </Link>
-            <Link
               href={`/portal/${project.id}/dialog`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
@@ -135,12 +129,6 @@ export default async function PortalProjectPage({ params }: PageProps) {
             </p>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link
-              href="/suggestions"
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"
-            >
-              Please do suggestions
-            </Link>
             <Link
               href={`/portal/${project.id}/playbook`}
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"

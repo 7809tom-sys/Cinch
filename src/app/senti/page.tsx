@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SeedPlaybookPack } from "@/components/seed-playbook-pack";
-import { exampleJustPutzItPlaybook, SEED_PLAYBOOK_RULE } from "@/lib/seed-playbook";
+import { exampleSeedPlaybook, SEED_PLAYBOOK_RULE } from "@/lib/seed-playbook";
+import { PREP_LANES, PREP_RULE } from "@/lib/seed-prep";
 
 export const metadata: Metadata = {
-  title: "Senti — how a Seed develops a project",
+  title: "Senti — prep work is everything — Cinch Seed",
   description:
-    "Talk to several AIs, keep chapter scripts on the Seed, then Senti compiles one instruction pack you can print or send. Not a dumped file on cinchseed.com.",
+    "Describe the chat before the chat happens. Spec website, admin, money, CRM, and delivery, then build a good website.",
 };
 
 export default function SentiDeskPage() {
-  const pack = exampleJustPutzItPlaybook();
+  const pack = exampleSeedPlaybook();
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -24,11 +25,8 @@ export default function SentiDeskPage() {
             Cinch
           </Link>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
-            <Link href="/suggestions" className="hover:text-brand-deep">
-              Suggestions
-            </Link>
-            <Link href="/improve" className="hover:text-brand-deep">
-              Improve
+            <Link href="/admin" className="hover:text-brand-deep">
+              Build a Seed
             </Link>
             <Link href="/dialog" className="hover:text-brand-deep">
               Dialog
@@ -45,30 +43,39 @@ export default function SentiDeskPage() {
 
       <main className="mx-auto max-w-6xl px-6 py-14 sm:px-8 sm:py-20">
         <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-          SENTI · SEED PLAYBOOK
+          SENTI · PREP WORK IS EVERYTHING
         </p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
-          How a Seed develops a project
+          Make a good website
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-          {SEED_PLAYBOOK_RULE}
+          {PREP_RULE}
         </p>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-brand-deep">
-          Suggestions do not become a file on cinchseed.com. They become
-          chapters on the Seed. Open a Seed’s playbook from{" "}
-          <Link href="/portal" className="font-semibold underline">
-            Portal
+          {SEED_PLAYBOOK_RULE} Fill the prep worksheet on{" "}
+          <Link href="/admin" className="font-semibold underline">
+            Seed admin
           </Link>{" "}
-          or Admin after you sign in.
+          before Conductor builds. Just Putz It is not a Cinch Seed.
         </p>
+
+        <ul className="mt-8 grid gap-3 sm:grid-cols-5">
+          {PREP_LANES.map((lane) => (
+            <li
+              key={lane.id}
+              className="border border-brand/10 bg-foam px-3 py-3 text-sm font-semibold text-brand-deep"
+            >
+              {lane.label}
+            </li>
+          ))}
+        </ul>
 
         <section className="mt-12">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-            Example pack — Just Putz It
+            Example pack — a Seed Cinch can actually build
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-            {pack.summary} Interactive on this page. Print to PDF or download
-            the compiled instruction.
+            {pack.summary} Print to PDF or download the compiled instruction.
           </p>
           <div className="mt-6">
             <SeedPlaybookPack pack={pack} />

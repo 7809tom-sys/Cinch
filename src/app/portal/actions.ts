@@ -451,10 +451,7 @@ export async function syncMyJustPutzItConnectKeyAction(
   if (!owned.ok) return { ok: false, error: owned.error };
 
   const result = await syncJustPutzItConnectKey(projectId);
-  if (!result.ok) return { ok: false, error: result.error };
-  revalidatePath(`/portal/${projectId}`);
-  revalidatePath("/admin");
-  return { ok: true, connectKey: result.project.connectKey };
+  return { ok: false, error: result.error };
 }
 
 /** Customer self-service: turn the Connect API on/off for this Seed. */

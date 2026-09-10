@@ -5,11 +5,9 @@ import {
   regenerateMyConnectKeyAction,
   setMyConnectKeyAction,
   setMyEmbedEnabledAction,
-  syncMyJustPutzItConnectKeyAction,
 } from "@/app/portal/actions";
 import { CINCH_SEED_WATCH_SCRIPT } from "@/lib/domain";
 import { PLATFORM_ADAPTERS, type PlatformId } from "@/lib/platforms";
-import { JUST_PUTZIT_CONNECT_SEED_ID } from "@/lib/seed-connect";
 
 export function ConnectPanel({
   projectId,
@@ -27,8 +25,6 @@ export function ConnectPanel({
   const [platform, setPlatform] = useState<PlatformId>("manus");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const isJustPutzIt = projectId === JUST_PUTZIT_CONNECT_SEED_ID;
-
   const adapter =
     PLATFORM_ADAPTERS.find((item) => item.id === platform) ??
     PLATFORM_ADAPTERS[0];
@@ -40,9 +36,8 @@ export function ConnectPanel({
         Connect an existing website
       </h2>
       <p className="mt-2 text-sm text-muted">
-        manus.im hosts the live site and exported the GitHub repo. Queue this
-        snippet in the repo HTML (Just Putz It: <code>client/index.html</code>{" "}
-        before <code>&lt;/body&gt;</code>). Both <code>data-seed</code> and{" "}
+        Queue this snippet on a live host Cinch can actually update. Just
+        Putz It is not a Cinch Seed. Both <code>data-seed</code> and{" "}
         <code>data-key</code> are required. No final update without owner
         approval.
       </p>
@@ -101,31 +96,6 @@ export function ConnectPanel({
         >
           {enabled ? "Disable" : "Enable"}
         </button>
-        {isJustPutzIt ? (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => {
-              setError(null);
-              setMessage(null);
-              startTransition(async () => {
-                const result = await syncMyJustPutzItConnectKeyAction(projectId);
-                if (!result.ok) {
-                  setError(result.error);
-                  return;
-                }
-                setConnectKey(result.connectKey);
-                setPasted("");
-                setMessage(
-                  "Set to the key already published on justputzit.com.",
-                );
-              });
-            }}
-            className="inline-flex h-9 items-center justify-center rounded-md border border-brand/20 px-3 text-xs font-semibold text-brand-deep disabled:opacity-60"
-          >
-            Use key already on justputzit.com
-          </button>
-        ) : null}
         <button
           type="button"
           disabled={pending}

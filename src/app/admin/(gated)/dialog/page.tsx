@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listSeedDialogSummaries } from "@/lib/messages";
 import { seedDialogUrl } from "@/lib/seed-dialog";
 import { listProjects } from "@/lib/store";
-import { JUST_PUTZIT_CONNECT_SEED_ID } from "@/lib/seed-connect";
+import { isJustPutzItSeedProject } from "@/lib/seed-connect";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +19,9 @@ export default async function AdminDialogIndexPage() {
   const lastById = new Map(
     summaries.map((item) => [item.projectId, item.lastMessage]),
   );
-  const ordered = [...projects].sort((a, b) => {
-    if (a.id === JUST_PUTZIT_CONNECT_SEED_ID) return -1;
-    if (b.id === JUST_PUTZIT_CONNECT_SEED_ID) return 1;
-    return b.updatedAt.localeCompare(a.updatedAt);
-  });
+  const ordered = [...projects]
+    .filter((project) => !isJustPutzItSeedProject(project))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -51,8 +49,8 @@ export default async function AdminDialogIndexPage() {
           Talk to a Seed
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
-          Each Seed has its own thread. Ask Just Putz It how to improve
-          justputzit.com — we propose in place and wait for your approval.
+          Each Seed has its own thread. Just Putz It is not a Cinch Seed —
+          it will not appear here.
         </p>
         <ul className="mt-10 divide-y divide-brand/10 border border-brand/10 bg-foam">
           {ordered.length === 0 ? (

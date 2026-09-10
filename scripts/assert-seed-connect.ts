@@ -24,6 +24,9 @@ import {
   PLACE_WIDGET_TITLE,
   SEED_CONNECT_EXISTING_RULE,
   briefAsksToConnectExistingSite,
+  JUST_PUTZIT_NOT_ON_SEED,
+  JUST_PUTZIT_ON_SEED,
+  isJustPutzItSeedProject,
   mayDeliverLiveImprovements,
   planConnectExistingSiteTasks,
   resolveConnectTargets,
@@ -64,12 +67,21 @@ assert(
   "connect rule forbids rebuilding the live site",
 );
 assert(
-  /justputzit\.com/i.test(SEED_CONNECT_EXISTING_RULE.exampleHost),
-  "Just Putz It is the documented connect example",
+  JUST_PUTZIT_ON_SEED === false &&
+    /not a Cinch Seed/i.test(JUST_PUTZIT_NOT_ON_SEED),
+  "Just Putz It is not a Cinch Seed",
 );
 assert(
-  /social-activity and dating/i.test(SEED_CONNECT_EXISTING_RULE.summary),
-  "Just Putz It is classified as a social-activity and dating site",
+  isJustPutzItSeedProject({
+    id: JUST_PUTZIT_CONNECT_SEED_ID,
+    name: "Just Putz It",
+    liveUrl: JUST_PUTZIT_LIVE,
+  }),
+  "leftover Just Putz It id is recognized so AI work can be refused",
+);
+assert(
+  /not a Cinch Seed/i.test(SEED_CONNECT_EXISTING_RULE.summary),
+  "connect rule refuses Just Putz It as a Seed",
 );
 assert(
   classifyConnectedSite({
@@ -175,15 +187,23 @@ assert(
   "explicit build mode is honored",
 );
 
+assert(
+  planConnectExistingSiteTasks({
+    siteName: "Just Putz It",
+    liveUrl: "https://justputzit.com",
+  }).length === 0,
+  "Just Putz It gets no connect tasks — no pretend AI work",
+);
 const tasks = planConnectExistingSiteTasks({
-  siteName: "Just Putz It",
-  liveUrl: "https://justputzit.com",
+  siteName: "Acme Live",
+  liveUrl: "https://example.com",
+  githubRepoUrl: "https://github.com/acme/live-site",
 });
 assert(
   tasks.some((task) =>
-    /manus\.im hosts|after owner approval|do not rewrite live copy/i.test(task.detail),
+    /look at and administer|after owner approval|do not rewrite live copy/i.test(task.detail),
   ),
-  "connect plan says Manus hosts it and waits for owner approval",
+  "connect plan for a real host waits for owner approval",
 );
 assert(
   tasks.some(
@@ -416,7 +436,7 @@ assert(
 assert(
   JUST_PUTZIT_EMBED_CONFIG_URL ===
     `${JUST_PUTZIT_LIVE}/api/trpc/cinchSeed.getEmbedConfig`,
-  "Cinch reads the Connect key Just Putz It already publishes",
+  "leftover Just Putz It embed URL is known so Cinch can refuse it",
 );
 
 const superjsonEmbed = parsePublishedEmbedConfig({
@@ -506,9 +526,9 @@ const adminControls = readFileSync(
   "utf8",
 );
 assert(
-  adminControls.includes("Use key already on justputzit.com") &&
+  !adminControls.includes("Use key already on justputzit.com") &&
     adminControls.includes("Set existing key"),
-  "admin Seed desk can set the live Connect key without regenerating",
+  "admin Seed desk does not pull a Just Putz It live key",
 );
 
 const portalControls = readFileSync(
@@ -516,9 +536,9 @@ const portalControls = readFileSync(
   "utf8",
 );
 assert(
-  portalControls.includes("Use key already on justputzit.com") &&
+  !portalControls.includes("Use key already on justputzit.com") &&
     portalControls.includes("Set existing key"),
-  "portal Connect panel can set the live Connect key without regenerating",
+  "portal Connect panel does not pull a Just Putz It live key",
 );
 
 function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?: string }) {

@@ -1,9 +1,8 @@
 /**
- * HARD RULE: connecting cinchseed.com to a live host is not a site rebuild.
- * Example: manus.im exported Just Putz It to GitHub
- * (https://github.com/7809tom-sys/just-putzit) so cinchseed.com can look
- * at and administer the live Manus host (justputzit.com). Do not rebuild
- * or invent a copy. No final update lands without owner approval.
+ * HARD RULE: Just Putz It is not a Cinch Seed.
+ * manus.im hosts justputzit.com. Cinch cannot publish a live fix there,
+ * so it must not sit on a Seed, queue pretend updates, or spend AI time
+ * looking at that host. Connect other live sites we can actually update.
  */
 import type { AgentSkill } from "./agents";
 import type { TaskTag } from "./conductor-routing";
@@ -14,17 +13,21 @@ export const JUST_PUTZIT_LIVE = "https://justputzit.com";
 export const JUST_PUTZIT_GITHUB = "https://github.com/7809tom-sys/just-putzit";
 export const JUST_PUTZIT_HTML_PATH = "client/index.html";
 export const JUST_PUTZIT_ADMIN = `${JUST_PUTZIT_LIVE}/admin`;
-/** Seed Just Putz It already embeds. No Cinch-hosted /site/[id] clone. */
+/** Leftover id — do not staff, suggest, or dialog this Seed. */
 export const JUST_PUTZIT_CONNECT_SEED_ID =
   "48a66d0f-d7f1-483c-82ae-675fed90dc48";
 export const JUST_PUTZIT_MANUS = "https://manus.im";
+/** Just Putz It is not on Cinch Seed. Do not flip this. */
+export const JUST_PUTZIT_ON_SEED = false;
+export const JUST_PUTZIT_NOT_ON_SEED =
+  "Just Putz It is not a Cinch Seed. Manus hosts justputzit.com. Cinch will not spend AI time on pretend updates.";
 /** Live publishes wait for the owner. Propose only until then. */
 export const LIVE_UPDATE_REQUIRES_APPROVAL =
-  "No final update lands on justputzit.com until the owner approves it.";
+  "No final update lands on the live host until the owner approves it.";
 /**
  * Flip only after the owner explicitly approves a live publish.
- * While false, Cinch looks, administers, and proposes — it does not
- * deliver watch.js patches or tell Manus to publish.
+ * Just Putz It stays false — Cinch does not deliver watch.js patches
+ * or tell Manus to publish.
  */
 export const LIVE_UPDATE_OWNER_APPROVED = false;
 
@@ -37,15 +40,15 @@ export type GithubRepoRef = {
 export const SEED_CONNECT_EXISTING_RULE = {
   id: "seed-connect-existing",
   summary:
-    "HARD RULE: when the job is connect cinchseed.com to an existing website, look at and administer that live host. Just Putz It is a social-activity and dating site. manus.im hosts justputzit.com and exported the source to GitHub 7809tom-sys/just-putzit so cinchseed.com can work it. Do not rewrite live copy or rebuild the site. Manus 1.6 may commit watch.js into the GitHub HTML so Manus publishes it — only after owner approval.",
+    "HARD RULE: connect cinchseed.com to a live host Cinch can actually update. Just Putz It is not a Cinch Seed — manus.im hosts justputzit.com and Cinch will not spend AI time on pretend updates there. For other hosts: look at and administer in place. Do not rebuild. No final update without owner approval.",
   exampleHost: JUST_PUTZIT_LIVE,
   exampleGithubRepo: JUST_PUTZIT_GITHUB,
   exampleHosting: "manus",
   steps: [
-    "Look at the live Manus host (justputzit.com) and the GitHub repo Manus exported.",
-    "Issue the Seed ID + Connect Key and the watch.js snippet from cinchseed.com.",
-    "After owner approval, Manus 1.6 may commit the widget into client/index.html so Manus publishes. Do not only inject from Community.tsx. Do not rewrite copy.",
-    "Confirm heartbeat from justputzit.com. Propose in-place updates. No final update without owner approval.",
+    "Reject justputzit.com — it is not a Cinch Seed.",
+    "For other live hosts, issue the Seed ID + Connect Key and the watch.js snippet.",
+    "After owner approval, place the widget on that host. Do not rewrite copy.",
+    "Confirm heartbeat. Propose in-place updates only when Cinch can publish them.",
   ],
 } as const;
 
@@ -170,6 +173,26 @@ export function isJustPutzItHost(input: {
   );
 }
 
+/** Leftover Just Putz It row, name, or host — never staff AI on it. */
+export function isJustPutzItSeedProject(input: {
+  id?: string | null;
+  name?: string | null;
+  liveUrl?: string | null;
+  referenceUrl?: string | null;
+  githubRepoUrl?: string | null;
+}): boolean {
+  if (input.id === JUST_PUTZIT_CONNECT_SEED_ID) return true;
+  if (/just\s*putz/i.test(input.name ?? "")) return true;
+  return isJustPutzItHost({
+    liveUrl: input.liveUrl ?? input.referenceUrl,
+    githubRepoUrl: input.githubRepoUrl,
+  });
+}
+
+export function mayStaffJustPutzItSeed(): boolean {
+  return JUST_PUTZIT_ON_SEED;
+}
+
 /** Watch.js may apply patches only after the owner approves. */
 export function mayDeliverLiveImprovements(input: {
   liveUrl?: string | null;
@@ -207,6 +230,15 @@ export function planConnectExistingSiteTasks(input: {
   liveUrl: string;
   githubRepoUrl?: string | null;
 }): ConnectTaskDraft[] {
+  if (
+    isJustPutzItSeedProject({
+      name: input.siteName,
+      liveUrl: input.liveUrl,
+      githubRepoUrl: input.githubRepoUrl,
+    })
+  ) {
+    return [];
+  }
   const site = input.siteName.trim() || "the live site";
   const url = input.liveUrl;
   const targets = resolveConnectTargets({
