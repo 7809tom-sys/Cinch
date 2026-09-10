@@ -119,7 +119,9 @@ import {
   regenerateConnectKey,
   removeAgent,
   retireCinchHostedClone,
+  setConnectKey,
   setEmbedEnabled,
+  syncJustPutzItConnectKey,
   updateProjectDetails,
 } from "@/lib/store";
 import { forbidsCinchHostedSite } from "@/lib/hosted-site";
@@ -361,6 +363,22 @@ export async function regenerateConnectKeyAction(projectId: string) {
   revalidatePath(`/admin/projects/${projectId}`);
   revalidatePath(`/portal/${projectId}`);
   return { ok: true as const, connectKey: project.connectKey };
+}
+
+export async function setConnectKeyAction(projectId: string, connectKey: string) {
+  const result = await setConnectKey(projectId, connectKey);
+  if (!result.ok) return { ok: false as const, error: result.error };
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath(`/portal/${projectId}`);
+  return { ok: true as const, connectKey: result.project.connectKey };
+}
+
+export async function syncJustPutzItConnectKeyAction(projectId: string) {
+  const result = await syncJustPutzItConnectKey(projectId);
+  if (!result.ok) return { ok: false as const, error: result.error };
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath(`/portal/${projectId}`);
+  return { ok: true as const, connectKey: result.project.connectKey };
 }
 
 export async function setEmbedEnabledAction(

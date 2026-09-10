@@ -31,6 +31,17 @@ import {
 } from "../src/lib/seed-connect";
 import { lookAtJustPutzitLive } from "../src/lib/just-putzit-look";
 import { forbidsCinchHostedSite } from "../src/lib/hosted-site";
+import {
+  CONNECT_KEY_PATTERN,
+  JUST_PUTZIT_EMBED_CONFIG_URL,
+  fetchPublishedJustPutzItConnectKey,
+  isConnectKeyFormat,
+  parsePublishedEmbedConfig,
+  resetPublishedConnectKeyCache,
+  shouldAdoptPublishedConnectKey,
+} from "../src/lib/connect-key";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -330,6 +341,10 @@ assert(watchJs.includes("findScript"), "watch.js finds the tag without currentSc
 assert(watchJs.includes("cinch-seed-community"), "watch.js paints a Community card");
 assert(watchJs.includes("data-key is missing"), "watch.js explains a missing Connect Key");
 assert(
+  watchJs.includes("Use the key already on this live site"),
+  "watch.js explains a Connect key mismatch without asking to rebuild",
+);
+assert(
   /justputzit\\.com/.test(watchJs) && watchJs.includes("data-approved"),
   "watch.js withholds live patches on justputzit.com until owner approval",
 );
@@ -338,6 +353,124 @@ assert(
     ?.installSnippet("seed-demo", "key-demo")
     .includes('data-require-approval="true"') ?? false,
   "Manus snippet marks watch.js as awaiting owner approval",
+);
+
+const sampleConnectKey = `cs_${"ab".repeat(24)}`;
+const otherConnectKey = `cs_${"cd".repeat(24)}`;
+assert(
+  CONNECT_KEY_PATTERN.test(sampleConnectKey) && isConnectKeyFormat(sampleConnectKey),
+  "generated-style Connect keys match cs_ + 48 hex",
+);
+assert(
+  !isConnectKeyFormat("not-a-key") && !isConnectKeyFormat("cs_short"),
+  "malformed Connect keys are rejected",
+);
+assert(
+  JUST_PUTZIT_EMBED_CONFIG_URL ===
+    `${JUST_PUTZIT_LIVE}/api/trpc/cinchSeed.getEmbedConfig`,
+  "Cinch reads the Connect key Just Putz It already publishes",
+);
+
+const superjsonEmbed = parsePublishedEmbedConfig({
+  result: {
+    data: {
+      json: {
+        seedId: JUST_PUTZIT_CONNECT_SEED_ID,
+        connectKey: sampleConnectKey,
+        scriptUrl: "https://cinchseed.com/v1/watch.js",
+      },
+    },
+  },
+});
+assert(
+  superjsonEmbed?.seedId === JUST_PUTZIT_CONNECT_SEED_ID &&
+    superjsonEmbed.connectKey === sampleConnectKey,
+  "parses Just Putz It tRPC superjson embed config",
+);
+assert(
+  parsePublishedEmbedConfig({
+    result: {
+      data: {
+        seedId: JUST_PUTZIT_CONNECT_SEED_ID,
+        connectKey: sampleConnectKey,
+      },
+    },
+  })?.connectKey === sampleConnectKey,
+  "parses a plain tRPC embed config",
+);
+assert(
+  shouldAdoptPublishedConnectKey({
+    projectId: JUST_PUTZIT_CONNECT_SEED_ID,
+    incomingKey: sampleConnectKey,
+    published: superjsonEmbed,
+  }),
+  "adopts the key Just Putz It already publishes",
+);
+assert(
+  !shouldAdoptPublishedConnectKey({
+    projectId: JUST_PUTZIT_CONNECT_SEED_ID,
+    incomingKey: otherConnectKey,
+    published: superjsonEmbed,
+  }),
+  "does not adopt an invented Connect key",
+);
+assert(
+  !shouldAdoptPublishedConnectKey({
+    projectId: "another-seed",
+    incomingKey: sampleConnectKey,
+    published: superjsonEmbed,
+  }),
+  "does not adopt a published key onto a different Seed",
+);
+
+resetPublishedConnectKeyCache();
+const publishedKeyFetch = fetchPublishedJustPutzItConnectKey(async (url) => {
+  assert(
+    String(url) === JUST_PUTZIT_EMBED_CONFIG_URL,
+    "live-key fetch hits justputzit.com embed config",
+  );
+  return new Response(
+    JSON.stringify({
+      result: {
+        data: {
+          json: {
+            seedId: JUST_PUTZIT_CONNECT_SEED_ID,
+            connectKey: sampleConnectKey,
+            scriptUrl: "https://cinchseed.com/v1/watch.js",
+          },
+        },
+      },
+    }),
+    { headers: { "content-type": "application/json" } },
+  );
+}).then((fetched) => {
+  assert(
+    fetched?.connectKey === sampleConnectKey,
+    "fetches and caches the published Just Putz It Connect key",
+  );
+});
+
+const adminControls = readFileSync(
+  join(
+    process.cwd(),
+    "src/app/admin/(gated)/projects/[id]/connect-api-controls.tsx",
+  ),
+  "utf8",
+);
+assert(
+  adminControls.includes("Use key already on justputzit.com") &&
+    adminControls.includes("Set existing key"),
+  "admin Seed desk can set the live Connect key without regenerating",
+);
+
+const portalControls = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/connect-panel.tsx"),
+  "utf8",
+);
+assert(
+  portalControls.includes("Use key already on justputzit.com") &&
+    portalControls.includes("Set existing key"),
+  "portal Connect panel can set the live Connect key without regenerating",
 );
 
 function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?: string }) {
@@ -456,23 +589,25 @@ assert(
   "connect plan repeats the owner-approval rule",
 );
 
-lookAtJustPutzitLive(async () => {
-  return new Response(
-    `<title>Just Putzit</title><meta name="description" content="Just Putzit — meet locals for real dates and activities." /><img src="/manus-storage/icon.png" />`,
-    {
-      headers: {
-        "x-manus-proxy-mode": "transparent/1",
-        "last-modified": "Wed, 09 Sep 2026 17:37:14 GMT",
+Promise.all([
+  publishedKeyFetch,
+  lookAtJustPutzitLive(async () => {
+    return new Response(
+      `<title>Just Putzit</title><meta name="description" content="Just Putzit — meet locals for real dates and activities." /><img src="/manus-storage/icon.png" />`,
+      {
+        headers: {
+          "x-manus-proxy-mode": "transparent/1",
+          "last-modified": "Wed, 09 Sep 2026 17:37:14 GMT",
+        },
       },
-    },
-  );
-})
-  .then((look) => {
+    );
+  }).then((look) => {
     assert(look.ok, "look helper reaches a live HTML response");
     assert(look.hostedOnManus, "look helper recognizes the Manus host");
     assert(!look.watchJsPresent, "look helper reports missing watch.js");
     assert(/just putzit/i.test(look.title ?? ""), "look helper reads the live title");
-  })
+  }),
+])
   .then(() => {
     if (process.exitCode) {
       console.error("seed-connect assertions failed");

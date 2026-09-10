@@ -3,10 +3,13 @@
 import { useState, useTransition } from "react";
 import {
   regenerateMyConnectKeyAction,
+  setMyConnectKeyAction,
   setMyEmbedEnabledAction,
+  syncMyJustPutzItConnectKeyAction,
 } from "@/app/portal/actions";
 import { CINCH_SEED_WATCH_SCRIPT } from "@/lib/domain";
 import { PLATFORM_ADAPTERS, type PlatformId } from "@/lib/platforms";
+import { JUST_PUTZIT_CONNECT_SEED_ID } from "@/lib/seed-connect";
 
 export function ConnectPanel({
   projectId,
@@ -19,10 +22,12 @@ export function ConnectPanel({
 }) {
   const [pending, startTransition] = useTransition();
   const [connectKey, setConnectKey] = useState(initialKey);
+  const [pasted, setPasted] = useState("");
   const [enabled, setEnabled] = useState(initialEnabled);
   const [platform, setPlatform] = useState<PlatformId>("manus");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isJustPutzIt = projectId === JUST_PUTZIT_CONNECT_SEED_ID;
 
   const adapter =
     PLATFORM_ADAPTERS.find((item) => item.id === platform) ??
@@ -96,6 +101,31 @@ export function ConnectPanel({
         >
           {enabled ? "Disable" : "Enable"}
         </button>
+        {isJustPutzIt ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              setMessage(null);
+              startTransition(async () => {
+                const result = await syncMyJustPutzItConnectKeyAction(projectId);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
+                }
+                setConnectKey(result.connectKey);
+                setPasted("");
+                setMessage(
+                  "Set to the key already published on justputzit.com.",
+                );
+              });
+            }}
+            className="inline-flex h-9 items-center justify-center rounded-md border border-brand/20 px-3 text-xs font-semibold text-brand-deep disabled:opacity-60"
+          >
+            Use key already on justputzit.com
+          </button>
+        ) : null}
         <button
           type="button"
           disabled={pending}
@@ -118,6 +148,43 @@ export function ConnectPanel({
         >
           Regenerate key
         </button>
+        <form
+          className="flex w-full flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setError(null);
+            setMessage(null);
+            const next = pasted.trim();
+            startTransition(async () => {
+              const result = await setMyConnectKeyAction(projectId, next);
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              setConnectKey(result.connectKey);
+              setPasted("");
+              setMessage(
+                "Connect key set to the value already on the live site.",
+              );
+            });
+          }}
+        >
+          <input
+            value={pasted}
+            onChange={(event) => setPasted(event.target.value)}
+            placeholder="cs_… paste the live site key"
+            autoComplete="off"
+            spellCheck={false}
+            className="min-h-9 min-w-[16rem] flex-1 rounded-md border border-brand/20 bg-white px-3 font-mono text-[11px] text-brand-deep"
+          />
+          <button
+            type="submit"
+            disabled={pending || !pasted.trim()}
+            className="inline-flex h-9 items-center justify-center rounded-md border border-brand/20 px-3 text-xs font-semibold text-brand-deep disabled:opacity-60"
+          >
+            Set existing key
+          </button>
+        </form>
       </div>
 
       {message ? <p className="mt-3 text-sm text-leaf">{message}</p> : null}
