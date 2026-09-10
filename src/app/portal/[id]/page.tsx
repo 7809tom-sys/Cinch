@@ -230,7 +230,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
                 {project.tasks.length === 0
-                  ? "Your website is already up — open Visit website above while Conductor staffs the crew."
+                  ? "Your website is already up. The desk will not keep looking for an AI — open Visit website, Senti, or Please-do suggestions."
                   : buildComplete
                     ? "All planned tasks are done. Open the website to Publish or list it in the library."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}

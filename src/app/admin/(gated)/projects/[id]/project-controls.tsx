@@ -42,6 +42,7 @@ export function ProjectControls({
   const [pending, startTransition] = useTransition();
   const [stuck, setStuck] = useState(false);
   const ticking = useRef(false);
+  const restaffedOnce = useRef(false);
 
   const allDone =
     tasks.length > 0 && tasks.every((task) => task.status === "done");
@@ -63,11 +64,15 @@ export function ProjectControls({
       try {
         if (options?.restaff) {
           await restaffSeedAction(projectId);
-          setStuck(false);
-        } else if (options?.advance !== false && !allDone) {
+          const result = await watchTickAction(projectId);
+          if (result.ok) {
+            setStuck(Boolean(result.stuck));
+          }
+        } else if (options?.advance !== false && !allDone && hasOpenWork) {
           const result = await watchTickAction(projectId);
           if (result.ok && result.stuck) setStuck(true);
           if (result.ok && result.progressed) setStuck(false);
+          if (result.ok && (result.idle || !result.hasOpenWork)) setStuck(false);
         }
         router.refresh();
       } finally {
@@ -76,9 +81,10 @@ export function ProjectControls({
     });
   }
 
-  // Older Seeds may have no specialists invited — restaff once on load.
+  // Older Seeds may have no specialists invited — restaff once on load, never loop.
   useEffect(() => {
-    if (!needsCrew || allDone) return;
+    if (!needsCrew || allDone || restaffedOnce.current) return;
+    restaffedOnce.current = true;
     refresh({ restaff: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot restaff
   }, [needsCrew, allDone, projectId]);
@@ -127,9 +133,9 @@ export function ProjectControls({
                 {allDone
                   ? "Modules landed in the library. Open the published preview below — optional growth cycles stay available too."
                   : needsCrew
-                    ? "Tap Restaff crew so Conductor invites specialists and can assign work."
+                    ? "Tap Restaff crew once so Conductor invites specialists. It will not keep restocking."
                     : stuck
-                      ? "Assignment stopped so it won’t loop. Restaff or check activity for missing skills."
+                      ? "Stopped looking for an AI. Restaff cannot invent a provider key."
                       : "You don’t assign tasks. The project manager routes work by skill and cost while you watch."}
               </p>
             </div>
@@ -150,8 +156,7 @@ export function ProjectControls({
               type="button"
               disabled={pending}
               onClick={() => {
-                setStuck(false);
-                refresh({ advance: !allDone });
+                refresh({ advance: !allDone && hasOpenWork });
               }}
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
             >

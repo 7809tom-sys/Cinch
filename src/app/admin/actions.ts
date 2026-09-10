@@ -503,6 +503,8 @@ export async function watchTickAction(projectId: string) {
     progressed: result.progressed,
     stuck: result.stuck,
     complete: result.complete,
+    idle: result.idle,
+    hasOpenWork: result.hasOpenWork,
   };
 }
 

@@ -663,6 +663,8 @@ export async function portalWatchTickAction(projectId: string) {
     progressed: result.progressed,
     stuck: result.stuck,
     complete: result.complete,
+    idle: result.idle,
+    hasOpenWork: result.hasOpenWork,
     statusLine: result.statusLine,
     workingOn: result.workingOn,
     updatedTask: result.updatedTask,
