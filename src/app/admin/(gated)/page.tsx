@@ -29,6 +29,7 @@ const NAV = [
   { href: "#pricing", label: "Pricing" },
   { href: "#purchases", label: "Purchases" },
   { href: "#seeds", label: "Seeds" },
+  { href: "/senti", label: "Senti" },
   { href: "/admin/scripts", label: "Scripts" },
   { href: "#library", label: "Library" },
   { href: "#domains", label: "Domains" },
@@ -118,6 +119,9 @@ export default async function AdminPage() {
             </Link>
             <Link href="/login" className="hover:text-brand-deep">
               Portal
+            </Link>
+            <Link href="/senti" className="hover:text-brand-deep">
+              Senti
             </Link>
             <Link href="/admin/scripts" className="hover:text-brand-deep">
               Scripts

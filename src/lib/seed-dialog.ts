@@ -14,6 +14,7 @@ import {
   JUST_PUTZIT_LIVE,
   LIVE_UPDATE_REQUIRES_APPROVAL,
 } from "./seed-connect";
+import { SENTI_DESK_PATH, seedAsksForPlaybook } from "./seed-playbook";
 import { getProject } from "./store";
 
 export const SEED_DIALOG_RULE =
@@ -50,6 +51,16 @@ export function composeSeedReply(input: {
     githubRepoUrl: input.githubRepoUrl,
   });
   const connect = input.seedMode === "connect" || host === JUST_PUTZIT_LIVE;
+
+  if (seedAsksForPlaybook(input.incoming)) {
+    return [
+      `Hi — ${pm.name} on Seed “${input.name}”. You asked how we develop a project.`,
+      "We do not add a suggestion file on cinchseed.com.",
+      "Several specialists write chapter scripts on this Seed. Senti compiles them into one instruction pack you can print or send.",
+      `Open the playbook: ${SENTI_DESK_PATH} (method) or this Seed’s pack on portal/admin.`,
+      LIVE_UPDATE_REQUIRES_APPROVAL,
+    ].join(" ");
+  }
 
   if (seedAsksToImprove(input.incoming)) {
     const lines = plan.improvements
