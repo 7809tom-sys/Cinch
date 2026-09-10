@@ -1,6 +1,6 @@
 /**
  * Talk to a Seed on its dialog page. The Seed answers about THIS host.
- * Just Putz It: propose in-place dating/activity updates. Do not rebuild.
+ * Just Putz It is not a Cinch Seed — refuse pretend updates.
  */
 import { getProjectManager } from "./agents";
 import { planInPlaceImprovements } from "./connect-improvements";
@@ -11,14 +11,15 @@ import {
   type Message,
 } from "./messages";
 import {
-  JUST_PUTZIT_LIVE,
+  JUST_PUTZIT_NOT_ON_SEED,
   LIVE_UPDATE_REQUIRES_APPROVAL,
+  isJustPutzItSeedProject,
 } from "./seed-connect";
 import { SENTI_DESK_PATH, seedAsksForPlaybook } from "./seed-playbook";
 import { getProject } from "./store";
 
 export const SEED_DIALOG_RULE =
-  "Talk to the Seed on its dialog page. The Seed answers about this live host. Just Putz It: propose in-place dating and activity updates. Do not rebuild. No final update without owner approval.";
+  "Talk to the Seed on its dialog page. The Seed answers about this live host. Just Putz It is not a Cinch Seed — do not spend AI time on pretend updates. Do not rebuild. No final update without owner approval.";
 
 export function seedDialogUrl(projectId: string): string {
   return `/admin/projects/${projectId}/dialog`;
@@ -43,6 +44,15 @@ export function composeSeedReply(input: {
   incoming: string;
 }): string {
   const pm = getProjectManager();
+  if (
+    isJustPutzItSeedProject({
+      name: input.name,
+      liveUrl: input.liveUrl,
+      githubRepoUrl: input.githubRepoUrl,
+    })
+  ) {
+    return JUST_PUTZIT_NOT_ON_SEED;
+  }
   const host = input.liveUrl?.trim() || "the live host";
   const plan = planInPlaceImprovements({
     name: input.name,
@@ -50,7 +60,7 @@ export function composeSeedReply(input: {
     liveUrl: input.liveUrl,
     githubRepoUrl: input.githubRepoUrl,
   });
-  const connect = input.seedMode === "connect" || host === JUST_PUTZIT_LIVE;
+  const connect = input.seedMode === "connect";
 
   if (seedAsksForPlaybook(input.incoming)) {
     return [

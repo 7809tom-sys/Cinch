@@ -5,11 +5,10 @@ import { ScriptManagementBoard } from "@/components/script-management-board";
 import { listProjects } from "@/lib/store";
 import {
   applyHeartbeat,
-  findJustPutzItProject,
   hostFromProject,
   inventoryForHost,
-  justPutzItHost,
 } from "@/lib/script-management";
+import { isJustPutzItSeedProject } from "@/lib/seed-connect";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 
 export const dynamic = "force-dynamic";
@@ -21,20 +20,21 @@ export const metadata: Metadata = {
 };
 
 export default async function ScriptManagementPage() {
-  const projects = await listProjects();
-  const justPutzIt = findJustPutzItProject(projects);
-  const host = justPutzIt
-    ? hostFromProject(justPutzIt)
-    : justPutzItHost();
-  const watch = await getSeedWatchSnapshot(host.projectId).catch(() => null);
-  const inventories = [
-    await inventoryForHost(
-      applyHeartbeat(host, {
-        href: watch?.heartbeat?.href,
-        isLive: watch?.isLive,
-      }),
-    ),
-  ];
+  const projects = (await listProjects()).filter(
+    (project) => !isJustPutzItSeedProject(project),
+  );
+  const inventories = await Promise.all(
+    projects.map(async (project) => {
+      const host = hostFromProject(project);
+      const watch = await getSeedWatchSnapshot(host.projectId).catch(() => null);
+      return inventoryForHost(
+        applyHeartbeat(host, {
+          href: watch?.heartbeat?.href,
+          isLive: watch?.isLive,
+        }),
+      );
+    }),
+  );
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -49,12 +49,6 @@ export default async function ScriptManagementPage() {
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
             <Link href="/senti" className="hover:text-brand-deep">
               Senti
-            </Link>
-            <Link href="/improve" className="hover:text-brand-deep">
-              Improve
-            </Link>
-            <Link href="/suggestions" className="hover:text-brand-deep">
-              Suggestions
             </Link>
             <Link href="/dialog" className="hover:text-brand-deep">
               Dialog
@@ -80,9 +74,8 @@ export default async function ScriptManagementPage() {
           Website and admin scripts
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-          One desk for every script on the live website and that site’s admin
-          page. Cinch Seed Watch belongs on both. Host scripts already on
-          Just Putz It (analytics, Manus) stay in place. Every other Seed is
+          One desk for every script on a live website Cinch can actually
+          update. Just Putz It is not a Cinch Seed. Every other Seed is
           on the{" "}
           <Link href="/admin/scripts" className="font-semibold text-brand-deep underline">
             admin script desk

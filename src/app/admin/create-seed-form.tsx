@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { SeedPrepWorksheet } from "@/components/seed-prep-worksheet";
 import { createSeedProjectAction } from "./actions";
 
 export function CreateSeedForm() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [seedMode, setSeedMode] = useState<"connect" | "build">("connect");
+  const [seedMode, setSeedMode] = useState<"connect" | "build">("build");
 
   return (
     <form
@@ -43,10 +44,9 @@ export function CreateSeedForm() {
           <span>
             <span className="font-semibold">Connect existing website</span>
             <span className="mt-0.5 block text-xs text-muted">
-              Link cinchseed.com to the customer’s real live website. If
-              manus.im already hosts it (Just Putz It), look at and
-              administer that host. Queue watch.js on the GitHub export.
-              No final update without owner approval.
+              Link cinchseed.com to a live website Cinch can actually
+              update. Just Putz It is not a Cinch Seed — do not paste
+              justputzit.com. No final update without owner approval.
             </span>
           </span>
         </label>
@@ -92,7 +92,7 @@ export function CreateSeedForm() {
           name="referenceUrl"
           type="url"
           required={seedMode === "connect"}
-          placeholder="https://justputzit.com"
+          placeholder="https://example.com"
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
       </label>
@@ -107,27 +107,25 @@ export function CreateSeedForm() {
           <input
             name="githubRepoUrl"
             type="url"
-            placeholder="https://github.com/7809tom-sys/just-putzit"
+            placeholder="https://github.com/owner/repo"
             className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
           />
         </label>
       ) : null}
+      {seedMode === "build" ? <SeedPrepWorksheet /> : (
       <label className="block">
         <span className="text-sm font-medium text-brand-deep">
-          {seedMode === "connect" ? "Connect brief" : "Build brief"}
+          Connect brief
         </span>
         <textarea
           name="brief"
           required
           rows={4}
-          placeholder={
-            seedMode === "connect"
-              ? "Connect cinchseed.com to this Manus site. Look at and administer it. Do not publish a final update without owner approval."
-              : "What should the invited agents build? Audience, pages, tone, must-haves…"
-          }
+          placeholder="Connect cinchseed.com to a host Cinch can actually update. Do not paste justputzit.com."
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
       </label>
+      )}
       <label className="block">
         <span className="text-sm font-medium text-brand-deep">
           Customer email{" "}

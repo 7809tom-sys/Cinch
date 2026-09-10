@@ -1,14 +1,10 @@
 /**
- * Guard: the owner can Please-do suggestions on Just Putz It.
+ * Guard: Just Putz It is not a please-do Seed.
  * Run: npx tsx scripts/assert-seed-suggestions.ts
  */
 import { readFileSync } from "fs";
 import { join } from "path";
-import { JUST_PUTZIT_LIVE } from "../src/lib/seed-connect";
-import {
-  SEED_SUGGESTIONS_PATH,
-  suggestionsForJustPutzIt,
-} from "../src/lib/seed-suggestions";
+import { JUST_PUTZIT_NOT_ON_SEED } from "../src/lib/seed-connect";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -19,49 +15,31 @@ function assert(condition: boolean, message: string) {
   }
 }
 
-assert(SEED_SUGGESTIONS_PATH === "/suggestions", "suggestions live at /suggestions");
-const plan = suggestionsForJustPutzIt();
-assert(plan.improvements.length >= 6, "Just Putz It has please-do suggestions");
-assert(
-  plan.improvements.some((item) => /Community/i.test(item.title)),
-  "suggestions include Community on Home",
-);
-assert(/justputzit\.com/i.test(plan.summary), "suggestions stay on justputzit.com");
-
 const page = readFileSync(join(process.cwd(), "src/app/suggestions/page.tsx"), "utf8");
 assert(
-  page.includes("Please do these") && page.includes("SeedSuggestionsBoard"),
-  "suggestions page is the please-do box",
-);
-
-const board = readFileSync(
-  join(process.cwd(), "src/components/seed-suggestions-board.tsx"),
-  "utf8",
-);
-assert(
-  board.includes("Please do this") && board.includes("Your own suggestion"),
-  "each suggestion has a Please do this button and a freeform box",
+  page.includes("JustPutzItNotOnSeedPage") || page.includes("not a Cinch Seed"),
+  "Suggestions page does not queue Just Putz It please-do work",
 );
 
 const improve = readFileSync(join(process.cwd(), "src/app/improve/page.tsx"), "utf8");
 assert(
-  improve.includes("SeedSuggestionsBoard") && improve.includes("/suggestions"),
-  "Improve page shows please-do suggestions",
+  improve.includes("JustPutzItNotOnSeedPage") && !improve.includes("<iframe"),
+  "Improve page does not embed or staff Just Putz It",
 );
 
 const footer = readFileSync(join(process.cwd(), "src/components/site-footer.tsx"), "utf8");
-assert(footer.includes("/suggestions"), "footer links to Suggestions");
+assert(!footer.includes("/suggestions"), "footer dropped the Just Putz It Suggestions link");
 
 const adminDesk = readFileSync(
   join(process.cwd(), "src/app/admin/(gated)/projects/[id]/page.tsx"),
   "utf8",
 );
 assert(
-  adminDesk.includes("Please do suggestions"),
-  "admin Seed desk points at Suggestions",
+  !adminDesk.includes("Please do suggestions"),
+  "admin Seed desk does not send people to pretend Just Putz It updates",
 );
 
-assert(JUST_PUTZIT_LIVE === "https://justputzit.com", "live host is justputzit.com");
+assert(/not a Cinch Seed/i.test(JUST_PUTZIT_NOT_ON_SEED), "Just Putz It stays off the Seed");
 
 if (process.exitCode) {
   console.error("seed-suggestions assertions failed");

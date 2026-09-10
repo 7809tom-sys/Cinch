@@ -8,10 +8,7 @@ import {
   portalSeedDialogUrl,
   seedDialogUrl,
 } from "@/lib/seed-dialog";
-import {
-  JUST_PUTZIT_CONNECT_SEED_ID,
-  JUST_PUTZIT_LIVE,
-} from "@/lib/seed-connect";
+import { isJustPutzItSeedProject } from "@/lib/seed-connect";
 import { listProjects, listProjectsForCustomer } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +16,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Seed dialog — Cinch Seed",
   description:
-    "Talk to a Seed about its live host. Just Putz It answers in place — no rebuild.",
+    "Talk to a Seed Cinch can actually update. Just Putz It is not a Cinch Seed.",
 };
 
 export default async function PublicDialogDeskPage() {
@@ -36,11 +33,9 @@ export default async function PublicDialogDeskPage() {
   const lastById = new Map(
     summaries.map((item) => [item.projectId, item.lastMessage]),
   );
-  const ordered = [...projects].sort((a, b) => {
-    if (a.id === JUST_PUTZIT_CONNECT_SEED_ID) return -1;
-    if (b.id === JUST_PUTZIT_CONNECT_SEED_ID) return 1;
-    return b.updatedAt.localeCompare(a.updatedAt);
-  });
+  const ordered = [...projects]
+    .filter((project) => !isJustPutzItSeedProject(project))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -55,12 +50,6 @@ export default async function PublicDialogDeskPage() {
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
             <Link href="/senti" className="hover:text-brand-deep">
               Senti
-            </Link>
-            <Link href="/suggestions" className="hover:text-brand-deep">
-              Suggestions
-            </Link>
-            <Link href="/improve" className="hover:text-brand-deep">
-              Improve
             </Link>
             <Link href="/admin/dialog" className="hover:text-brand-deep">
               Admin dialogs
@@ -83,28 +72,15 @@ export default async function PublicDialogDeskPage() {
           Talk to the Seed
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-          Each Seed has its own conversation. Ask how to improve the live
-          site. Just Putz It stays on{" "}
-          <a
-            href={JUST_PUTZIT_LIVE}
-            className="font-semibold text-brand-deep underline"
-          >
-            justputzit.com
-          </a>
-          — we do not rebuild it.
+          Each Seed has its own conversation. Just Putz It is not on this
+          list — Manus hosts it and Cinch will not spend AI time pretending
+          to update it.
         </p>
 
         <ul className="mt-12 divide-y divide-brand/10 border border-brand/10 bg-foam">
           {ordered.length === 0 ? (
             <li className="px-5 py-6 text-sm text-muted">
-              Sign in to see your Seeds, or open{" "}
-              <Link
-                href={seedDialogUrl(JUST_PUTZIT_CONNECT_SEED_ID)}
-                className="font-semibold text-brand-deep underline"
-              >
-                Just Putz It dialog
-              </Link>{" "}
-              from admin.
+              Sign in to see your Seeds.
             </li>
           ) : (
             ordered.map((project) => {

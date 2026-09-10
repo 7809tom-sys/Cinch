@@ -5,9 +5,8 @@
  */
 import { planInPlaceImprovements } from "./connect-improvements";
 import {
-  JUST_PUTZIT_CONNECT_SEED_ID,
-  JUST_PUTZIT_LIVE,
-  LIVE_UPDATE_REQUIRES_APPROVAL,
+  JUST_PUTZIT_NOT_ON_SEED,
+  isJustPutzItSeedProject,
 } from "./seed-connect";
 import { sendSeedDialogTurn } from "./seed-dialog";
 import { getProject } from "./store";
@@ -23,13 +22,14 @@ export function suggestionsForJustPutzIt() {
     name: "Just Putz It",
     brief:
       "Social activity and dating website. Meet locals for real dates and activities.",
-    liveUrl: JUST_PUTZIT_LIVE,
+    liveUrl: "https://example.com",
   });
 }
 
 export async function requestedSuggestionTitles(
-  projectId: string = JUST_PUTZIT_CONNECT_SEED_ID,
+  projectId: string,
 ): Promise<string[]> {
+  if (isJustPutzItSeedProject({ id: projectId })) return [];
   const pending = await listPendingImprovements(projectId);
   return pending.map((item) => item.moduleTitle);
 }
@@ -43,7 +43,10 @@ export async function requestSeedSuggestion(input: {
   | { ok: true; title: string; already: boolean }
   | { ok: false; error: string }
 > {
-  const projectId = input.projectId?.trim() || JUST_PUTZIT_CONNECT_SEED_ID;
+  const projectId = input.projectId?.trim();
+  if (!projectId || isJustPutzItSeedProject({ id: projectId })) {
+    return { ok: false, error: JUST_PUTZIT_NOT_ON_SEED };
+  }
   const plan = suggestionsForJustPutzIt();
   const catalog = plan.improvements.find(
     (item) => item.id === input.improvementId,
@@ -79,4 +82,4 @@ export async function requestSeedSuggestion(input: {
   return { ok: true, title, already };
 }
 
-export const SUGGESTIONS_OWNER_NOTE = LIVE_UPDATE_REQUIRES_APPROVAL;
+export const SUGGESTIONS_OWNER_NOTE = JUST_PUTZIT_NOT_ON_SEED;

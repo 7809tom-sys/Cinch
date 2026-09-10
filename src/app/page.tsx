@@ -51,6 +51,12 @@ export default function Home() {
                   >
                     Plant a Seed — $99
                   </Link>
+                  <Link
+                    href="/senti"
+                    className="inline-flex h-12 items-center justify-center rounded-md px-1 text-sm font-bold text-brand-deep transition-colors hover:text-brand sm:px-4"
+                  >
+                    Prep first on Senti →
+                  </Link>
                   <a
                     href="#team"
                     className="inline-flex h-12 items-center justify-center rounded-md px-1 text-sm font-bold text-brand-deep transition-colors hover:text-brand sm:px-4"

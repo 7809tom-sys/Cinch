@@ -5,14 +5,14 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { composeSeedReply } from "../src/lib/seed-dialog";
-import { JUST_PUTZIT_LIVE } from "../src/lib/seed-connect";
+import { JUST_PUTZIT_LIVE, JUST_PUTZIT_NOT_ON_SEED } from "../src/lib/seed-connect";
 import {
   PLAYBOOK_METHOD,
   SEED_PLAYBOOK_RULE,
   SENTI_DESK_PATH,
   SENTI_NAME,
   compileSeedPlaybook,
-  exampleJustPutzItPlaybook,
+  exampleSeedPlaybook,
   playbookDownloadFilename,
   portalSeedPlaybookUrl,
   seedAsksForPlaybook,
@@ -29,56 +29,52 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(
-  /not by adding a suggestion file on cinchseed\.com/i.test(SEED_PLAYBOOK_RULE),
-  "playbook rule forbids dumping a suggestion file on cinchseed.com",
+  /prep work is everything/i.test(SEED_PLAYBOOK_RULE),
+  "playbook rule is Prep Work Is Everything",
 );
 assert(SENTI_NAME === "Senti", "compiler is named Senti");
 assert(SENTI_DESK_PATH === "/senti", "Senti desk is /senti");
-assert(PLAYBOOK_METHOD.length === 4, "method has talk → keep → compile → send");
+assert(PLAYBOOK_METHOD.length === 4, "method has prep → lanes → lock → paste");
 assert(
-  PLAYBOOK_METHOD.some((step) => /several AIs/i.test(step.title)),
-  "method talks to several AIs",
+  PLAYBOOK_METHOD.some((step) => /describe the chat/i.test(step.title)),
+  "method describes the chat before the chat",
 );
 assert(
-  PLAYBOOK_METHOD.some((step) => /chapter scripts/i.test(step.title)),
-  "method keeps chapter scripts together",
+  PLAYBOOK_METHOD.some((step) => /every lane/i.test(step.title)),
+  "method specs website admin money CRM delivery",
 );
 assert(
-  PLAYBOOK_METHOD.some((step) => /Senti compiles/i.test(step.title)),
-  "method compiles with Senti",
+  PLAYBOOK_METHOD.some((step) => /delivery and money/i.test(step.title)),
+  "method locks delivery and money",
 );
 assert(
-  PLAYBOOK_METHOD.some((step) => /Print, upload, and send/i.test(step.title)),
-  "method ends in a sendable pack",
+  PLAYBOOK_METHOD.some((step) => /one job/i.test(step.title)),
+  "method pastes one job into Conductor",
 );
 
+assert(seedAsksForPlaybook("prep work is everything"), "prep-work ask is a playbook ask");
 assert(seedAsksForPlaybook("how do we develop a project"), "playbook ask is recognized");
 assert(seedAsksForPlaybook("open the instruction pack"), "instruction pack is a playbook ask");
 assert(!seedAsksForPlaybook("what is the weather"), "unrelated talk is not a playbook ask");
 
-const pack = exampleJustPutzItPlaybook();
-assert(pack.chapters.length === 7, "Just Putz It playbook has seven chapters");
+const pack = exampleSeedPlaybook();
+assert(pack.chapters.length === 7, "prep playbook has seven chapters");
 assert(
-  pack.chapters.some((chapter) => /Manus sign-in/i.test(chapter.script)),
-  "Chief of Staff Manus sign-in note is a Seed chapter",
+  pack.chapters.some((chapter) => /intent/i.test(chapter.title + chapter.script)),
+  "intent is a Seed chapter",
 );
 assert(
-  pack.chapters.some((chapter) => /Gym Buddy/i.test(chapter.script)),
-  "Gym Buddy / New Date fold note is a Seed chapter",
-);
-assert(
-  pack.chapters.some((chapter) => /privacy/i.test(chapter.script + chapter.title)),
-  "privacy template note is a Seed chapter",
+  pack.chapters.some((chapter) => /admin, money, CRM, delivery/i.test(chapter.title)),
+  "lanes chapter covers admin money CRM delivery",
 );
 assert(
   pack.chapters.every((chapter) => chapter.script.length > 40),
   "every chapter script is a real brief, not an empty placeholder",
 );
 assert(pack.chapters.at(-1)?.agent === "Senti", "last chapter is the Senti compile");
-assert(pack.awaitingOwnerApproval, "Just Putz It pack waits for owner approval");
 assert(
-  /not a dumped file|not as a file on cinchseed/i.test(pack.summary + SEED_PLAYBOOK_RULE),
-  "Just Putz It pack stays off the homepage file dump",
+  /prep work is everything|not a dumped file|cinchseed/i.test(pack.summary + SEED_PLAYBOOK_RULE),
+  "pack stays off a homepage file dump",
 );
 assert(
   pack.compiledBody.includes("Chapter scripts") &&
@@ -86,7 +82,8 @@ assert(
   "compiled pack concatenates chapters into one instruction",
 );
 assert(
-  playbookDownloadFilename("Just Putz It") === "just-putz-it-senti-instruction.md",
+  playbookDownloadFilename("Northside Bakery") ===
+    "northside-bakery-senti-instruction.md",
   "download filename is a sendable markdown pack",
 );
 
@@ -120,8 +117,10 @@ const reply = composeSeedReply({
   liveUrl: JUST_PUTZIT_LIVE,
   incoming: "how do we develop a project?",
 });
-assert(/do not add a suggestion file/i.test(reply), "dialog refuses a cinchseed.com dump file");
-assert(/Senti/i.test(reply) && /chapter scripts/i.test(reply), "dialog points at Senti chapters");
+assert(
+  reply === JUST_PUTZIT_NOT_ON_SEED,
+  "dialog refuses to staff Just Putz It playbook work",
+);
 
 const files = [
   "src/app/senti/page.tsx",

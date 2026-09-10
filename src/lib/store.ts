@@ -2,9 +2,7 @@ import { randomBytes, randomUUID } from "crypto";
 import {
   CONNECT_KEY_MISMATCH,
   connectKeysMatch,
-  fetchPublishedJustPutzItConnectKey,
   isConnectKeyFormat,
-  shouldAdoptPublishedConnectKey,
 } from "./connect-key";
 import { getProjectManager, type AgentSkill } from "./agents";
 import {
@@ -14,9 +12,8 @@ import {
   type TaskTag,
 } from "./conductor-routing";
 import {
-  JUST_PUTZIT_CONNECT_SEED_ID,
-  JUST_PUTZIT_GITHUB,
-  JUST_PUTZIT_LIVE,
+  JUST_PUTZIT_NOT_ON_SEED,
+  isJustPutzItSeedProject,
   planConnectExistingSiteTasks,
   resolveConnectTargets,
   resolveSeedMode,
@@ -35,6 +32,7 @@ import {
   verifyDnsForHostname,
 } from "./dns-verify";
 import { readJsonStore, writeJsonStore } from "./kv-store";
+import { planPrepBuildTasks } from "./seed-prep";
 import {
   applySeedIdentityEdit,
   bootstrapSourceTree,
@@ -233,17 +231,14 @@ export async function retireCinchHostedClone(projectId: string): Promise<{
   const project = store.projects.find((item) => item.id === projectId);
   if (project && forbidsCinchHostedSite(project)) {
     const pm = getProjectManager();
-    project.seedMode = "connect";
-    project.referenceUrl = project.referenceUrl || JUST_PUTZIT_LIVE;
-    if (project.id === JUST_PUTZIT_CONNECT_SEED_ID) {
-      project.githubRepoUrl = project.githubRepoUrl || JUST_PUTZIT_GITHUB;
-    }
     project.marketplaceListingId = null;
     project.sitePublishedAt = null;
     project.updatedAt = now();
     pushActivity(
       project,
-      `${pm.name} deleted the Cinch-hosted /site/${project.id} clone. Visit the live host — do not rebuild.`,
+      isJustPutzItSeedProject(project)
+        ? `${pm.name} deleted the leftover /site/${project.id} clone. ${JUST_PUTZIT_NOT_ON_SEED}`
+        : `${pm.name} deleted the Cinch-hosted /site/${project.id} clone. Visit the live host — do not rebuild.`,
       pm.id,
     );
     await writeStore(store);
@@ -305,25 +300,14 @@ export async function setConnectKey(
   return { ok: true, project };
 }
 
-/** Pull the Connect key Just Putz It already publishes and store it. */
-export async function syncJustPutzItConnectKey(projectId: string): Promise<
-  | { ok: true; project: SeedProject }
-  | { ok: false; error: string }
-> {
-  if (projectId !== JUST_PUTZIT_CONNECT_SEED_ID) {
-    return {
-      ok: false,
-      error: "Live-key sync is only for the Just Putz It Seed.",
-    };
-  }
-  const published = await fetchPublishedJustPutzItConnectKey();
-  if (!published || published.seedId !== JUST_PUTZIT_CONNECT_SEED_ID) {
-    return {
-      ok: false,
-      error: "Could not read the Connect key from justputzit.com.",
-    };
-  }
-  return setConnectKey(projectId, published.connectKey);
+/** Just Putz It is not a Cinch Seed — never pull a live key from that host. */
+export async function syncJustPutzItConnectKey(
+  _projectId: string,
+): Promise<{ ok: false; error: string }> {
+  return {
+    ok: false,
+    error: JUST_PUTZIT_NOT_ON_SEED,
+  };
 }
 
 /** Turn the Connect API on/off for this Seed without touching the key. */
@@ -378,22 +362,6 @@ export async function verifyConnectRequest(
     return { ok: true, project };
   }
 
-  if (project.id === JUST_PUTZIT_CONNECT_SEED_ID) {
-    const published = await fetchPublishedJustPutzItConnectKey(
-      options?.fetchImpl,
-    );
-    if (
-      shouldAdoptPublishedConnectKey({
-        projectId: project.id,
-        incomingKey: key,
-        published,
-      })
-    ) {
-      const adopted = await setConnectKey(project.id, key);
-      if (adopted.ok) return { ok: true, project: adopted.project };
-    }
-  }
-
   return { ok: false, status: 401, error: CONNECT_KEY_MISMATCH };
 }
 
@@ -423,6 +391,15 @@ export async function createProject(input: {
     brief: input.brief,
     referenceUrl,
   });
+  if (
+    isJustPutzItSeedProject({
+      name: input.name,
+      liveUrl: referenceUrl,
+      githubRepoUrl,
+    })
+  ) {
+    throw new Error(JUST_PUTZIT_NOT_ON_SEED);
+  }
 
   const project: SeedProject = {
     id: randomUUID(),
@@ -772,6 +749,16 @@ export async function planConnectExistingSite(
       "Connect jobs need the real live website URL. Do not invent a host.",
     );
   }
+  if (
+    isJustPutzItSeedProject({
+      id: project.id,
+      name: project.name,
+      liveUrl,
+      githubRepoUrl: targets.githubRepoUrl,
+    })
+  ) {
+    throw new Error(JUST_PUTZIT_NOT_ON_SEED);
+  }
   project.referenceUrl = liveUrl;
   project.githubRepoUrl = targets.githubRepoUrl;
   const drafts = planConnectExistingSiteTasks({
@@ -857,9 +844,11 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     );
   }
 
+  const prepTasks = planPrepBuildTasks(project.brief);
   const backlog: Array<
     Omit<ProjectTask, "id" | "status" | "assigneeId" | "assignedBy" | "updatedAt">
   > = [
+    ...prepTasks,
     {
       title: "Adopt existing library modulars",
       detail: modularsFirst,

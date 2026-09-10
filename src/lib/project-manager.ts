@@ -21,6 +21,10 @@ import {
 } from "./site-catalog";
 import { applyTaskToSource } from "./seed-source";
 import {
+  JUST_PUTZIT_NOT_ON_SEED,
+  isJustPutzItSeedProject,
+} from "./seed-connect";
+import {
   appendNextBuildWave,
   getProject,
   inviteAgent,
@@ -144,6 +148,7 @@ export async function runProjectManagerAssignment(
 ): Promise<SeedProject> {
   const project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
+  if (isJustPutzItSeedProject(project)) return project;
 
   const pm = getProjectManager();
   let assigned = 0;
@@ -402,6 +407,12 @@ export async function assignWorkAfterSeedEdit(
 export async function bootstrapSeedProject(
   projectId: string,
 ): Promise<SeedProject> {
+  const existing = await getProject(projectId);
+  if (existing && isJustPutzItSeedProject(existing)) {
+    pushActivity(existing, JUST_PUTZIT_NOT_ON_SEED, getProjectManager().id);
+    await saveProject(existing);
+    return existing;
+  }
   const pm = getProjectManager();
   let project = await ensureSpecialistsInvited(projectId);
 
@@ -668,6 +679,19 @@ export async function tickProjectWork(
 ): Promise<WatchTickResult> {
   let project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
+  if (isJustPutzItSeedProject(project)) {
+    return {
+      project,
+      progressed: false,
+      stuck: false,
+      complete: true,
+      idle: true,
+      hasOpenWork: false,
+      statusLine: JUST_PUTZIT_NOT_ON_SEED,
+      workingOn: null,
+      updatedTask: null,
+    };
+  }
 
   const finishResult = (
     next: SeedProject,

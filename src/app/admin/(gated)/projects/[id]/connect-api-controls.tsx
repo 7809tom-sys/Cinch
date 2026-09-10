@@ -5,9 +5,7 @@ import {
   regenerateConnectKeyAction,
   setConnectKeyAction,
   setEmbedEnabledAction,
-  syncJustPutzItConnectKeyAction,
 } from "@/app/admin/actions";
-import { JUST_PUTZIT_CONNECT_SEED_ID } from "@/lib/seed-connect";
 
 export function ConnectApiControls({
   projectId,
@@ -24,8 +22,6 @@ export function ConnectApiControls({
   const [pasted, setPasted] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const isJustPutzIt = projectId === JUST_PUTZIT_CONNECT_SEED_ID;
-
   function applyKeyResult(
     result: { ok: true; connectKey: string } | { ok: false; error: string },
     okMessage: string,
@@ -70,25 +66,6 @@ export function ConnectApiControls({
       >
         {enabled ? "Disable" : "Enable"}
       </button>
-      {isJustPutzIt ? (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            setMessage(null);
-            setError(null);
-            startTransition(async () => {
-              applyKeyResult(
-                await syncJustPutzItConnectKeyAction(projectId),
-                "Set to the key already published on justputzit.com.",
-              );
-            });
-          }}
-          className="inline-flex min-h-10 items-center justify-center rounded-md border border-foam/30 px-3 text-xs font-semibold text-foam hover:bg-foam/10 disabled:opacity-60"
-        >
-          Use key already on justputzit.com
-        </button>
-      ) : null}
       <button
         type="button"
         disabled={pending}

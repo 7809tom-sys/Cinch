@@ -7,6 +7,7 @@ import { join } from "path";
 import {
   JUST_PUTZIT_CONNECT_SEED_ID,
   JUST_PUTZIT_LIVE,
+  JUST_PUTZIT_NOT_ON_SEED,
 } from "../src/lib/seed-connect";
 import {
   SEED_DIALOG_RULE,
@@ -26,8 +27,8 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(
-  /dialog page|do not rebuild/i.test(SEED_DIALOG_RULE),
-  "Seed dialog rule forbids rebuilding the live host",
+  /dialog page|do not rebuild|not a Cinch Seed/i.test(SEED_DIALOG_RULE),
+  "Seed dialog rule forbids rebuilding or staffing Just Putz It",
 );
 assert(
   seedDialogUrl(JUST_PUTZIT_CONNECT_SEED_ID) ===
@@ -52,16 +53,10 @@ const reply = composeSeedReply({
   liveUrl: JUST_PUTZIT_LIVE,
   incoming: "how do we improve the site?",
 });
-assert(/just putz/i.test(reply), "Seed names Just Putz It in the improve reply");
 assert(
-  /do not rebuild/i.test(reply) && /justputzit\.com/i.test(reply),
-  "improve reply stays on justputzit.com and does not rebuild",
+  reply === JUST_PUTZIT_NOT_ON_SEED,
+  "Just Putz It dialog does not spend AI time on pretend updates",
 );
-assert(
-  /Community and tonight/i.test(reply) && /Matches, Activity Board/i.test(reply),
-  "improve reply lists dating and activity proposals",
-);
-assert(/owner approv/i.test(reply), "improve reply waits for owner approval");
 
 const hello = composeSeedReply({
   name: "Just Putz It",
@@ -70,8 +65,8 @@ const hello = composeSeedReply({
   incoming: "hello",
 });
 assert(
-  /improve the site/i.test(hello),
-  "a hello still points the owner at an improve question",
+  hello === JUST_PUTZIT_NOT_ON_SEED,
+  "a hello on Just Putz It still refuses pretend updates",
 );
 
 const files = [
