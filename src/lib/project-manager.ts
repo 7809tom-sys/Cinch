@@ -334,7 +334,9 @@ export function describeCrew(project: SeedProject) {
     .filter(Boolean);
 }
 
-export function projectWorkComplete(project: SeedProject): boolean {
+export function projectWorkComplete(project: {
+  tasks: Array<{ status: string }>;
+}): boolean {
   return (
     project.tasks.length > 0 &&
     project.tasks.every((task) => task.status === "done")

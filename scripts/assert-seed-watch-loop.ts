@@ -48,7 +48,7 @@ assert(
 assert(
   !projectWorkComplete({
     tasks: [],
-  } as { tasks: [] }),
+  }),
   "empty board is not complete — it is idle",
 );
 
