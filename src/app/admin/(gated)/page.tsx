@@ -122,6 +122,9 @@ export default async function AdminPage() {
             <Link href="/admin/scripts" className="hover:text-brand-deep">
               Scripts
             </Link>
+            <Link href="/admin/dialog" className="hover:text-brand-deep">
+              Dialog
+            </Link>
             <Link href="/admin/test" className="hover:text-brand-deep">
               Test
             </Link>

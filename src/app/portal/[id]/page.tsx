@@ -63,6 +63,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
               Visit website
             </a>
             <Link
+              href={`/portal/${project.id}/dialog`}
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+            >
+              Dialog
+            </Link>
+            <Link
               href={`/portal/${project.id}/scripts`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
@@ -116,7 +122,13 @@ export default async function PortalProjectPage({ params }: PageProps) {
               below. Queue only. No final update without owner approval.
             </p>
           ) : null}
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={`/portal/${project.id}/dialog`}
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"
+            >
+              Talk to this Seed
+            </Link>
             <Link
               href={`/portal/${project.id}/edit`}
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
@@ -152,6 +164,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
               <p className="mt-2 text-xs text-muted">
                 {new Date(pmContact.sentAt).toLocaleString()}
               </p>
+              <Link
+                href={`/portal/${project.id}/dialog`}
+                className="mt-4 inline-flex min-h-10 items-center text-sm font-semibold text-brand-deep underline"
+              >
+                Reply on the Seed dialog
+              </Link>
             </div>
           ) : null}
 

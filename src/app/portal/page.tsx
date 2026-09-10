@@ -39,6 +39,9 @@ export default async function PortalHomePage() {
             <Link href="/scripts" className="hover:text-brand-deep">
               Scripts
             </Link>
+            <Link href="/dialog" className="hover:text-brand-deep">
+              Dialog
+            </Link>
             <Link href="/lockgm" className="hover:text-brand-deep">
               LockedGM
             </Link>

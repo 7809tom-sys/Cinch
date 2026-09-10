@@ -50,6 +50,9 @@ export default async function ScriptManagementPage() {
             <Link href="/improve" className="hover:text-brand-deep">
               Improve
             </Link>
+            <Link href="/dialog" className="hover:text-brand-deep">
+              Dialog
+            </Link>
             <Link href="/admin/scripts" className="hover:text-brand-deep">
               Admin scripts
             </Link>

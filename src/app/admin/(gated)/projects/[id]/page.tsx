@@ -84,6 +84,12 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               Scripts
             </Link>
             <Link
+              href={`/admin/projects/${project.id}/dialog`}
+              className="text-sm font-semibold text-muted transition-colors hover:text-brand-deep"
+            >
+              Dialog
+            </Link>
+            <Link
               href={`/admin/projects/${project.id}/edit`}
               className="inline-flex min-h-9 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam hover:bg-brand"
             >
@@ -112,7 +118,13 @@ export default async function ProjectAdminPage({ params }: PageProps) {
             <p className="mt-4 max-w-2xl text-base leading-relaxed break-words text-muted">
               {project.brief}
             </p>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={`/admin/projects/${project.id}/dialog`}
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+              >
+                Talk to this Seed
+              </Link>
               <Link
                 href={`/admin/projects/${project.id}/edit`}
                 className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand"

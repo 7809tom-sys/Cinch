@@ -31,6 +31,7 @@ import {
   markThreadReadByCustomer,
   sendMessage,
 } from "@/lib/messages";
+import { sendSeedDialogTurn } from "@/lib/seed-dialog";
 import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
@@ -313,6 +314,29 @@ export async function getPortalProjectSnapshot(projectId: string) {
     .filter((name): name is string => Boolean(name));
 
   return { customer, project: refreshed, watch, agents, pmContact };
+}
+
+export async function sendPortalSeedDialogAction(
+  projectId: string,
+  body: string,
+) {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+
+  const customer = await getCurrentCustomer();
+  const result = await sendSeedDialogTurn({
+    projectId,
+    customerId: customer?.id,
+    sender: "customer",
+    body,
+  });
+  if (!result.ok) return result;
+
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath(`/portal/${projectId}/dialog`);
+  revalidatePath("/dialog");
+  revalidatePath(`/admin/projects/${projectId}/dialog`);
+  return result;
 }
 
 async function requireOwnedProject(
