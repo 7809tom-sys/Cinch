@@ -1,4 +1,11 @@
-import { randomBytes, randomUUID, timingSafeEqual } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
+import {
+  CONNECT_KEY_MISMATCH,
+  connectKeysMatch,
+  fetchPublishedJustPutzItConnectKey,
+  isConnectKeyFormat,
+  shouldAdoptPublishedConnectKey,
+} from "./connect-key";
 import { getProjectManager, type AgentSkill } from "./agents";
 import {
   briefAsksForWholeSiteBuild,
@@ -262,6 +269,63 @@ export async function regenerateConnectKey(
   return project;
 }
 
+/**
+ * Set the Connect key already on a live host. Prefer this over regenerate
+ * when justputzit.com (or another site) already embeds a key.
+ */
+export async function setConnectKey(
+  projectId: string,
+  connectKey: string,
+): Promise<
+  | { ok: true; project: SeedProject }
+  | { ok: false; error: string }
+> {
+  const key = connectKey.trim();
+  if (!isConnectKeyFormat(key)) {
+    return {
+      ok: false,
+      error: "Connect key must look like cs_ plus 48 hex characters.",
+    };
+  }
+
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return { ok: false, error: "Seed not found." };
+  if (connectKeysMatch(key, project.connectKey)) {
+    return { ok: true, project };
+  }
+
+  project.connectKey = key;
+  pushActivity(
+    project,
+    "Connect API key set to the key already on the live site.",
+    project.projectManagerId,
+  );
+  await writeStore(store);
+  return { ok: true, project };
+}
+
+/** Pull the Connect key Just Putz It already publishes and store it. */
+export async function syncJustPutzItConnectKey(projectId: string): Promise<
+  | { ok: true; project: SeedProject }
+  | { ok: false; error: string }
+> {
+  if (projectId !== JUST_PUTZIT_CONNECT_SEED_ID) {
+    return {
+      ok: false,
+      error: "Live-key sync is only for the Just Putz It Seed.",
+    };
+  }
+  const published = await fetchPublishedJustPutzItConnectKey();
+  if (!published || published.seedId !== JUST_PUTZIT_CONNECT_SEED_ID) {
+    return {
+      ok: false,
+      error: "Could not read the Connect key from justputzit.com.",
+    };
+  }
+  return setConnectKey(projectId, published.connectKey);
+}
+
 /** Turn the Connect API on/off for this Seed without touching the key. */
 export async function setEmbedEnabled(
   projectId: string,
@@ -289,6 +353,7 @@ export async function setEmbedEnabled(
 export async function verifyConnectRequest(
   seedId: string | undefined | null,
   connectKey: string | undefined | null,
+  options?: { fetchImpl?: typeof fetch },
 ): Promise<
   | { ok: true; project: SeedProject }
   | { ok: false; status: 400 | 401 | 403 | 404; error: string }
@@ -309,15 +374,27 @@ export async function verifyConnectRequest(
   }
 
   const key = connectKey?.trim() ?? "";
-  const expected = project.connectKey;
-  const a = Buffer.from(key);
-  const b = Buffer.from(expected);
-  const matches = a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
-  if (!matches) {
-    return { ok: false, status: 401, error: "Invalid or missing Connect key." };
+  if (connectKeysMatch(key, project.connectKey)) {
+    return { ok: true, project };
   }
 
-  return { ok: true, project };
+  if (project.id === JUST_PUTZIT_CONNECT_SEED_ID) {
+    const published = await fetchPublishedJustPutzItConnectKey(
+      options?.fetchImpl,
+    );
+    if (
+      shouldAdoptPublishedConnectKey({
+        projectId: project.id,
+        incomingKey: key,
+        published,
+      })
+    ) {
+      const adopted = await setConnectKey(project.id, key);
+      if (adopted.ok) return { ok: true, project: adopted.project };
+    }
+  }
+
+  return { ok: false, status: 401, error: CONNECT_KEY_MISMATCH };
 }
 
 export async function createProject(input: {

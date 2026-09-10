@@ -59,7 +59,9 @@ import {
   listProjectsForCustomer,
   regenerateConnectKey,
   removeCustomDomain,
+  setConnectKey,
   setEmbedEnabled,
+  syncJustPutzItConnectKey,
   updateProjectDetails,
   type SeedProject,
 } from "@/lib/store";
@@ -398,6 +400,37 @@ export async function regenerateMyConnectKeyAction(
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/admin");
   return { ok: true, connectKey: project.connectKey };
+}
+
+export async function setMyConnectKeyAction(
+  projectId: string,
+  connectKey: string,
+): Promise<
+  { ok: true; connectKey: string } | { ok: false; error: string }
+> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const result = await setConnectKey(projectId, connectKey);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, connectKey: result.project.connectKey };
+}
+
+export async function syncMyJustPutzItConnectKeyAction(
+  projectId: string,
+): Promise<
+  { ok: true; connectKey: string } | { ok: false; error: string }
+> {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false, error: owned.error };
+
+  const result = await syncJustPutzItConnectKey(projectId);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/admin");
+  return { ok: true, connectKey: result.project.connectKey };
 }
 
 /** Customer self-service: turn the Connect API on/off for this Seed. */

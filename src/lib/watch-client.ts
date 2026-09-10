@@ -247,6 +247,9 @@ export function buildWatchClientJs(input?: {
             return;
           }
           var err = (pack.data && pack.data.error) || ("HTTP " + pack.res.status);
+          if (/Invalid or missing Connect key/i.test(err)) {
+            err = "Connect key does not match Cinch. Use the key already on this live site — do not leave a regenerated Cinch key unused.";
+          }
           setStatus(err, pack.res.status === 401 || pack.res.status === 404 ? "warn" : "err");
         })
         .catch(function () {
