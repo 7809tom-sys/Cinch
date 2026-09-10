@@ -74,7 +74,8 @@ export default async function SuggestionsPage() {
           >
             justputzit.com
           </a>
-          . We do not rebuild the site.
+          . We do not rebuild the site. Please-do queues the suggestion
+          on the Seed — it does not start a loop looking for an AI.
         </p>
         <p className="mt-3 text-sm text-muted">
           The Seed will also answer on{" "}

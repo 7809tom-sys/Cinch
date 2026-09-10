@@ -334,12 +334,30 @@ export function describeCrew(project: SeedProject) {
     .filter(Boolean);
 }
 
-export function projectWorkComplete(project: SeedProject): boolean {
+export function projectWorkComplete(project: {
+  tasks: Array<{ status: string }>;
+}): boolean {
   return (
     project.tasks.length > 0 &&
     project.tasks.every((task) => task.status === "done")
   );
 }
+
+export function projectHasOpenWork(project: {
+  tasks: Array<{ status: string }>;
+}): boolean {
+  return project.tasks.some(
+    (task) =>
+      task.status === "queued" ||
+      task.status === "assigned" ||
+      task.status === "in_progress",
+  );
+}
+
+export const WATCH_IDLE_LINE =
+  "Stopped looking for an AI — nothing is waiting to be assigned.";
+export const WATCH_NO_AI_LINE =
+  "Stopped looking for an AI — none is available for the remaining tasks.";
 
 
 async function ensureSpecialistsInvited(projectId: string): Promise<SeedProject> {
@@ -554,6 +572,9 @@ export type WatchTickResult = {
   /** True when queued work remains but no crew member can take it. */
   stuck: boolean;
   complete: boolean;
+  /** True when there is no queued/assigned/in-progress work. */
+  idle: boolean;
+  hasOpenWork: boolean;
   /** Clear Refresh-status line: what’s being worked on, or what just updated. */
   statusLine: string;
   /** Current active task title, if any. */
@@ -593,7 +614,7 @@ function watchStatusFromProject(
   }
   if (options.stuck) {
     return {
-      statusLine: "Paused — crew can’t cover remaining tasks",
+      statusLine: WATCH_NO_AI_LINE,
       workingOn,
       updatedTask,
     };
@@ -631,7 +652,7 @@ function watchStatusFromProject(
     };
   }
   return {
-    statusLine: options.progressed ? "Updated" : "No active tasks right now",
+    statusLine: options.progressed ? "Updated" : WATCH_IDLE_LINE,
     workingOn: null,
     updatedTask,
   };
@@ -655,6 +676,7 @@ export async function tickProjectWork(
     updateKind: "finished" | "started" | null = null,
   ): WatchTickResult => {
     const complete = projectWorkComplete(next);
+    const hasOpenWork = projectHasOpenWork(next);
     const stuck =
       !complete &&
       !progressed &&
@@ -662,6 +684,7 @@ export async function tickProjectWork(
       next.tasks
         .filter((task) => task.status === "queued")
         .every((task) => !chooseAssignee(next, task));
+    const idle = !complete && !hasOpenWork;
     const status = watchStatusFromProject(next, {
       progressed,
       stuck,
@@ -669,7 +692,15 @@ export async function tickProjectWork(
       updatedTask,
       updateKind,
     });
-    return { project: next, progressed, stuck, complete, ...status };
+    return {
+      project: next,
+      progressed,
+      stuck,
+      complete,
+      idle,
+      hasOpenWork,
+      ...status,
+    };
   };
 
   const inProgress = project.tasks.find(

@@ -17,6 +17,7 @@ export function PortalWatchTicker({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [stuck, setStuck] = useState(false);
+  const [idle, setIdle] = useState(complete);
   const [localComplete, setLocalComplete] = useState(complete);
   const [statusLine, setStatusLine] = useState(() => {
     if (complete) return "Build complete";
@@ -52,6 +53,7 @@ export function PortalWatchTicker({
           const result = await portalWatchTickAction(projectId);
           if (result.ok) {
             setStuck(Boolean(result.stuck));
+            setIdle(Boolean(result.idle) || !result.hasOpenWork);
             setLocalComplete(Boolean(result.complete));
             if ("statusLine" in result && result.statusLine) {
               setStatusLine(result.statusLine);
@@ -80,11 +82,10 @@ export function PortalWatchTicker({
       try {
         const result = await portalRestaffAction(projectId);
         if (result.ok) {
-          setStuck(false);
-          setStatusLine("Crew restaffed — assigning work…");
           const tick = await portalWatchTickAction(projectId);
           if (tick.ok) {
             setStuck(Boolean(tick.stuck));
+            setIdle(Boolean(tick.idle) || !tick.hasOpenWork);
             setLocalComplete(Boolean(tick.complete));
             if ("statusLine" in tick && tick.statusLine) {
               setStatusLine(tick.statusLine);
@@ -99,8 +100,8 @@ export function PortalWatchTicker({
   }
 
   useEffect(() => {
-    // Stop auto-ticking when complete — Seeds should finish, not loop forever.
-    if (stuck || localComplete) return;
+    // Stop when complete, idle, or no AI can take the work — do not hunt forever.
+    if (stuck || idle || localComplete) return;
 
     const id = window.setInterval(() => {
       refreshNow({ advance: true });
@@ -108,7 +109,7 @@ export function PortalWatchTicker({
 
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional watch loop
-  }, [stuck, localComplete, projectId]);
+  }, [stuck, idle, localComplete, projectId]);
 
   return (
     <div className="mt-3 flex min-w-0 flex-col gap-3">
@@ -118,8 +119,9 @@ export function PortalWatchTicker({
             Watch paused — crew can’t cover remaining tasks
           </p>
           <p className="mt-1 text-sm leading-relaxed text-muted">
-            Assignment stopped so it won’t loop. Restaff invites missing
-            specialists (SEO, QA, etc.) and resumes work.
+            Assignment stopped so it will not keep looking for an AI.
+            Restaff only invites specialists. It cannot invent a provider
+            key.
           </p>
         </div>
       ) : null}
@@ -128,7 +130,7 @@ export function PortalWatchTicker({
           {pending
             ? "Refreshing status…"
             : stuck && !localComplete
-              ? "Waiting for Restaff crew"
+              ? "Stopped looking for an AI"
               : statusLine}
         </p>
         <div className="flex min-w-0 flex-wrap gap-2">
@@ -136,7 +138,6 @@ export function PortalWatchTicker({
             type="button"
             disabled={pending}
             onClick={() => {
-              setStuck(false);
               refreshNow({
                 advance: !localComplete,
               });
