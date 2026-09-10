@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
+import { SeedSuggestionsBoard } from "@/components/seed-suggestions-board";
 import { planInPlaceImprovements } from "@/lib/connect-improvements";
+import { requestedSuggestionTitles } from "@/lib/seed-suggestions";
 import { growthAxisMeta } from "@/lib/seed-growth";
 import {
   JUST_PUTZIT_ADMIN,
+  JUST_PUTZIT_CONNECT_SEED_ID,
   JUST_PUTZIT_GITHUB,
   JUST_PUTZIT_LIVE,
   JUST_PUTZIT_MANUS,
@@ -25,6 +28,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ImproveJustPutzItPage() {
   const look = await lookAtJustPutzitLive();
+  const requested = await requestedSuggestionTitles(JUST_PUTZIT_CONNECT_SEED_ID);
   const plan = planInPlaceImprovements({
     name: "Just Putz It",
     brief:
@@ -53,6 +57,9 @@ export default async function ImproveJustPutzItPage() {
             </a>
             <Link href="/senti" className="transition-colors hover:text-brand-deep">
               Senti
+            </Link>
+            <Link href="/suggestions" className="transition-colors hover:text-brand-deep">
+              Suggestions
             </Link>
             <Link href="/scripts" className="transition-colors hover:text-brand-deep">
               Scripts
@@ -210,6 +217,16 @@ export default async function ImproveJustPutzItPage() {
             </Link>
           </div>
         </section>
+
+        <div className="mt-12">
+          <SeedSuggestionsBoard
+            projectId={JUST_PUTZIT_CONNECT_SEED_ID}
+            headline={plan.headline}
+            summary="Click Please do this on any item. That queues the work on this Seed — it does not publish."
+            improvements={plan.improvements}
+            requestedTitles={requested}
+          />
+        </div>
 
         <p className="mt-12 font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
           Proposed updates
