@@ -32,6 +32,7 @@ import {
   searchDomains,
 } from "@/lib/cloudflare-registrar";
 import {
+  getCustomerByEmail,
   getCustomerById,
   listActiveSessions,
   listCustomers,
@@ -51,6 +52,7 @@ import {
   markThreadReadByAdmin,
   sendMessage,
 } from "@/lib/messages";
+import { sendSeedDialogTurn } from "@/lib/seed-dialog";
 import {
   getLockgmContent,
   lockgmContentDraftSchema,
@@ -856,4 +858,33 @@ export async function sendAdminMessageAction(
   revalidatePath("/admin");
   revalidatePath("/portal");
   return { ok: true as const, messages };
+}
+
+export async function sendAdminSeedDialogAction(
+  projectId: string,
+  body: string,
+) {
+  const master = await getMasterSession();
+  if (!master) return { ok: false as const, error: "Not authorized." };
+
+  const project = await getProject(projectId);
+  if (!project) return { ok: false as const, error: "Seed not found." };
+
+  const customer = project.customerEmail
+    ? await getCustomerByEmail(project.customerEmail)
+    : null;
+  const result = await sendSeedDialogTurn({
+    projectId,
+    customerId: customer?.id,
+    sender: "customer",
+    body,
+  });
+  if (!result.ok) return result;
+
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath(`/admin/projects/${projectId}/dialog`);
+  revalidatePath("/admin/dialog");
+  revalidatePath("/dialog");
+  revalidatePath(`/portal/${projectId}/dialog`);
+  return result;
 }

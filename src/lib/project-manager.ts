@@ -456,6 +456,7 @@ export async function ensureProjectManagerSeedContact(
     if (customer) {
       await sendMessage({
         customerId: customer.id,
+        projectId: project.id,
         sender: "admin",
         body,
       });

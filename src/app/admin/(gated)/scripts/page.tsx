@@ -50,12 +50,20 @@ export default async function AdminScriptManagementPage() {
           >
             ← Admin
           </Link>
-          <Link
-            href="/scripts"
-            className="text-sm font-semibold text-brand-deep hover:text-brand"
-          >
-            Public script desk
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/dialog"
+              className="text-sm font-semibold text-muted hover:text-brand-deep"
+            >
+              Dialog
+            </Link>
+            <Link
+              href="/scripts"
+              className="text-sm font-semibold text-brand-deep hover:text-brand"
+            >
+              Public script desk
+            </Link>
+          </div>
         </div>
       </header>
 

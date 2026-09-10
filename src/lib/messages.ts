@@ -4,6 +4,7 @@ import { readJsonStore, writeJsonStore } from "./kv-store";
 /**
  * Direct messaging between the admin (master account) and a customer
  * account — a lightweight support inbox, threaded by `customerId`.
+ * Seed dialogs also set `projectId` so talk stays on that Seed.
  * Persisted the same way as every other store (Redis when configured,
  * a JSON file under .data/ locally).
  */
@@ -13,6 +14,8 @@ export type MessageSender = "admin" | "customer";
 export type Message = {
   id: string;
   customerId: string;
+  /** When set, this turn belongs to that Seed’s dialog — not the global inbox. */
+  projectId: string | null;
   sender: MessageSender;
   body: string;
   createdAt: string;
@@ -38,7 +41,12 @@ let memory: MessageStore | null = null;
 async function ensureMessages(): Promise<MessageStore> {
   if (memory) return memory;
   const loaded = await readJsonStore<MessageStore>(STORE_KEY, { messages: [] });
-  memory = { messages: loaded.messages ?? [] };
+  memory = {
+    messages: (loaded.messages ?? []).map((message) => ({
+      ...message,
+      projectId: message.projectId ?? null,
+    })),
+  };
   return memory;
 }
 
@@ -56,7 +64,20 @@ export async function listMessagesForCustomer(
 ): Promise<Message[]> {
   const store = await ensureMessages();
   return store.messages
-    .filter((message) => message.customerId === customerId)
+    .filter(
+      (message) => message.customerId === customerId && !message.projectId,
+    )
+    .sort(byCreatedAtAsc);
+}
+
+export function seedDialogCustomerId(projectId: string): string {
+  return `seed:${projectId}`;
+}
+
+export async function listMessagesForSeed(projectId: string): Promise<Message[]> {
+  const store = await ensureMessages();
+  return store.messages
+    .filter((message) => message.projectId === projectId)
     .sort(byCreatedAtAsc);
 }
 
@@ -64,6 +85,7 @@ export async function sendMessage(input: {
   customerId: string;
   sender: MessageSender;
   body: string;
+  projectId?: string | null;
 }): Promise<Message> {
   const body = input.body.trim().slice(0, MAX_BODY_LENGTH);
   if (!body) throw new Error("Message can't be empty.");
@@ -72,6 +94,7 @@ export async function sendMessage(input: {
   const message: Message = {
     id: randomUUID(),
     customerId: input.customerId,
+    projectId: input.projectId?.trim() || null,
     sender: input.sender,
     body,
     createdAt: new Date().toISOString(),
@@ -123,6 +146,7 @@ export async function listThreadSummaries(): Promise<ThreadSummary[]> {
   const store = await ensureMessages();
   const byCustomer = new Map<string, Message[]>();
   for (const message of store.messages) {
+    if (message.projectId) continue;
     const list = byCustomer.get(message.customerId) ?? [];
     list.push(message);
     byCustomer.set(message.customerId, list);
@@ -143,6 +167,33 @@ export async function listThreadSummaries(): Promise<ThreadSummary[]> {
       a.lastMessage?.createdAt ?? "",
     ),
   );
+}
+
+export async function listSeedDialogSummaries(): Promise<
+  Array<{ projectId: string; lastMessage: Message | null; turns: number }>
+> {
+  const store = await ensureMessages();
+  const bySeed = new Map<string, Message[]>();
+  for (const message of store.messages) {
+    if (!message.projectId) continue;
+    const list = bySeed.get(message.projectId) ?? [];
+    list.push(message);
+    bySeed.set(message.projectId, list);
+  }
+  return [...bySeed.entries()]
+    .map(([projectId, list]) => {
+      const sorted = [...list].sort(byCreatedAtAsc);
+      return {
+        projectId,
+        lastMessage: sorted[sorted.length - 1] ?? null,
+        turns: sorted.length,
+      };
+    })
+    .sort((a, b) =>
+      (b.lastMessage?.createdAt ?? "").localeCompare(
+        a.lastMessage?.createdAt ?? "",
+      ),
+    );
 }
 
 export async function totalUnreadForAdmin(): Promise<number> {
