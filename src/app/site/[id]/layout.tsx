@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
-import { notFound } from "next/navigation";
-import { forbidsCinchHostedSite } from "@/lib/hosted-site";
+import { notFound, redirect } from "next/navigation";
+import {
+  forbidsCinchHostedSite,
+  liveHostInsteadOfCinchClone,
+} from "@/lib/hosted-site";
 import { getProject, retireCinchHostedClone } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Connect Seeds (Just Putz It) must not keep a Cinch-hosted clone.
- * Hitting /site/[id] deletes the leftover copy and 404s.
+ * The leftover /site/[id] URL sends people to the real live host.
  */
 export default async function SeedSiteLayout({
   children,
@@ -18,11 +21,16 @@ export default async function SeedSiteLayout({
 }) {
   const { id } = await params;
   const project = await getProject(id);
-  if (!project) notFound();
+  const liveHost = liveHostInsteadOfCinchClone(id, project);
+
+  if (!project) {
+    if (liveHost) redirect(liveHost);
+    notFound();
+  }
 
   if (forbidsCinchHostedSite(project)) {
     await retireCinchHostedClone(project.id);
-    notFound();
+    redirect(liveHost || liveHostInsteadOfCinchClone(project.id, project) || "/");
   }
 
   return children;

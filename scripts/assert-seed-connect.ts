@@ -30,7 +30,10 @@ import {
   resolveSeedMode,
 } from "../src/lib/seed-connect";
 import { lookAtJustPutzitLive } from "../src/lib/just-putzit-look";
-import { forbidsCinchHostedSite } from "../src/lib/hosted-site";
+import {
+  forbidsCinchHostedSite,
+  liveHostInsteadOfCinchClone,
+} from "../src/lib/hosted-site";
 import {
   CONNECT_KEY_PATTERN,
   JUST_PUTZIT_EMBED_CONFIG_URL,
@@ -271,6 +274,19 @@ assert(
     referenceUrl: null,
   }) === JUST_PUTZIT_LIVE,
   "Visit for the leftover clone id opens justputzit.com, not /site/",
+);
+assert(
+  liveHostInsteadOfCinchClone(JUST_PUTZIT_CONNECT_SEED_ID, null) ===
+    JUST_PUTZIT_LIVE,
+  "deleted /site clone redirects to justputzit.com even if the Seed row is gone",
+);
+assert(
+  liveHostInsteadOfCinchClone("pizza", {
+    id: "pizza",
+    name: "Pizza Man",
+    seedMode: "build",
+  }) === null,
+  "normal Cinch-hosted Seeds are not redirected away from /site/",
 );
 
 const all: SeedProviderId[] = [
