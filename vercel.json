@@ -1,3 +1,15 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "redirects": [
+    {
+      "source": "/site/48a66d0f-d7f1-483c-82ae-675fed90dc48",
+      "destination": "https://justputzit.com",
+      "permanent": true
+    },
+    {
+      "source": "/site/48a66d0f-d7f1-483c-82ae-675fed90dc48/:path*",
+      "destination": "https://justputzit.com",
+      "permanent": true
+    }
+  ]
 }

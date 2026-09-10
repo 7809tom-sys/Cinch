@@ -30,7 +30,12 @@ import {
   resolveSeedMode,
 } from "../src/lib/seed-connect";
 import { lookAtJustPutzitLive } from "../src/lib/just-putzit-look";
-import { forbidsCinchHostedSite } from "../src/lib/hosted-site";
+import {
+  JUST_PUTZIT_HOSTED_CLONE_PATH,
+  cinchHostedCloneRedirects,
+  forbidsCinchHostedSite,
+  liveHostInsteadOfCinchClone,
+} from "../src/lib/hosted-site";
 import {
   CONNECT_KEY_PATTERN,
   JUST_PUTZIT_EMBED_CONFIG_URL,
@@ -271,6 +276,49 @@ assert(
     referenceUrl: null,
   }) === JUST_PUTZIT_LIVE,
   "Visit for the leftover clone id opens justputzit.com, not /site/",
+);
+assert(
+  liveHostInsteadOfCinchClone(JUST_PUTZIT_CONNECT_SEED_ID, null) ===
+    JUST_PUTZIT_LIVE,
+  "deleted /site clone redirects to justputzit.com even if the Seed row is gone",
+);
+assert(
+  liveHostInsteadOfCinchClone("pizza", {
+    id: "pizza",
+    name: "Pizza Man",
+    seedMode: "build",
+  }) === null,
+  "normal Cinch-hosted Seeds are not redirected away from /site/",
+);
+const cloneRedirects = cinchHostedCloneRedirects();
+assert(
+  cloneRedirects.some(
+    (rule) =>
+      rule.source === JUST_PUTZIT_HOSTED_CLONE_PATH &&
+      rule.destination === JUST_PUTZIT_LIVE &&
+      rule.permanent,
+  ),
+  "config redirect sends the leftover /site clone to justputzit.com",
+);
+assert(
+  cloneRedirects.some((rule) =>
+    rule.source.startsWith(`${JUST_PUTZIT_HOSTED_CLONE_PATH}/`),
+  ),
+  "config redirect also covers leftover /site clone subpaths",
+);
+const nextConfigSource = readFileSync(
+  join(process.cwd(), "next.config.ts"),
+  "utf8",
+);
+assert(
+  nextConfigSource.includes("cinchHostedCloneRedirects"),
+  "next.config applies the leftover /site clone redirect",
+);
+const vercelRoutes = readFileSync(join(process.cwd(), "vercel.json"), "utf8");
+assert(
+  vercelRoutes.includes(JUST_PUTZIT_CONNECT_SEED_ID) &&
+    vercelRoutes.includes("justputzit.com"),
+  "Vercel edge redirect sends the leftover /site clone to justputzit.com",
 );
 
 const all: SeedProviderId[] = [
