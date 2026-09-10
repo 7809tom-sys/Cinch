@@ -24,6 +24,9 @@ export function SiteFooter() {
           <Link href="/scripts" className="hover:text-brand-deep">
             Scripts
           </Link>
+          <Link href="/suggestions" className="hover:text-brand-deep">
+            Suggestions
+          </Link>
           <Link href="/dialog" className="hover:text-brand-deep">
             Dialog
           </Link>

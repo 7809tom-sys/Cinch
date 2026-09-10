@@ -56,6 +56,9 @@ export default async function PublicDialogDeskPage() {
             <Link href="/senti" className="hover:text-brand-deep">
               Senti
             </Link>
+            <Link href="/suggestions" className="hover:text-brand-deep">
+              Suggestions
+            </Link>
             <Link href="/improve" className="hover:text-brand-deep">
               Improve
             </Link>

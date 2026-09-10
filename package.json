@@ -14,6 +14,7 @@
     "assert:seed-connect": "npx tsx scripts/assert-seed-connect.ts",
     "assert:script-management": "npx tsx scripts/assert-script-management.ts",
     "assert:seed-dialog": "npx tsx scripts/assert-seed-dialog.ts",
+    "assert:seed-suggestions": "npx tsx scripts/assert-seed-suggestions.ts",
     "assert:seed-playbook": "npx tsx scripts/assert-seed-playbook.ts",
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
