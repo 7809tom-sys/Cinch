@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
+import { cinchHostedCloneRedirects } from "./src/lib/hosted-site";
 
 const nextConfig: NextConfig = {
   // Playwright / local agents often hit 127.0.0.1; allow HMR + static chunks.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  async redirects() {
+    return cinchHostedCloneRedirects();
+  },
   async headers() {
     return [
       {
