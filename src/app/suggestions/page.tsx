@@ -10,7 +10,6 @@ import {
   requestedSuggestionTitles,
   suggestionsForJustPutzIt,
 } from "@/lib/seed-suggestions";
-import { seedDialogUrl } from "@/lib/seed-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +79,7 @@ export default async function SuggestionsPage() {
         <p className="mt-3 text-sm text-muted">
           The Seed will also answer on{" "}
           <Link
-            href={seedDialogUrl(JUST_PUTZIT_CONNECT_SEED_ID)}
+            href={`/admin/projects/${JUST_PUTZIT_CONNECT_SEED_ID}/dialog`}
             className="font-semibold text-brand-deep underline"
           >
             the Just Putz It dialog

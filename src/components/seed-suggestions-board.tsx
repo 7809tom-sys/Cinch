@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { requestSeedSuggestionAction } from "@/app/suggestions/actions";
 import type { InPlaceImprovement } from "@/lib/connect-improvements";
-import { SUGGESTIONS_OWNER_NOTE } from "@/lib/seed-suggestions";
+import { LIVE_UPDATE_REQUIRES_APPROVAL } from "@/lib/seed-connect";
 
 export function SeedSuggestionsBoard({
   projectId,
@@ -63,7 +63,7 @@ export function SeedSuggestionsBoard({
       <p className="mt-2 text-sm leading-relaxed text-muted">{headline}</p>
       <p className="mt-2 text-sm leading-relaxed text-muted">{summary}</p>
       <p className="mt-3 rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm font-semibold text-brand-deep">
-        {SUGGESTIONS_OWNER_NOTE}
+        {LIVE_UPDATE_REQUIRES_APPROVAL}
       </p>
 
       <ul className="mt-6 space-y-4">
