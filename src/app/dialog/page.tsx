@@ -53,6 +53,9 @@ export default async function PublicDialogDeskPage() {
             Cinch
           </Link>
           <nav className="flex items-center gap-5 text-sm font-semibold text-brand-deep/75">
+            <Link href="/senti" className="hover:text-brand-deep">
+              Senti
+            </Link>
             <Link href="/improve" className="hover:text-brand-deep">
               Improve
             </Link>

@@ -51,6 +51,9 @@ export default async function ImproveJustPutzItPage() {
             >
               justputzit.com
             </a>
+            <Link href="/senti" className="transition-colors hover:text-brand-deep">
+              Senti
+            </Link>
             <Link href="/scripts" className="transition-colors hover:text-brand-deep">
               Scripts
             </Link>
@@ -212,8 +215,13 @@ export default async function ImproveJustPutzItPage() {
           Proposed updates
         </p>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-          These stay on the Seed desk until you approve a final update. Nothing
-          is committed, pushed, or published on justputzit.com before that.
+          These stay on the Seed desk until you approve a final update. They
+          are chapter scripts for{" "}
+          <Link href="/senti" className="font-semibold text-brand-deep underline">
+            Senti
+          </Link>
+          , not a file dumped on cinchseed.com. Nothing is committed, pushed,
+          or published on justputzit.com before that.
         </p>
         <div className="mt-6 grid gap-6 md:grid-cols-3">
           {plan.axes.map((axis) => {
