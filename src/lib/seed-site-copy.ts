@@ -39,6 +39,8 @@ function firstSentences(brief: string, count = 2): string[] {
  * - Compound forms count: barbershop, hairstylist, hairdresser (not only
  *   spaced “barber shop” / “hair stylist”).
  * - Pizza / pizzeria counts as food — never fall through to generic or salon.
+ * - Used car / dealership / car lot is not a restaurant. “Mike's Used Car”
+ *   must never keep fine-dining “Reserve a table” or plated-dinner heroes.
  * - Auto detailing requires clear vehicle context (detailing, car wash,
  *   mobile detail, clean your car, etc.).
  * - Live repair must rewrite landing copy when a salon/hair Seed is still
@@ -50,6 +52,35 @@ function firstSentences(brief: string, count = 2): string[] {
  *   concrete numbers, and profit-maximizing operator help (lawn, garage,
  *   pizza, salon — same bar as AI kitchen design beating 2020 software).
  */
+function briefLooksLikeGarage(name: string, brief: string): boolean {
+  const lower = `${name} ${brief}`.toLowerCase();
+  return (
+    /\b(auto\s*garage|mechanic|auto\s*shop|oil\s*change|brakes?|transmission|car\s*repair|vehicle\s*repair|service\s*bay)\b/.test(
+      lower,
+    ) ||
+    (/\bgarage\b/.test(lower) &&
+      /\b(auto|car|truck|vehicle|repair|mechanic)\b/.test(lower))
+  );
+}
+
+/** Used-car lot / dealer — not detailing, not a mechanic bay, not dining. */
+export function briefIsDealership(projectName: string, brief: string): boolean {
+  return briefLooksLikeDealership(projectName, brief);
+}
+
+function briefLooksLikeDealership(name: string, brief: string): boolean {
+  if (briefLooksLikeGarage(name, brief)) return false;
+  const lower = `${name} ${brief}`.toLowerCase();
+  return (
+    /\bused\s+cars?\b/.test(lower) ||
+    /\bpre-?owned\b/.test(lower) ||
+    /\bdealerships?\b/.test(lower) ||
+    /\b(auto|car)\s+dealers?\b/.test(lower) ||
+    /\bcar\s+lots?\b/.test(lower) ||
+    /\bcars?\s+for\s+sale\b/.test(lower)
+  );
+}
+
 function industryKey(brief: string, name = ""): string {
   const lower = `${name} ${brief}`.toLowerCase();
 
@@ -65,6 +96,11 @@ function industryKey(brief: string, name = ""): string {
     )
   ) {
     return "salon";
+  }
+  // Used-car lots before food — “menu” / “delivery” in a car brief must
+  // not stamp plated dinners and “Reserve a table”.
+  if (briefLooksLikeDealership(name, brief)) {
+    return "dealership";
   }
   // Pizza before generic food so pies don’t get fine-dining “Reserve a table”.
   if (
@@ -89,13 +125,7 @@ function industryKey(brief: string, name = ""): string {
     return "lawn";
   }
   // Auto garage / mechanic before detailing — repair shop ≠ mobile detail.
-  if (
-    /\b(auto\s*garage|mechanic|auto\s*shop|oil\s*change|brakes?|transmission|car\s*repair|vehicle\s*repair|service\s*bay)\b/.test(
-      lower,
-    ) ||
-    (/\bgarage\b/.test(lower) &&
-      /\b(auto|car|truck|vehicle|repair|mechanic)\b/.test(lower))
-  ) {
+  if (briefLooksLikeGarage(name, brief)) {
     return "garage";
   }
   // Word boundaries — do not let "shop" inside "barbershop" win as retail.
@@ -188,7 +218,11 @@ export function seedLandingCopyMismatchesIndustry(
   if (key === "salon" && looksLikeDetailCopy) return true;
   if (key === "salon" && looksLikeRetailCopy) return true;
   if (key === "detail" && looksLikeSalonCopy) return true;
-  if (key !== "detail" && looksLikeDetailCopy) return true;
+  if (key !== "detail" && key !== "dealership" && looksLikeDetailCopy) return true;
+  // Used-car lots (and any non-restaurant Seed) stuck on fine-dining rename.
+  if (key !== "food" && looksLikeFineDiningCopy) return true;
+  if (key === "dealership" && looksLikeSalonCopy) return true;
+  if (key === "dealership" && looksLikeRetailCopy) return true;
   // Pizza Man / pizzeria stuck on salon, car, or fine-dining rename templates.
   if (briefIsPizza(projectName, brief) && looksLikeSalonCopy) return true;
   if (briefIsPizza(projectName, brief) && looksLikeFineDiningCopy) return true;
@@ -243,6 +277,9 @@ export function customerFacingHeadline(
   if (key === "garage") {
     return "Diagnose. Approve. Fixed right.";
   }
+  if (key === "dealership") {
+    return "Clean cars. Straight prices.";
+  }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
       return "Hot pies. Ready when you are.";
@@ -271,6 +308,7 @@ export function customerFacingCta(brief: string, projectName = ""): string {
   if (key === "detail") return "Book a detail";
   if (key === "lawn") return "Get a quote";
   if (key === "garage") return "Book service";
+  if (key === "dealership") return "Browse inventory";
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) return "Order pizza";
     return "Reserve a table";
@@ -295,6 +333,9 @@ export function customerFacingHeroImage(
   }
   if (key === "garage") {
     return "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "dealership") {
+    return "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1800&q=80";
   }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
@@ -608,6 +649,58 @@ function withBusinessSiteDepth(
         areaEyebrow: "Shop hours",
         areaHeadline: "Bays book ahead — walk-ins when we can",
         areaBody: `${brand} prioritizes appointments so diagnostics stay on time. Ask about same-day slots when a bay opens.`,
+      },
+      key,
+    );
+  }
+  if (key === "dealership") {
+    return withGrowthBoard(
+      {
+        ...core,
+        galleryEyebrow: "On the lot",
+        galleryHeadline: "Inventory you can walk and drive",
+        gallery: [
+          {
+            src: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80",
+            alt: "Front of a car on the lot",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80",
+            alt: "Vehicle ready for a test drive",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=1200&q=80",
+            alt: "Row of cars on a dealership lot",
+          },
+        ],
+        processEyebrow: "How a buy goes",
+        processHeadline: "Pick it. Inspect it. Drive it home.",
+        process: [
+          {
+            title: "Browse the lot",
+            detail: "Price, miles, and body style in plain language — pick a unit worth the trip.",
+          },
+          {
+            title: "Inspect and test drive",
+            detail: "Service history, walk-around, and a drive that answers the real questions.",
+          },
+          {
+            title: "Paperwork the same day",
+            detail: "Financing or cash, trade-in number in writing, keys when the deal is done.",
+          },
+        ],
+        aboutImage:
+          "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&w=1400&q=80",
+        proofEyebrow: "Buyers",
+        proofHeadline: "Why they bought here",
+        proof: {
+          quote:
+            "Price was on the window, the inspection list was in my hand, and I drove it home that afternoon. No games.",
+          attribution: "Riley · first-time buyer",
+        },
+        areaEyebrow: "The lot",
+        areaHeadline: "Come walk the row",
+        areaBody: `${brand} keeps units on the lot and listed with miles and price. Call ahead if you want a specific car pulled up front.`,
       },
       key,
     );
@@ -1054,6 +1147,80 @@ export function customerFacingSiteCopy(
           "Tell us the symptom and preferred window — we’ll confirm diagnostic time.",
         bookNote: "Same-day slots when a bay opens.",
         footerNote: `${brand} · Auto garage · Diagnostics & repair`,
+      },
+      key,
+    );
+  }
+
+  if (key === "dealership") {
+    return withBusinessSiteDepth(
+      {
+        brand,
+        headline,
+        support,
+        cta,
+        heroImage,
+        navLabel: "Inventory",
+        servicesEyebrow: "On the lot",
+        servicesHeadline: "Buy, finance, and trade without the runaround",
+        services: [
+          {
+            title: "Inspected inventory",
+            detail:
+              "Retail-ready cars and trucks with miles, price, and a written inspection you can take home.",
+          },
+          {
+            title: "Financing",
+            detail:
+              "Bank and credit-union options with a payment you can see before you sign.",
+          },
+          {
+            title: "Trade-ins",
+            detail:
+              "A number in writing for the car you already have, applied to the one you want.",
+          },
+        ],
+        menuEyebrow: "Inventory",
+        menuHeadline: "Featured units",
+        menuSupport:
+          "Sample lot mix so the site looks like a dealer — replace these with your real VIN list.",
+        menuItems: [
+          {
+            category: "Sedan",
+            name: "Certified midsize sedan",
+            detail: "One-owner, service records, under 80k miles.",
+            priceLabel: "$16,900",
+          },
+          {
+            category: "SUV",
+            name: "Family crossover",
+            detail: "Third-row option, clean Carfax-style history notes.",
+            priceLabel: "$18,400",
+          },
+          {
+            category: "Truck",
+            name: "Work-ready pickup",
+            detail: "Tow package, bed liner, inspected drivetrain.",
+            priceLabel: "$22,500",
+          },
+          {
+            category: "Value",
+            name: "Commute special",
+            detail: "Priced to move, still inspected before it hits the row.",
+            priceLabel: "$9,800",
+          },
+        ],
+        aboutEyebrow: "The lot",
+        aboutHeadline: "A row of cars. A straight number.",
+        aboutBody:
+          support ||
+          `${brand} sells inspected used cars — walk the lot, see the number, drive it today.`,
+        bookEyebrow: "Visit",
+        bookHeadline: "Hold a car or book a drive",
+        bookBody:
+          "Tell us the unit, your timeline, and whether you have a trade — we’ll pull it up front.",
+        bookNote: "Bring a license for test drives. Same-day paperwork when the deal is done.",
+        footerNote: `${brand} · Used cars · Inventory · Financing`,
       },
       key,
     );
@@ -2773,10 +2940,11 @@ export function seedHomePageSource(
   const support = esc(input.support);
   const cta = esc(input.cta);
   const heroImage = esc(input.heroImage);
+  const lotNav = /inventory/i.test(input.navLabel ?? "");
   const shopNav = input.includeShop
     ? `
           <li>
-            <a href="/shop">${input.menuItems?.length ? "Order" : "Shop"}</a>
+            <a href="/shop">${lotNav ? "Inventory" : input.menuItems?.length ? "Order" : "Shop"}</a>
           </li>`
     : "";
   const services = input.services
@@ -2838,7 +3006,7 @@ ${menuItems
           ${
             input.includeShop
               ? `<p className="seed-menu-order">
-            <a className="cta" href="/shop">Order from this menu</a>
+            <a className="cta" href="/shop">${lotNav ? "Browse these units" : "Order from this menu"}</a>
           </p>`
               : ""
           }
@@ -2875,12 +3043,12 @@ ${specials
         </a>
         <ul className="seed-nav-links">
           <li>
-            <a href="#services">Order</a>
+            <a href="#services">${lotNav ? "The lot" : "Order"}</a>
           </li>
           ${
             menuItems.length > 0
               ? `<li>
-            <a href="#menu">Menu</a>
+            <a href="#menu">${lotNav ? "Inventory" : "Menu"}</a>
           </li>`
               : ""
           }
@@ -3310,6 +3478,29 @@ export function customerFacingAdminCopy(
               body: "Inside 48 hours recovers ~15–20% of silent approvals.",
             },
           ]
+      : key === "dealership"
+        ? [
+            {
+              id: "tip-price",
+              title: "Put the price in the window",
+              body: "Internet-visible asking price cuts no-show walk-arounds — lots that post it turn ~15–20% faster.",
+            },
+            {
+              id: "tip-age",
+              title: "Markdown at day 45",
+              body: "A planned $300–$500 cut beats a $2,000 dump at day 90 while the note is still accruing.",
+            },
+            {
+              id: "tip-pay",
+              title: "Quote payment and cash",
+              body: "Show both on the first walk — finance reserve on a $300 payment is often $800–$1,200 extra.",
+            },
+            {
+              id: "tip-trade",
+              title: "Write the trade first",
+              body: "A number in writing before they pick a unit stops the ‘what’s my car worth’ stall.",
+            },
+          ]
       : key === "detail"
       ? [
           {
@@ -3426,7 +3617,12 @@ export function customerFacingAdminCopy(
           ];
 
   const pizzaOrFood = briefIsPizza(projectName, brief) || key === "food";
-  const opsHeavy = pizzaOrFood || key === "lawn" || key === "garage" || key === "detail";
+  const opsHeavy =
+    pizzaOrFood ||
+    key === "lawn" ||
+    key === "garage" ||
+    key === "dealership" ||
+    key === "detail";
 
   return {
     brand,
@@ -3445,6 +3641,8 @@ export function customerFacingAdminCopy(
         ? "Route density, seasonal prepays, and add-on scripts — AI-grown tips so the lawn book makes more money."
         : key === "garage"
           ? "Bay utilization, diagnostic fees, and approve-by-text plays — operator help that maximizes ticket value."
+          : key === "dealership"
+            ? "Unit age, window price, and finance attach — operator help that turns the lot."
           : key === "detail"
         ? "Package tiers, rebooks, and cluster routes — part of your Seed website."
         : "Schedule, customer follow-up, and care tips — part of your Seed website (CRM-lite, automatic).",
@@ -3459,6 +3657,8 @@ export function customerFacingAdminCopy(
         ? "Routes & quotes"
         : key === "garage"
           ? "Bay schedule"
+          : key === "dealership"
+            ? "Appointments & holds"
           : "Schedule",
     tipsEyebrow: "Profit",
     tipsHeadline: pizzaOrFood
@@ -3467,6 +3667,8 @@ export function customerFacingAdminCopy(
         ? "Route profit tips"
         : key === "garage"
           ? "Bay profit tips"
+          : key === "dealership"
+            ? "Lot profit tips"
           : wantsShop
             ? "Fulfillment tips"
             : key === "detail"

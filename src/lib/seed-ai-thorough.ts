@@ -17,7 +17,7 @@ export const SEED_AI_THOROUGH_RULE = {
     "Full business site depth (hero, services, gallery, process, proof, area, book)",
     "Results band with at least 3 concrete numeric stats for the industry",
     "Profit plays band with at least 3 operator levers that cite dollars, %, or time",
-    "Industry-true copy (lawn ≠ garage ≠ pizza ≠ salon) — never rename-only",
+    "Industry-true copy (lawn ≠ garage ≠ dealership ≠ pizza ≠ salon) — never rename-only",
     "Admin tips that help the owner capture more revenue or cut dead time",
   ],
 } as const;
@@ -154,6 +154,57 @@ export function seedIndustryGrowthBoard(
           title: "Approve-by-text",
           detail:
             "Photo + estimate in under 20 minutes; shops that approve same-day clear ~30% more ROs/week.",
+        },
+      ],
+    };
+  }
+
+  if (key === "dealership") {
+    return {
+      resultsEyebrow: "By the numbers",
+      resultsHeadline: "Lot math that turns units",
+      resultsSupport: `${brand} ships a dealer desk — inventory, front-end, and financing attach — not a reserved table.`,
+      results: [
+        {
+          value: "8–12",
+          label: "units / month",
+          detail: "Small independent lot target before holding cost eats the note.",
+        },
+        {
+          value: "$1,800",
+          label: "avg front-end",
+          detail: "Gross after pack on a typical used unit under $20k.",
+        },
+        {
+          value: "45%",
+          label: "finance attach",
+          detail: "Reserve + product on roughly half of funded deals.",
+        },
+        {
+          value: "55 days",
+          label: "turn target",
+          detail: "Age past 75 days and the next cut usually wipes the profit.",
+        },
+      ],
+      profitEyebrow: "Move the metal",
+      profitHeadline: "How the lot captures more per unit",
+      profitSupport:
+        "Concrete dealer plays — price, age, and finance — not hospitality leftovers.",
+      profitPlays: [
+        {
+          title: "Price in the window",
+          detail:
+            "Internet-visible asking price cuts no-show walk-arounds; lots that post price sell ~15–20% faster.",
+        },
+        {
+          title: "Age-unit markdown at day 45",
+          detail:
+            "A planned $300–$500 cut beats a $2,000 dump at day 90 when the note is still accruing.",
+        },
+        {
+          title: "Quote payment and cash",
+          detail:
+            "Show both numbers on the first walk — finance reserve on a $300 payment is often $800–$1,200 extra.",
         },
       ],
     };

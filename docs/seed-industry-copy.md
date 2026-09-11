@@ -20,6 +20,13 @@
  * copied from another Seed — salon products or fine-dining “Reserve a table”.
  * See `docs/seed-follow-brief.md`.
  *
+ * ## What went wrong (Mike's Used Car)
+ * There was no dealership / used-car vertical. “Used car” was intentionally
+ * not matched as bare `car` (that used to steal hair-care Seeds). A renamed
+ * restaurant Seed kept “A table worth dressing up for”, a plated-dinner hero,
+ * Menu / Order, and “Reserve a table”. Live repair did not rewrite it because
+ * mismatch only watched pizza vs fine-dining.
+ *
  * ## What went wrong (Edit Seed refresh)
  * Save opened the live site URL but `applySeedIdentityEdit` re-merged old
  * stock shop products, so it felt like a plain Visit with no rebuild.
@@ -34,6 +41,9 @@
  *    mobile detail, clean your car, etc.).
  * 6. Pizza / pizzeria / “Pizza Man” classify as food with pizza CTAs — never
  *    fine-dining or salon rename templates.
+ * 6b. Used car / dealership / car lot / pre-owned classify as dealership
+ *    (before food). Never keep “Reserve a table” or plated-dinner heroes.
+ *    Mechanic / garage words still win over dealership.
  * 7. If stored landing copy is the wrong vertical (salon with car hero /
  *    “Book a detail” / retail “Shop now” / pizza with “Reserve a table”),
  *    `repairCustomerLandingIfNeeded` must rewrite it.
