@@ -49,6 +49,18 @@ const football = franchiseFor("football");
 assert(basketball.prospects.length === 100, "HS board has 100 talents");
 assert(baseball.prospects.length === 200, "MiLB board has 200 talents");
 assert(football.prospects.length === 300, "college football board has 300 talents");
+assert(
+  (football.freeAgents?.length ?? 0) === 1197,
+  "2027 NFL free-agent desk has 1197 talents",
+);
+assert(
+  (football.freeAgents ?? []).every(prospectHasReportTeaser),
+  "every 2027 free agent has a report teaser",
+);
+assert(
+  (football.freeAgents ?? []).every(prospectHasReportPremium),
+  "every 2027 free agent has a premium write-up",
+);
 
 const sample = baseball.prospects[0]!;
 const generated = generateUpdatedReport(sample, "baseball", {

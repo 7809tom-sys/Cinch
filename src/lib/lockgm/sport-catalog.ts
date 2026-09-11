@@ -11,6 +11,10 @@ import {
   COLLEGE_FOOTBALL_BOARD_YEAR,
   COLLEGE_FOOTBALL_TOP_300,
 } from "./college-football-top300";
+import {
+  NFL_FA_BOARD_YEAR,
+  NFL_2027_FREE_AGENTS,
+} from "./nfl-2027-free-agents";
 
 export type Prospect = {
   id: string;
@@ -80,6 +84,8 @@ export type FranchiseKit = {
   roster: FranchisePlayer[];
   tradeMarket: TradePiece[];
   prospects: Prospect[];
+  /** Optional second scouting desk (e.g. NFL free agency). Draft still uses prospects. */
+  freeAgents?: Prospect[];
 };
 
 const SOCCER: FranchiseKit = {
@@ -437,12 +443,17 @@ const FOOTBALL: FranchiseKit = {
     { id: "t5", label: "Send S. Vale (TE)", capDeltaM: -8.6, kind: "player" },
     { id: "t6", label: "Receive EDGE — N. Crow", capDeltaM: 9.5, kind: "player" },
   ],
-  // HARD RULE for LockedGM football: College Top 300 (juniors & seniors) is the scouting board.
+  // HARD RULE for LockedGM football: College Top 300 is the draft board.
   prospects: COLLEGE_FOOTBALL_TOP_300,
+  // 2027 NFL free-agent scouting desk (UFA / RFA / ERFA).
+  freeAgents: NFL_2027_FREE_AGENTS,
 };
 
 /** Board year for the football college juniors & seniors Top 300 (UI eyebrow). */
 export const FOOTBALL_COLLEGE_BOARD_YEAR = COLLEGE_FOOTBALL_BOARD_YEAR;
+
+/** Board year for the football 2027 NFL free-agent desk. */
+export const FOOTBALL_FA_BOARD_YEAR = NFL_FA_BOARD_YEAR;
 
 const HOCKEY: FranchiseKit = {
   clubName: "Lock City Blades",
