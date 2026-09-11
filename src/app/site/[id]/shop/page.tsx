@@ -4,6 +4,7 @@ import {
   briefAsksForEcommerce,
   buildSeedShopPreview,
   proofAndRepairSeedSite,
+  seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -36,11 +37,12 @@ export default async function SeedShopPage({
     project.name,
     project.brief,
   );
+  const lotHold = seedShopUsesLotFulfillment(project.name, project.brief);
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: shop.css }} />
-      <main className="seed-shop">
+      <main className={lotHold ? "seed-shop seed-shop-lot" : "seed-shop"}>
         <header className="seed-shop-top">
           <div>
             <p className="seed-shop-kicker">{shop.title}</p>
@@ -58,6 +60,7 @@ export default async function SeedShopPage({
           shippingModes={shop.shippingModes}
           salesTax={shop.salesTax}
           restaurantOrdering={restaurantOrdering}
+          lotHold={lotHold}
         />
       </main>
     </>

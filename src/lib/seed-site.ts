@@ -1,4 +1,12 @@
-import { getSourceBundle, upsertSourceFile } from "./seed-source";
+import {
+  ensureComparableResearchInSeed,
+  getSourceBundle,
+  upsertSourceFile,
+} from "./seed-source";
+import {
+  applyComparableOverlayToShop,
+  parseComparableResearch,
+} from "./seed-comparable-research";
 import {
   briefAsksForBusinessAdmin,
   briefAsksForEcommerce,
@@ -63,6 +71,7 @@ export {
   seedShopMismatchesIndustry,
   seedShopPageSource,
   seedShopShouldStartEmpty,
+  seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
   seedStarterShopProducts,
   briefIsPizza,
@@ -828,6 +837,7 @@ export async function ensureShopInSeed(
     !page ||
     !page.includes("seed-shop") ||
     !css.includes("seed-shop") ||
+    !css.includes("seed-shop-lot") ||
     !home.includes('href="/shop"') ||
     !existing.shippingModes?.length ||
     !existing.salesTax ||
@@ -837,15 +847,21 @@ export async function ensureShopInSeed(
   if (!needsWrite && existing) return existing;
 
   // Prefer brief-derived menu / owner catalog when stock templates were stamped.
-  const shop =
+  const research = parseComparableResearch(
+    bundle?.files.find((file) => file.path === "content/comparable-research.json")
+      ?.content ?? "",
+  );
+  const shop = applyComparableOverlayToShop(
     catalogMismatch || fulfillmentMismatch || shopMismatch
       ? {
           ...customerFacingShopCopy(project.name, project.brief),
           orders: existing?.orders ?? parsed?.orders ?? [],
         }
-      : (existing ?? customerFacingShopCopy(project.name, project.brief));
+      : (existing ?? customerFacingShopCopy(project.name, project.brief)),
+    research,
+  );
 
-  if (!css.includes("seed-shop")) {
+  if (!css.includes("seed-shop") || !css.includes("seed-shop-lot")) {
     await upsertSourceFile({
       projectId: project.id,
       path: "app/globals.css",
@@ -932,6 +948,12 @@ export async function proofAndRepairSeedSite(project: SeedProject): Promise<{
     await readProofSurfaces(project),
   );
 
+  await ensureComparableResearchInSeed({
+    projectId: project.id,
+    projectName: project.name,
+    brief: project.brief,
+    referenceUrl: project.referenceUrl,
+  });
   await repairCustomerLandingIfNeeded(project);
   if (briefAsksForEcommerce(project.brief) || before.some((f) => f.surface === "shop")) {
     await ensureShopInSeed(project);

@@ -1726,7 +1726,7 @@ button {
   letter-spacing: -0.04em;
   font-size: clamp(2.4rem, 9vw, 4.25rem);
   line-height: 0.95;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   animation: seed-rise 0.7s ease both;
 }
 
@@ -1737,7 +1737,7 @@ button {
   font-size: clamp(1.45rem, 4.4vw, 2.35rem);
   line-height: 1.2;
   max-width: 18ch;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   animation: seed-rise 0.7s ease both;
   animation-delay: 0.08s;
 }
@@ -1748,7 +1748,7 @@ button {
   font-size: clamp(1rem, 2.5vw, 1.15rem);
   line-height: 1.55;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   animation: seed-rise 0.7s ease both;
   animation-delay: 0.16s;
 }
@@ -1806,7 +1806,7 @@ button {
   line-height: 1.15;
   letter-spacing: -0.02em;
   max-width: 18ch;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-section .lead {
@@ -1815,7 +1815,7 @@ button {
   font-size: 1.05rem;
   line-height: 1.6;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-services {
@@ -1857,7 +1857,7 @@ button {
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-about {
@@ -1986,7 +1986,7 @@ button {
   margin: 0.35rem 0 0;
   color: var(--muted);
   line-height: 1.55;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-proof {
@@ -2009,7 +2009,7 @@ button {
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-quote footer {
@@ -2075,7 +2075,7 @@ button {
   margin: 0.35rem 0 0;
   color: var(--muted);
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-menu-order {
@@ -2117,7 +2117,7 @@ button {
   margin: 0.4rem 0 0;
   color: var(--muted);
   line-height: 1.55;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-results {
@@ -2915,7 +2915,8 @@ button {
   font-weight: 600;
 }
 
-.seed-shop-checkout input {
+.seed-shop-checkout input,
+.seed-shop-checkout select {
   min-height: var(--tap);
   padding: 0.65rem 0.8rem;
   border: 1px solid var(--line-dark);
@@ -2924,6 +2925,133 @@ button {
   color: var(--ink);
   font: inherit;
   font-size: 16px;
+}
+
+.seed-shop-lot {
+  --content: min(76rem, 100%);
+  background:
+    radial-gradient(ellipse 80% 40% at 0% 0%, rgba(94, 234, 212, 0.12), transparent 50%),
+    #eef2f4;
+}
+
+.seed-shop-lot .seed-shop-top h1 {
+  letter-spacing: -0.035em;
+}
+
+.seed-shop-lot .seed-shop-grid {
+  gap: 1.25rem;
+}
+
+.seed-lot-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 28px rgba(11, 16, 20, 0.06);
+}
+
+.seed-lot-card .seed-shop-photo,
+.seed-lot-card .seed-shop-photo-empty {
+  border-radius: 0;
+  aspect-ratio: 16 / 10;
+}
+
+.seed-lot-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.seed-lot-badge {
+  margin: 0;
+  width: fit-content;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #0b2e2a;
+  color: #ecfdf8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-shop-lot .seed-lot-card h3 {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.seed-shop-lot .seed-shop-price {
+  font-size: 1.55rem;
+  letter-spacing: -0.03em;
+}
+
+.seed-shop-lot .seed-lot-card .cta {
+  width: 100%;
+  margin-top: 0.35rem;
+  border-radius: 0.5rem;
+}
+
+.seed-shop-lot .seed-shop-cart {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 0.85rem;
+  box-shadow: 0 12px 32px rgba(11, 16, 20, 0.05);
+}
+
+@media (min-width: 860px) {
+  .seed-shop-lot .seed-shop-cart {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+  }
+
+  .seed-shop-lot .seed-shop-cart h2,
+  .seed-shop-lot .seed-shop-cart-empty,
+  .seed-shop-lot .seed-shop-cart ul,
+  .seed-shop-lot .seed-lot-totals {
+    grid-column: 1;
+  }
+
+  .seed-shop-lot .seed-shop-checkout {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+  }
+}
+
+.seed-lot-totals {
+  margin: 0 0 0.25rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.seed-lot-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.92rem;
+}
+
+.seed-lot-totals dt {
+  margin: 0;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.seed-lot-totals dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.seed-lot-due {
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line-dark);
+  font-size: 1.05rem;
+}
+
+.seed-lot-due dt,
+.seed-lot-due dd {
+  color: var(--ink);
+  font-size: 1.05rem;
 }
 `;
 }
@@ -3347,6 +3475,52 @@ export function seedRestaurantFulfillmentModes(): SeedShippingMode[] {
   ];
 }
 
+/** Retail keeps cents. Lots show whole dollars like CarMax / Carvana. */
+export function formatSeedMoney(
+  usd: number,
+  style: "retail" | "lot" = "retail",
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: style === "lot" ? 0 : 2,
+    maximumFractionDigits: style === "lot" ? 0 : 2,
+  }).format(usd);
+}
+
+/**
+ * Used-car lots do not UPS a vehicle. Customer-friendly methods from
+ * live dealers: hold the unit, book a drive, or dealer-deliver the car.
+ */
+export function seedLotFulfillmentModes(): SeedShippingMode[] {
+  return [
+    {
+      id: "lot-hold",
+      label: "Hold on the lot",
+      kind: "parcel",
+      carrier: "Lot",
+      notes: "We pull the unit up front. No shipping box. No UPS.",
+      baseRateUsd: 0,
+    },
+    {
+      id: "lot-drive",
+      label: "Book a test drive",
+      kind: "parcel",
+      carrier: "Lot",
+      notes: "Bring a license. Same-day paperwork when you buy.",
+      baseRateUsd: 0,
+    },
+    {
+      id: "lot-delivery",
+      label: "Dealer delivery",
+      kind: "parcel",
+      carrier: "Dealer",
+      notes: "We drive the car to you — not a parcel label.",
+      baseRateUsd: 149,
+    },
+  ];
+}
+
 /** Default UPS parcel + LTL modes for retail / shippable catalogs. */
 export function seedParcelShippingModes(): SeedShippingMode[] {
   return [
@@ -3384,18 +3558,31 @@ export function seedCommerceAdminBoard(
 ): SeedAdminCommerce {
   const shop = customerFacingShopCopy(projectName, brief);
   const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const lot = seedShopUsesLotFulfillment(projectName, brief);
   return {
-    eyebrow: restaurant ? "Orders & money" : "Commerce",
-    headline: restaurant ? "Kitchen tickets & menu money" : "Shop operations",
+    eyebrow: restaurant ? "Orders & money" : lot ? "The lot" : "Commerce",
+    headline: restaurant
+      ? "Kitchen tickets & menu money"
+      : lot
+        ? "Holds, drives, and dealer delivery"
+        : "Shop operations",
     support: restaurant
       ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
-      : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
-    inventoryEyebrow: restaurant ? "Menu" : "Stock",
+      : lot
+        ? "Units stay on the lot. Customers hold a car, book a drive, or ask for dealer delivery. Never print a UPS label for a vehicle."
+        : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
+    inventoryEyebrow: restaurant ? "Menu" : lot ? "Units" : "Stock",
     inventoryHeadline: restaurant
       ? "Menu items · price & on-hand"
-      : "Inventory · scan to add",
+      : lot
+        ? "Featured units · price on the card"
+        : "Inventory · scan to add",
     shippingEyebrow: "Fulfillment",
-    shippingHeadline: restaurant ? "Pickup & delivery" : "Shipping",
+    shippingHeadline: restaurant
+      ? "Pickup & delivery"
+      : lot
+        ? "Hold · drive · dealer delivery"
+        : "Shipping",
     taxEyebrow: "Compliance",
     taxHeadline: "Sales tax",
     ordersEyebrow: restaurant ? "Money" : "Orders",
@@ -3403,7 +3590,9 @@ export function seedCommerceAdminBoard(
     originZip: "10001",
     shippingModes: restaurant
       ? seedRestaurantFulfillmentModes()
-      : seedParcelShippingModes(),
+      : lot
+        ? seedLotFulfillmentModes()
+        : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
@@ -3411,7 +3600,9 @@ export function seedCommerceAdminBoard(
       nexusStates: ["NY", "NJ", "CT"],
       notes: restaurant
         ? "Collect sales tax on taxable order totals for nexus addresses."
-        : "Collect on taxable ship-to addresses in nexus states.",
+        : lot
+          ? "Collect sales tax on the unit price for the buyer’s state — not a parcel shipment."
+          : "Collect on taxable ship-to addresses in nexus states.",
     },
     inventory: shop.products.map((product) => ({
       productId: product.id,
@@ -3707,6 +3898,9 @@ export function seedAdminPageSource(input: SeedAdminCopy): string {
     .join("\n");
 
   const commerce = input.commerce;
+  const lotAdmin = (commerce?.shippingModes ?? []).some((mode) =>
+    /^lot-/.test(mode.id),
+  );
   const commerceBlock = commerce
     ? `
       <section className="seed-admin-section" id="commerce">
@@ -3724,7 +3918,7 @@ ${commerce.inventory
     (row) => `          <li>
             <div>
               <p className="seed-admin-list-title">${esc(row.title)} · ${esc(row.sku)}</p>
-              <p className="seed-admin-list-meta">${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb${row.imageUrl ? " · photo set" : ""}</p>
+              <p className="seed-admin-list-meta">${lotAdmin ? `${row.onHand} on the lot` : `${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb`}${row.imageUrl ? " · photo set" : ""}</p>
 ${
   row.imageUrl
     ? `            <img className="seed-shop-photo" src="${esc(row.imageUrl)}" alt="${esc(row.title)}" />`
@@ -3740,14 +3934,14 @@ ${
       <section className="seed-admin-section" id="shipping">
         <p className="seed-eyebrow">${esc(commerce.shippingEyebrow)}</p>
         <h2>${esc(commerce.shippingHeadline)}</h2>
-        <p className="seed-admin-list-meta">Ship-from ZIP ${esc(commerce.originZip)}</p>
+        <p className="seed-admin-list-meta">${lotAdmin ? `Lot ZIP ${esc(commerce.originZip)}` : `Ship-from ZIP ${esc(commerce.originZip)}`}</p>
         <ul className="seed-admin-list">
 ${commerce.shippingModes
   .map(
     (mode) => `          <li>
             <div>
               <p className="seed-admin-list-title">${esc(mode.label)} · ${esc(mode.carrier)}</p>
-              <p className="seed-admin-list-meta">${mode.kind.toUpperCase()} · from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}</p>
+              <p className="seed-admin-list-meta">${lotAdmin ? `from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}` : `${mode.kind.toUpperCase()} · from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}`}</p>
             </div>
           </li>`,
   )
@@ -3941,6 +4135,15 @@ export function seedShopUsesRestaurantFulfillment(
   );
 }
 
+/** Used-car lots: hold / drive / dealer delivery — never UPS a car. */
+export function seedShopUsesLotFulfillment(
+  projectName: string,
+  brief: string,
+): boolean {
+  if (!briefAsksForEcommerce(brief)) return false;
+  return industryKey(brief, projectName) === "dealership";
+}
+
 const STOCK_CATALOG_FINGERPRINT =
   /prod-serum|prod-mask|prod-brush|prod-spray|prod-towel|prod-kit|prod-one|prod-two|prod-three|daily shine serum|repair mask|studio paddle|signature item|everyday essential|gift set|detail spray|microfiber set|driveway kit|between-appointment gloss|clear coat/;
 
@@ -3989,12 +4192,16 @@ export function seedShopFulfillmentMismatchesBrief(
   brief: string,
   modes: Array<{ id?: string; label?: string; carrier?: string }>,
 ): boolean {
-  if (!seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
-  if (!modes.length) return true;
   const blob = modes
     .map((m) => `${m.id ?? ""} ${m.label ?? ""} ${m.carrier ?? ""}`)
     .join(" ")
     .toLowerCase();
+  if (seedShopUsesLotFulfillment(projectName, brief)) {
+    if (!modes.length) return true;
+    return /ups|ltl|freight|parcel ground|2nd day/.test(blob);
+  }
+  if (!seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
+  if (!modes.length) return true;
   return /ups|ltl|freight|parcel ground|2nd day/.test(blob);
 }
 
@@ -4383,7 +4590,9 @@ export function customerFacingShopCopy(
     originZip: "10001",
     shippingModes: restaurant
       ? seedRestaurantFulfillmentModes()
-      : seedParcelShippingModes(),
+      : dealership
+        ? seedLotFulfillmentModes()
+        : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
@@ -4406,7 +4615,7 @@ export function customerFacingShopCopy(
       : restaurant
         ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
         : dealership
-          ? "Inspected units from this lot — price on the card. Hold one or book a drive."
+          ? "Inspected units from this lot — price on the card. Hold one, book a drive, or ask for dealer delivery. We do not ship cars UPS."
           : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
     cta: restaurant
       ? "Add to order"
@@ -4425,6 +4634,9 @@ export function seedShopCopyJson(input: SeedShopCopy): string {
 
 /** Seed-grown shop page source (mirrored in the source tree). */
 export function seedShopPageSource(input: SeedShopCopy): string {
+  const lotPage = (input.shippingModes ?? []).some((mode) =>
+    /^lot-/.test(mode.id),
+  );
   const products = input.products
     .map(
       (product) => `        <article className="seed-shop-card">
@@ -4434,8 +4646,8 @@ ${
     : `          <div className="seed-shop-photo-empty" aria-hidden>Photo coming soon</div>\n`
 }          <h3>${esc(product.title)}</h3>
           <p>${esc(product.detail)}</p>
-          <p className="seed-shop-price">$${product.priceUsd.toFixed(2)}</p>
-          <p className="seed-shop-meta">${esc(product.sku)} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb</p>
+          <p className="seed-shop-price">${formatSeedMoney(product.priceUsd, lotPage ? "lot" : "retail")}</p>
+          <p className="seed-shop-meta">${lotPage ? `${product.stockQty} available` : `${esc(product.sku)} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}</p>
           <button type="button" className="cta">${esc(input.cta)}</button>
         </article>`,
     )
@@ -4444,13 +4656,13 @@ ${
   const modes = (input.shippingModes ?? [])
     .map(
       (mode) =>
-        `            <option value="${esc(mode.id)}">${esc(mode.label)} (${mode.kind}) · $${mode.baseRateUsd.toFixed(2)}</option>`,
+        `            <option value="${esc(mode.id)}">${esc(mode.label)}${lotPage ? "" : ` (${mode.kind})`} · $${mode.baseRateUsd.toFixed(2)}</option>`,
     )
     .join("\n");
 
   return `export default function ShopPage() {
   return (
-    <main className="seed-shop">
+    <main className="${lotPage ? "seed-shop seed-shop-lot" : "seed-shop"}">
       <header className="seed-shop-top">
         <div>
           <p className="seed-shop-kicker">${esc(input.title)}</p>
@@ -4465,11 +4677,11 @@ ${
 ${products}
       </div>
       <section className="seed-shop-cart" id="cart">
-        <h2>Cart</h2>
-        <p className="seed-shop-cart-empty">Your cart is empty.</p>
-        <p className="seed-shop-meta">Ship-from ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · UPS parcel + LTL in Seed admin.</p>
+        <h2>${lotPage ? "Hold list" : "Cart"}</h2>
+        <p className="seed-shop-cart-empty">${lotPage ? "Ask about a unit to hold it or book a drive." : "Your cart is empty."}</p>
+        <p className="seed-shop-meta">${lotPage ? `Lot ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · hold / drive / dealer delivery — never UPS a car.` : `Ship-from ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · UPS parcel + LTL in Seed admin.`}</p>
         <label>
-          Shipping
+          ${lotPage ? "How you'll get the car" : "Shipping"}
           <select name="shippingModeId">
 ${modes}
           </select>
