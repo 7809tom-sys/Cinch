@@ -4,7 +4,7 @@
  */
 export const NFL_2027_FA_CLIP_IDS: Record<string, string> = {
   "Puka Nacua": "d-y98Qsfd4E",
-  "George Pickens": "dFWHjDooCPU",
+  "George Pickens": "rUzGc3Vs9nw",
   "Baker Mayfield": "8YDU0Fb5kpo",
   "Kobie Turner": "oOIcL9B9f4o",
   "Tucker Kraft": "CXzlPV_YNxc",
