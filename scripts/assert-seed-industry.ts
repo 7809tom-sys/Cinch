@@ -1,6 +1,7 @@
 /**
  * Guard: hair/salon Seeds must never classify as auto detailing or ship car copy.
  * Pizza Man must get pizza copy + priced orderable menu — never rename-only templates.
+ * Mike's Used Car must look like a lot — never fine-dining “Reserve a table”.
  * Run: npx tsx scripts/assert-seed-industry.ts
  */
 import {
@@ -311,6 +312,72 @@ const garage = customerFacingSiteCopy(
   "Northside Auto Garage",
   "Auto garage mechanic shop. Diagnostics, brakes, oil change. Admin calendar.",
 );
+assert(
+  seedIndustryKey("Mike's Used Car", "Sell used cars. Financing and trade-ins.") ===
+    "dealership",
+  "Mike's Used Car classifies as dealership",
+);
+assert(
+  seedIndustryKey("Mike's Used Car", "") === "dealership",
+  "used-car name alone is a dealership (not generic or food)",
+);
+assert(
+  seedIndustryKey(
+    "Mike's Used Car",
+    "Used car lot with an inventory menu and delivery to your driveway.",
+  ) === "dealership",
+  "used-car + menu/delivery still classifies as dealership (not restaurant)",
+);
+assert(
+  seedIndustryKey("Hair Design Bye You", salonBrief) === "salon",
+  "hair care still does not classify as a used-car lot",
+);
+assert(
+  seedIndustryKey(
+    "Mike's Used Car",
+    "Oil change, brakes, and a mechanic shop on the same lot.",
+  ) === "garage",
+  "used-car name + mechanic brief stays a garage",
+);
+
+const usedCar = customerFacingSiteCopy(
+  "Mike's Used Car",
+  "Neighborhood used car lot. Inspected inventory, financing, trade-ins.",
+);
+assert(
+  usedCar.cta === "Browse inventory",
+  `used-car CTA is Browse inventory (got ${usedCar.cta})`,
+);
+assert(
+  !/Reserve a table|A table worth dressing|Dinner service/i.test(
+    `${usedCar.cta} ${usedCar.headline} ${usedCar.servicesHeadline} ${usedCar.aboutHeadline}`,
+  ),
+  "used-car copy is not fine-dining",
+);
+assert(
+  !usedCar.heroImage.includes("1414235077428"),
+  "used-car hero is not the plated-dinner photo",
+);
+assert(
+  /inventory|lot|financ|trade/i.test(
+    `${usedCar.servicesHeadline} ${usedCar.services.map((s) => s.title).join(" ")} ${usedCar.cta}`,
+  ),
+  "used-car services talk about inventory / financing / trade-ins",
+);
+assert(
+  usedCar.results.length >= 3 && usedCar.profitPlays.length >= 3,
+  "used-car site ships lot math + profit plays",
+);
+assert(
+  seedLandingCopyMismatchesIndustry("Mike's Used Car", "Sell used cars", {
+    cta: "Reserve a table",
+    heroImage:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1800&q=80",
+    aboutBody: "A room worth dressing up for",
+  }),
+  "mismatch detector flags Mike's Used Car stuck on fine dining",
+);
+
 assert(garage.results.length >= 3, "garage site ships bay math results");
 assert(
   garage.results.every((s) => /\d/.test(s.value)),
@@ -328,8 +395,10 @@ assert(
   "pizza ships results + profit bands",
 );
 assert(
-  !seedGrowthBoardLooksThin(lawn) && !seedGrowthBoardLooksThin(garage),
-  "growth board thin detector accepts lawn + garage",
+  !seedGrowthBoardLooksThin(lawn) &&
+    !seedGrowthBoardLooksThin(garage) &&
+    !seedGrowthBoardLooksThin(usedCar),
+  "growth board thin detector accepts lawn + garage + used-car",
 );
 assert(
   seedGrowthBoardLooksThin({ results: [], profitPlays: [] }),

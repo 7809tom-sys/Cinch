@@ -15,6 +15,7 @@ import {
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
+import { seedIndustryKey } from "@/lib/seed-site-copy";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
 
@@ -59,6 +60,8 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
     project.name,
     project.brief,
   );
+  const dealershipLot =
+    seedIndustryKey(project.name, project.brief) === "dealership";
   const shopHref = showShop ? `/site/${project.id}/shop` : null;
 
   const [customer, master] = await Promise.all([
@@ -108,7 +111,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             </li>
             {preview.menuItems && preview.menuItems.length > 0 ? (
               <li>
-                <a href="#menu">Menu</a>
+                <a href="#menu">{dealershipLot ? "Inventory" : "Menu"}</a>
               </li>
             ) : null}
             <li>
@@ -119,7 +122,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             </li>
             {shopHref ? (
               <li>
-                <a href={shopHref}>{restaurantOrder ? "Order" : "Shop"}</a>
+                <a href={shopHref}>
+                  {dealershipLot
+                    ? "Inventory"
+                    : restaurantOrder
+                      ? "Order"
+                      : "Shop"}
+                </a>
               </li>
             ) : null}
             <li>
@@ -183,7 +192,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
               {shopHref ? (
                 <p className="seed-menu-order">
                   <a className="cta" href={shopHref}>
-                    Order from this menu
+                    {dealershipLot
+                      ? "Browse these units"
+                      : "Order from this menu"}
                   </a>
                 </p>
               ) : null}
