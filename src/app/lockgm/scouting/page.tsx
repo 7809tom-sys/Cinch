@@ -5,6 +5,7 @@ import { useSport } from "@/lib/lockgm/sport-context";
 import {
   BASKETBALL_HS_BOARD_YEAR,
   BASEBALL_MILB_BOARD_YEAR,
+  FOOTBALL_COLLEGE_BOARD_YEAR,
 } from "@/lib/lockgm/sport-catalog";
 import { ScoutingTierSwitch } from "../components/scouting-tier-switch";
 
@@ -15,6 +16,7 @@ export default function LockgmScoutingPage() {
     .join(" → ");
   const isHoops = sport.id === "basketball";
   const isBaseball = sport.id === "baseball";
+  const isFootball = sport.id === "football";
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8">
@@ -23,14 +25,18 @@ export default function LockgmScoutingPage() {
           ? "HS TOP 100 · SCOUTING BOARD"
           : isBaseball
             ? "MILB TOP 200 · SCOUTING BOARD"
-            : "SCOUTING PIPELINE"}
+            : isFootball
+              ? "COLLEGE TOP 300 · JUNIORS & SENIORS"
+              : "SCOUTING PIPELINE"}
       </p>
       <h1 className="mt-3 lockgm-display text-4xl font-extrabold sm:text-5xl">
         {isHoops
           ? `Class of ${BASKETBALL_HS_BOARD_YEAR}`
           : isBaseball
             ? `${BASEBALL_MILB_BOARD_YEAR} Farm Board`
-            : path}
+            : isFootball
+              ? `${FOOTBALL_COLLEGE_BOARD_YEAR} Draft Cycle`
+              : path}
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
         {isHoops ? (
@@ -54,6 +60,17 @@ export default function LockgmScoutingPage() {
             every talent, plus YouTube / MLB.com highlight links. Full
             write-ups unlock on Reports; deep pipeline tracking unlocks on
             All-Sports.
+          </>
+        ) : isFootball ? (
+          <>
+            LockedGM’s college football board —{" "}
+            <strong className="text-[color:var(--lg-text)]">
+              {franchise.prospects.length} juniors and seniors
+            </strong>{" "}
+            ranked for the {FOOTBALL_COLLEGE_BOARD_YEAR} draft cycle. Play
+            verified highlight clips in-panel, refresh or run AI scout on any
+            talent, and lock picks for draft day. Full write-ups unlock on
+            Reports; deep pipeline tracking unlocks on All-Sports.
           </>
         ) : (
           <>

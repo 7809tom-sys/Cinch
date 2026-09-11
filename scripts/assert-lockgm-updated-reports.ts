@@ -45,8 +45,10 @@ for (const id of sportIds) {
 
 const basketball = franchiseFor("basketball");
 const baseball = franchiseFor("baseball");
+const football = franchiseFor("football");
 assert(basketball.prospects.length === 100, "HS board has 100 talents");
 assert(baseball.prospects.length === 200, "MiLB board has 200 talents");
+assert(football.prospects.length === 300, "college football board has 300 talents");
 
 const sample = baseball.prospects[0]!;
 const generated = generateUpdatedReport(sample, "baseball", {
