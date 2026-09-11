@@ -11,6 +11,10 @@ import Link from "next/link";
 import { ConductorRoutingPanel } from "@/app/admin/conductor-routing-panel";
 import { ProviderKeysForm } from "@/app/admin/provider-keys-form";
 import { providerForEnvKey } from "@/lib/agents";
+import {
+  MISSING_PROVIDER_KEY_AREA_CLASS,
+  MISSING_PROVIDER_KEY_BADGE_CLASS,
+} from "@/lib/provider-keys-constants";
 import { formatUsd } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { getMasterSession } from "@/lib/master-auth";
@@ -1095,7 +1099,11 @@ export default async function AdminPage() {
               return (
                 <li
                   key={agent.id}
-                  className="border-t border-brand/15 pt-4 text-sm"
+                  className={
+                    agent.configured
+                      ? "border-t border-brand/15 pt-4 text-sm"
+                      : `${MISSING_PROVIDER_KEY_AREA_CLASS} px-3 py-3 text-sm`
+                  }
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1131,7 +1139,7 @@ export default async function AdminPage() {
                       className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${
                         agent.configured
                           ? "bg-accent/15 text-brand"
-                          : "bg-mist text-muted"
+                          : MISSING_PROVIDER_KEY_BADGE_CLASS
                       }`}
                     >
                       {agent.configured ? "KEY SET" : "NO KEY"}

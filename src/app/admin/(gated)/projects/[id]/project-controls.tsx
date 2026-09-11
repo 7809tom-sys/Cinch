@@ -9,7 +9,12 @@ import {
 } from "@/app/admin/actions";
 import Link from "next/link";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
-import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys-constants";
+import {
+  ADMIN_PROVIDER_KEYS_HREF,
+  MISSING_PROVIDER_KEY_AREA_CLASS,
+  MISSING_PROVIDER_KEY_BADGE_CLASS,
+  MISSING_PROVIDER_KEY_TEXT_CLASS,
+} from "@/lib/provider-keys-constants";
 
 type TaskSnapshot = {
   id: string;
@@ -207,7 +212,11 @@ export function ProjectControls({
             crew.map((agent) => (
               <li
                 key={agent.id}
-                className="flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-brand/10 py-2 last:border-b-0"
+                className={
+                  agent.configured
+                    ? "flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-brand/10 py-2 last:border-b-0"
+                    : `flex min-w-0 flex-wrap items-center justify-between gap-3 ${MISSING_PROVIDER_KEY_AREA_CLASS} px-3 py-2`
+                }
               >
                 <div className="min-w-0">
                   <p className="font-semibold break-words text-brand-deep">
@@ -222,7 +231,7 @@ export function ProjectControls({
                         {" · "}
                         <Link
                           href={ADMIN_PROVIDER_KEYS_HREF}
-                          className="font-semibold text-brand underline-offset-2 hover:underline"
+                          className={`${MISSING_PROVIDER_KEY_TEXT_CLASS} underline-offset-2 hover:underline`}
                         >
                           no API key yet — update API
                         </Link>
@@ -230,8 +239,14 @@ export function ProjectControls({
                     )}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs font-bold tracking-wide text-accent uppercase">
-                  On crew
+                <span
+                  className={`shrink-0 text-xs font-bold tracking-wide uppercase ${
+                    agent.configured
+                      ? "text-accent"
+                      : `rounded-md px-2 py-1 ${MISSING_PROVIDER_KEY_BADGE_CLASS}`
+                  }`}
+                >
+                  {agent.configured ? "On crew" : "No key"}
                 </span>
               </li>
             ))

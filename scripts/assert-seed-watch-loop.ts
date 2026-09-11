@@ -4,7 +4,10 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
-import { ADMIN_PROVIDER_KEYS_HREF } from "../src/lib/provider-keys";
+import {
+  ADMIN_PROVIDER_KEYS_HREF,
+  MISSING_PROVIDER_KEY_AREA_CLASS,
+} from "../src/lib/provider-keys";
 import {
   WATCH_IDLE_LINE,
   WATCH_NO_AI_LINE,
@@ -96,6 +99,24 @@ assert(
   admin.includes("ADMIN_PROVIDER_KEYS_HREF") &&
     admin.includes("Update API keys"),
   "admin stuck state links to provider API keys",
+);
+assert(
+  MISSING_PROVIDER_KEY_AREA_CLASS.includes("border-red-600") &&
+    MISSING_PROVIDER_KEY_AREA_CLASS.includes("bg-red-50"),
+  "missing API key area uses a red highlight",
+);
+assert(
+  admin.includes("MISSING_PROVIDER_KEY_AREA_CLASS"),
+  "crew without a key is highlighted red",
+);
+
+const keysForm = readFileSync(
+  join(process.cwd(), "src/app/admin/provider-keys-form.tsx"),
+  "utf8",
+);
+assert(
+  keysForm.includes("MISSING_PROVIDER_KEY_AREA_CLASS"),
+  "provider key paste fields without a key are highlighted red",
 );
 
 const portal = readFileSync(
