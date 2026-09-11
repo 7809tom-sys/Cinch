@@ -119,9 +119,9 @@ export function SeedShopBoard({
                 : ", pickup"
             }). The kitchen has the ticket.`
           : lotHold
-            ? `We'll handle this unit — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}${
+            ? `We'll handle this unit — ${formatSeedMoney(result.totalUsd, "lot")} (tax ${formatSeedMoney(result.taxUsd, "lot")}${
                 result.shippingUsd > 0
-                  ? `, dealer delivery $${result.shippingUsd.toFixed(2)}`
+                  ? `, dealer delivery ${formatSeedMoney(result.shippingUsd, "lot")}`
                   : ", hold/drive on the lot"
               }). No UPS box.`
             : `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}, ship $${result.shippingUsd.toFixed(2)}).`,
