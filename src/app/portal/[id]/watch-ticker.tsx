@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys";
+import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys-constants";
 import { portalRestaffAction, portalWatchTickAction } from "../actions";
 
 export function PortalWatchTicker({
