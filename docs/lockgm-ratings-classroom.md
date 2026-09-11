@@ -88,4 +88,4 @@ Multi-sport grade books will follow the same LockedGM classroom shape later.
 
 ## Related design
 
-See [Career-point cap](./lockgm-career-point-cap.md) for the long-term commitment pool (distinct from Classic Matchup’s annual salary hard cap): sport base = avg career years × roster size, then **±4%** next year for make/miss playoffs; contracts/dead money stick.
+See [Career-point cap](./lockgm-career-point-cap.md) for the two-economy model: long-term MLB career-point pool (avg career years × 30-man roster, then **±4%** next year for make/miss playoffs) plus the annual **Acquisition Pool** (10 points, draft + international, **use-it-or-lose-it**, 50-man farm at 0 MLB points until graduation). Default cut penalty is **85% same-year** dead money.

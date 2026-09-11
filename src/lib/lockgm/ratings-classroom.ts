@@ -330,28 +330,24 @@ export const CAREER_POINT_CAP = {
   decliningScheduleExample:
     "5 → 4 → 3 → 2 → 1 across successive seasons of a max deal (illustrative).",
   cutRules: [
-    "Option A — 85% dead money charged in the cut year.",
-    "Option B — 75% prorated penalty spread over the remaining contract life.",
+    "CONFIRMED default — 85% of remaining career points hit as dead money in the cut year.",
+    "League-constitution option only — 75% prorated hangover over the remaining contract life. Managers do not pick per cut.",
   ],
   freeAgency:
     "Competing offers allowed in free agency; the originating team holds a match right on the winning offer.",
   minorsProposed:
-    "Proposed 50-man minors / organizational pool beside the 30-man active roster — affiliate bodies should not burn MLB career points 1:1.",
+    "CONFIRMED 50-man minors / organizational pool beside the 30-man active roster — signed amateurs sit there at 0 MLB career points until graduation.",
   draftIntlPool:
-    "Draft + international share a small ~10-point acquisition pool until players graduate into big-league guarantees.",
+    "CONFIRMED Acquisition Pool: 10 points each offseason for amateur draft + international only. Zero rollover — unused points vanish when the signing period closes.",
   serviceTime:
-    "Guaranteed FA years cost points; pre-FA club-control / option years cost fewer or none until exercised — exact mapping open.",
+    "Promotion to the 30-man starts a 3-year service clock. Guaranteed FA years cost career points; farm time does not.",
   milbPressure:
-    "About 4 years of MiLB without a meaningful MLB foothold triggers use-or-lose pressure (expose / forced 30-man decision / tax).",
+    "CONFIRMED hard rule: after 4 years of MiLB without a 30-man foothold, the player is forced onto the active roster and starts the service clock.",
   openQuestions: [
     "Is the declining 5→4→3→2→1 schedule mandatory for all max deals, or only an example amortization?",
     "Does a “point” always equal one roster-year, or can contracts fractionalize (e.g. 2.5)?",
-    "Which cut rule is default — 85% same-year dead money, 75% prorated, or manager choice?",
     "Does the match right require identical years/points, or may the originator match salary only?",
     "How do career points interact with the Classic Matchup annual salary hard cap?",
-    "50-man minors: when do affiliate deals charge major points?",
-    "Draft + intl ~10-point pool: split, rollover, overspend penalties?",
-    "Service-time ↔ points mapping for pre-arb / arb / FA?",
-    "4-year MiLB pressure: hard expose vs soft tax?",
+    "Arbitration year-by-year point schedule after the 3-year service clock?",
   ],
 } as const;

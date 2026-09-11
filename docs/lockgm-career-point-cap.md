@@ -113,14 +113,15 @@ Illustrative amortization for a max-style deal:
 
 ---
 
-## Cuts / dead money
+## CONFIRMED: Cuts / dead money (85% same-year default)
 
-When a player is cut, career points do not vanish cleanly — same principle as above: commitment sticks. Two candidate rules (pick default later):
+When a player is cut, career points do not vanish cleanly — same principle as above: commitment sticks.
 
-1. **85% dead money that year** — most of the remaining (or current-year) commitment hits the books immediately in the cut season.
-2. **75% prorated penalty over remaining life** — a discounted hangover spreads across the years left on the deal.
+**Default (league rule):** **85% of remaining career points** hit as dead money **in the cut year**. The club cannot stretch the pain. That matches the Acquisition Pool’s use-it-or-lose-it philosophy: no smoothing, no hoarding of consequences.
 
-**Open:** Which rule is default? Can the cutting team choose?
+**League-constitution option only:** **75% prorated** over the remaining contract life. Commissioners may flip this in a custom league. **Managers do not choose per cut** — picking the cheaper path each time would recreate the same gaming the zero-rollover rule exists to stop.
+
+Enforced math lives in `src/lib/lockgm/roster-economics.ts` (`cutDeadMoney`).
 
 ---
 
@@ -137,43 +138,47 @@ When a player is cut, career points do not vanish cleanly — same principle as 
 
 ---
 
-## Farm / minors (proposed)
+## CONFIRMED: Farm / 50-man firewall
 
-**Proposed:** a **50-man** minors / organizational pool that sits beside the 30-man active roster — not charged 1:1 against the major-league career-point pool the same way big-league guarantees are.
+A **50-man** minors / organizational pool sits beside the **30-man** active roster. Affiliate bodies are **not** charged against the MLB career-point cap.
 
-Intent: Shadow GMs can develop depth without burning the MLB career-point budget on every affiliate body, while still feeling organizational roster pressure.
-
-**Open:** Exact charging rules for 40-man-style protections, Rule 5 analogues, and when a minor-league guarantee eats major points.
+Once signed with Acquisition Pool points, the player enters the 50-man and sits there at **0 MLB career points** until graduation.
 
 ---
 
-## Draft + international ~10-point pool
+## CONFIRMED: Acquisition Pool (use-it-or-lose-it)
 
-Amateur draft and international signing share a small **~10-point** acquisition pool (design target) — enough to ink high-upside kids without letting teams warehouse endless multi-year amateur guarantees.
+Mirrors the real MLB draft bonus pool. Annual reset keeps competitive balance tight and forces immediate decisions on amateur talent.
 
-- Draft picks and intl signees draw from this pool (or a closely related sub-budget), not the full major-league career-point pool, until they graduate into big-league guarantees.
-- Exact split (draft vs intl) and rollover rules are open.
+| Rule | Value |
+| --- | --- |
+| Annual refresh | **10** points each offseason |
+| Uses | Amateur draft + international signings only |
+| Rollover | **None** — unused points vanish at the end of the signing period |
+| Firewall | Completely separated from the MLB 30-man career-point cap |
+| On signing | Player enters the 50-man farm at **0** MLB career points |
+
+If a manager spends 8, they leave 2 points of prospect capital on the table. Points cannot be stashed across years to monopolize a later draft class.
+
+Draft vs international share **one** 10-point pool (not two sub-budgets). Overspend is illegal — you cannot bid more than remaining points.
+
+Enforced math: `src/lib/lockgm/roster-economics.ts`. Classroom ledger: `/lockgm/ratings#acquisition-pool`.
 
 ---
 
-## Service time
+## CONFIRMED: Graduation + service clock
 
-Career points interact with **service time**:
+The player touches the manager’s MLB career-point cap only when:
 
-- Club control years (pre-FA) should feel cheap relative to free-agent guarantees — service clocks still matter for arbitration / FA timing in franchise mode.
-- Burning points early to “buy out” service or lock pre-arb stars is a deliberate trade-off against the pool.
-- Exact mapping (points vs service year) is open; classroom rule of thumb: **guaranteed FA years cost points; option years and team-control years cost fewer or none until exercised.**
+1. **Promoted** to the 30-man — starts the **3-year service time clock**, or
+2. **4-year minor-league limit** — forced onto the active roster (hard rule, not a soft tax).
 
----
+Two distinct economies:
 
-## 4-year MiLB pressure
+- **Short-term** — annual Acquisition Pool to keep the farm stocked.
+- **Long-term** — MLB career-point cap on the active 30-man.
 
-Prospects should not sit forever. Design pressure:
-
-- After about **4 years** of MiLB / affiliate time without a meaningful major-league foothold, the org faces a **use-or-lose** pressure (Rule 5–style exposure, forced 30-man decision, or point/roster tax).
-- Keeps farm systems moving and prevents endless prospect parking while stars age on the 30-man.
-
-**Open:** Hard rule at year 4 vs soft escalating penalties in years 3–5.
+**Open (narrow):** year-by-year arbitration point schedule after the 3-year service clock (pre-arb cheap / arb / FA).
 
 ---
 
@@ -191,16 +196,18 @@ Classic Matchup already enforces an **annual salary hard cap** in millions. Care
 - [x] **NFL confirmed:** pool = **2.5 × 50 = 125**; **must draft every position** (hard roster-construction / draft rule — no skill-only stacks); same ±4% / dead-money / retirement risk as general rules
 - [x] **Playoff YoY modifier confirmed:** make playoffs → **+4%** next year; miss → **−4%** next year (on sport base pool / salary room)
 - [x] **Contracts stick:** injury/decline do not erase points; dead money remains
+- [x] **Acquisition Pool confirmed:** 10 points / year, draft + intl only, **zero rollover**, firewalled from the 30-man career-point cap
+- [x] **50-man farm confirmed:** signed amateurs cost **0** MLB career points until graduation
+- [x] **Graduation confirmed:** 30-man promotion starts a **3-year service clock**; **4-year MiLB limit** forces the active roster
+- [x] **Cut default confirmed:** **85% same-year** dead money; 75% prorated is league-constitution only (no per-cut manager choice)
 - [ ] Declining 5→4→3→2→1 mandatory vs illustrative?
 - [ ] Point = whole roster-year only, or fractional points allowed?
-- [ ] Default cut rule: 85% same-year vs 75% prorated?
 - [ ] Match right: identical terms vs salary-only match?
 - [ ] Dual-cap rules with Classic Matchup payroll?
-- [ ] 50-man minors: when do affiliate deals charge major points?
-- [ ] Draft + intl ~10-point pool: split, rollover, overspend penalties?
-- [ ] Service-time ↔ points mapping for pre-arb / arb / FA
-- [ ] 4-year MiLB pressure: hard expose vs soft tax?
+- [ ] Arbitration year-by-year point schedule after the 3-year service clock
 
 ## Status
 
-Design capture for PM — **base formula**, **NFL 2.5×50=125 + must-draft-every-position**, and **±4% playoff YoY modifier** confirmed as above. Not yet enforced in Classic Matchup sim code. Implement after remaining open questions are resolved.
+Design + rules module for PM. **Base formula**, **NFL 2.5×50=125 + must-draft-every-position**, **±4% playoff YoY**, **Acquisition Pool (10, no rollover)**, **50-man firewall**, **graduation / 3-year clock / 4-year force**, and **85% same-year cut default** are confirmed.
+
+Classroom ledger on `/lockgm/ratings#acquisition-pool` runs the pool, firewall, graduation, and cut math. Not yet wired into Classic Matchup sim signings.
