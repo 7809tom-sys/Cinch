@@ -851,7 +851,7 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     ...prepTasks,
     {
       title: "Search comparable ideal sites and take the best",
-      detail: `HARD RULE: crawl at least 20 comparable websites in this industry, compare customer-friendly methods, and take the best for AIO and SEO. Used-car lots hold, book a drive, or dealer-deliver — never UPS a car. A notebook is not research. ${modularsFirst}`,
+      detail: `HARD-CODED: crawl at least 20 competitor websites in this industry and take the best of EACH (CTA from one, headline from another, fulfillment from a third, SEO/AIO from the set). Used-car lots hold, book a drive, or dealer-deliver — never UPS a car. A notebook is not research. ${modularsFirst}`,
       requiredSkills: ["copy", "research"],
       minSkillLevel: 3,
     },

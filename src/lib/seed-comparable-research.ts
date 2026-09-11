@@ -1,18 +1,21 @@
 /**
- * HARD RULE — when Seed describes a site, search the internet for ideals,
- * compare them, and take the best of what it has seen.
- *
- * Implementation used by planBuild + applyTaskToSource. A markdown
- * notebook is not research — this module fetches public HTML.
+ * HARD RULE — when Seed describes a site, crawl at least 20 competitor
+ * websites in that industry and take the best of EACH: CTA from one,
+ * headline from another, fulfillment from a third, SEO/AIO from the set.
+ * A notebook is not research — this module fetches public HTML.
  */
 
-import { seedIndustryKey, type SeedSiteCopy } from "./seed-site-copy";
+import {
+  seedIndustryKey,
+  type SeedShopCopy,
+  type SeedSiteCopy,
+} from "./seed-site-copy";
 
 export const MIN_COMPARABLE_CRAWL = 20;
 
 export const SEED_COMPARE_IDEALS_RULE = {
   summary:
-    "When Seed describes a site, crawl at least 20 comparable websites in that industry, compare customer-friendly methods, and take the best for AIO and SEO. A notebook is not research. Never UPS a car.",
+    "HARD-CODED: crawl at least 20 competitor websites in this industry and take the best of EACH — CTA, headline, fulfillment, and SEO/AIO from different sites. A notebook is not research. Never UPS a car.",
 } as const;
 
 export const SEARCH_COMPARABLE_IDEALS_TITLE =
@@ -35,6 +38,21 @@ export type ComparableSnapshot = {
   notes: string[];
 };
 
+export type BestOfPiece = {
+  value: string;
+  fromHost: string;
+  fromUrl: string;
+};
+
+export type BestOfEach = {
+  cta: BestOfPiece | null;
+  headline: BestOfPiece | null;
+  seoTitle: BestOfPiece | null;
+  seoDescription: BestOfPiece | null;
+  nav: BestOfPiece | null;
+  methods: BestOfPiece[];
+};
+
 export type ComparableResearch = {
   query: string;
   industry: string;
@@ -47,6 +65,7 @@ export type ComparableResearch = {
   bestSeoTitle: string | null;
   bestSeoDescription: string | null;
   customerFriendlyMethods: string[];
+  bestOfEach?: BestOfEach;
   takeaways: string[];
 };
 
@@ -118,6 +137,8 @@ const IDEAL_URLS: Record<string, string[]> = {
     "https://www.schedulicity.com/",
     "https://www.mindbodyonline.com/",
     "https://www.thecut.com/",
+    "https://www.thesaltcave.com/",
+    "https://www.mytime.com/",
   ],
   lawn: [
     "https://www.trugreen.com/",
@@ -136,6 +157,10 @@ const IDEAL_URLS: Record<string, string[]> = {
     "https://www.mowandglow.com/",
     "https://www.weedpro.com/",
     "https://www.spring-green.com/",
+    "https://www.lawncare.com/",
+    "https://www.milorganite.com/",
+    "https://www.pennington.com/",
+    "https://www.natureslawn.com/",
     "https://www.naturescape.com/services/",
     "https://www.trugreen.com/lawn-care",
     "https://www.lawnstarter.com/lawn-care",
@@ -159,6 +184,9 @@ const IDEAL_URLS: Record<string, string[]> = {
     "https://www.christianbrothersauto.com/",
     "https://www.suncocoloco.com/",
     "https://www.takecareofyourcar.com/",
+    "https://www.aamco.com/",
+    "https://www.monro.com/",
+    "https://www.bridgestonetire.com/",
     "https://www.firestonecompleteautocare.com/auto-repair/",
     "https://www.jiffylube.com/services",
     "https://www.meineke.com/services/",
@@ -180,6 +208,10 @@ const IDEAL_URLS: Record<string, string[]> = {
     "https://www.mobiledetailers.com/",
     "https://www.mydetailingshop.com/",
     "https://www.autopia-carcare.com/",
+    "https://www.adamspolishes.com/",
+    "https://www.mothers.com/",
+    "https://www.turtlewax.com/",
+    "https://www.p21s.com/",
     "https://www.chemicalguys.com/collections/car-wash",
     "https://www.meguiars.com/en/car-care",
     "https://www.ziebart.com/services",
@@ -557,26 +589,115 @@ function containsForeignBrand(text: string, hosts: string[]): boolean {
   });
 }
 
+export function uniqueCompetitorHosts(urls: string[]): string[] {
+  return [...new Set(urls.map((url) => hostOf(url)).filter(Boolean))];
+}
+
+export function researchMeetsHardRule(
+  research: ComparableResearch | null | undefined,
+): boolean {
+  if (!research) return false;
+  return (
+    uniqueCompetitorHosts(research.urlsConsidered).length >= MIN_COMPARABLE_CRAWL
+  );
+}
+
+function uniqueUrlsByHost(urls: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const url of urls) {
+    const host = hostOf(url);
+    if (!host || seen.has(host)) continue;
+    seen.add(host);
+    out.push(url);
+  }
+  return out;
+}
+
+export function composeBestOfEach(
+  snapshots: ComparableSnapshot[],
+  industry: string,
+): BestOfEach {
+  const ranked = [...snapshots].sort((a, b) => b.score - a.score);
+  const used = new Set<string>();
+  const otherHosts = (self: string) =>
+    snapshots.map((item) => item.host).filter((host) => host && host !== self);
+
+  function take(
+    pick: (snap: ComparableSnapshot) => string,
+  ): BestOfPiece | null {
+    const unused = ranked.filter((snap) => !used.has(snap.host));
+    for (const snap of [...unused, ...ranked]) {
+      const value = pick(snap).replace(/\s+/g, " ").trim();
+      if (!value) continue;
+      if (containsForeignBrand(value, otherHosts(snap.host))) continue;
+      used.add(snap.host);
+      return { value, fromHost: snap.host, fromUrl: snap.url };
+    }
+    return null;
+  }
+
+  return {
+    cta: take((snap) =>
+      snap.cta && ctaFitsIndustry(snap.cta, industry) ? snap.cta : "",
+    ),
+    headline: take((snap) =>
+      snap.h1.length >= 8 && snap.h1.length <= 80 ? snap.h1 : "",
+    ),
+    seoTitle: take((snap) =>
+      snap.title.length >= 8 ? snap.title.slice(0, 60) : "",
+    ),
+    seoDescription: take((snap) =>
+      snap.description.length >= 40 ? snap.description.slice(0, 160) : "",
+    ),
+    nav: take((snap) =>
+      snap.nav.length >= 3 ? snap.nav.slice(0, 6).join(", ") : "",
+    ),
+    methods: collectAttributedMethods(ranked, industry),
+  };
+}
+
 export function applyComparableOverlay(
   copy: SeedSiteCopy,
   research: ComparableResearch,
 ): SeedSiteCopy {
   const next = { ...copy };
-  if (research.bestCta && ctaFitsIndustry(research.bestCta, research.industry)) {
-    next.cta = titleCaseCta(research.bestCta);
+  const cta = research.bestOfEach?.cta?.value ?? research.bestCta;
+  const headline = research.bestOfEach?.headline?.value ?? research.bestHeadline;
+  if (cta && ctaFitsIndustry(cta, research.industry)) {
+    next.cta = titleCaseCta(cta);
   }
   if (
-    research.bestHeadline &&
-    research.bestHeadline.length >= 8 &&
-    research.bestHeadline.length <= 80 &&
+    headline &&
+    headline.length >= 8 &&
+    headline.length <= 80 &&
     !containsForeignBrand(
-      research.bestHeadline,
-      research.snapshots.map((s) => s.host),
+      headline,
+      research.snapshots.map((snap) => snap.host),
     )
   ) {
-    next.headline = research.bestHeadline;
+    next.headline = headline;
+  }
+  const methods = research.customerFriendlyMethods;
+  if (research.industry === "dealership" && methods.length > 0) {
+    next.support = `Inspected used cars with the price on the card. ${methods.slice(0, 3).join(". ")}.`;
+    next.aboutBody = next.support;
+    next.bookHeadline = "Hold a car or book a drive";
   }
   return next;
+}
+
+export function applyComparableOverlayToShop(
+  shop: SeedShopCopy,
+  research: ComparableResearch | null,
+): SeedShopCopy {
+  if (!research || research.industry !== "dealership") return shop;
+  const methods = research.customerFriendlyMethods;
+  if (!methods.length) return shop;
+  return {
+    ...shop,
+    support: `Inspected units from this lot — ${methods.slice(0, 3).join(" · ")}. We do not ship cars UPS.`,
+  };
 }
 
 export function compareComparableSites(
@@ -596,15 +717,14 @@ export async function researchComparables(input: {
   const searched = await searchComparableUrls(query);
   const catalog = idealUrlsForIndustry(industry);
   const reference = input.referenceUrl?.trim() || "";
-  const urls = [
+  const urls = uniqueUrlsByHost([
     ...catalog,
     ...searched,
     ...(reference && /^https?:\/\//i.test(reference) ? [reference] : []),
-  ].filter((url, index, all) => all.indexOf(url) === index);
-  while (urls.length < MIN_COMPARABLE_CRAWL) {
-    const extra = catalog[urls.length % catalog.length];
-    if (!extra) break;
-    urls.push(extra);
+  ]);
+  for (const extra of catalog) {
+    if (urls.length >= MIN_COMPARABLE_CRAWL) break;
+    if (!urls.includes(extra)) urls.push(extra);
   }
 
   const snapshots = await Promise.all(
@@ -615,41 +735,45 @@ export async function researchComparables(input: {
   );
 
   const winner = compareComparableSites(snapshots);
-  const methods = collectCustomerFriendlyMethods(snapshots, industry);
+  const bestOfEach = composeBestOfEach(snapshots, industry);
+  const methods = bestOfEach.methods.map((piece) => piece.value);
   const takeaways: string[] = [
     SEED_COMPARE_IDEALS_RULE.summary,
-    `Crawled ${urls.length} industry sites (${snapshots.filter((s) => s.fetched).length} returned HTML).`,
-    winner
-      ? `Best of what we saw: ${winner.host} (score ${winner.score}).`
-      : "No comparable HTML scored — kept industry catalog ideals.",
+    `Crawled ${uniqueCompetitorHosts(urls).length} competitor hosts (${snapshots.filter((s) => s.fetched).length} returned HTML).`,
   ];
-  if (winner?.cta && ctaFitsIndustry(winner.cta, industry)) {
-    takeaways.push(`Take their CTA verb: “${winner.cta}”.`);
+  if (bestOfEach.cta) {
+    takeaways.push(
+      `Best CTA from ${bestOfEach.cta.fromHost}: “${bestOfEach.cta.value}”.`,
+    );
   }
-  if (winner?.h1) {
-    takeaways.push(`Headline shape to beat: “${winner.h1.slice(0, 80)}”.`);
+  if (bestOfEach.headline) {
+    takeaways.push(
+      `Best headline from ${bestOfEach.headline.fromHost}: “${bestOfEach.headline.value.slice(0, 80)}”.`,
+    );
   }
-  if (winner?.nav.length) {
-    takeaways.push(`Nav ideas: ${winner.nav.slice(0, 5).join(", ")}.`);
+  if (bestOfEach.seoTitle) {
+    takeaways.push(
+      `Best SEO title from ${bestOfEach.seoTitle.fromHost}: “${bestOfEach.seoTitle.value}”.`,
+    );
+  }
+  if (bestOfEach.nav) {
+    takeaways.push(
+      `Best nav from ${bestOfEach.nav.fromHost}: ${bestOfEach.nav.value}.`,
+    );
   }
   if (industry === "dealership") {
     takeaways.push(
       "Customer-friendly lot method: hold the unit, book a drive, or dealer-deliver the car. Never UPS a vehicle.",
     );
   }
-  takeaways.push(...methods.map((method) => `Method: ${method}`));
-
-  const hosts = snapshots.map((s) => s.host);
-  const bestHeadline =
-    winner?.h1 && !containsForeignBrand(winner.h1, hosts) ? winner.h1 : null;
-  const bestSeoTitle =
-    winner?.title && !containsForeignBrand(winner.title, hosts)
-      ? winner.title.slice(0, 60)
-      : null;
-  const bestSeoDescription =
-    winner?.description && !containsForeignBrand(winner.description, hosts)
-      ? winner.description.slice(0, 160)
-      : null;
+  takeaways.push(
+    ...bestOfEach.methods.map(
+      (piece) => `Best method from ${piece.fromHost}: ${piece.value}`,
+    ),
+  );
+  if (winner) {
+    takeaways.push(`Highest overall score: ${winner.host} (${winner.score}).`);
+  }
 
   return {
     query,
@@ -658,48 +782,92 @@ export async function researchComparables(input: {
     urlsConsidered: urls,
     snapshots,
     winnerUrl: winner?.url ?? null,
-    bestCta:
-      winner?.cta && ctaFitsIndustry(winner.cta, industry) ? winner.cta : null,
-    bestHeadline,
-    bestSeoTitle,
-    bestSeoDescription,
+    bestCta: bestOfEach.cta?.value ?? null,
+    bestHeadline: bestOfEach.headline?.value ?? null,
+    bestSeoTitle: bestOfEach.seoTitle?.value ?? null,
+    bestSeoDescription: bestOfEach.seoDescription?.value ?? null,
     customerFriendlyMethods: methods,
+    bestOfEach,
     takeaways,
   };
 }
 
-function collectCustomerFriendlyMethods(
+function collectAttributedMethods(
   snapshots: ComparableSnapshot[],
   industry: string,
-): string[] {
-  const blob = snapshots
-    .map((s) => `${s.cta} ${s.h1} ${s.nav.join(" ")} ${s.description}`)
-    .join(" ")
-    .toLowerCase();
-  const found: string[] = [];
-  if (industry === "dealership") {
-    if (/hold|reserve (?:this|the) (?:car|vehicle|unit)/.test(blob)) {
-      found.push("Hold / reserve the unit on the lot");
-    }
-    if (/test drive|book a drive/.test(blob)) {
-      found.push("Book a test drive");
-    }
-    if (/deliver|home delivery|we bring/.test(blob)) {
-      found.push("Dealer delivers the car");
-    }
-    if (/financ|pre-?qualif|monthly payment/.test(blob)) {
-      found.push("See financing / payment before you sign");
-    }
-    if (/trade/.test(blob)) found.push("Written trade-in number");
-    if (found.length === 0) {
-      found.push(
-        "Hold on the lot",
-        "Book a test drive",
-        "Dealer delivery — not UPS",
-      );
+): BestOfPiece[] {
+  const patterns: { test: RegExp; value: string }[] =
+    industry === "dealership"
+      ? [
+          {
+            test: /hold|reserve (?:this|the)? ?(?:car|vehicle|unit)/,
+            value: "Hold / reserve the unit on the lot",
+          },
+          {
+            test: /test drive|book a drive/,
+            value: "Book a test drive",
+          },
+          {
+            test: /deliver|home delivery|we bring/,
+            value: "Dealer delivers the car",
+          },
+          {
+            test: /financ|pre-?qualif|monthly payment/,
+            value: "See financing before you sign",
+          },
+          {
+            test: /trade/,
+            value: "Written trade-in number",
+          },
+          {
+            test: /inspect|certified|carfax/,
+            value: "Inspected history on the card",
+          },
+        ]
+      : industry === "food"
+        ? [
+            { test: /order online|start order/, value: "Order online" },
+            { test: /pickup|carryout/, value: "Pickup at the counter" },
+            { test: /deliver/, value: "Local delivery" },
+          ]
+        : [];
+
+  const found: BestOfPiece[] = [];
+  const seen = new Set<string>();
+  for (const snap of snapshots) {
+    const blob =
+      `${snap.cta} ${snap.h1} ${snap.nav.join(" ")} ${snap.description}`.toLowerCase();
+    for (const pattern of patterns) {
+      if (seen.has(pattern.value)) continue;
+      if (!pattern.test.test(blob)) continue;
+      seen.add(pattern.value);
+      found.push({
+        value: pattern.value,
+        fromHost: snap.host,
+        fromUrl: snap.url,
+      });
     }
   }
-  return [...new Set(found)].slice(0, 8);
+  if (industry === "dealership" && found.length === 0) {
+    return [
+      {
+        value: "Hold on the lot",
+        fromHost: "industry-default",
+        fromUrl: "",
+      },
+      {
+        value: "Book a test drive",
+        fromHost: "industry-default",
+        fromUrl: "",
+      },
+      {
+        value: "Dealer delivery — not UPS",
+        fromHost: "industry-default",
+        fromUrl: "",
+      },
+    ];
+  }
+  return found.slice(0, 8);
 }
 
 export function seoSourceFromResearch(
@@ -756,6 +924,30 @@ ${research.query}
 
 ${rows || "- (none)"}
 
+## Best of each competitor
+
+${
+  research.bestOfEach
+    ? [
+        research.bestOfEach.cta &&
+          `- CTA from ${research.bestOfEach.cta.fromHost}: “${research.bestOfEach.cta.value}”`,
+        research.bestOfEach.headline &&
+          `- Headline from ${research.bestOfEach.headline.fromHost}: “${research.bestOfEach.headline.value}”`,
+        research.bestOfEach.seoTitle &&
+          `- SEO title from ${research.bestOfEach.seoTitle.fromHost}: “${research.bestOfEach.seoTitle.value}”`,
+        research.bestOfEach.seoDescription &&
+          `- SEO description from ${research.bestOfEach.seoDescription.fromHost}: “${research.bestOfEach.seoDescription.value}”`,
+        research.bestOfEach.nav &&
+          `- Nav from ${research.bestOfEach.nav.fromHost}: ${research.bestOfEach.nav.value}`,
+        ...research.bestOfEach.methods.map(
+          (piece) => `- Method from ${piece.fromHost}: ${piece.value}`,
+        ),
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : "- (compose after crawl)"
+}
+
 ## Customer-friendly methods
 
 ${(research.customerFriendlyMethods ?? []).map((line) => `- ${line}`).join("\n") || "- (none yet)"}
@@ -765,7 +957,7 @@ ${(research.customerFriendlyMethods ?? []).map((line) => `- ${line}`).join("\n")
 - Title: ${research.bestSeoTitle || "(industry default)"}
 - Description: ${research.bestSeoDescription || "(industry default)"}
 
-## Take the best
+## Take the best of each
 
 ${research.takeaways.map((line) => `- ${line}`).join("\n")}
 

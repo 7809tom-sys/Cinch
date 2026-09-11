@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { placeSeedShopOrderAction } from "./actions";
-import type {
-  SeedSalesTaxSettings,
-  SeedShippingMode,
-  SeedShopProduct,
+import {
+  formatSeedMoney,
+  type SeedSalesTaxSettings,
+  type SeedShippingMode,
+  type SeedShopProduct,
 } from "@/lib/seed-site-copy";
 
 type CartLine = { productId: string; qty: number };
@@ -132,7 +133,10 @@ export function SeedShopBoard({
     <>
       <div className="seed-shop-grid">
         {products.map((product) => (
-          <article key={product.id} className="seed-shop-card">
+          <article
+            key={product.id}
+            className={lotHold ? "seed-shop-card seed-lot-card" : "seed-shop-card"}
+          >
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -145,24 +149,31 @@ export function SeedShopBoard({
                 Photo coming soon
               </div>
             )}
-            <h3>{product.title}</h3>
-            <p>{product.detail}</p>
-            <p className="seed-shop-price">${product.priceUsd.toFixed(2)}</p>
-            <p className="seed-shop-meta">
-              {restaurantOrdering
-                ? `${product.sku} · ready to order`
-                : lotHold
-                  ? `${product.sku} · ${product.stockQty} on the lot`
-                  : `${product.sku} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}
-            </p>
-            <button
-              type="button"
-              className="cta"
-              disabled={product.stockQty < 1}
-              onClick={() => add(product.id)}
-            >
-              {product.stockQty < 1 ? "Out of stock" : cta}
-            </button>
+            <div className={lotHold ? "seed-lot-card-body" : undefined}>
+              {lotHold ? (
+                <p className="seed-lot-badge">Inspected · on the lot</p>
+              ) : null}
+              <h3>{product.title}</h3>
+              <p>{product.detail}</p>
+              <p className="seed-shop-price">
+                {formatSeedMoney(product.priceUsd, lotHold ? "lot" : "retail")}
+              </p>
+              <p className="seed-shop-meta">
+                {restaurantOrdering
+                  ? `${product.sku} · ready to order`
+                  : lotHold
+                    ? `${product.stockQty} available`
+                    : `${product.sku} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}
+              </p>
+              <button
+                type="button"
+                className="cta"
+                disabled={product.stockQty < 1}
+                onClick={() => add(product.id)}
+              >
+                {product.stockQty < 1 ? "Out of stock" : cta}
+              </button>
+            </div>
           </article>
         ))}
       </div>
@@ -186,21 +197,45 @@ export function SeedShopBoard({
                     {line.product.title} × {line.qty}
                   </span>
                   <span>
-                    ${(line.product.priceUsd * line.qty).toFixed(2)}
+                    {formatSeedMoney(
+                      line.product.priceUsd * line.qty,
+                      lotHold ? "lot" : "retail",
+                    )}
                   </span>
                 </li>
               ))}
             </ul>
-            <p className="seed-shop-meta">
-              Subtotal ${subtotal.toFixed(2)}
-              {taxApplies
-                ? ` · Tax ${salesTax.ratePct}% $${taxUsd.toFixed(2)}`
-                : " · Tax $0.00"}
-              {mode
-                ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
-                : ""}{" "}
-              · Total ${total.toFixed(2)}
-            </p>
+            {lotHold ? (
+              <dl className="seed-lot-totals">
+                <div>
+                  <dt>Unit price</dt>
+                  <dd>{formatSeedMoney(subtotal, "lot")}</dd>
+                </div>
+                <div>
+                  <dt>{taxApplies ? `Tax ${salesTax.ratePct}%` : "Tax"}</dt>
+                  <dd>{formatSeedMoney(taxUsd, "lot")}</dd>
+                </div>
+                <div>
+                  <dt>{mode?.label ?? "Hold on the lot"}</dt>
+                  <dd>{formatSeedMoney(shippingUsd, "lot")}</dd>
+                </div>
+                <div className="seed-lot-due">
+                  <dt>Due</dt>
+                  <dd>{formatSeedMoney(total, "lot")}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="seed-shop-meta">
+                Subtotal ${subtotal.toFixed(2)}
+                {taxApplies
+                  ? ` · Tax ${salesTax.ratePct}% $${taxUsd.toFixed(2)}`
+                  : " · Tax $0.00"}
+                {mode
+                  ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
+                  : ""}{" "}
+                · Total ${total.toFixed(2)}
+              </p>
+            )}
             {needsLtl && !restaurantOrdering && !lotHold ? (
               <p className="seed-shop-meta">
                 Cart includes LTL freight items — choose an LTL mode below.

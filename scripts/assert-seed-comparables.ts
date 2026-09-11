@@ -8,19 +8,23 @@ import {
   applyComparableOverlay,
   comparableSearchQuery,
   compareComparableSites,
+  composeBestOfEach,
   ctaFitsIndustry,
   idealUrlsForIndustry,
   MIN_COMPARABLE_CRAWL,
   parseDuckDuckGoResultUrls,
+  researchMeetsHardRule,
   scoreComparableSnapshot,
   SEED_COMPARE_IDEALS_RULE,
   SEARCH_COMPARABLE_IDEALS_TITLE,
   taskIsComparableResearch,
+  uniqueCompetitorHosts,
   type ComparableSnapshot,
 } from "../src/lib/seed-comparable-research";
 import {
   customerFacingShopCopy,
   customerFacingSiteCopy,
+  formatSeedMoney,
   seedLotFulfillmentModes,
   seedShopFulfillmentMismatchesBrief,
   seedShopPageSource,
@@ -37,9 +41,27 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(
-  /crawl at least 20/i.test(SEED_COMPARE_IDEALS_RULE.summary),
-  "rule requires crawling at least 20 industry sites",
+  /crawl at least 20/i.test(SEED_COMPARE_IDEALS_RULE.summary) &&
+    /best of EACH/i.test(SEED_COMPARE_IDEALS_RULE.summary),
+  "rule requires crawling at least 20 competitors and taking the best of each",
 );
+for (const industry of [
+  "dealership",
+  "food",
+  "salon",
+  "lawn",
+  "garage",
+  "detail",
+  "retail",
+  "trade",
+  "generic",
+]) {
+  assert(
+    uniqueCompetitorHosts(idealUrlsForIndustry(industry)).length >=
+      MIN_COMPARABLE_CRAWL,
+    `${industry} catalog has at least ${MIN_COMPARABLE_CRAWL} unique competitor hosts`,
+  );
+}
 assert(
   taskIsComparableResearch(SEARCH_COMPARABLE_IDEALS_TITLE),
   "default task title is recognized",
@@ -128,6 +150,76 @@ assert(
 assert(
   overlaid.headline === "Shop used cars",
   "overlay can take a brand-safe winning headline",
+);
+assert(
+  /hold on the lot/i.test(overlaid.support),
+  "overlay writes competitor lot methods into landing support",
+);
+
+const composed = composeBestOfEach(
+  [
+    {
+      ...strong,
+      ...scoreComparableSnapshot(strong, "dealership"),
+    },
+    {
+      url: "https://www.carvana.com/",
+      host: "carvana.com",
+      fetched: true,
+      title: "Carvana used cars for sale",
+      h1: "Get your next car delivered",
+      cta: "Shop used cars",
+      description:
+        "Browse thousands of used cars online and get home delivery from a dealer.",
+      nav: ["Search cars", "Financing", "Trade-in", "Delivery"],
+      ...scoreComparableSnapshot(
+        {
+          url: "https://www.carvana.com/",
+          host: "carvana.com",
+          fetched: true,
+          title: "Carvana used cars for sale",
+          h1: "Get your next car delivered",
+          cta: "Shop used cars",
+          description:
+            "Browse thousands of used cars online and get home delivery from a dealer.",
+          nav: ["Search cars", "Financing", "Trade-in", "Delivery"],
+        },
+        "dealership",
+      ),
+    },
+  ],
+  "dealership",
+);
+assert(
+  Boolean(composed.cta?.fromHost) &&
+    Boolean(composed.headline?.fromHost) &&
+    composed.cta?.fromHost !== composed.headline?.fromHost,
+  "best-of-each takes CTA and headline from different competitor hosts when it can",
+);
+assert(
+  composed.methods.some((piece) => /deliver/i.test(piece.value)),
+  "best-of-each picks dealer delivery from a competitor that offers it",
+);
+assert(
+  !researchMeetsHardRule({
+    query: "x",
+    industry: "dealership",
+    searchedAt: "2026-01-01T00:00:00.000Z",
+    urlsConsidered: ["https://www.carmax.com/"],
+    snapshots: [],
+    winnerUrl: null,
+    bestCta: null,
+    bestHeadline: null,
+    bestSeoTitle: null,
+    bestSeoDescription: null,
+    customerFriendlyMethods: [],
+    takeaways: [],
+  }),
+  "a one-site notebook fails the 20-competitor hard rule",
+);
+assert(
+  formatSeedMoney(16900, "lot") === "$16,900",
+  "lot prices look like a dealer card, not $16900.00",
 );
 
 const refused = applyComparableOverlay(usedCar, {
@@ -248,8 +340,20 @@ assert(
   "planBuild queues comparable research when describing the site",
 );
 assert(
-  /crawl at least 20/i.test(backlog) && /never UPS a car/i.test(backlog),
-  "planBuild research task requires a 20-site crawl and never UPS a car",
+  /crawl at least 20/i.test(backlog) &&
+    /best of EACH/i.test(backlog) &&
+    /never UPS a car/i.test(backlog),
+  "planBuild research task requires a 20-site crawl and the best of each",
+);
+const siteLib = readFileSync(join(process.cwd(), "src/lib/seed-site.ts"), "utf8");
+assert(
+  siteLib.includes("ensureComparableResearchInSeed"),
+  "opening the live site hard-runs the 20-competitor crawl when research is missing",
+);
+assert(
+  source.includes("writeComparableResearchIntoSeed") &&
+    source.includes("ensureComparableResearchInSeed"),
+  "research stamps landing, shop, and SEO from the best of each competitor",
 );
 const docs = readFileSync(
   join(process.cwd(), "docs/seed-compare-ideals.md"),

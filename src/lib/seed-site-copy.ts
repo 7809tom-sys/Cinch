@@ -1726,7 +1726,7 @@ button {
   letter-spacing: -0.04em;
   font-size: clamp(2.4rem, 9vw, 4.25rem);
   line-height: 0.95;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   animation: seed-rise 0.7s ease both;
 }
 
@@ -1737,7 +1737,7 @@ button {
   font-size: clamp(1.45rem, 4.4vw, 2.35rem);
   line-height: 1.2;
   max-width: 18ch;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   animation: seed-rise 0.7s ease both;
   animation-delay: 0.08s;
 }
@@ -1748,7 +1748,7 @@ button {
   font-size: clamp(1rem, 2.5vw, 1.15rem);
   line-height: 1.55;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   animation: seed-rise 0.7s ease both;
   animation-delay: 0.16s;
 }
@@ -1806,7 +1806,7 @@ button {
   line-height: 1.15;
   letter-spacing: -0.02em;
   max-width: 18ch;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-section .lead {
@@ -1815,7 +1815,7 @@ button {
   font-size: 1.05rem;
   line-height: 1.6;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-services {
@@ -1857,7 +1857,7 @@ button {
   margin: 0;
   color: var(--muted);
   line-height: 1.55;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-about {
@@ -1986,7 +1986,7 @@ button {
   margin: 0.35rem 0 0;
   color: var(--muted);
   line-height: 1.55;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-proof {
@@ -2009,7 +2009,7 @@ button {
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.02em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-quote footer {
@@ -2075,7 +2075,7 @@ button {
   margin: 0.35rem 0 0;
   color: var(--muted);
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-menu-order {
@@ -2117,7 +2117,7 @@ button {
   margin: 0.4rem 0 0;
   color: var(--muted);
   line-height: 1.55;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .seed-results {
@@ -2915,7 +2915,8 @@ button {
   font-weight: 600;
 }
 
-.seed-shop-checkout input {
+.seed-shop-checkout input,
+.seed-shop-checkout select {
   min-height: var(--tap);
   padding: 0.65rem 0.8rem;
   border: 1px solid var(--line-dark);
@@ -2924,6 +2925,133 @@ button {
   color: var(--ink);
   font: inherit;
   font-size: 16px;
+}
+
+.seed-shop-lot {
+  --content: min(76rem, 100%);
+  background:
+    radial-gradient(ellipse 80% 40% at 0% 0%, rgba(94, 234, 212, 0.12), transparent 50%),
+    #eef2f4;
+}
+
+.seed-shop-lot .seed-shop-top h1 {
+  letter-spacing: -0.035em;
+}
+
+.seed-shop-lot .seed-shop-grid {
+  gap: 1.25rem;
+}
+
+.seed-lot-card {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 28px rgba(11, 16, 20, 0.06);
+}
+
+.seed-lot-card .seed-shop-photo,
+.seed-lot-card .seed-shop-photo-empty {
+  border-radius: 0;
+  aspect-ratio: 16 / 10;
+}
+
+.seed-lot-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.seed-lot-badge {
+  margin: 0;
+  width: fit-content;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #0b2e2a;
+  color: #ecfdf8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-shop-lot .seed-lot-card h3 {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.seed-shop-lot .seed-shop-price {
+  font-size: 1.55rem;
+  letter-spacing: -0.03em;
+}
+
+.seed-shop-lot .seed-lot-card .cta {
+  width: 100%;
+  margin-top: 0.35rem;
+  border-radius: 0.5rem;
+}
+
+.seed-shop-lot .seed-shop-cart {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 0.85rem;
+  box-shadow: 0 12px 32px rgba(11, 16, 20, 0.05);
+}
+
+@media (min-width: 860px) {
+  .seed-shop-lot .seed-shop-cart {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: start;
+  }
+
+  .seed-shop-lot .seed-shop-cart h2,
+  .seed-shop-lot .seed-shop-cart-empty,
+  .seed-shop-lot .seed-shop-cart ul,
+  .seed-shop-lot .seed-lot-totals {
+    grid-column: 1;
+  }
+
+  .seed-shop-lot .seed-shop-checkout {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+  }
+}
+
+.seed-lot-totals {
+  margin: 0 0 0.25rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.seed-lot-totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.92rem;
+}
+
+.seed-lot-totals dt {
+  margin: 0;
+  color: var(--muted-strong);
+  font-weight: 600;
+}
+
+.seed-lot-totals dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.seed-lot-due {
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line-dark);
+  font-size: 1.05rem;
+}
+
+.seed-lot-due dt,
+.seed-lot-due dd {
+  color: var(--ink);
+  font-size: 1.05rem;
 }
 `;
 }
@@ -3345,6 +3473,19 @@ export function seedRestaurantFulfillmentModes(): SeedShippingMode[] {
       baseRateUsd: 4.5,
     },
   ];
+}
+
+/** Retail keeps cents. Lots show whole dollars like CarMax / Carvana. */
+export function formatSeedMoney(
+  usd: number,
+  style: "retail" | "lot" = "retail",
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: style === "lot" ? 0 : 2,
+    maximumFractionDigits: style === "lot" ? 0 : 2,
+  }).format(usd);
 }
 
 /**
@@ -4505,8 +4646,8 @@ ${
     : `          <div className="seed-shop-photo-empty" aria-hidden>Photo coming soon</div>\n`
 }          <h3>${esc(product.title)}</h3>
           <p>${esc(product.detail)}</p>
-          <p className="seed-shop-price">$${product.priceUsd.toFixed(2)}</p>
-          <p className="seed-shop-meta">${esc(product.sku)} · ${product.stockQty} ${lotPage ? "on the lot" : `in stock · ${product.shipClass} · ${product.weightLb} lb`}</p>
+          <p className="seed-shop-price">${formatSeedMoney(product.priceUsd, lotPage ? "lot" : "retail")}</p>
+          <p className="seed-shop-meta">${lotPage ? `${product.stockQty} available` : `${esc(product.sku)} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}</p>
           <button type="button" className="cta">${esc(input.cta)}</button>
         </article>`,
     )
@@ -4521,7 +4662,7 @@ ${
 
   return `export default function ShopPage() {
   return (
-    <main className="seed-shop">
+    <main className="${lotPage ? "seed-shop seed-shop-lot" : "seed-shop"}">
       <header className="seed-shop-top">
         <div>
           <p className="seed-shop-kicker">${esc(input.title)}</p>

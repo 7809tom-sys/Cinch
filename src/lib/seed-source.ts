@@ -18,11 +18,14 @@ import {
 import { SEED_BUILD_MODULARS_FIRST_RULE } from "./module-library";
 import {
   applyComparableOverlay,
+  applyComparableOverlayToShop,
   comparableResearchMarkdown,
   parseComparableResearch,
   researchComparables,
+  researchMeetsHardRule,
   seoSourceFromResearch,
   taskIsComparableResearch,
+  type ComparableResearch,
 } from "./seed-comparable-research";
 import {
   SEED_EDIT_MUST_REACT_RULE,
@@ -775,6 +778,115 @@ async function siteCopyWithComparables(
   return research ? applyComparableOverlay(landing, research) : landing;
 }
 
+export async function writeComparableResearchIntoSeed(input: {
+  projectId: string;
+  projectName: string;
+  brief: string;
+  research: ComparableResearch;
+  agent?: string;
+}): Promise<void> {
+  const agent = input.agent ?? "Conductor";
+  const research = input.research;
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "content/comparable-research.json",
+    content: `${JSON.stringify(research, null, 2)}\n`,
+    agentName: agent,
+    status: "ready",
+    message: `${agent} crawled competitor sites and took the best of each`,
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "docs/comparable-research.md",
+    content: comparableResearchMarkdown(research),
+    agentName: agent,
+    status: "ready",
+    message: `${agent} wrote competitor research notes`,
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "app/seo.ts",
+    content: seoSourceFromResearch(input.projectName, research),
+    agentName: agent,
+    status: "ready",
+    message: `${agent} wrote SEO/AIO from the best of each competitor`,
+  });
+  const landing = applyComparableOverlay(
+    customerFacingSiteCopy(input.projectName, input.brief),
+    research,
+  );
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "content/landing.copy.json",
+    content: seedLandingCopyJson(landing),
+    agentName: agent,
+    status: "ready",
+    message: `${agent} stamped landing from the best of each competitor`,
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "app/page.tsx",
+    content: seedHomePageSource({
+      ...landing,
+      includeShop: briefAsksForEcommerce(input.brief),
+    }),
+    agentName: agent,
+    status: "ready",
+    message: `${agent} took the best of each competitor site`,
+  });
+  if (briefAsksForEcommerce(input.brief)) {
+    const shop = applyComparableOverlayToShop(
+      customerFacingShopCopy(input.projectName, input.brief),
+      research,
+    );
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/shop.copy.json",
+      content: seedShopCopyJson(shop),
+      agentName: agent,
+      status: "ready",
+      message: `${agent} stamped shop from competitor lot methods`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/shop/page.tsx",
+      content: seedShopPageSource(shop),
+      agentName: agent,
+      status: "ready",
+      message: `${agent} restamped shop page from competitor methods`,
+    });
+  }
+}
+
+/** HARD RULE: opening or building a Seed must crawl 20 competitors if missing. */
+export async function ensureComparableResearchInSeed(input: {
+  projectId: string;
+  projectName: string;
+  brief: string;
+  referenceUrl?: string | null;
+}): Promise<ComparableResearch> {
+  const bundle = await getSourceBundle(input.projectId);
+  const raw =
+    bundle?.files.find((file) => file.path === "content/comparable-research.json")
+      ?.content ?? "";
+  const existing = parseComparableResearch(raw);
+  if (existing && researchMeetsHardRule(existing)) return existing;
+
+  const research = await researchComparables({
+    projectName: input.projectName,
+    brief: input.brief,
+    referenceUrl: input.referenceUrl,
+  });
+  await writeComparableResearchIntoSeed({
+    projectId: input.projectId,
+    projectName: input.projectName,
+    brief: input.brief,
+    research,
+    agent: "Conductor",
+  });
+  return research;
+}
+
 /**
  * Map a finished / in-progress task onto concrete source edits.
  *
@@ -839,7 +951,7 @@ ${brief}
     return;
   }
 
-  // HARD RULE: search comparable ideal sites and take the best.
+  // HARD RULE: crawl 20 competitors and take the best of each.
   if (taskIsComparableResearch(input.taskTitle)) {
     const identity = await projectIdentityFromSource(input.projectId);
     const name = identity.name || "Seed site";
@@ -851,57 +963,12 @@ ${brief}
       brief,
       referenceUrl: project?.referenceUrl,
     });
-    await upsertSourceFile({
+    await writeComparableResearchIntoSeed({
       projectId: input.projectId,
-      path: "content/comparable-research.json",
-      content: `${JSON.stringify(research, null, 2)}\n`,
-      authoredBy: input.agentId,
-      agentName: agent,
-      status,
-      message: `${agent} ${input.phase} comparable research`,
-    });
-    await upsertSourceFile({
-      projectId: input.projectId,
-      path: "docs/comparable-research.md",
-      content: comparableResearchMarkdown(research),
-      authoredBy: input.agentId,
-      agentName: agent,
-      status,
-      message: `${agent} ${input.phase} comparable research notes`,
-    });
-    await upsertSourceFile({
-      projectId: input.projectId,
-      path: "app/seo.ts",
-      content: seoSourceFromResearch(name, research),
-      authoredBy: input.agentId,
-      agentName: agent,
-      status,
-      message: `${agent} ${input.phase} SEO/AIO from comparable sites`,
-    });
-    const landing = applyComparableOverlay(
-      customerFacingSiteCopy(name, brief),
+      projectName: name,
+      brief,
       research,
-    );
-    await upsertSourceFile({
-      projectId: input.projectId,
-      path: "content/landing.copy.json",
-      content: seedLandingCopyJson(landing),
-      authoredBy: input.agentId,
-      agentName: agent,
-      status,
-      message: `${agent} ${input.phase} landing from best comparable sites`,
-    });
-    await upsertSourceFile({
-      projectId: input.projectId,
-      path: "app/page.tsx",
-      content: seedHomePageSource({
-        ...landing,
-        includeShop: briefAsksForEcommerce(brief),
-      }),
-      authoredBy: input.agentId,
-      agentName: agent,
-      status,
-      message: `${agent} ${input.phase} took the best of comparable sites`,
+      agent,
     });
     return;
   }

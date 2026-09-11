@@ -42,7 +42,7 @@ export default async function SeedShopPage({
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: shop.css }} />
-      <main className="seed-shop">
+      <main className={lotHold ? "seed-shop seed-shop-lot" : "seed-shop"}>
         <header className="seed-shop-top">
           <div>
             <p className="seed-shop-kicker">{shop.title}</p>
