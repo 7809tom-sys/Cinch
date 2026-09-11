@@ -2,6 +2,8 @@
  * Guard: Edit Seed must be read and reacted to — never ignored.
  * Run: npx tsx scripts/assert-seed-edit-react.ts
  */
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   planReactionsToEditedBrief,
   SEED_EDIT_MUST_REACT_RULE,
@@ -90,6 +92,28 @@ assert(
 assert(
   !shouldRebuildAfterSeedEdit("connect"),
   "connect Seeds do not rebuild the live host after Edit Seed",
+);
+
+const storeSource = readFileSync(
+  join(process.cwd(), "src/lib/store.ts"),
+  "utf8",
+);
+assert(
+  !storeSource.includes("Keep the brief under 4000 characters."),
+  "updateProjectDetails does not cap the Seed brief at 4000 characters",
+);
+assert(
+  !/brief\.length\s*>\s*4000/.test(storeSource),
+  "store has no 4000-character brief length check",
+);
+
+const editForm = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/edit/edit-form.tsx"),
+  "utf8",
+);
+assert(
+  !/name="brief"[\s\S]*maxLength=\{4000\}/.test(editForm),
+  "Edit Seed brief textarea has no 4000-character maxLength",
 );
 
 if (process.exitCode) {
