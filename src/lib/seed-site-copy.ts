@@ -210,6 +210,10 @@ export function seedLandingCopyMismatchesIndustry(
     /reserve a table|dinner service|private gatherings|bar & small plates|a room worth dressing|a table worth dressing/.test(
       blob,
     );
+  const looksLikeRestaurantShopCopy =
+    /order from the menu|kitchen ticket|seasonal small plates|chef.?s dinner plate|house cocktail|the restaurant sees the money/.test(
+      blob,
+    );
   const looksLikePizzaCopy =
     /order pizza|order now|hot pies|delivery|pickup|specialty pies|pizza man|pizzeria/.test(
       blob,
@@ -219,8 +223,10 @@ export function seedLandingCopyMismatchesIndustry(
   if (key === "salon" && looksLikeRetailCopy) return true;
   if (key === "detail" && looksLikeSalonCopy) return true;
   if (key !== "detail" && key !== "dealership" && looksLikeDetailCopy) return true;
-  // Used-car lots (and any non-restaurant Seed) stuck on fine-dining rename.
+  // Used-car lots (and any non-restaurant Seed) stuck on fine-dining rename
+  // or a leftover restaurant shop (plates, kitchen tickets).
   if (key !== "food" && looksLikeFineDiningCopy) return true;
+  if (key !== "food" && looksLikeRestaurantShopCopy) return true;
   if (key === "dealership" && looksLikeSalonCopy) return true;
   if (key === "dealership" && looksLikeRetailCopy) return true;
   // Pizza Man / pizzeria stuck on salon, car, or fine-dining rename templates.
@@ -3938,6 +3944,34 @@ export function seedShopUsesRestaurantFulfillment(
 const STOCK_CATALOG_FINGERPRINT =
   /prod-serum|prod-mask|prod-brush|prod-spray|prod-towel|prod-kit|prod-one|prod-two|prod-three|daily shine serum|repair mask|studio paddle|signature item|everyday essential|gift set|detail spray|microfiber set|driveway kit|between-appointment gloss|clear coat/;
 
+/** Restaurant menu SKUs / plated-dinner titles stamped onto the wrong vertical. */
+const RESTAURANT_MENU_FINGERPRINT =
+  /menu-starter|menu-main|menu-cocktail|menu-cheese|menu-pepperoni|menu-supreme|menu-white|menu-knots|menu-salad|seasonal small plates|chef.?s dinner plate|house cocktail|cheese pizza|pepperoni pizza|garlic knots|shared bites before the main|rotating mains matched|careful pours/;
+
+const RESTAURANT_SHOP_CHROME =
+  /kitchen ticket|order from the menu|the restaurant sees the money|add to order/;
+
+function shopLooksLikeRestaurantCatalog(
+  products: Array<{ id?: string; title?: string; detail?: string }>,
+): boolean {
+  if (!products.length) return false;
+  const blob = products
+    .map((p) => `${p.id ?? ""} ${p.title ?? ""} ${p.detail ?? ""}`)
+    .join(" ")
+    .toLowerCase();
+  return RESTAURANT_MENU_FINGERPRINT.test(blob);
+}
+
+function shopChromeLooksLikeRestaurant(copy: {
+  title?: string;
+  support?: string;
+  cta?: string;
+}): boolean {
+  return RESTAURANT_SHOP_CHROME.test(
+    `${copy.title ?? ""} ${copy.support ?? ""} ${copy.cta ?? ""}`.toLowerCase(),
+  );
+}
+
 function shopProductsLookLikeStockCatalog(
   products: Array<{ id?: string; title?: string; detail?: string }>,
 ): boolean {
@@ -3968,6 +4002,7 @@ export function seedShopFulfillmentMismatchesBrief(
  * True when stored shop products look wrong for this brief:
  * - Owner-stocked empty catalogs with renamed stock SKUs from another vertical
  * - Pizza / restaurant e-com with empty catalog or salon/retail stock SKUs
+ * - Non-food Seeds (used-car lots, salons, …) stuck on restaurant plates
  */
 export function seedShopCatalogMismatchesBrief(
   projectName: string,
@@ -3979,9 +4014,51 @@ export function seedShopCatalogMismatchesBrief(
     return shopProductsLookLikeStockCatalog(products);
   }
 
+  if (shopLooksLikeRestaurantCatalog(products)) return true;
+
   if (!seedShopShouldStartEmpty(projectName, brief)) return false;
   if (!products.length) return false;
   return shopProductsLookLikeStockCatalog(products);
+}
+
+/** Kitchen-ticket / “Order from the menu” chrome on a non-restaurant Seed. */
+export function seedShopChromeMismatchesBrief(
+  projectName: string,
+  brief: string,
+  copy: { title?: string; support?: string; cta?: string },
+): boolean {
+  if (seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
+  return shopChromeLooksLikeRestaurant(copy);
+}
+
+/**
+ * HARD RULE: shop catalog + chrome + fulfillment must match the brief.
+ * A used-car lot with plates and a kitchen ticket is a fail.
+ */
+export function seedShopMismatchesIndustry(
+  projectName: string,
+  brief: string,
+  copy: {
+    title?: string;
+    support?: string;
+    cta?: string;
+    products?: Array<{ id?: string; title?: string; detail?: string }>;
+    shippingModes?: Array<{ id?: string; label?: string; carrier?: string }>;
+  },
+): boolean {
+  return (
+    seedShopCatalogMismatchesBrief(
+      projectName,
+      brief,
+      copy.products ?? [],
+    ) ||
+    seedShopChromeMismatchesBrief(projectName, brief, copy) ||
+    seedShopFulfillmentMismatchesBrief(
+      projectName,
+      brief,
+      copy.shippingModes ?? [],
+    )
+  );
 }
 
 /**
@@ -4157,6 +4234,40 @@ export function seedStarterShopProducts(
   }
 
   const key = industryKey(brief, projectName);
+  if (key === "dealership") {
+    return [
+      withInventory({
+        id: "lot-sedan",
+        title: "Certified midsize sedan",
+        detail: "One-owner, service records, under 80k miles.",
+        priceUsd: 16900,
+        stockQty: 1,
+        weightLb: 3200,
+        imageUrl:
+          "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "lot-suv",
+        title: "Family crossover",
+        detail: "Third-row option, clean history notes, inspected.",
+        priceUsd: 18400,
+        stockQty: 1,
+        weightLb: 4100,
+        imageUrl:
+          "https://images.unsplash.com/photo-1533473359331-0135eb1b2d40?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "lot-truck",
+        title: "Work-ready pickup",
+        detail: "Tow package, bed liner, inspected drivetrain.",
+        priceUsd: 22500,
+        stockQty: 1,
+        weightLb: 5200,
+        imageUrl:
+          "https://images.unsplash.com/photo-1559416523-140ddc3d238c?auto=format&fit=crop&w=800&q=80",
+      }),
+    ];
+  }
   if (key === "salon") {
     return [
       withInventory({
@@ -4267,6 +4378,7 @@ export function customerFacingShopCopy(
 ): SeedShopCopy {
   const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
   const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const dealership = industryKey(brief, projectName) === "dealership";
   const commerce = {
     originZip: "10001",
     shippingModes: restaurant
@@ -4288,13 +4400,19 @@ export function customerFacingShopCopy(
 
   return {
     brand,
-    title: restaurant ? "Order" : "Shop",
+    title: restaurant ? "Order" : dealership ? "Inventory" : "Shop",
     support: ownerStocks
       ? "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
       : restaurant
         ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
-        : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
-    cta: restaurant ? "Add to order" : "Add to cart",
+        : dealership
+          ? "Inspected units from this lot — price on the card. Hold one or book a drive."
+          : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
+    cta: restaurant
+      ? "Add to order"
+      : dealership
+        ? "Ask about this unit"
+        : "Add to cart",
     products,
     orders: [],
     ...commerce,

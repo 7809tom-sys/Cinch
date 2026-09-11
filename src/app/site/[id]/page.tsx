@@ -10,8 +10,7 @@ import {
   buildSeedSitePreview,
   briefAsksForEcommerce,
   ensureBusinessAdminInSeed,
-  ensureShopInSeed,
-  repairCustomerLandingIfNeeded,
+  proofAndRepairSeedSite,
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
@@ -47,12 +46,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   const project = await getProject(id);
   if (!project) notFound();
 
-  await repairCustomerLandingIfNeeded(project);
+  await proofAndRepairSeedSite(project);
   if (seedNeedsBusinessAdmin(project.brief)) {
     await ensureBusinessAdminInSeed(project);
-  }
-  if (briefAsksForEcommerce(project.brief)) {
-    await ensureShopInSeed(project);
   }
   const preview = await buildSeedSitePreview(project);
   const showShop = briefAsksForEcommerce(project.brief);
