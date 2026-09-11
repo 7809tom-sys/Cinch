@@ -6,6 +6,11 @@ import {
   saveProviderKeyAction,
 } from "./actions";
 import type { ProviderKeyStatus } from "@/lib/provider-keys";
+import {
+  MISSING_PROVIDER_KEY_AREA_CLASS,
+  MISSING_PROVIDER_KEY_BADGE_CLASS,
+  MISSING_PROVIDER_KEY_INPUT_CLASS,
+} from "@/lib/provider-keys-constants";
 
 export function ProviderKeysForm({
   initialStatuses,
@@ -28,7 +33,11 @@ export function ProviderKeysForm({
         {statuses.map((status) => (
           <li
             key={status.providerId}
-            className="border-t border-brand/15 pt-4 text-sm"
+            className={
+              status.configured
+                ? "border-t border-brand/15 pt-4 text-sm"
+                : `${MISSING_PROVIDER_KEY_AREA_CLASS} px-3 py-3 text-sm`
+            }
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -53,7 +62,7 @@ export function ProviderKeysForm({
                 className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${
                   status.configured
                     ? "bg-accent/15 text-brand"
-                    : "bg-mist text-muted"
+                    : MISSING_PROVIDER_KEY_BADGE_CLASS
                 }`}
               >
                 {status.configured ? "KEY SET" : "NO KEY"}
@@ -91,7 +100,11 @@ export function ProviderKeysForm({
                       ? "Paste a new key to replace the stored one"
                       : `Paste ${status.envKey}`
                   }
-                  className="w-full rounded-md border border-brand/15 bg-foam px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
+                  className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                    status.configured
+                      ? "border-brand/15 bg-foam ring-brand/30"
+                      : MISSING_PROVIDER_KEY_INPUT_CLASS
+                  }`}
                 />
               </label>
               <button

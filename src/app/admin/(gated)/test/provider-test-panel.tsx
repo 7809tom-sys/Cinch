@@ -3,6 +3,10 @@
 import { useState, useTransition } from "react";
 import { testProvidersAction } from "./actions";
 import type { ProviderTestResult } from "@/lib/provider-tests";
+import {
+  MISSING_PROVIDER_KEY_AREA_CLASS,
+  MISSING_PROVIDER_KEY_BADGE_CLASS,
+} from "@/lib/provider-keys-constants";
 
 export function ProviderTestPanel({
   initialResults,
@@ -32,7 +36,11 @@ export function ProviderTestPanel({
         {results.map((result) => (
           <li
             key={result.providerId}
-            className="border border-brand/10 bg-foam px-4 py-4"
+            className={
+              result.ok
+                ? "border border-brand/10 bg-foam px-4 py-4"
+                : `${MISSING_PROVIDER_KEY_AREA_CLASS} px-4 py-4`
+            }
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="font-semibold text-brand-deep">{result.name}</p>
@@ -40,9 +48,7 @@ export function ProviderTestPanel({
                 className={`rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${
                   result.ok
                     ? "bg-accent/15 text-brand"
-                    : result.configured
-                      ? "bg-brand/15 text-brand-deep"
-                      : "bg-mist text-muted"
+                    : MISSING_PROVIDER_KEY_BADGE_CLASS
                 }`}
               >
                 {result.ok ? "PASS" : result.configured ? "FAIL" : "MISSING"}
