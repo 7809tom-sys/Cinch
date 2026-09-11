@@ -8,6 +8,8 @@ import {
   LOCKGM_SCALE_BANDS,
   RATING_GROUPS,
 } from "@/lib/lockgm/ratings-classroom";
+import { ACQUISITION_POOL, ROSTER_ECONOMICS_COPY } from "@/lib/lockgm/roster-economics";
+import { AcquisitionPoolLedger } from "./acquisition-pool-ledger";
 
 export function RatingsClassroom() {
   return (
@@ -41,6 +43,12 @@ export function RatingsClassroom() {
               className="rounded-md border border-[color:var(--lg-line)] px-4 py-2 text-[color:var(--lg-text)] hover:border-[color:var(--lg-accent)]"
             >
               Career-point cap
+            </a>
+            <a
+              href="#acquisition-pool"
+              className="rounded-md border border-[color:var(--lg-line)] px-4 py-2 text-[color:var(--lg-text)] hover:border-[color:var(--lg-accent)]"
+            >
+              Acquisition Pool
             </a>
           </div>
         </div>
@@ -194,7 +202,7 @@ export function RatingsClassroom() {
           </li>
           <li>
             <span className="font-bold text-[color:var(--lg-accent)]">
-              Minors (proposed):{" "}
+              50-man farm:{" "}
             </span>
             {CAREER_POINT_CAP.minorsProposed}
           </li>
@@ -233,6 +241,54 @@ export function RatingsClassroom() {
             docs/lockgm-career-point-cap.md
           </code>
         </p>
+      </section>
+
+      <section
+        id="acquisition-pool"
+        className="border border-[color:var(--lg-line)] bg-[color:var(--lg-panel)] px-6 py-8 sm:px-8"
+      >
+        <p className="lockgm-display text-sm font-bold tracking-[0.2em] text-[color:var(--lg-accent)]">
+          TWO ECONOMIES
+        </p>
+        <h2 className="mt-2 lockgm-display text-2xl font-extrabold sm:text-3xl">
+          {ACQUISITION_POOL.title}
+        </h2>
+        <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[color:var(--lg-mute)] sm:text-base">
+          {ACQUISITION_POOL.summary}
+        </p>
+        <ul className="mt-6 space-y-3 text-sm leading-relaxed text-[color:var(--lg-text)]">
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Annual refresh:{" "}
+            </span>
+            {ROSTER_ECONOMICS_COPY.annualRefresh}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Zero rollover:{" "}
+            </span>
+            {ROSTER_ECONOMICS_COPY.zeroRollover}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Firewall:{" "}
+            </span>
+            {ROSTER_ECONOMICS_COPY.firewall}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Graduation:{" "}
+            </span>
+            {ROSTER_ECONOMICS_COPY.graduation}
+          </li>
+          <li>
+            <span className="font-bold text-[color:var(--lg-accent)]">
+              Cuts:{" "}
+            </span>
+            {ROSTER_ECONOMICS_COPY.cutDefault}
+          </li>
+        </ul>
+        <AcquisitionPoolLedger />
       </section>
     </div>
   );

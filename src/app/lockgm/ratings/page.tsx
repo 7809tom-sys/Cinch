@@ -5,7 +5,7 @@ import { RatingsClassroom } from "../components/ratings-classroom";
 export const metadata: Metadata = {
   title: "LockedGM ratings classroom — What do ratings mean?",
   description:
-    "Teachable LockedGM Shadow GM grade definitions for baseball Classic Matchup (1–20) — not third-party card charts. Includes career-point cap design.",
+    "Teachable LockedGM Shadow GM grade definitions for baseball Classic Matchup (1–20) — not third-party card charts. Includes career-point cap and the annual Acquisition Pool.",
 };
 
 export default function LockgmRatingsPage() {

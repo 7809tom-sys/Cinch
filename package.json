@@ -32,6 +32,7 @@
     "assert:lockgm-strat-sim": "npx tsx scripts/assert-lockgm-strat-sim.ts",
     "assert:lockgm-classic-matchup": "npx tsx scripts/assert-lockgm-strat-sim.ts",
     "assert:lockgm-brand": "npx tsx scripts/assert-lockgm-brand.ts",
+    "assert:lockgm-roster-economics": "npx tsx scripts/assert-lockgm-roster-economics.ts",
     "dev:detective-shopper": "npm run dev --prefix apps/detective-shopper",
     "build:detective-shopper": "npm run build --prefix apps/detective-shopper",
     "lint:detective-shopper": "npm run lint --prefix apps/detective-shopper",
