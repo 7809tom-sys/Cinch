@@ -8,7 +8,12 @@ import {
   BASKETBALL_HS_BOARD_YEAR,
   BASEBALL_MILB_BOARD_YEAR,
   FOOTBALL_COLLEGE_BOARD_YEAR,
+  FOOTBALL_FA_BOARD_YEAR,
 } from "@/lib/lockgm/sport-catalog";
+import {
+  FA_STAGE_LABELS,
+  FA_STAGE_ORDER,
+} from "@/lib/lockgm/nfl-2027-free-agents";
 import {
   applyUpdatedOverlay,
   formatRefreshedAt,
@@ -36,11 +41,13 @@ function youtubeEmbedSrc(prospect: Prospect): string | null {
 }
 
 export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
-  const { sport, franchise, sportId } = useSport();
-  const stages = sport.stageOrder;
+  const { sport, franchise, sportId, footballDesk, setFootballDesk, boardProspects } =
+    useSport();
   const isHoopsBoard = sport.id === "basketball";
   const isMilbBoard = sport.id === "baseball";
-  const isCollegeFootballBoard = sport.id === "football";
+  const isFootballBoard = sport.id === "football";
+  const isFaDesk = isFootballBoard && footballDesk === "free_agency";
+  const stages = isFaDesk ? [...FA_STAGE_ORDER] : sport.stageOrder;
   const [stage, setStage] = useState<string>(
     isHoopsBoard
       ? "high_school"
@@ -52,7 +59,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   );
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(
-    franchise.prospects[0]?.id ?? null,
+    boardProspects[0]?.id ?? null,
   );
   const [reportStore, setReportStore] = useState<UpdatedReportsStore>(() =>
     emptySafeStore(),
@@ -76,12 +83,12 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
           : "all",
     );
     setQuery("");
-    setActiveId(franchise.prospects[0]?.id ?? null);
-  }, [franchise.prospects, sport.id]);
+    setActiveId(boardProspects[0]?.id ?? null);
+  }, [boardProspects, sport.id, footballDesk]);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return [...franchise.prospects]
+    return [...boardProspects]
       .filter((p) => (stage === "all" ? true : p.stage === stage))
       .filter((p) => {
         if (!q) return true;
@@ -93,7 +100,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
         );
       })
       .sort((a, b) => a.rank - b.rank);
-  }, [franchise.prospects, stage, query]);
+  }, [boardProspects, stage, query]);
 
   const activeBase: Prospect | null =
     list.find((p) => p.id === activeId) ?? list[0] ?? null;
@@ -108,7 +115,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
 
   const earlyStage = stages[0];
   const embedSrc = active ? youtubeEmbedSrc(active) : null;
-  const updatedCount = franchise.prospects.filter((p) =>
+  const updatedCount = boardProspects.filter((p) =>
     Boolean(getUpdatedReport(reportStore, sportId, p.id)),
   ).length;
 
@@ -186,19 +193,19 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   }
 
   function refreshEntireBoard() {
-    if (busy || franchise.prospects.length === 0) return;
+    if (busy || boardProspects.length === 0) return;
     setBusy("board");
     startTransition(() => {
       const next = refreshBoardReports(
         loadUpdatedReports(),
         sportId,
-        franchise.prospects,
+        boardProspects,
         ["alpha", "beta"],
       );
       persistStore(next);
       setBusy(null);
       showFlash(
-        `Updated scouting reports for all ${franchise.prospects.length} talents on this board.`,
+        `Updated scouting reports for all ${boardProspects.length} talents on this board.`,
       );
     });
   }
@@ -223,29 +230,67 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
           search, grade, refresh reports, watch YouTube / MLB highlights.
         </p>
       ) : null}
-      {isCollegeFootballBoard ? (
-        <p className="text-sm text-[color:var(--lg-mute)]">
-          <span className="font-bold text-[color:var(--lg-accent)]">
-            College Top {franchise.prospects.length}
-          </span>{" "}
-          · {FOOTBALL_COLLEGE_BOARD_YEAR} juniors & seniors for Shadow GM work —
-          search, grade, refresh reports, play verified clips.
-        </p>
+      {isFootballBoard ? (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setFootballDesk("college")}
+              className={`rounded-md px-3 py-1.5 text-xs font-bold tracking-wide uppercase ${
+                footballDesk === "college"
+                  ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                  : "border border-[color:var(--lg-line)] text-[color:var(--lg-mute)]"
+              }`}
+            >
+              College Top {franchise.prospects.length}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFootballDesk("free_agency")}
+              className={`rounded-md px-3 py-1.5 text-xs font-bold tracking-wide uppercase ${
+                footballDesk === "free_agency"
+                  ? "bg-[color:var(--lg-accent)] text-[color:var(--lg-bg)]"
+                  : "border border-[color:var(--lg-line)] text-[color:var(--lg-mute)]"
+              }`}
+            >
+              2027 Free Agents ({franchise.freeAgents?.length ?? 0})
+            </button>
+          </div>
+          <p className="text-sm text-[color:var(--lg-mute)]">
+            {isFaDesk ? (
+              <>
+                <span className="font-bold text-[color:var(--lg-accent)]">
+                  {FOOTBALL_FA_BOARD_YEAR} NFL Free Agents
+                </span>{" "}
+                · scouting reports on every player hitting the market after the
+                2026 season — UFA, RFA, ERFA, and club options.
+              </>
+            ) : (
+              <>
+                <span className="font-bold text-[color:var(--lg-accent)]">
+                  College Top {franchise.prospects.length}
+                </span>{" "}
+                · {FOOTBALL_COLLEGE_BOARD_YEAR} juniors & seniors for Shadow GM
+                work — search, grade, refresh reports, play verified clips.
+              </>
+            )}
+          </p>
+        </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={Boolean(busy) || franchise.prospects.length === 0}
+          disabled={Boolean(busy) || boardProspects.length === 0}
           onClick={refreshEntireBoard}
           className="rounded-md bg-[color:var(--lg-accent)] px-3 py-2 text-xs font-bold tracking-wide text-[color:var(--lg-bg)] uppercase disabled:opacity-40"
         >
           {busy === "board"
             ? "Refreshing board…"
-            : `Refresh all ${franchise.prospects.length} reports`}
+            : `Refresh all ${boardProspects.length} reports`}
         </button>
         <p className="text-xs text-[color:var(--lg-mute)]">
-          {updatedCount} of {franchise.prospects.length} talents have a
+          {updatedCount} of {boardProspects.length} talents have a
           refreshed board report
           {pending ? " · working…" : ""}
         </p>
@@ -277,7 +322,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                 : "border border-[color:var(--lg-line)] text-[color:var(--lg-mute)]"
             }`}
           >
-            {sport.stages[key] ?? key}
+            {isFaDesk ? (FA_STAGE_LABELS[key] ?? key) : (sport.stages[key] ?? key)}
           </button>
         ))}
       </div>
@@ -294,7 +339,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
       </label>
 
       <p className="text-xs text-[color:var(--lg-mute)]">
-        Showing {list.length} of {franchise.prospects.length} prospects
+        Showing {list.length} of {boardProspects.length} prospects
       </p>
 
       <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
@@ -347,7 +392,9 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                       </p>
                       <p className="text-xs text-[color:var(--lg-mute)]">
                         {prospect.position} · {prospect.school} ·{" "}
-                        {sport.stages[prospect.stage] ?? prospect.stage}
+                        {isFaDesk
+                          ? (FA_STAGE_LABELS[prospect.stage] ?? prospect.stage)
+                          : (sport.stages[prospect.stage] ?? prospect.stage)}
                       </p>
                     </div>
                     <span className="text-xs font-bold text-[color:var(--lg-accent)]">
@@ -372,7 +419,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
               {active.position} · {active.school} · {active.height} ·{" "}
               {active.weight} lbs
               {active.metric != null
-                ? ` · ${sport.metricLabel} ${active.metric}`
+                ? ` · ${isFaDesk ? "Age" : sport.metricLabel} ${active.metric}`
                 : ""}{" "}
               · grade {active.grade}
             </p>

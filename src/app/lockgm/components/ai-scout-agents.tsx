@@ -54,9 +54,9 @@ export function AiScoutAgents({
 }: {
   onClaimed?: (report: PersonalReport) => void;
 }) {
-  const { sport, franchise, sportId } = useSport();
+  const { sport, sportId, boardProspects } = useSport();
   const [notebook, setNotebook] = useState<ScoutNotebook>(() => emptySafe());
-  const [targetId, setTargetId] = useState(franchise.prospects[0]?.id ?? "");
+  const [targetId, setTargetId] = useState(boardProspects[0]?.id ?? "");
   const [busy, setBusy] = useState<AgentBusy>({ alpha: false, beta: false });
   const [jobs, setJobs] = useState<ResearchJob[]>([]);
   const [mergedText, setMergedText] = useState("");
@@ -67,15 +67,15 @@ export function AiScoutAgents({
   }, []);
 
   useEffect(() => {
-    setTargetId(franchise.prospects[0]?.id ?? "");
+    setTargetId(boardProspects[0]?.id ?? "");
     setJobs([]);
     setMergedText("");
     setAgentsUsed([]);
-  }, [sportId, franchise.prospects]);
+  }, [sportId, boardProspects]);
 
   const prospect =
-    franchise.prospects.find((p) => p.id === targetId) ??
-    franchise.prospects[0];
+    boardProspects.find((p) => p.id === targetId) ??
+    boardProspects[0];
 
   function persist(next: ScoutNotebook) {
     setNotebook(next);
@@ -231,7 +231,7 @@ export function AiScoutAgents({
           }}
           className="mt-2 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-3 py-2 text-sm text-[color:var(--lg-text)]"
         >
-          {franchise.prospects.map((p) => (
+          {boardProspects.map((p) => (
             <option key={p.id} value={p.id}>
               #{p.rank} {p.name} · {p.position}
             </option>

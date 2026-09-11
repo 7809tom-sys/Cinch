@@ -152,7 +152,7 @@ Live at **[cinchseed.com/lockgm](https://cinchseed.com/lockgm)** — Shadow GM d
 - `/lockgm/sim` — Classic Matchup (solo / series desk)
 - `/lockgm/live` — real-time matchup rooms, invites, local ad ribbon
 - `/lockgm/cap` — salary cap / trade desk
-- `/lockgm/scouting` — HS Top 100, MiLB Top 200, college football Top 300 (juniors & seniors with clips) + premium reports
+- `/lockgm/scouting` — HS Top 100, MiLB Top 200, college football Top 300, 2027 NFL free-agent reports + premium write-ups
 - `/lockgm/pricing` — Shadow / War Room / Pipeline tiers
 
 ### Give LockedGM its own domain
