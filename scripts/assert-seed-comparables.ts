@@ -23,6 +23,7 @@ import {
   customerFacingSiteCopy,
   seedLotFulfillmentModes,
   seedShopFulfillmentMismatchesBrief,
+  seedShopPageSource,
   seedShopUsesLotFulfillment,
 } from "../src/lib/seed-site-copy";
 
@@ -208,6 +209,14 @@ assert(
   /never UPS|do not ship cars UPS/i.test(usedCarShop.support),
   "used-car shop support says we do not UPS cars",
 );
+const usedCarShopPage = seedShopPageSource(usedCarShop);
+assert(
+  /Hold list/.test(usedCarShopPage) &&
+    /How you'll get the car/.test(usedCarShopPage) &&
+    !/UPS Ground/.test(usedCarShopPage) &&
+    !/\(parcel\)/.test(usedCarShopPage),
+  "generated used-car shop page is hold/drive/delivery — not UPS parcel",
+);
 
 const source = readFileSync(
   join(process.cwd(), "src/lib/seed-source.ts"),
@@ -237,6 +246,10 @@ const backlog = readFileSync(join(process.cwd(), "src/lib/store.ts"), "utf8");
 assert(
   backlog.includes(SEARCH_COMPARABLE_IDEALS_TITLE),
   "planBuild queues comparable research when describing the site",
+);
+assert(
+  /crawl at least 20/i.test(backlog) && /never UPS a car/i.test(backlog),
+  "planBuild research task requires a 20-site crawl and never UPS a car",
 );
 const docs = readFileSync(
   join(process.cwd(), "docs/seed-compare-ideals.md"),

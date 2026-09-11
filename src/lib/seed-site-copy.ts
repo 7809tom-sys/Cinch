@@ -3757,6 +3757,9 @@ export function seedAdminPageSource(input: SeedAdminCopy): string {
     .join("\n");
 
   const commerce = input.commerce;
+  const lotAdmin = (commerce?.shippingModes ?? []).some((mode) =>
+    /^lot-/.test(mode.id),
+  );
   const commerceBlock = commerce
     ? `
       <section className="seed-admin-section" id="commerce">
@@ -3774,7 +3777,7 @@ ${commerce.inventory
     (row) => `          <li>
             <div>
               <p className="seed-admin-list-title">${esc(row.title)} · ${esc(row.sku)}</p>
-              <p className="seed-admin-list-meta">${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb${row.imageUrl ? " · photo set" : ""}</p>
+              <p className="seed-admin-list-meta">${lotAdmin ? `${row.onHand} on the lot` : `${row.onHand} on hand · reorder at ${row.reorderAt} · ${row.shipClass} · ${row.weightLb} lb`}${row.imageUrl ? " · photo set" : ""}</p>
 ${
   row.imageUrl
     ? `            <img className="seed-shop-photo" src="${esc(row.imageUrl)}" alt="${esc(row.title)}" />`
@@ -3790,14 +3793,14 @@ ${
       <section className="seed-admin-section" id="shipping">
         <p className="seed-eyebrow">${esc(commerce.shippingEyebrow)}</p>
         <h2>${esc(commerce.shippingHeadline)}</h2>
-        <p className="seed-admin-list-meta">Ship-from ZIP ${esc(commerce.originZip)}</p>
+        <p className="seed-admin-list-meta">${lotAdmin ? `Lot ZIP ${esc(commerce.originZip)}` : `Ship-from ZIP ${esc(commerce.originZip)}`}</p>
         <ul className="seed-admin-list">
 ${commerce.shippingModes
   .map(
     (mode) => `          <li>
             <div>
               <p className="seed-admin-list-title">${esc(mode.label)} · ${esc(mode.carrier)}</p>
-              <p className="seed-admin-list-meta">${mode.kind.toUpperCase()} · from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}</p>
+              <p className="seed-admin-list-meta">${lotAdmin ? `from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}` : `${mode.kind.toUpperCase()} · from $${mode.baseRateUsd.toFixed(2)} · ${esc(mode.notes)}`}</p>
             </div>
           </li>`,
   )
@@ -4512,7 +4515,7 @@ ${
   const modes = (input.shippingModes ?? [])
     .map(
       (mode) =>
-        `            <option value="${esc(mode.id)}">${esc(mode.label)} (${mode.kind}) · $${mode.baseRateUsd.toFixed(2)}</option>`,
+        `            <option value="${esc(mode.id)}">${esc(mode.label)}${lotPage ? "" : ` (${mode.kind})`} · $${mode.baseRateUsd.toFixed(2)}</option>`,
     )
     .join("\n");
 
@@ -4533,11 +4536,11 @@ ${
 ${products}
       </div>
       <section className="seed-shop-cart" id="cart">
-        <h2>Cart</h2>
-        <p className="seed-shop-cart-empty">Your cart is empty.</p>
+        <h2>${lotPage ? "Hold list" : "Cart"}</h2>
+        <p className="seed-shop-cart-empty">${lotPage ? "Ask about a unit to hold it or book a drive." : "Your cart is empty."}</p>
         <p className="seed-shop-meta">${lotPage ? `Lot ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · hold / drive / dealer delivery — never UPS a car.` : `Ship-from ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · UPS parcel + LTL in Seed admin.`}</p>
         <label>
-          Shipping
+          ${lotPage ? "How you'll get the car" : "Shipping"}
           <select name="shippingModeId">
 ${modes}
           </select>
