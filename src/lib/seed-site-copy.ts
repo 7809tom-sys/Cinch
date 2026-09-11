@@ -4254,7 +4254,7 @@ export function seedStarterShopProducts(
         stockQty: 1,
         weightLb: 4100,
         imageUrl:
-          "https://images.unsplash.com/photo-1533473359331-0135eb1b2d40?auto=format&fit=crop&w=800&q=80",
+          "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80",
       }),
       withInventory({
         id: "lot-truck",
