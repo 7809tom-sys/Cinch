@@ -218,6 +218,23 @@ assert(
   "a one-site notebook fails the 20-competitor hard rule",
 );
 assert(
+  !researchMeetsHardRule({
+    query: "x",
+    industry: "dealership",
+    searchedAt: "2026-09-11T00:00:00.000Z",
+    urlsConsidered: idealUrlsForIndustry("dealership"),
+    snapshots: [],
+    winnerUrl: null,
+    bestCta: "View Our Inventory",
+    bestHeadline: "Why Choose Mike’s Car Store?",
+    bestSeoTitle: "Car Dealer SEO: The Complete Guide To Higher Rankings",
+    bestSeoDescription: null,
+    customerFriendlyMethods: [],
+    takeaways: [],
+  }),
+  "SEO-blog leftovers fail the hard rule and force a recrawl",
+);
+assert(
   formatSeedMoney(16900, "lot") === "$16,900",
   "lot prices look like a dealer card, not $16900.00",
 );

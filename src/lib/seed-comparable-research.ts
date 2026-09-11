@@ -401,9 +401,9 @@ function pickCtas(html: string): string[] {
     .map((m) => stripTags(m[1] ?? "").replace(/\s+/g, " ").trim())
     .filter((t) => t.length >= 3 && t.length <= 36);
   const preferred = texts.filter((t) =>
-    /shop|buy|book|order|browse|inventory|quote|schedule|reserve|get started/i.test(
+    /shop|buy|book|order|browse|inventory|quote|schedule|reserve|get started|view (?:our )?inventory|shop used/i.test(
       t,
-    ),
+    ) && !looksLikeSeoJunk(t),
   );
   return [...new Set(preferred.length ? preferred : texts)].slice(0, 8);
 }
@@ -581,11 +581,22 @@ function titleCaseCta(cta: string): string {
     .replace(/\bThe\b/g, "the");
 }
 
+function compactText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function looksLikeSeoJunk(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return /seo:|complete guide|higher rankings|page unavailable|skip to (?:content|main)|we'?re sorry for any inconvenience|shop on carstory/i.test(
+    text,
+  );
+}
+
 function containsForeignBrand(text: string, hosts: string[]): boolean {
-  const lower = text.toLowerCase();
+  const hay = compactText(text);
   return hosts.some((host) => {
-    const brand = host.split(".")[0] ?? "";
-    return brand.length >= 4 && lower.includes(brand);
+    const brand = compactText((host.split(".")[0] ?? "").replace(/-/g, ""));
+    return brand.length >= 5 && hay.includes(brand);
   });
 }
 
@@ -597,9 +608,19 @@ export function researchMeetsHardRule(
   research: ComparableResearch | null | undefined,
 ): boolean {
   if (!research) return false;
-  return (
-    uniqueCompetitorHosts(research.urlsConsidered).length >= MIN_COMPARABLE_CRAWL
-  );
+  if (
+    uniqueCompetitorHosts(research.urlsConsidered).length < MIN_COMPARABLE_CRAWL
+  ) {
+    return false;
+  }
+  if (
+    looksLikeSeoJunk(research.bestSeoTitle) ||
+    looksLikeSeoJunk(research.bestHeadline) ||
+    looksLikeSeoJunk(research.bestCta)
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function uniqueUrlsByHost(urls: string[]): string[] {
@@ -630,6 +651,7 @@ export function composeBestOfEach(
     for (const snap of [...unused, ...ranked]) {
       const value = pick(snap).replace(/\s+/g, " ").trim();
       if (!value) continue;
+      if (looksLikeSeoJunk(value)) continue;
       if (containsForeignBrand(value, otherHosts(snap.host))) continue;
       used.add(snap.host);
       return { value, fromHost: snap.host, fromUrl: snap.url };
