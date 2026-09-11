@@ -1,4 +1,8 @@
 import { PROVIDER_ACCOUNTS, type SeedProviderId } from "./agents";
+import {
+  loadStoredProviderKeys,
+  resolveProviderApiKey,
+} from "./provider-keys";
 
 /**
  * Real text-generation calls. Cost-down: try the cheapest capable chat
@@ -30,20 +34,26 @@ const DEFAULT_MODELS: Record<AiProviderId, string> = {
   openai: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
 };
 
-function providerKey(id: AiProviderId): string | undefined {
-  const account = PROVIDER_ACCOUNTS.find((item) => item.id === id);
-  return account ? process.env[account.envKey]?.trim() : undefined;
+function providerKey(
+  id: AiProviderId,
+  storedKeys?: Partial<Record<string, string>>,
+): string | undefined {
+  return resolveProviderApiKey(id, storedKeys);
 }
 
-export function configuredAiProvider(): AiProviderId | null {
+export function configuredAiProvider(
+  storedKeys?: Partial<Record<string, string>>,
+): AiProviderId | null {
   for (const id of CHEAP_FIRST) {
-    if (providerKey(id)) return id;
+    if (providerKey(id, storedKeys)) return id;
   }
   return null;
 }
 
-export function isAiGenerationConfigured(): boolean {
-  return configuredAiProvider() !== null;
+export function isAiGenerationConfigured(
+  storedKeys?: Partial<Record<string, string>>,
+): boolean {
+  return configuredAiProvider(storedKeys) !== null;
 }
 
 export type AiGenerateInput = {
@@ -200,7 +210,8 @@ async function callProvider(
 export async function generateWithAi(
   input: AiGenerateInput,
 ): Promise<AiGenerateResult> {
-  const available = CHEAP_FIRST.filter((id) => providerKey(id));
+  const storedKeys = await loadStoredProviderKeys();
+  const available = CHEAP_FIRST.filter((id) => providerKey(id, storedKeys));
   if (available.length === 0) {
     return {
       ok: false,
@@ -211,7 +222,7 @@ export async function generateWithAi(
 
   const errors: string[] = [];
   for (const provider of available) {
-    const apiKey = providerKey(provider);
+    const apiKey = providerKey(provider, storedKeys);
     if (!apiKey) continue;
     try {
       const text = await callProvider(provider, apiKey, input);

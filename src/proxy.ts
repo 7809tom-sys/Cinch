@@ -21,7 +21,7 @@ const STATIC_OR_INTERNAL_RE = /^\/(?:_next|api)(?:\/|$)|\.[a-zA-Z0-9]+$/;
  * /portal pages — otherwise "lockedgm.com/login" 404s as "/lockgm/login",
  * which doesn't exist, and visitors have no way to create a login.
  */
-const PASSTHROUGH_RE = /^\/(?:login|portal)(?:\/|$)/;
+const PASSTHROUGH_RE = /^\/(?:login|portal|v1)(?:\/|$)/;
 
 function isLockgmHost(hostname: string): boolean {
   if (!LOCKGM_DOMAIN) return false;

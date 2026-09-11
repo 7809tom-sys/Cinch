@@ -287,7 +287,16 @@ export async function getAdminSnapshot() {
     providers: PROVIDER_ACCOUNTS,
     domain: CINCH_SEED_DOMAIN,
     launchMode: process.env.CINCH_LAUNCH_MODE ?? "test",
-    aiGenerationConfigured: isAiGenerationConfigured(),
+    aiGenerationConfigured:
+      isAiGenerationConfigured() ||
+      providerKeyStatuses.some(
+        (status) =>
+          status.configured &&
+          (status.providerId === "deepseek" ||
+            status.providerId === "google" ||
+            status.providerId === "anthropic" ||
+            status.providerId === "openai"),
+      ),
     durableStoreHealth,
     providerKeyStatuses,
     platformProducts: [
@@ -846,11 +855,12 @@ export async function generateLockgmContentDraftAction(instruction: string) {
   if (!trimmed) {
     return { ok: false as const, error: "Tell the AI team what to change first." };
   }
-  if (!isAiGenerationConfigured()) {
+  const storedKeys = await loadStoredProviderKeys();
+  if (!isAiGenerationConfigured(storedKeys)) {
     return {
       ok: false as const,
       error:
-        "No AI provider is configured. Add OPENAI_API_KEY, ANTHROPIC_API_KEY, or GOOGLE_AI_API_KEY in your Vercel project's environment variables and redeploy.",
+        "No AI provider is configured. Add a key in Seed settings or set DEEPSEEK_API_KEY, GOOGLE_AI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY.",
     };
   }
 

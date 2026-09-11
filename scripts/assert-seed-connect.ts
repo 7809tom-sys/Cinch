@@ -3,7 +3,13 @@
  * Run: npx tsx scripts/assert-seed-connect.ts
  */
 import { createContext, runInContext } from "vm";
-import { liveWebsiteUrl, seedEmbedSnippet } from "../src/lib/domain";
+import {
+  canonicalizeCinchSeedOrigin,
+  CINCH_SEED_ORIGIN,
+  liveWebsiteUrl,
+  seedEmbedSnippet,
+} from "../src/lib/domain";
+import { GET as healthGet } from "../src/app/v1/health/route";
 import { PLATFORM_ADAPTERS } from "../src/lib/platforms";
 import { buildWatchClientJs } from "../src/lib/watch-client";
 import {
@@ -401,6 +407,27 @@ assert(
   "every platform snippet carries the Connect Key",
 );
 
+assert(
+  canonicalizeCinchSeedOrigin("https://cinchseed.com") === CINCH_SEED_ORIGIN,
+  "apex cinchseed.com Connect API origin becomes www",
+);
+assert(
+  canonicalizeCinchSeedOrigin("https://www.cinchseed.com") === CINCH_SEED_ORIGIN,
+  "www cinchseed.com Connect API origin stays www",
+);
+const apexWatch = buildWatchClientJs({
+  origin: "https://cinchseed.com",
+  defaultTools: [],
+});
+assert(
+  apexWatch.includes('var origin = "https://www.cinchseed.com"'),
+  "watch.js posts health to www even when built with apex origin",
+);
+assert(
+  !/"https:\/\/cinchseed\.com"/.test(apexWatch),
+  "watch.js origin is not apex cinchseed.com",
+);
+
 const watchJs = buildWatchClientJs({
   origin: "https://www.cinchseed.com",
   defaultTools: [],
@@ -659,6 +686,15 @@ assert(
 
 Promise.all([
   publishedKeyFetch,
+  healthGet().then(async (response) => {
+    const body = (await response.json()) as { ok?: boolean; service?: string };
+    assert(response.ok, "GET /v1/health is allowed");
+    assert(body.ok === true, "GET /v1/health reports ok");
+    assert(
+      body.service === "cinch-seed-connect",
+      "GET /v1/health names the Connect API",
+    );
+  }),
   lookAtJustPutzitLive(async () => {
     return new Response(
       `<title>Just Putzit</title><meta name="description" content="Just Putzit — meet locals for real dates and activities." /><img src="/manus-storage/icon.png" />`,

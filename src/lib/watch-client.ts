@@ -1,4 +1,4 @@
-import { CINCH_SEED_ORIGIN } from "./domain";
+import { canonicalizeCinchSeedOrigin, CINCH_SEED_ORIGIN } from "./domain";
 import { DEFAULT_CRITICAL_TOOLS } from "./seed-growth";
 
 /**
@@ -12,7 +12,7 @@ export function buildWatchClientJs(input?: {
   origin?: string;
   defaultTools?: unknown;
 }): string {
-  const origin = input?.origin ?? CINCH_SEED_ORIGIN;
+  const origin = canonicalizeCinchSeedOrigin(input?.origin ?? CINCH_SEED_ORIGIN);
   const defaultTools = input?.defaultTools ?? DEFAULT_CRITICAL_TOOLS;
   return `(() => {
   try {

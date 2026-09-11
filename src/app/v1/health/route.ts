@@ -6,9 +6,26 @@ export const dynamic = "force-dynamic";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
   "Access-Control-Allow-Headers": "content-type",
 };
+
+/** Browser / uptime checks hit GET. Heartbeats use POST with seed + key. */
+export async function GET() {
+  return NextResponse.json(
+    {
+      ok: true,
+      service: "cinch-seed-connect",
+      origin: "https://www.cinchseed.com",
+      accept: "POST",
+    },
+    { headers: cors },
+  );
+}
+
+export async function HEAD() {
+  return new NextResponse(null, { status: 200, headers: cors });
+}
 
 export async function POST(request: Request) {
   let body: {
