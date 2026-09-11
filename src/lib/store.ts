@@ -5,6 +5,7 @@ import {
   isConnectKeyFormat,
 } from "./connect-key";
 import { getProjectManager, type AgentSkill } from "./agents";
+import type { SeedPlaybookDraft } from "./seed-playbook";
 import {
   briefAsksForWholeSiteBuild,
   inferTaskTags,
@@ -134,6 +135,8 @@ export type SeedProject = {
   pmIntroSentAt: string | null;
   /** Exact PM intro body shown in the Seed portal (set with pmIntroSentAt). */
   pmIntroBody: string | null;
+  /** Owner-filled Senti chapter scripts — the live instruction pack, not a static example. */
+  playbookDraft?: SeedPlaybookDraft | null;
 };
 
 type StoreShape = {
@@ -990,6 +993,24 @@ export async function saveProject(project: SeedProject): Promise<void> {
   if (index === -1) throw new Error("Project not found.");
   store.projects[index] = project;
   await writeStore(store);
+}
+
+export async function savePlaybookDraft(
+  projectId: string,
+  draft: SeedPlaybookDraft,
+): Promise<{ project: SeedProject } | { error: string }> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) return { error: "Seed not found." };
+  project.playbookDraft = draft;
+  project.updatedAt = now();
+  pushActivity(
+    project,
+    "Owner filled a Senti chapter — instruction pack updated on this Seed.",
+    getProjectManager().id,
+  );
+  await writeStore(store);
+  return { project };
 }
 
 /** Titles used for the single automatic polish / growth wave. */

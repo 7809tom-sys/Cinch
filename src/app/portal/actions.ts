@@ -63,6 +63,7 @@ import {
   setConnectKey,
   setEmbedEnabled,
   syncJustPutzItConnectKey,
+  savePlaybookDraft,
   updateProjectDetails,
   type SeedProject,
 } from "@/lib/store";
@@ -806,4 +807,57 @@ export async function portalUpdateSeedAction(
     websiteUrl: `${base}${sep}refreshed=${Date.now()}`,
     reactionTasksQueued: result.reactionTasksQueued,
   };
+}
+
+export async function portalSavePlaybookChapterAction(
+  projectId: string,
+  input: {
+    chapterId: string;
+    script: string;
+    methodStepId: string;
+    currentChapterId: string;
+    markReady: boolean;
+  },
+) {
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) {
+    return { ok: false as const, error: access.error };
+  }
+
+  const { isPlaybookChapterId, emptyPlaybookDraft } = await import(
+    "@/lib/seed-playbook"
+  );
+  if (!isPlaybookChapterId(input.chapterId)) {
+    return { ok: false as const, error: "Unknown chapter." };
+  }
+  const script = input.script.trim();
+  if (script.length < 8) {
+    return { ok: false as const, error: "Fill the blanks before saving this chapter." };
+  }
+  if (script.length > 4000) {
+    return { ok: false as const, error: "Keep this chapter under 4000 characters." };
+  }
+
+  const existing = await getProject(projectId);
+  if (!existing) return { ok: false as const, error: "Seed not found." };
+
+  const draft = existing.playbookDraft ?? emptyPlaybookDraft();
+  draft.chapters[input.chapterId] = {
+    script,
+    status: input.markReady ? "ready" : "draft",
+  };
+  draft.methodStepId = input.methodStepId || draft.methodStepId;
+  draft.currentChapterId = isPlaybookChapterId(input.currentChapterId)
+    ? input.currentChapterId
+    : input.chapterId;
+  draft.updatedAt = new Date().toISOString();
+
+  const result = await savePlaybookDraft(projectId, draft);
+  if ("error" in result) {
+    return { ok: false as const, error: result.error };
+  }
+
+  revalidatePath(`/portal/${projectId}/playbook`);
+  revalidatePath(`/admin/projects/${projectId}/playbook`);
+  return { ok: true as const };
 }

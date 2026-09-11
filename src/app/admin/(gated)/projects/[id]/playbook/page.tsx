@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectSnapshot } from "@/app/admin/actions";
+import { SeedPlaybookBuilder } from "@/components/seed-playbook-builder";
 import { SeedPlaybookPack } from "@/components/seed-playbook-pack";
 import { compileSeedPlaybook, SENTI_DESK_PATH } from "@/lib/seed-playbook";
 
@@ -31,6 +32,7 @@ export default async function AdminSeedPlaybookPage({ params }: PageProps) {
     seedMode: project.seedMode,
     liveUrl: project.referenceUrl,
     githubRepoUrl: project.githubRepoUrl,
+    draft: project.playbookDraft,
   });
 
   return (
@@ -62,6 +64,14 @@ export default async function AdminSeedPlaybookPage({ params }: PageProps) {
           {pack.summary}
         </p>
         <div className="mt-8">
+          <SeedPlaybookBuilder
+            pack={pack}
+            projectId={project.id}
+            draft={project.playbookDraft ?? null}
+            mode="admin"
+          />
+        </div>
+        <div className="mt-12">
           <SeedPlaybookPack pack={pack} />
         </div>
       </main>

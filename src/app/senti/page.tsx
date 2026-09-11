@@ -52,11 +52,9 @@ export default function SentiDeskPage() {
           {PREP_RULE}
         </p>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-brand-deep">
-          {SEED_PLAYBOOK_RULE} Fill the prep worksheet on{" "}
-          <Link href="/admin" className="font-semibold underline">
-            Seed admin
-          </Link>{" "}
-          before Conductor builds. Just Putz It is not a Cinch Seed.
+          {SEED_PLAYBOOK_RULE} Open a Seed playbook and fill each chapter
+          there — method by method — before Conductor builds. Just Putz It is
+          not a Cinch Seed.
         </p>
 
         <ul className="mt-8 grid gap-3 sm:grid-cols-5">
@@ -72,10 +70,15 @@ export default function SentiDeskPage() {
 
         <section className="mt-12">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-            Example pack — a Seed Cinch can actually build
+            Method demo — build your pack on a Seed
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-            {pack.summary} Print to PDF or download the compiled instruction.
+            This bakery pack is a walkthrough of the method. Your real
+            instruction pack is filled chapter by chapter on{" "}
+            <Link href="/admin" className="font-semibold underline">
+              Seed admin
+            </Link>{" "}
+            or the owner portal — then print or download.
           </p>
           <div className="mt-6">
             <SeedPlaybookPack pack={pack} />
