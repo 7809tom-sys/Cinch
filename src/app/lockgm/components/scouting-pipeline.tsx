@@ -7,6 +7,7 @@ import type { Prospect } from "@/lib/lockgm/sport-catalog";
 import {
   BASKETBALL_HS_BOARD_YEAR,
   BASEBALL_MILB_BOARD_YEAR,
+  FOOTBALL_COLLEGE_BOARD_YEAR,
 } from "@/lib/lockgm/sport-catalog";
 import {
   applyUpdatedOverlay,
@@ -39,8 +40,15 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   const stages = sport.stageOrder;
   const isHoopsBoard = sport.id === "basketball";
   const isMilbBoard = sport.id === "baseball";
+  const isCollegeFootballBoard = sport.id === "football";
   const [stage, setStage] = useState<string>(
-    isHoopsBoard ? "high_school" : isMilbBoard ? "minors" : "all",
+    isHoopsBoard
+      ? "high_school"
+      : isMilbBoard
+        ? "minors"
+        : isCollegeFootballBoard
+          ? "all"
+          : "all",
   );
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(
@@ -215,6 +223,15 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
           search, grade, refresh reports, watch YouTube / MLB highlights.
         </p>
       ) : null}
+      {isCollegeFootballBoard ? (
+        <p className="text-sm text-[color:var(--lg-mute)]">
+          <span className="font-bold text-[color:var(--lg-accent)]">
+            College Top {franchise.prospects.length}
+          </span>{" "}
+          · {FOOTBALL_COLLEGE_BOARD_YEAR} juniors & seniors for Shadow GM work —
+          search, grade, refresh reports, play verified clips.
+        </p>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -307,12 +324,16 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                     <div>
                       <p className="font-bold">
                         #{prospect.rank} {prospect.name}
-                        {prospect.highlightUrl ? (
+                        {prospect.highlightVideoId || prospect.highlightUrl ? (
                           <span
                             className="ml-2 text-[10px] font-bold tracking-wide text-[color:var(--lg-accent)] uppercase"
-                            title="Highlights available"
+                            title={
+                              prospect.highlightVideoId
+                                ? "Verified highlight clip"
+                                : "Highlight search available"
+                            }
                           >
-                            ▶ clip
+                            {prospect.highlightVideoId ? "▶ clip" : "▶ film"}
                           </span>
                         ) : null}
                         {overlay ? (
@@ -400,6 +421,13 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
               <div className="mt-5 border-t border-[color:var(--lg-line)] pt-4">
                 <p className="text-xs font-bold tracking-wide text-[color:var(--lg-mute)] uppercase">
                   Video highlights
+                  {embedSrc ? (
+                    <span className="ml-2 text-[color:var(--lg-accent)]">
+                      · verified clip
+                    </span>
+                  ) : (
+                    <span className="ml-2">· search film</span>
+                  )}
                 </p>
                 {embedSrc ? (
                   <div className="mt-3 aspect-video w-full overflow-hidden border border-[color:var(--lg-line)] bg-black">
@@ -418,8 +446,9 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
                       ▶
                     </p>
                     <p className="max-w-sm text-sm text-[color:var(--lg-mute)]">
-                      Open highlight film for {active.name} on YouTube or MLB
-                      Video — fresh search for this prospect.
+                      Open highlight film for {active.name} on YouTube
+                      {isMilbBoard ? " or MLB Video" : ""} — fresh search for
+                      this prospect.
                     </p>
                   </div>
                 )}

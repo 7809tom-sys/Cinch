@@ -7,6 +7,10 @@ import {
   MILB_BOARD_YEAR,
   MILB_TOP_200,
 } from "./milb-top200";
+import {
+  COLLEGE_FOOTBALL_BOARD_YEAR,
+  COLLEGE_FOOTBALL_TOP_300,
+} from "./college-football-top300";
 
 export type Prospect = {
   id: string;
@@ -433,73 +437,12 @@ const FOOTBALL: FranchiseKit = {
     { id: "t5", label: "Send S. Vale (TE)", capDeltaM: -8.6, kind: "player" },
     { id: "t6", label: "Receive EDGE — N. Crow", capDeltaM: 9.5, kind: "player" },
   ],
-  prospects: [
-    {
-      id: "p01", name: "Jalen Crowe", position: "EDGE", school: "Ohio State",
-      stage: "pro_ready", rank: 1, height: "6'4\"", weight: 255, metric: 4.52, grade: 94, capHitM: 8.4,
-      reportTeaser: "First-step twitch with finishing power.",
-      reportPremium: "Elite get-off and bend. Wins with length on the edge. Projection: every-down EDGE1 by year two.",
-      pipelineNote: "Tracked since junior year HS — All-American → Big Ten disruptor.",
-      traits: ["bend", "motor", "length"],
-    },
-    {
-      id: "p02", name: "Micah Dane", position: "QB", school: "Oregon",
-      stage: "declare", rank: 2, height: "6'2\"", weight: 218, metric: 4.68, grade: 92, capHitM: 9.1,
-      reportTeaser: "Processor with layered velocity.",
-      reportPremium: "Quick full-field reads, plus accuracy under pressure. Floor: solid starter. Ceiling: franchise QB.",
-      pipelineNote: "HS dual-threat → college pocket refinement → early declare.",
-      traits: ["anticipation", "poise", "touch"],
-    },
-    {
-      id: "p03", name: "Theo Hale", position: "WR", school: "Alabama",
-      stage: "pro_ready", rank: 3, height: "6'1\"", weight: 198, metric: 4.38, grade: 90, capHitM: 6.2,
-      reportTeaser: "Separator who wins 50/50s.",
-      reportPremium: "Sudden stems and elite tracking. Slight frame concerns vs press — scheme him in motion.",
-      pipelineNote: "HS track star → college route tree expansion.",
-      traits: ["separation", "hands", "YACs"],
-    },
-    {
-      id: "p04", name: "Andre Voss", position: "OT", school: "Georgia",
-      stage: "pro_ready", rank: 4, height: "6'6\"", weight: 312, metric: 5.12, grade: 89, capHitM: 7.0,
-      reportTeaser: "Mirror feet, mean finish.",
-      reportPremium: "Anchors vs bull rush and climbs to the second level. Occasional waist-bending — fixable.",
-      pipelineNote: "Scouted as HS tackle → left side starter as true sophomore.",
-      traits: ["anchors", "hands", "IQ"],
-    },
-    {
-      id: "p05", name: "Kai Benton", position: "CB", school: "LSU",
-      stage: "college", rank: 5, height: "6'0\"", weight: 190, metric: 4.41, grade: 88, capHitM: 5.5,
-      reportTeaser: "Press confidence + ball skills.",
-      reportPremium: "Sticky in press and sudden when flipping hips. One more season could lock CB1 draft status.",
-      pipelineNote: "HS shutdown corner → early-enrollee impact.",
-      traits: ["press", "ball", "competitiveness"],
-    },
-    {
-      id: "p06", name: "Jonah Reyes", position: "OT", school: "IMG Academy",
-      stage: "high_school", rank: 6, height: "6'6\"", weight: 285, metric: null, grade: 79, capHitM: 0,
-      reportTeaser: "Blueprint left tackle frame.",
-      reportPremium: "Premium length and feet for a junior. Multi-year track — pipeline flag for 2028 draft.",
-      pipelineNote: "Rising junior — earliest pro window 2028–29.",
-      traits: ["length", "feet", "upside"],
-    },
-    {
-      id: "p07", name: "Harvey Lin", position: "EDGE", school: "USC",
-      stage: "college", rank: 7, height: "6'3\"", weight: 248, metric: 4.58, grade: 81, capHitM: 2.4,
-      reportTeaser: "Speed-to-power converter.",
-      reportPremium: "Wins early with burst; converting to power keeps tackles honest. Rising after spring.",
-      pipelineNote: "HS EDGE → college production spike as junior.",
-      traits: ["burst", "power convert", "effort"],
-    },
-    {
-      id: "p08", name: "Bryson Cole", position: "CB", school: "Clemson",
-      stage: "declare", rank: 8, height: "5'11\"", weight: 188, metric: 4.36, grade: 80, capHitM: 2.0,
-      reportTeaser: "Sudden twitch in off coverage.",
-      reportPremium: "Mirror skills vs slot and outside. Nickel-first projection vs X receivers.",
-      pipelineNote: "HS track/football → college nickel then outside.",
-      traits: ["twitch", "ball hawk", "slot"],
-    },
-  ],
+  // HARD RULE for LockedGM football: College Top 300 (juniors & seniors) is the scouting board.
+  prospects: COLLEGE_FOOTBALL_TOP_300,
 };
+
+/** Board year for the football college juniors & seniors Top 300 (UI eyebrow). */
+export const FOOTBALL_COLLEGE_BOARD_YEAR = COLLEGE_FOOTBALL_BOARD_YEAR;
 
 const HOCKEY: FranchiseKit = {
   clubName: "Lock City Blades",

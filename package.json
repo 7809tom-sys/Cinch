@@ -20,6 +20,7 @@
     "assert:seed-watch-loop": "npx tsx scripts/assert-seed-watch-loop.ts",
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
+    "assert:lockgm-college-top300": "npx tsx scripts/assert-lockgm-college-top300.ts",
     "assert:lockgm-updated-reports": "npx tsx scripts/assert-lockgm-updated-reports.ts",
     "assert:lockgm-fantasy-scouting": "npx tsx scripts/assert-lockgm-fantasy-scouting.ts",
     "assert:lockgm-identity": "npx tsx scripts/assert-lockgm-identity.ts",
