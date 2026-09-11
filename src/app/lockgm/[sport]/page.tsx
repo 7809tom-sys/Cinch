@@ -80,7 +80,7 @@ export default async function SportHubPage({
       </section>
 
       <p className="mt-10 text-sm text-[color:var(--lg-mute)]">
-        Switch sports in the bar above — baseball-only desks stay on baseball.
+        Switch sports in the bar above. Desks that belong to one sport stay on that hub.
       </p>
     </main>
   );

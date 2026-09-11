@@ -77,7 +77,8 @@ export function LockgmChrome({
   const { sport, sportId, franchise } = useSport();
   const [open, setOpen] = useState(false);
   const menuId = useId();
-  const desks = desksForSport(sportId);
+  const onHome = pathname === "/lockgm" || pathname === "/lockgm/";
+  const desks = onHome ? [] : desksForSport(sportId);
 
   useEffect(() => {
     if (!open) return;
@@ -111,13 +112,19 @@ export function LockgmChrome({
             >
               LockedGM
             </Link>
-            <Link
-              href={sportHubPath(sportId)}
-              onClick={close}
-              className="block text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase hover:text-[color:var(--lg-text)]"
-            >
-              {sport.name} · {franchise.abbrev} · {sport.roleTitle}
-            </Link>
+            {onHome ? (
+              <p className="text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
+                All sports
+              </p>
+            ) : (
+              <Link
+                href={sportHubPath(sportId)}
+                onClick={close}
+                className="block text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase hover:text-[color:var(--lg-text)]"
+              >
+                {sport.name} · {franchise.abbrev} · {sport.roleTitle}
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -152,12 +159,14 @@ export function LockgmChrome({
 
             <AccountLink isSignedIn={isSignedIn} />
 
-            <Link
-              href={deskHref("draft", sportId)}
-              className="hidden h-10 items-center rounded-md bg-[color:var(--lg-accent)] px-3.5 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5 xl:inline-flex"
-            >
-              {sport.shortName} war room
-            </Link>
+            {onHome ? null : (
+              <Link
+                href={deskHref("draft", sportId)}
+                className="hidden h-10 items-center rounded-md bg-[color:var(--lg-accent)] px-3.5 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5 xl:inline-flex"
+              >
+                {sport.shortName} war room
+              </Link>
+            )}
 
             <button
               type="button"
@@ -195,18 +204,32 @@ export function LockgmChrome({
             }`}
           >
             <ul className="flex flex-col gap-1">
-              <li>
-                <Link
-                  href={deskHref("draft", sportId)}
-                  onClick={close}
-                  className="lockgm-display block rounded-md bg-[color:var(--lg-accent)] px-3 py-3 text-center text-lg font-bold text-[color:var(--lg-bg)]"
-                >
-                  {sport.shortName} war room
-                </Link>
-              </li>
+              {onHome ? (
+                <li>
+                  <Link
+                    href="/lockgm"
+                    onClick={close}
+                    className="lockgm-display block rounded-md bg-[color:var(--lg-accent)] px-3 py-3 text-center text-lg font-bold text-[color:var(--lg-bg)]"
+                  >
+                    Pick a sport
+                  </Link>
+                </li>
+              ) : (
+                <li>
+                  <Link
+                    href={deskHref("draft", sportId)}
+                    onClick={close}
+                    className="lockgm-display block rounded-md bg-[color:var(--lg-accent)] px-3 py-3 text-center text-lg font-bold text-[color:var(--lg-bg)]"
+                  >
+                    {sport.shortName} war room
+                  </Link>
+                </li>
+              )}
+              {onHome ? null : (
               <li className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-[0.18em] text-[color:var(--lg-accent)] uppercase">
                 {sport.name}
               </li>
+              )}
               {desks.map((item) => (
                 <li key={item.id}>
                   <Link

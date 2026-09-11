@@ -94,6 +94,10 @@ assert(
   !SPORTS.some((sport) => /LockGM/.test(SPORT_HUBS[sport.id].tagline)),
   "hub copy uses LockedGM brand, not LockGM",
 );
+assert(
+  sportSwitcherHref("soccer", "/lockgm/") === "/lockgm/soccer",
+  "all-sports home still routes chips to a hub",
+);
 
 if (process.exitCode) {
   console.error("\nLockedGM sport-nav guards failed.");
