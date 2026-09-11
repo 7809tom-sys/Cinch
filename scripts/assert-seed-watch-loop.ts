@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
+import { ADMIN_PROVIDER_KEYS_HREF } from "../src/lib/provider-keys";
 import {
   WATCH_IDLE_LINE,
   WATCH_NO_AI_LINE,
@@ -68,6 +69,15 @@ assert(
   ticker.includes("will not keep looking for an AI"),
   "portal explains the hunt stopped",
 );
+assert(
+  ADMIN_PROVIDER_KEYS_HREF === "/admin#agents",
+  "provider keys href points at the admin agents section",
+);
+assert(
+  ticker.includes("ADMIN_PROVIDER_KEYS_HREF") &&
+    ticker.includes("Update API keys"),
+  "portal stuck state links admin to API keys",
+);
 
 const admin = readFileSync(
   join(process.cwd(), "src/app/admin/(gated)/projects/[id]/project-controls.tsx"),
@@ -81,6 +91,11 @@ assert(
   admin.includes("will not keep restocking") ||
     admin.includes("Stopped looking for an AI"),
   "admin copy stops the restock loop",
+);
+assert(
+  admin.includes("ADMIN_PROVIDER_KEYS_HREF") &&
+    admin.includes("Update API keys"),
+  "admin stuck state links to provider API keys",
 );
 
 const portal = readFileSync(
