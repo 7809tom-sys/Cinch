@@ -58,6 +58,7 @@ export function ProjectControls({
     invitedAgentIds.includes(agent.id),
   );
   const needsCrew = crew.length === 0;
+  const missingApiKey = crew.some((agent) => !agent.configured);
 
   function refresh(options?: { advance?: boolean; restaff?: boolean }) {
     if (ticking.current) return;
@@ -164,7 +165,7 @@ export function ProjectControls({
             >
               {pending ? "Refreshing…" : "Refresh status"}
             </button>
-            {(stuck || needsCrew) && !allDone ? (
+            {(stuck || needsCrew || missingApiKey) && !allDone ? (
               <>
                 <Link
                   href={ADMIN_PROVIDER_KEYS_HREF}
@@ -172,14 +173,16 @@ export function ProjectControls({
                 >
                   Update API keys
                 </Link>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => refresh({ restaff: true })}
-                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam disabled:opacity-60"
-                >
-                  Restaff crew
-                </button>
+                {stuck || needsCrew ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => refresh({ restaff: true })}
+                    className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                  >
+                    Restaff crew
+                  </button>
+                ) : null}
               </>
             ) : null}
           </div>
