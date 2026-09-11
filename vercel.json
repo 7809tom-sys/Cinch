@@ -1,5 +1,18 @@
 {
   "framework": "nextjs",
+  "headers": [
+    {
+      "source": "/v1/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, POST, OPTIONS"
+        },
+        { "key": "Access-Control-Allow-Headers", "value": "content-type" }
+      ]
+    }
+  ],
   "redirects": [
     {
       "source": "/site/48a66d0f-d7f1-483c-82ae-675fed90dc48",

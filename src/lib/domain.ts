@@ -9,6 +9,23 @@ export const CINCH_SEED_DOMAIN = "cinchseed.com";
 export const CINCH_SEED_ORIGIN = `https://www.${CINCH_SEED_DOMAIN}`;
 export const CINCH_SEED_WATCH_SCRIPT = `${CINCH_SEED_ORIGIN}/v1/watch.js`;
 
+/**
+ * Apex cinchseed.com 308s to www. A CORS preflight to the apex never
+ * reaches /v1/*, so Connect API clients must call www.
+ */
+export function canonicalizeCinchSeedOrigin(origin?: string | null): string {
+  const raw = origin?.trim();
+  if (!raw) return CINCH_SEED_ORIGIN;
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (host === CINCH_SEED_DOMAIN) return CINCH_SEED_ORIGIN;
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return CINCH_SEED_ORIGIN;
+  }
+}
+
 export function seedEmbedSnippet(seedId: string, connectKey: string): string {
   return `<script src="${CINCH_SEED_WATCH_SCRIPT}" data-seed="${seedId}" data-key="${connectKey}" data-platform="generic" data-mark="true" async></script>`;
 }

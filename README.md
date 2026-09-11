@@ -37,7 +37,7 @@ Installable Progressive Web App (Add to Home Screen / Install app) via
 - `/admin` — command center (Google master login required)
 - `/admin/login` — Sign in with Google (allowlisted master emails)
 - `/admin/test` — provider key tests + pre-launch Seed checklist
-- Connect API: `https://cinchseed.com/v1/watch.js` — see below
+- Connect API: `https://www.cinchseed.com/v1/watch.js` — see below
 
 Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_AI_API_KEY`, `MANUS_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`. Provider keys can also be pasted in **Admin → Agents & providers** (Seed settings). Never hardcode secrets. Cursor is **not** a Seed provider.
 
@@ -106,6 +106,7 @@ a Seed makes every endpoint below return `403` for it.
 | Endpoint | Method | Auth | Purpose |
 | --- | --- | --- | --- |
 | `/v1/watch.js` | `GET` | — (public script) | Serves the embed; reads `data-seed` / `data-key` / `data-platform` / `data-tools` / `data-mark`; paints Community |
+| `/v1/health` | `GET` | — | Liveness. Call `https://www.cinchseed.com` — apex `cinchseed.com` 308s and breaks CORS |
 | `/v1/health` | `POST` | `seed` + `key` in body | Heartbeat + critical-tool probe results |
 | `/v1/improve` | `GET` | `seed` + `key` query params | Pull pending adaptations for this Seed |
 | `/v1/improve` | `POST` | `seed` + `key` in body | Acknowledge adaptations the embed applied |
