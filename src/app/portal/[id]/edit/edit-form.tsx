@@ -79,7 +79,6 @@ export function EditSeedForm({
           required
           rows={6}
           defaultValue={initialBrief}
-          maxLength={4000}
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
         <span className="mt-1.5 block text-xs leading-relaxed text-muted">

@@ -500,9 +500,6 @@ export async function updateProjectDetails(
   if (!name) return { error: "Seed name is required." };
   if (!brief) return { error: "Build brief is required." };
   if (name.length > 120) return { error: "Keep the Seed name under 120 characters." };
-  if (brief.length > 4000) {
-    return { error: "Keep the brief under 4000 characters." };
-  }
 
   const store = await ensureStore();
   const project = store.projects.find((item) => item.id === projectId);
