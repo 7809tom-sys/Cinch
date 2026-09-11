@@ -620,6 +620,18 @@ export function researchMeetsHardRule(
   ) {
     return false;
   }
+  const hosts = uniqueCompetitorHosts([
+    ...research.urlsConsidered,
+    ...research.snapshots.map((snap) => snap.url),
+  ]);
+  if (
+    (research.bestHeadline &&
+      containsForeignBrand(research.bestHeadline, hosts)) ||
+    (research.bestSeoTitle &&
+      containsForeignBrand(research.bestSeoTitle, hosts))
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -641,8 +653,6 @@ export function composeBestOfEach(
 ): BestOfEach {
   const ranked = [...snapshots].sort((a, b) => b.score - a.score);
   const used = new Set<string>();
-  const otherHosts = (self: string) =>
-    snapshots.map((item) => item.host).filter((host) => host && host !== self);
 
   function take(
     pick: (snap: ComparableSnapshot) => string,
@@ -652,7 +662,10 @@ export function composeBestOfEach(
       const value = pick(snap).replace(/\s+/g, " ").trim();
       if (!value) continue;
       if (looksLikeSeoJunk(value)) continue;
-      if (containsForeignBrand(value, otherHosts(snap.host))) continue;
+      // Never reuse a line that names any crawled brand — including this host.
+      if (containsForeignBrand(value, snapshots.map((item) => item.host))) {
+        continue;
+      }
       used.add(snap.host);
       return { value, fromHost: snap.host, fromUrl: snap.url };
     }
