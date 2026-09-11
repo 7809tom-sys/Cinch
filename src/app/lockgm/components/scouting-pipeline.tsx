@@ -49,13 +49,7 @@ export function ScoutingPipeline({ tier = "free" }: { tier?: SubTierId }) {
   const isFaDesk = isFootballBoard && footballDesk === "free_agency";
   const stages = isFaDesk ? [...FA_STAGE_ORDER] : sport.stageOrder;
   const [stage, setStage] = useState<string>(
-    isHoopsBoard
-      ? "high_school"
-      : isMilbBoard
-        ? "minors"
-        : isCollegeFootballBoard
-          ? "all"
-          : "all",
+    isHoopsBoard ? "high_school" : isMilbBoard ? "minors" : "all",
   );
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(
