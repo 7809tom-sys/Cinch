@@ -27,6 +27,12 @@
  * Menu / Order, and “Reserve a table”. Live repair did not rewrite it because
  * mismatch only watched pizza vs fine-dining.
  *
+ * The shop then stayed a restaurant: “Order from the menu”, kitchen tickets,
+ * Seasonal small plates / Chef’s dinner plate / House cocktail. Catalog
+ * mismatch only watched pizza vs stock SKUs — restaurant plates on a
+ * dealership were treated as fine. QA wrote `qa/checklist.md` and never
+ * compared the live shop to the brief.
+ *
  * ## What went wrong (Edit Seed refresh)
  * Save opened the live site URL but `applySeedIdentityEdit` re-merged old
  * stock shop products, so it felt like a plain Visit with no rebuild.
@@ -50,9 +56,13 @@
  * 8. Owner-stocked / pizza / food e-com must not keep salon/retail stock SKUs.
  * 9. Edit Seed → Save must rebuild from the brief before opening the site;
  *    never re-merge renamed stock SKUs (`applySeedIdentityEdit`).
+ * 10. Seed + Conductor must **proof** landing and shop against the brief.
+ *     A checklist is not proof. Restaurant plates / kitchen tickets on a
+ *     used-car lot must fail and rewrite (`proofAndRepairSeedSite`).
  *
  * Implementation: `src/lib/seed-site-copy.ts` (`industryKey`,
- * `seedLandingCopyMismatchesIndustry`, `seedShopCatalogMismatchesBrief`) and
+ * `seedLandingCopyMismatchesIndustry`, `seedShopCatalogMismatchesBrief`,
+ * `seedShopMismatchesIndustry`), `src/lib/seed-site-proof.ts`, and
  * `src/lib/seed-site.ts` repair. Guard: `npm run assert:seed-industry`.
  */
 export {};

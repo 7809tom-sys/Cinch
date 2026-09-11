@@ -900,8 +900,8 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
       minSkillLevel: 2,
     },
     {
-      title: "QA the build path",
-      detail: `Verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA checklist. Confirm modulars were adopted before custom work. ${modularsFirst}`,
+      title: "Proof the live site against the brief",
+      detail: `HARD RULE: compare landing, shop, CTAs, and catalog to this Seed’s name + brief. Restaurant plates, kitchen tickets, or “Order from the menu” on a used-car lot is a fail — rewrite from the brief. A checklist is not proof. Then verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA. ${modularsFirst}`,
       requiredSkills: ["qa"],
       minSkillLevel: 3,
     },

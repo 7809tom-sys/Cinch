@@ -1267,11 +1267,57 @@ export function SiteChrome({
     return;
   }
 
-  if (title.includes("qa")) {
+  if (
+    title.includes("qa") ||
+    title.includes("proof the live site") ||
+    title.includes("proof the site")
+  ) {
+    const { getProject } = await import("./store");
+    const { proofAndRepairSeedSite, SEED_SITE_MUST_PROOF_RULE } = await import(
+      "./seed-site"
+    );
+    const project = await getProject(input.projectId);
+    let proofBody = "No Seed found — could not proof the live site.";
+    if (project) {
+      const result = await proofAndRepairSeedSite(project);
+      const lines = result.failures.map(
+        (failure) => `- ${failure.surface}: ${failure.reason}`,
+      );
+      proofBody = result.ok
+        ? result.repaired
+          ? `FAIL then repaired. Site did not match the brief. Conductor rewrote landing/shop from name + brief.\n\nWas wrong:\n${lines.join("\n")}`
+          : "PASS. Landing and shop match the brief."
+        : `FAIL. Still mismatched after repair:\n${lines.join("\n") || "- unknown"}`;
+    }
+
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "qa/proof.md",
+      content: `# Site proof
+
+## HARD RULE
+
+${SEED_SITE_MUST_PROOF_RULE.summary}
+
+## Result
+
+${proofBody}
+
+Signed off by: ${agent} (${input.phase})
+`,
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} site proof`,
+    });
     await upsertSourceFile({
       projectId: input.projectId,
       path: "qa/checklist.md",
       content: `# QA checklist
+
+## Proof vs brief (required)
+- [x] Compared landing + shop to the Seed name and brief (see qa/proof.md)
+- [ ] Wrong-industry copy was rewritten from the brief
 
 ## Product
 - [ ] Portal login works for the customer

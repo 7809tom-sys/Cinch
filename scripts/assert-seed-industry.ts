@@ -1,9 +1,16 @@
 /**
  * Guard: hair/salon Seeds must never classify as auto detailing or ship car copy.
  * Pizza Man must get pizza copy + priced orderable menu — never rename-only templates.
- * Mike's Used Car must look like a lot — never fine-dining “Reserve a table”.
+ * Mike's Used Car must look like a lot — never fine-dining or restaurant shop.
+ * Seed + Conductor must proof the live site against the brief.
  * Run: npx tsx scripts/assert-seed-industry.ts
  */
+import { readFileSync } from "fs";
+import { join } from "path";
+import {
+  collectSeedSiteProofFailures,
+  SEED_SITE_MUST_PROOF_RULE,
+} from "../src/lib/seed-site-proof";
 import {
   briefIsPizza,
   customerFacingShopCopy,
@@ -13,7 +20,9 @@ import {
   seedLandingCopyMismatchesIndustry,
   seedRestaurantMenuProducts,
   seedShopCatalogMismatchesBrief,
+  seedShopChromeMismatchesBrief,
   seedShopFulfillmentMismatchesBrief,
+  seedShopMismatchesIndustry,
   seedShopUsesRestaurantFulfillment,
   seedStarterShopProducts,
   summarizeSeedOrderMoney,
@@ -403,6 +412,139 @@ assert(
 assert(
   seedGrowthBoardLooksThin({ results: [], profitPlays: [] }),
   "growth board thin detector flags empty boards",
+);
+
+const usedCarShop = customerFacingShopCopy(
+  "Mike's Used Car",
+  "Neighborhood used car lot. Inspected inventory, financing, trade-ins. Online shop.",
+);
+assert(
+  usedCarShop.title === "Inventory",
+  `used-car shop title is Inventory (got ${usedCarShop.title})`,
+);
+assert(
+  usedCarShop.cta === "Ask about this unit",
+  `used-car shop CTA is Ask about this unit (got ${usedCarShop.cta})`,
+);
+assert(
+  !/kitchen ticket|order from the menu|restaurant sees the money/i.test(
+    usedCarShop.support,
+  ),
+  "used-car shop support is not a restaurant kitchen ticket",
+);
+assert(
+  usedCarShop.products.some((p) => /sedan|crossover|pickup/i.test(p.title)),
+  "used-car shop ships lot units, not plates",
+);
+assert(
+  !usedCarShop.products.some((p) =>
+    /small plates|dinner plate|house cocktail/i.test(p.title),
+  ),
+  "used-car shop catalog has no restaurant plates",
+);
+
+const leftoverRestaurantMenu = [
+  { id: "menu-starter", title: "Seasonal small plates", detail: "Shared bites" },
+  { id: "menu-main", title: "Chef’s dinner plate", detail: "Rotating mains" },
+  { id: "menu-cocktail", title: "House cocktail", detail: "Careful pours" },
+];
+assert(
+  seedShopCatalogMismatchesBrief(
+    "Mike's Used Car",
+    "Sell used cars. Online shop.",
+    leftoverRestaurantMenu,
+  ),
+  "catalog mismatch flags restaurant plates on Mike's Used Car",
+);
+assert(
+  seedShopChromeMismatchesBrief(
+    "Mike's Used Car",
+    "Sell used cars. Online shop.",
+    {
+      title: "Order",
+      support:
+        "Order from the menu — priced items go to the kitchen ticket so the restaurant sees the money.",
+      cta: "Add to order",
+    },
+  ),
+  "chrome mismatch flags kitchen-ticket copy on Mike's Used Car",
+);
+assert(
+  seedShopMismatchesIndustry("Mike's Used Car", "Sell used cars. Online shop.", {
+    title: "Order",
+    support: "Order from the menu — kitchen ticket.",
+    cta: "Add to order",
+    products: leftoverRestaurantMenu,
+  }),
+  "industry mismatch flags leftover restaurant shop on a used-car Seed",
+);
+assert(
+  !seedShopMismatchesIndustry(
+    "Mike's Used Car",
+    "Sell used cars. Online shop.",
+    usedCarShop,
+  ),
+  "fresh used-car shop copy is not an industry mismatch",
+);
+assert(
+  seedLandingCopyMismatchesIndustry("Mike's Used Car", "Sell used cars", {
+    support:
+      "Order from the menu — kitchen ticket so the restaurant sees the money.",
+  }),
+  "landing mismatch flags kitchen-ticket language on a used-car Seed",
+);
+
+const proofFailures = collectSeedSiteProofFailures(
+  "Mike's Used Car",
+  "Sell used cars. Online shop.",
+  {
+    shop: {
+      title: "Order",
+      support: "Order from the menu — kitchen ticket.",
+      cta: "Add to order",
+      products: leftoverRestaurantMenu,
+    },
+  },
+);
+assert(
+  proofFailures.some((f) => f.surface === "shop"),
+  "proof collector fails a restaurant shop on Mike's Used Car",
+);
+assert(
+  collectSeedSiteProofFailures("Mike's Used Car", "Sell used cars. Online shop.", {
+    shop: usedCarShop,
+  }).length === 0,
+  "proof collector passes a lot inventory shop",
+);
+assert(
+  /proof the live site against the brief/i.test(SEED_SITE_MUST_PROOF_RULE.summary),
+  "proof rule says Seed + Conductor must proof the live site",
+);
+
+const qaSource = readFileSync(
+  join(process.cwd(), "src/lib/seed-source.ts"),
+  "utf8",
+);
+assert(
+  qaSource.includes("proofAndRepairSeedSite"),
+  "Conductor QA/proof task actually proofs and repairs the site",
+);
+assert(
+  qaSource.includes("qa/proof.md"),
+  "Conductor writes qa/proof.md — not checklist-only",
+);
+const backlog = readFileSync(join(process.cwd(), "src/lib/store.ts"), "utf8");
+assert(
+  backlog.includes("Proof the live site against the brief"),
+  "default Seed backlog proofs the live site against the brief",
+);
+const shopPage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/shop/page.tsx"),
+  "utf8",
+);
+assert(
+  shopPage.includes("proofAndRepairSeedSite"),
+  "opening the shop proofs the site against the brief",
 );
 
 if (process.exitCode) {

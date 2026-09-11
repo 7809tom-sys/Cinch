@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import {
   briefAsksForEcommerce,
   buildSeedShopPreview,
+  proofAndRepairSeedSite,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -27,6 +28,7 @@ export default async function SeedShopPage({
     redirect(`/site/${id}`);
   }
 
+  await proofAndRepairSeedSite(project);
   const shop = await buildSeedShopPreview(project);
   if (!shop) notFound();
 

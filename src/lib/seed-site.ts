@@ -18,12 +18,17 @@ import {
   seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
   seedShopFulfillmentMismatchesBrief,
+  seedShopMismatchesIndustry,
   seedShopPageSource,
   type SeedAdminCopy,
   type SeedService,
   type SeedShopCopy,
   type SeedSiteCopy,
 } from "./seed-site-copy";
+import {
+  collectSeedSiteProofFailures,
+  type SeedSiteProofFailure,
+} from "./seed-site-proof";
 import type { SeedProject } from "./store";
 
 export type SeedSitePreview = SeedSiteCopy & {
@@ -55,12 +60,19 @@ export {
   seedShopCatalogMismatchesBrief,
   seedShopCopyJson,
   seedShopFulfillmentMismatchesBrief,
+  seedShopMismatchesIndustry,
   seedShopPageSource,
   seedShopShouldStartEmpty,
   seedShopUsesRestaurantFulfillment,
   seedStarterShopProducts,
   briefIsPizza,
 } from "./seed-site-copy";
+
+export {
+  collectSeedSiteProofFailures,
+  SEED_SITE_MUST_PROOF_RULE,
+} from "./seed-site-proof";
+export type { SeedSiteProofFailure } from "./seed-site-proof";
 
 export type {
   SeedAdminCommerce,
@@ -677,13 +689,7 @@ function normalizeShopCopy(
 
   // Never keep renamed stock SKUs / empty pizza menu when this brief needs a
   // real priced catalog.
-  if (
-    seedShopCatalogMismatchesBrief(
-      project.name,
-      project.brief,
-      raw.products ?? [],
-    )
-  ) {
+  if (seedShopMismatchesIndustry(project.name, project.brief, raw)) {
     return {
       ...fresh,
       orders: Array.isArray(raw.orders) ? raw.orders : [],
@@ -808,11 +814,17 @@ export async function ensureShopInSeed(
     project.brief,
     parsed?.shippingModes ?? existing?.shippingModes ?? [],
   );
+  const shopMismatch = seedShopMismatchesIndustry(
+    project.name,
+    project.brief,
+    parsed ?? existing ?? {},
+  );
 
   const needsWrite =
     !existing ||
     catalogMismatch ||
     fulfillmentMismatch ||
+    shopMismatch ||
     !page ||
     !page.includes("seed-shop") ||
     !css.includes("seed-shop") ||
@@ -826,7 +838,7 @@ export async function ensureShopInSeed(
 
   // Prefer brief-derived menu / owner catalog when stock templates were stamped.
   const shop =
-    catalogMismatch || fulfillmentMismatch
+    catalogMismatch || fulfillmentMismatch || shopMismatch
       ? {
           ...customerFacingShopCopy(project.name, project.brief),
           orders: existing?.orders ?? parsed?.orders ?? [],
@@ -873,6 +885,71 @@ export async function ensureShopInSeed(
   return shop;
 }
 
+async function readProofSurfaces(project: SeedProject): Promise<{
+  landing: Parameters<typeof collectSeedSiteProofFailures>[2]["landing"];
+  shop: Parameters<typeof collectSeedSiteProofFailures>[2]["shop"];
+}> {
+  const bundle = await getSourceBundle(project.id);
+  let landing: Parameters<typeof collectSeedSiteProofFailures>[2]["landing"] =
+    null;
+  let shop: Parameters<typeof collectSeedSiteProofFailures>[2]["shop"] = null;
+  const landingRaw =
+    bundle?.files.find((file) => file.path === "content/landing.copy.json")
+      ?.content ?? "";
+  const shopRaw =
+    bundle?.files.find((file) => file.path === "content/shop.copy.json")
+      ?.content ?? "";
+  if (landingRaw) {
+    try {
+      landing = JSON.parse(landingRaw) as NonNullable<typeof landing>;
+    } catch {
+      landing = null;
+    }
+  }
+  if (shopRaw) {
+    try {
+      shop = JSON.parse(shopRaw) as NonNullable<typeof shop>;
+    } catch {
+      shop = null;
+    }
+  }
+  return { landing, shop };
+}
+
+/**
+ * HARD RULE: proof landing + shop against the brief, then repair.
+ * Opening the site or finishing a Conductor QA/proof task must run this —
+ * writing qa/checklist.md alone is not proof.
+ */
+export async function proofAndRepairSeedSite(project: SeedProject): Promise<{
+  ok: boolean;
+  failures: SeedSiteProofFailure[];
+  repaired: boolean;
+}> {
+  const before = collectSeedSiteProofFailures(
+    project.name,
+    project.brief,
+    await readProofSurfaces(project),
+  );
+
+  await repairCustomerLandingIfNeeded(project);
+  if (briefAsksForEcommerce(project.brief) || before.some((f) => f.surface === "shop")) {
+    await ensureShopInSeed(project);
+  }
+
+  const after = collectSeedSiteProofFailures(
+    project.name,
+    project.brief,
+    await readProofSurfaces(project),
+  );
+
+  return {
+    ok: after.length === 0,
+    failures: before.length > 0 ? before : after,
+    repaired: before.length > 0,
+  };
+}
+
 export async function buildSeedShopPreview(
   project: SeedProject,
 ): Promise<(SeedShopCopy & { css: string }) | null> {
@@ -890,7 +967,11 @@ export async function buildSeedShopPreview(
   let copy = shop;
   if (copyRaw) {
     try {
-      copy = { ...shop, ...(JSON.parse(copyRaw) as SeedShopCopy) };
+      const parsed = JSON.parse(copyRaw) as SeedShopCopy;
+      const merged = { ...shop, ...parsed };
+      copy = seedShopMismatchesIndustry(project.name, project.brief, merged)
+        ? shop
+        : merged;
     } catch {
       /* keep shop */
     }
