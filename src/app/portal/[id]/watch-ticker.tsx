@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys";
 import { portalRestaffAction, portalWatchTickAction } from "../actions";
 
 export function PortalWatchTicker({
@@ -121,7 +123,14 @@ export function PortalWatchTicker({
           <p className="mt-1 text-sm leading-relaxed text-muted">
             Assignment stopped so it will not keep looking for an AI.
             Restaff only invites specialists. It cannot invent a provider
-            key.
+            key.{" "}
+            <Link
+              href={ADMIN_PROVIDER_KEYS_HREF}
+              className="font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              Admin: update API keys
+            </Link>{" "}
+            so work can resume.
           </p>
         </div>
       ) : null}
@@ -147,14 +156,22 @@ export function PortalWatchTicker({
             {pending ? "Refreshing…" : "Refresh status"}
           </button>
           {stuck && !localComplete ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => restaffNow()}
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand-deep disabled:opacity-60"
-            >
-              {pending ? "Restaffing…" : "Restaff crew"}
-            </button>
+            <>
+              <Link
+                href={ADMIN_PROVIDER_KEYS_HREF}
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam"
+              >
+                Update API keys
+              </Link>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => restaffNow()}
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam transition-colors hover:bg-brand-deep disabled:opacity-60"
+              >
+                {pending ? "Restaffing…" : "Restaff crew"}
+              </button>
+            </>
           ) : null}
         </div>
       </div>

@@ -7,7 +7,9 @@ import {
   restaffSeedAction,
   watchTickAction,
 } from "@/app/admin/actions";
+import Link from "next/link";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
+import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys";
 
 type TaskSnapshot = {
   id: string;
@@ -135,7 +137,7 @@ export function ProjectControls({
                   : needsCrew
                     ? "Tap Restaff crew once so Conductor invites specialists. It will not keep restocking."
                     : stuck
-                      ? "Stopped looking for an AI. Restaff cannot invent a provider key."
+                      ? "Stopped looking for an AI. Restaff cannot invent a provider key. Update an API key, then restaff so watch can resume."
                       : "You don’t assign tasks. The project manager routes work by skill and cost while you watch."}
               </p>
             </div>
@@ -163,14 +165,22 @@ export function ProjectControls({
               {pending ? "Refreshing…" : "Refresh status"}
             </button>
             {(stuck || needsCrew) && !allDone ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => refresh({ restaff: true })}
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam disabled:opacity-60"
-              >
-                Restaff crew
-              </button>
+              <>
+                <Link
+                  href={ADMIN_PROVIDER_KEYS_HREF}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam"
+                >
+                  Update API keys
+                </Link>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => refresh({ restaff: true })}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                >
+                  Restaff crew
+                </button>
+              </>
             ) : null}
           </div>
         </div>
@@ -202,7 +212,19 @@ export function ProjectControls({
                   </p>
                   <p className="text-sm break-words text-muted">
                     {agent.role}
-                    {agent.configured ? "" : " · no API key yet"}
+                    {agent.configured ? (
+                      ""
+                    ) : (
+                      <>
+                        {" · "}
+                        <Link
+                          href={ADMIN_PROVIDER_KEYS_HREF}
+                          className="font-semibold text-brand underline-offset-2 hover:underline"
+                        >
+                          no API key yet — update API
+                        </Link>
+                      </>
+                    )}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-bold tracking-wide text-accent uppercase">
