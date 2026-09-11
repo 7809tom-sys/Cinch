@@ -1,3 +1,4 @@
+export { ADMIN_PROVIDER_KEYS_HREF } from "./provider-keys-constants";
 import { PROVIDER_ACCOUNTS, type SeedProviderId } from "./agents";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
@@ -9,8 +10,6 @@ import { readJsonStore, writeJsonStore } from "./kv-store";
 
 const STORE_KEY = "provider-keys";
 
-/** Admin desk where a stalled Seed can get a provider key so watch can resume. */
-export const ADMIN_PROVIDER_KEYS_HREF = "/admin#agents";
 
 type ProviderKeyStore = {
   keys: Partial<Record<string, string>>;

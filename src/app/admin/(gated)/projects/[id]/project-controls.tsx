@@ -9,7 +9,7 @@ import {
 } from "@/app/admin/actions";
 import Link from "next/link";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
-import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys";
+import { ADMIN_PROVIDER_KEYS_HREF } from "@/lib/provider-keys-constants";
 
 type TaskSnapshot = {
   id: string;
