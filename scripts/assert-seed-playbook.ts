@@ -7,13 +7,18 @@ import { join } from "path";
 import { composeSeedReply } from "../src/lib/seed-dialog";
 import { JUST_PUTZIT_LIVE, JUST_PUTZIT_NOT_ON_SEED } from "../src/lib/seed-connect";
 import {
+  CHAPTER_PROMPTS,
+  PLAYBOOK_CHAPTER_IDS,
   PLAYBOOK_METHOD,
   SEED_PLAYBOOK_RULE,
   SENTI_DESK_PATH,
   SENTI_NAME,
+  chapterIsFilled,
   compileSeedPlaybook,
   exampleSeedPlaybook,
+  mergePlaybookChapters,
   playbookDownloadFilename,
+  playbookOwnerFilledCount,
   portalSeedPlaybookUrl,
   seedAsksForPlaybook,
   seedPlaybookUrl,
@@ -73,6 +78,61 @@ assert(
 );
 assert(pack.chapters.at(-1)?.agent === "Senti", "last chapter is the Senti compile");
 assert(
+  PLAYBOOK_CHAPTER_IDS.every((id) => CHAPTER_PROMPTS[id]?.blanks.length > 0),
+  "every chapter has fill-in blanks",
+);
+assert(!chapterIsFilled("ONE-SENTENCE INTENT:\n"), "blank labels are not a filled chapter");
+assert(
+  chapterIsFilled("ONE-SENTENCE INTENT: Sell morning bread.\nDONE LOOKS LIKE: Orders print."),
+  "filled blanks count as a real chapter",
+);
+const overridden = compileSeedPlaybook({
+  name: "Acme Cabinets",
+  brief: "Kitchen designer",
+  seedMode: "build",
+  draft: {
+    methodStepId: "prep",
+    currentChapterId: "discover",
+    updatedAt: "2026-09-11T00:00:00.000Z",
+    chapters: {
+      discover: {
+        script: "ONE-SENTENCE INTENT: Book kitchen consults.\nDONE LOOKS LIKE: A human can request a measure.",
+        status: "ready",
+      },
+    },
+  },
+});
+assert(
+  overridden.chapters[0]?.script.includes("Book kitchen consults"),
+  "owner chapter text replaces the static template",
+);
+assert(overridden.filledCount === 1, "compile reports owner-filled chapters");
+assert(
+  playbookOwnerFilledCount({
+    methodStepId: "prep",
+    currentChapterId: "discover",
+    updatedAt: "2026-09-11T00:00:00.000Z",
+    chapters: {
+      discover: {
+        script: "ONE-SENTENCE INTENT: Book kitchen consults.\nDONE LOOKS LIKE: A human can request a measure.",
+        status: "ready",
+      },
+    },
+  }) === 1,
+  "one saved chapter counts as owner-filled",
+);
+assert(
+  mergePlaybookChapters(pack.chapters, {
+    methodStepId: "prep",
+    currentChapterId: "discover",
+    updatedAt: "2026-09-11T00:00:00.000Z",
+    chapters: {
+      atlas: { script: "IN SCOPE: Measure request.\nOUT OF SCOPE: Custom CAD.", status: "ready" },
+    },
+  }).some((chapter) => chapter.id === "atlas" && /Measure request/.test(chapter.script)),
+  "draft merge keeps other generated chapters",
+);
+assert(
   /prep work is everything|not a dumped file|cinchseed/i.test(pack.summary + SEED_PLAYBOOK_RULE),
   "pack stays off a homepage file dump",
 );
@@ -127,6 +187,7 @@ const files = [
   "src/app/admin/(gated)/projects/[id]/playbook/page.tsx",
   "src/app/portal/[id]/playbook/page.tsx",
   "src/components/seed-playbook-pack.tsx",
+  "src/components/seed-playbook-builder.tsx",
 ];
 for (const file of files) {
   const text = readFileSync(join(process.cwd(), file), "utf8");
@@ -142,6 +203,26 @@ assert(
   "pack can print as PDF and download as a sendable file",
 );
 assert(packUi.includes("perspective"), "pack uses a 3D stage for chapters");
+
+const builderUi = readFileSync(
+  join(process.cwd(), "src/components/seed-playbook-builder.tsx"),
+  "utf8",
+);
+assert(
+  builderUi.includes("Fill the blanks") &&
+    builderUi.includes("Save and next chapter") &&
+    builderUi.includes("Method, then chapter"),
+  "builder walks method then chapter and saves owner text",
+);
+
+const adminPlaybook = readFileSync(
+  join(process.cwd(), "src/app/admin/(gated)/projects/[id]/playbook/page.tsx"),
+  "utf8",
+);
+assert(
+  adminPlaybook.includes("SeedPlaybookBuilder"),
+  "admin playbook is a live builder, not only a viewer",
+);
 
 const adminDesk = readFileSync(
   join(process.cwd(), "src/app/admin/(gated)/projects/[id]/page.tsx"),

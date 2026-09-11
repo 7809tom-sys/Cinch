@@ -87,7 +87,125 @@ export type SeedPlaybook = {
   compiledTitle: string;
   compiledBody: string;
   awaitingOwnerApproval: boolean;
+  filledCount: number;
 };
+
+export type PlaybookChapterDraft = {
+  script: string;
+  status: "draft" | "ready";
+};
+
+export type SeedPlaybookDraft = {
+  chapters: Partial<Record<PlaybookChapterId, PlaybookChapterDraft>>;
+  methodStepId: string;
+  currentChapterId: PlaybookChapterId;
+  updatedAt: string;
+};
+
+export const PLAYBOOK_CHAPTER_IDS: PlaybookChapterId[] = [
+  "discover",
+  "atlas",
+  "pixel",
+  "quill",
+  "lumen",
+  "sentry",
+  "compile",
+];
+
+export function isPlaybookChapterId(value: string): value is PlaybookChapterId {
+  return PLAYBOOK_CHAPTER_IDS.includes(value as PlaybookChapterId);
+}
+
+export const METHOD_CHAPTERS: Record<string, PlaybookChapterId[]> = {
+  prep: ["discover"],
+  lanes: ["atlas", "pixel", "lumen"],
+  lock: ["quill", "sentry"],
+  paste: ["compile"],
+};
+
+export type ChapterPrompt = {
+  prompt: string;
+  blanks: string[];
+  starter: string;
+};
+
+export const CHAPTER_PROMPTS: Record<PlaybookChapterId, ChapterPrompt> = {
+  discover: {
+    prompt:
+      "Describe the chat before the chat happens. One sentence for intent. One line for done.",
+    blanks: ["ONE-SENTENCE INTENT", "DONE LOOKS LIKE", "HOST / SITE"],
+    starter:
+      "ONE-SENTENCE INTENT:\nDONE LOOKS LIKE:\nHOST / SITE:\n",
+  },
+  atlas: {
+    prompt: "One job only. Name what is in scope and what AI must not invent.",
+    blanks: ["IN SCOPE", "OUT OF SCOPE", "SOURCE OF TRUTH"],
+    starter: "IN SCOPE:\nOUT OF SCOPE:\nSOURCE OF TRUTH:\n",
+  },
+  pixel: {
+    prompt: "Name who lands on the public site, the one job they finish, and what sits behind login.",
+    blanks: ["PUBLIC JOB", "BEHIND LOGIN", "SOFT GATES"],
+    starter: "PUBLIC JOB:\nBEHIND LOGIN:\nSOFT GATES (email required / name optional):\n",
+  },
+  quill: {
+    prompt: "Hard rules. Fail closed if a rule is unclear. Do not invent conflicting copy.",
+    blanks: ["BRAND / CAPS", "VOIDS", "FEES"],
+    starter: "BRAND / CAPS:\nVOIDS:\nFEES:\n",
+  },
+  lumen: {
+    prompt:
+      "Spec administration, accounting, CRM/ops, and fulfillment — or mark N/A. A pretty homepage is not a website.",
+    blanks: ["ADMIN", "ACCOUNTING / MONEY", "CRM / OPS", "DELIVERY"],
+    starter:
+      "ADMIN:\nACCOUNTING / MONEY:\nCRM / OPS:\nDELIVERY (or N/A):\n",
+  },
+  sentry: {
+    prompt: "A human can click the done-looks-like tests in under five minutes.",
+    blanks: ["FIVE-MINUTE TEST", "FAIL IF BLANK"],
+    starter: "FIVE-MINUTE TEST:\nFAIL IF BLANK:\n",
+  },
+  compile: {
+    prompt:
+      "Read every chapter as one brief. Write the single instruction Conductor should paste. Do not open AI cold.",
+    blanks: ["PASTE-READY JOB"],
+    starter: "PASTE-READY JOB:\n",
+  },
+};
+
+export function emptyPlaybookDraft(): SeedPlaybookDraft {
+  return {
+    chapters: {},
+    methodStepId: "prep",
+    currentChapterId: "discover",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export function chapterIsFilled(script: string | undefined): boolean {
+  const text = script?.trim() ?? "";
+  if (text.length < 12) return false;
+  const labelsOnly = text
+    .replace(/^[A-Z0-9 /()&-]+:\s*$/gm, "")
+    .replace(/\n+/g, "")
+    .trim();
+  return labelsOnly.length >= 8;
+}
+
+export function mergePlaybookChapters(
+  generated: PlaybookChapter[],
+  draft?: SeedPlaybookDraft | null,
+): PlaybookChapter[] {
+  return generated.map((chapter) => {
+    const saved = draft?.chapters[chapter.id];
+    if (!saved?.script.trim()) return chapter;
+    const filled = chapterIsFilled(saved.script);
+    return {
+      ...chapter,
+      script: saved.script.trim(),
+      status: saved.status === "ready" || filled ? "ready" : "proposed",
+    };
+  });
+}
 
 function genericChapters(input: {
   name: string;
@@ -192,12 +310,21 @@ function compileBody(input: {
   return lines.join("\n");
 }
 
+export function playbookOwnerFilledCount(
+  draft?: SeedPlaybookDraft | null,
+): number {
+  return PLAYBOOK_CHAPTER_IDS.filter((id) =>
+    chapterIsFilled(draft?.chapters[id]?.script),
+  ).length;
+}
+
 export function compileSeedPlaybook(input: {
   name?: string | null;
   brief?: string | null;
   seedMode?: string | null;
   liveUrl?: string | null;
   githubRepoUrl?: string | null;
+  draft?: SeedPlaybookDraft | null;
 }): SeedPlaybook {
   const seedName = input.name?.trim() || "this Seed";
   if (
@@ -221,6 +348,7 @@ export function compileSeedPlaybook(input: {
       compiledTitle: "Not a Cinch Seed",
       compiledBody: JUST_PUTZIT_NOT_ON_SEED,
       awaitingOwnerApproval: true,
+      filledCount: 0,
     };
   }
   const plan = planInPlaceImprovements({
@@ -229,11 +357,12 @@ export function compileSeedPlaybook(input: {
     liveUrl: input.liveUrl,
     githubRepoUrl: input.githubRepoUrl,
   });
-  const chapters = genericChapters({
+  const generated = genericChapters({
     name: seedName,
     brief: input.brief,
     liveUrl: plan.liveUrl,
   });
+  const chapters = mergePlaybookChapters(generated, input.draft);
   const awaitingOwnerApproval =
     input.seedMode === "connect" || plan.kind === "social_activity_dating";
 
@@ -242,7 +371,7 @@ export function compileSeedPlaybook(input: {
     liveUrl: plan.liveUrl ?? input.liveUrl?.trim() ?? null,
     headline: `Senti holds the ${seedName} project on this Seed`,
     summary:
-      "Prep work is everything. Senti holds the filled brief — intent, scope, lanes, delivery, money — then Conductor builds one job at a time. Not a dumped file on cinchseed.com.",
+      "Prep work is everything. Fill each chapter on this Seed — intent, scope, lanes, delivery, money — then Conductor builds one job at a time. Not a dumped file on cinchseed.com.",
     method: PLAYBOOK_METHOD,
     chapters,
     compiledTitle: `${seedName} instruction pack`,
@@ -253,6 +382,7 @@ export function compileSeedPlaybook(input: {
       awaitingOwnerApproval,
     }),
     awaitingOwnerApproval,
+    filledCount: playbookOwnerFilledCount(input.draft),
   };
 }
 

@@ -24,7 +24,7 @@ export function CreateSeedForm() {
             setError(result.error);
             return;
           }
-          router.push(`/admin/projects/${result.projectId}`);
+          router.push(`/admin/projects/${result.projectId}/playbook`);
         });
       }}
     >
