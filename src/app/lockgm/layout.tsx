@@ -19,9 +19,9 @@ const body = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "LockedGM — Shadow GM draft & scouting",
+  title: "LockedGM — pick a sport, run the front office",
   description:
-    "Multi-sport Shadow GM platform: AI scout research, personal numbered reports, salary/wage desks, and draft-day beat-the-pick races.",
+    "Shadow GM desks organized by sport: scouting, draft, cap, and baseball Classic Matchup — each hub only shows that sport’s tools.",
 };
 
 export default async function LockgmLayout({
