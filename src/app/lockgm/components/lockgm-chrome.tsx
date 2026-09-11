@@ -2,24 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSport } from "@/lib/lockgm/sport-context";
+import {
+  ACCOUNT_NAV,
+  desksForSport,
+  deskHref,
+  sportHubPath,
+} from "@/lib/lockgm/sport-nav";
+import { SportRouteSync } from "./sport-route-sync";
 import { SportSwitcher } from "./sport-switcher";
-
-const NAV = [
-  { href: "/lockgm/office", label: "GM office" },
-  { href: "/lockgm/reports", label: "My reports" },
-  { href: "/lockgm/draft", label: "Draft day" },
-  { href: "/lockgm/sim", label: "Classic Matchup" },
-  { href: "/lockgm/league", label: "2026 League" },
-  { href: "/lockgm/live", label: "Live Matchup" },
-  { href: "/lockgm/ratings", label: "Ratings" },
-  { href: "/lockgm/cap", label: "Budget" },
-  { href: "/lockgm/scouting", label: "Scouting" },
-  { href: "/lockgm/fantasy-football", label: "Fantasy pulse" },
-  { href: "/lockgm/friends", label: "Invite friends" },
-  { href: "/lockgm/pricing", label: "Tiers" },
-  { href: "/lockgm/profile", label: "My profile" },
-] as const;
 
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
@@ -43,12 +35,6 @@ function HamburgerIcon({ open }: { open: boolean }) {
   );
 }
 
-/**
- * Sign in / account link — kept OUTSIDE the collapsible tools nav and always
- * rendered at every screen size (including mobile, next to the hamburger),
- * because it's the one action a logged-out visitor needs to be able to find
- * without opening a menu first.
- */
 function AccountLink({
   isSignedIn,
   onClick,
@@ -87,9 +73,11 @@ export function LockgmChrome({
   isAdmin: boolean;
   isSignedIn: boolean;
 }) {
-  const { sport, franchise } = useSport();
+  const pathname = usePathname();
+  const { sport, sportId, franchise } = useSport();
   const [open, setOpen] = useState(false);
   const menuId = useId();
+  const desks = desksForSport(sportId);
 
   useEffect(() => {
     if (!open) return;
@@ -112,6 +100,7 @@ export function LockgmChrome({
 
   return (
     <div className="min-h-full">
+      <SportRouteSync />
       <header className="sticky top-0 z-30 border-b border-[color:var(--lg-line)] bg-[color:var(--lg-bg)]/95 backdrop-blur">
         <div className="relative z-50 mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
           <div>
@@ -122,28 +111,35 @@ export function LockgmChrome({
             >
               LockedGM
             </Link>
-            <p className="text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase">
-              {franchise.abbrev} · {sport.roleTitle}
-            </p>
+            <Link
+              href={sportHubPath(sportId)}
+              onClick={close}
+              className="block text-[10px] font-semibold tracking-wide text-[color:var(--lg-mute)] uppercase hover:text-[color:var(--lg-text)]"
+            >
+              {sport.name} · {franchise.abbrev} · {sport.roleTitle}
+            </Link>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Full tools nav — only shown once there's comfortable room for
-                all 11+ links in one row. Everything below that breakpoint
-                gets the hamburger menu instead of a cramped wrap. */}
             <nav
               className="hidden items-center gap-4 text-sm font-semibold text-[color:var(--lg-mute)] xl:flex"
-              aria-label="LockedGM tools"
+              aria-label={`${sport.name} desks`}
             >
-              {NAV.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="whitespace-nowrap transition-colors hover:text-[color:var(--lg-text)]"
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {desks.map((item) => {
+                const href = deskHref(item.id, sportId);
+                const on = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.id}
+                    href={href}
+                    className={`whitespace-nowrap transition-colors hover:text-[color:var(--lg-text)] ${
+                      on ? "text-[color:var(--lg-text)]" : ""
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
               {isAdmin ? (
                 <Link
                   href="/lockgm/admin"
@@ -157,10 +153,10 @@ export function LockgmChrome({
             <AccountLink isSignedIn={isSignedIn} />
 
             <Link
-              href="/lockgm/draft"
+              href={deskHref("draft", sportId)}
               className="hidden h-10 items-center rounded-md bg-[color:var(--lg-accent)] px-3.5 text-sm font-bold text-[color:var(--lg-bg)] transition-transform hover:-translate-y-0.5 xl:inline-flex"
             >
-              Enter war room
+              {sport.shortName} war room
             </Link>
 
             <button
@@ -201,15 +197,32 @@ export function LockgmChrome({
             <ul className="flex flex-col gap-1">
               <li>
                 <Link
-                  href="/lockgm/draft"
+                  href={deskHref("draft", sportId)}
                   onClick={close}
                   className="lockgm-display block rounded-md bg-[color:var(--lg-accent)] px-3 py-3 text-center text-lg font-bold text-[color:var(--lg-bg)]"
                 >
-                  Enter war room
+                  {sport.shortName} war room
                 </Link>
               </li>
-              {NAV.map((item) => (
-                <li key={item.href}>
+              <li className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-[0.18em] text-[color:var(--lg-accent)] uppercase">
+                {sport.name}
+              </li>
+              {desks.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    href={deskHref(item.id, sportId)}
+                    onClick={close}
+                    className="block rounded-md px-3 py-3 text-base font-bold text-[color:var(--lg-text)] transition-colors hover:bg-white/5"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+              <li className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-[0.18em] text-[color:var(--lg-accent)] uppercase">
+                Account
+              </li>
+              {ACCOUNT_NAV.map((item) => (
+                <li key={item.id}>
                   <Link
                     href={item.href}
                     onClick={close}
@@ -241,6 +254,9 @@ export function LockgmChrome({
             LockedGM
           </p>
           <div className="flex flex-wrap gap-4">
+            <Link href="/lockgm" className="hover:text-[color:var(--lg-text)]">
+              All sports
+            </Link>
             <Link href="/" className="hover:text-[color:var(--lg-text)]">
               Built on Cinch Seed
             </Link>

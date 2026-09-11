@@ -20,6 +20,7 @@ import {
   type FranchiseKit,
   type Prospect,
 } from "./sport-catalog";
+import { sportIdFromPath } from "./sport-nav";
 
 const STORAGE_KEY = "lockgm_sport_v1";
 const FOOTBALL_DESK_KEY = "lockgm_football_desk_v1";
@@ -52,8 +53,16 @@ export function SportProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw && isSportId(raw)) setSportIdState(raw);
+      const pathSport = sportIdFromPath(window.location.pathname);
+      const querySport = new URLSearchParams(window.location.search).get(
+        "sport",
+      );
+      if (pathSport) setSportIdState(pathSport);
+      else if (querySport && isSportId(querySport)) setSportIdState(querySport);
+      else {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw && isSportId(raw)) setSportIdState(raw);
+      }
       const desk = window.localStorage.getItem(FOOTBALL_DESK_KEY);
       if (desk && isFootballDeskId(desk)) setFootballDeskState(desk);
     } catch {
