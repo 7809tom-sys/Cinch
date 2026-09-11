@@ -3347,6 +3347,39 @@ export function seedRestaurantFulfillmentModes(): SeedShippingMode[] {
   ];
 }
 
+/**
+ * Used-car lots do not UPS a vehicle. Customer-friendly methods from
+ * live dealers: hold the unit, book a drive, or dealer-deliver the car.
+ */
+export function seedLotFulfillmentModes(): SeedShippingMode[] {
+  return [
+    {
+      id: "lot-hold",
+      label: "Hold on the lot",
+      kind: "parcel",
+      carrier: "Lot",
+      notes: "We pull the unit up front. No shipping box. No UPS.",
+      baseRateUsd: 0,
+    },
+    {
+      id: "lot-drive",
+      label: "Book a test drive",
+      kind: "parcel",
+      carrier: "Lot",
+      notes: "Bring a license. Same-day paperwork when you buy.",
+      baseRateUsd: 0,
+    },
+    {
+      id: "lot-delivery",
+      label: "Dealer delivery",
+      kind: "parcel",
+      carrier: "Dealer",
+      notes: "We drive the car to you — not a parcel label.",
+      baseRateUsd: 149,
+    },
+  ];
+}
+
 /** Default UPS parcel + LTL modes for retail / shippable catalogs. */
 export function seedParcelShippingModes(): SeedShippingMode[] {
   return [
@@ -3384,18 +3417,31 @@ export function seedCommerceAdminBoard(
 ): SeedAdminCommerce {
   const shop = customerFacingShopCopy(projectName, brief);
   const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const lot = seedShopUsesLotFulfillment(projectName, brief);
   return {
-    eyebrow: restaurant ? "Orders & money" : "Commerce",
-    headline: restaurant ? "Kitchen tickets & menu money" : "Shop operations",
+    eyebrow: restaurant ? "Orders & money" : lot ? "The lot" : "Commerce",
+    headline: restaurant
+      ? "Kitchen tickets & menu money"
+      : lot
+        ? "Holds, drives, and dealer delivery"
+        : "Shop operations",
     support: restaurant
       ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
-      : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
-    inventoryEyebrow: restaurant ? "Menu" : "Stock",
+      : lot
+        ? "Units stay on the lot. Customers hold a car, book a drive, or ask for dealer delivery. Never print a UPS label for a vehicle."
+        : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
+    inventoryEyebrow: restaurant ? "Menu" : lot ? "Units" : "Stock",
     inventoryHeadline: restaurant
       ? "Menu items · price & on-hand"
-      : "Inventory · scan to add",
+      : lot
+        ? "Featured units · price on the card"
+        : "Inventory · scan to add",
     shippingEyebrow: "Fulfillment",
-    shippingHeadline: restaurant ? "Pickup & delivery" : "Shipping",
+    shippingHeadline: restaurant
+      ? "Pickup & delivery"
+      : lot
+        ? "Hold · drive · dealer delivery"
+        : "Shipping",
     taxEyebrow: "Compliance",
     taxHeadline: "Sales tax",
     ordersEyebrow: restaurant ? "Money" : "Orders",
@@ -3403,7 +3449,9 @@ export function seedCommerceAdminBoard(
     originZip: "10001",
     shippingModes: restaurant
       ? seedRestaurantFulfillmentModes()
-      : seedParcelShippingModes(),
+      : lot
+        ? seedLotFulfillmentModes()
+        : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
@@ -3411,7 +3459,9 @@ export function seedCommerceAdminBoard(
       nexusStates: ["NY", "NJ", "CT"],
       notes: restaurant
         ? "Collect sales tax on taxable order totals for nexus addresses."
-        : "Collect on taxable ship-to addresses in nexus states.",
+        : lot
+          ? "Collect sales tax on the unit price for the buyer’s state — not a parcel shipment."
+          : "Collect on taxable ship-to addresses in nexus states.",
     },
     inventory: shop.products.map((product) => ({
       productId: product.id,
@@ -3941,6 +3991,15 @@ export function seedShopUsesRestaurantFulfillment(
   );
 }
 
+/** Used-car lots: hold / drive / dealer delivery — never UPS a car. */
+export function seedShopUsesLotFulfillment(
+  projectName: string,
+  brief: string,
+): boolean {
+  if (!briefAsksForEcommerce(brief)) return false;
+  return industryKey(brief, projectName) === "dealership";
+}
+
 const STOCK_CATALOG_FINGERPRINT =
   /prod-serum|prod-mask|prod-brush|prod-spray|prod-towel|prod-kit|prod-one|prod-two|prod-three|daily shine serum|repair mask|studio paddle|signature item|everyday essential|gift set|detail spray|microfiber set|driveway kit|between-appointment gloss|clear coat/;
 
@@ -3989,12 +4048,16 @@ export function seedShopFulfillmentMismatchesBrief(
   brief: string,
   modes: Array<{ id?: string; label?: string; carrier?: string }>,
 ): boolean {
-  if (!seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
-  if (!modes.length) return true;
   const blob = modes
     .map((m) => `${m.id ?? ""} ${m.label ?? ""} ${m.carrier ?? ""}`)
     .join(" ")
     .toLowerCase();
+  if (seedShopUsesLotFulfillment(projectName, brief)) {
+    if (!modes.length) return true;
+    return /ups|ltl|freight|parcel ground|2nd day/.test(blob);
+  }
+  if (!seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
+  if (!modes.length) return true;
   return /ups|ltl|freight|parcel ground|2nd day/.test(blob);
 }
 
@@ -4383,7 +4446,9 @@ export function customerFacingShopCopy(
     originZip: "10001",
     shippingModes: restaurant
       ? seedRestaurantFulfillmentModes()
-      : seedParcelShippingModes(),
+      : dealership
+        ? seedLotFulfillmentModes()
+        : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
@@ -4406,7 +4471,7 @@ export function customerFacingShopCopy(
       : restaurant
         ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
         : dealership
-          ? "Inspected units from this lot — price on the card. Hold one or book a drive."
+          ? "Inspected units from this lot — price on the card. Hold one, book a drive, or ask for dealer delivery. We do not ship cars UPS."
           : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
     cta: restaurant
       ? "Add to order"
@@ -4425,6 +4490,9 @@ export function seedShopCopyJson(input: SeedShopCopy): string {
 
 /** Seed-grown shop page source (mirrored in the source tree). */
 export function seedShopPageSource(input: SeedShopCopy): string {
+  const lotPage = (input.shippingModes ?? []).some((mode) =>
+    /^lot-/.test(mode.id),
+  );
   const products = input.products
     .map(
       (product) => `        <article className="seed-shop-card">
@@ -4435,7 +4503,7 @@ ${
 }          <h3>${esc(product.title)}</h3>
           <p>${esc(product.detail)}</p>
           <p className="seed-shop-price">$${product.priceUsd.toFixed(2)}</p>
-          <p className="seed-shop-meta">${esc(product.sku)} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb</p>
+          <p className="seed-shop-meta">${esc(product.sku)} · ${product.stockQty} ${lotPage ? "on the lot" : `in stock · ${product.shipClass} · ${product.weightLb} lb`}</p>
           <button type="button" className="cta">${esc(input.cta)}</button>
         </article>`,
     )
@@ -4467,7 +4535,7 @@ ${products}
       <section className="seed-shop-cart" id="cart">
         <h2>Cart</h2>
         <p className="seed-shop-cart-empty">Your cart is empty.</p>
-        <p className="seed-shop-meta">Ship-from ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · UPS parcel + LTL in Seed admin.</p>
+        <p className="seed-shop-meta">${lotPage ? `Lot ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · hold / drive / dealer delivery — never UPS a car.` : `Ship-from ${esc(input.originZip)} · tax ${input.salesTax?.ratePct ?? 0}% · UPS parcel + LTL in Seed admin.`}</p>
         <label>
           Shipping
           <select name="shippingModeId">

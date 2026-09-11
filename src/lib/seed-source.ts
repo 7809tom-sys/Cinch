@@ -17,6 +17,14 @@ import {
 } from "./seed-site-copy";
 import { SEED_BUILD_MODULARS_FIRST_RULE } from "./module-library";
 import {
+  applyComparableOverlay,
+  comparableResearchMarkdown,
+  parseComparableResearch,
+  researchComparables,
+  seoSourceFromResearch,
+  taskIsComparableResearch,
+} from "./seed-comparable-research";
+import {
   SEED_EDIT_MUST_REACT_RULE,
   taskIsReactToEditedBrief,
 } from "./seed-edit-rule";
@@ -384,7 +392,11 @@ export async function applySeedIdentityEdit(input: {
   projectName: string;
   brief: string;
 }): Promise<void> {
-  const landing = customerFacingSiteCopy(input.projectName, input.brief);
+  const landing = await siteCopyWithComparables(
+    input.projectId,
+    input.projectName,
+    input.brief,
+  );
 
   await upsertSourceFile({
     projectId: input.projectId,
@@ -749,6 +761,20 @@ async function projectIdentityFromSource(projectId: string): Promise<{
   return { name, brief };
 }
 
+async function siteCopyWithComparables(
+  projectId: string,
+  projectName: string,
+  brief: string,
+) {
+  const landing = customerFacingSiteCopy(projectName, brief);
+  const bundle = await getSourceBundle(projectId);
+  const raw =
+    bundle?.files.find((file) => file.path === "content/comparable-research.json")
+      ?.content ?? "";
+  const research = parseComparableResearch(raw);
+  return research ? applyComparableOverlay(landing, research) : landing;
+}
+
 /**
  * Map a finished / in-progress task onto concrete source edits.
  *
@@ -809,6 +835,73 @@ ${brief}
       agentName: agent,
       status,
       message: `${agent} ${input.phase} reacting to edited brief`,
+    });
+    return;
+  }
+
+  // HARD RULE: search comparable ideal sites and take the best.
+  if (taskIsComparableResearch(input.taskTitle)) {
+    const identity = await projectIdentityFromSource(input.projectId);
+    const name = identity.name || "Seed site";
+    const brief = identity.brief || input.taskDetail;
+    const { getProject } = await import("./store");
+    const project = await getProject(input.projectId);
+    const research = await researchComparables({
+      projectName: name,
+      brief,
+      referenceUrl: project?.referenceUrl,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/comparable-research.json",
+      content: `${JSON.stringify(research, null, 2)}\n`,
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} comparable research`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "docs/comparable-research.md",
+      content: comparableResearchMarkdown(research),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} comparable research notes`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/seo.ts",
+      content: seoSourceFromResearch(name, research),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} SEO/AIO from comparable sites`,
+    });
+    const landing = applyComparableOverlay(
+      customerFacingSiteCopy(name, brief),
+      research,
+    );
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "content/landing.copy.json",
+      content: seedLandingCopyJson(landing),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} landing from best comparable sites`,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "app/page.tsx",
+      content: seedHomePageSource({
+        ...landing,
+        includeShop: briefAsksForEcommerce(brief),
+      }),
+      authoredBy: input.agentId,
+      agentName: agent,
+      status,
+      message: `${agent} ${input.phase} took the best of comparable sites`,
     });
     return;
   }
@@ -877,7 +970,11 @@ ${brief}
 
     // Refresh landing so conversion path stays customer-facing after each phase.
     if (input.phase === "finished") {
-      const landing = customerFacingSiteCopy(name, brief);
+      const landing = await siteCopyWithComparables(
+        input.projectId,
+        name,
+        brief,
+      );
       await upsertSourceFile({
         projectId: input.projectId,
         path: "app/page.tsx",
@@ -996,7 +1093,11 @@ Owner: ${agent}
       status,
       message: `${agent} ${input.phase} shop styles`,
     });
-    const landing = customerFacingSiteCopy(identity.name, brief);
+    const landing = await siteCopyWithComparables(
+      input.projectId,
+      identity.name,
+      brief,
+    );
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
@@ -1077,7 +1178,11 @@ Owner: ${agent}
     // Keep the public landing on business copy if it drifted to task text.
     const identity = await projectIdentityFromSource(input.projectId);
     const brief = identity.brief || input.taskDetail;
-    const landing = customerFacingSiteCopy(identity.name, brief);
+    const landing = await siteCopyWithComparables(
+      input.projectId,
+      identity.name,
+      brief,
+    );
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
@@ -1105,7 +1210,11 @@ Owner: ${agent}
   if (title.includes("design") || title.includes("landing")) {
     const identity = await projectIdentityFromSource(input.projectId);
     const brief = identity.brief || input.taskDetail;
-    const landing = customerFacingSiteCopy(identity.name, brief);
+    const landing = await siteCopyWithComparables(
+      input.projectId,
+      identity.name,
+      brief,
+    );
     await upsertSourceFile({
       projectId: input.projectId,
       path: "app/page.tsx",
@@ -1142,7 +1251,11 @@ Owner: ${agent}
   if (title.includes("copy")) {
     const identity = await projectIdentityFromSource(input.projectId);
     const brief = identity.brief || input.taskDetail;
-    const landing = customerFacingSiteCopy(identity.name, brief);
+    const landing = await siteCopyWithComparables(
+      input.projectId,
+      identity.name,
+      brief,
+    );
     await upsertSourceFile({
       projectId: input.projectId,
       path: "content/landing.copy.json",

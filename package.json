@@ -18,6 +18,7 @@
     "assert:seed-playbook": "npx tsx scripts/assert-seed-playbook.ts",
     "assert:seed-prep": "npx tsx scripts/assert-seed-prep.ts",
     "assert:seed-watch-loop": "npx tsx scripts/assert-seed-watch-loop.ts",
+    "assert:seed-comparables": "npx tsx scripts/assert-seed-comparables.ts",
     "assert:lockgm-hs-top100": "npx tsx scripts/assert-lockgm-hs-top100.ts",
     "assert:lockgm-milb-top200": "npx tsx scripts/assert-lockgm-milb-top200.ts",
     "assert:lockgm-college-top300": "npx tsx scripts/assert-lockgm-college-top300.ts",

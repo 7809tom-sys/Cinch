@@ -63,6 +63,7 @@ export {
   seedShopMismatchesIndustry,
   seedShopPageSource,
   seedShopShouldStartEmpty,
+  seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
   seedStarterShopProducts,
   briefIsPizza,

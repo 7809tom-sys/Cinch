@@ -17,6 +17,7 @@ export function SeedShopBoard({
   shippingModes,
   salesTax,
   restaurantOrdering = false,
+  lotHold = false,
 }: {
   projectId: string;
   products: SeedShopProduct[];
@@ -25,6 +26,8 @@ export function SeedShopBoard({
   salesTax: SeedSalesTaxSettings;
   /** Pizza / restaurant: pickup/delivery ticket UX instead of parcel ship. */
   restaurantOrdering?: boolean;
+  /** Used-car lot: hold / drive / dealer delivery — never UPS a car. */
+  lotHold?: boolean;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [shippingModeId, setShippingModeId] = useState(
@@ -114,7 +117,13 @@ export function SeedShopBoard({
                 ? `, delivery $${result.shippingUsd.toFixed(2)}`
                 : ", pickup"
             }). The kitchen has the ticket.`
-          : `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}, ship $${result.shippingUsd.toFixed(2)}).`,
+          : lotHold
+            ? `We'll handle this unit — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}${
+                result.shippingUsd > 0
+                  ? `, dealer delivery $${result.shippingUsd.toFixed(2)}`
+                  : ", hold/drive on the lot"
+              }). No UPS box.`
+            : `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}, ship $${result.shippingUsd.toFixed(2)}).`,
       );
     });
   }
@@ -142,7 +151,9 @@ export function SeedShopBoard({
             <p className="seed-shop-meta">
               {restaurantOrdering
                 ? `${product.sku} · ready to order`
-                : `${product.sku} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}
+                : lotHold
+                  ? `${product.sku} · ${product.stockQty} on the lot`
+                  : `${product.sku} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}
             </p>
             <button
               type="button"
@@ -157,12 +168,14 @@ export function SeedShopBoard({
       </div>
 
       <section className="seed-shop-cart" id="cart">
-        <h2>{restaurantOrdering ? "Your order" : "Cart"}</h2>
+        <h2>{restaurantOrdering ? "Your order" : lotHold ? "Hold list" : "Cart"}</h2>
         {lines.length === 0 ? (
           <p className="seed-shop-cart-empty">
             {restaurantOrdering
               ? "Add menu items to build your order."
-              : "Your cart is empty."}
+              : lotHold
+                ? "Ask about a unit to hold it or book a drive."
+                : "Your cart is empty."}
           </p>
         ) : (
           <>
@@ -188,7 +201,7 @@ export function SeedShopBoard({
                 : ""}{" "}
               · Total ${total.toFixed(2)}
             </p>
-            {needsLtl && !restaurantOrdering ? (
+            {needsLtl && !restaurantOrdering && !lotHold ? (
               <p className="seed-shop-meta">
                 Cart includes LTL freight items — choose an LTL mode below.
               </p>
@@ -210,7 +223,9 @@ export function SeedShopBoard({
                   ? isDelivery
                     ? "Delivery state"
                     : "Pickup state"
-                  : "Ship-to state"}
+                  : lotHold
+                    ? "Your state"
+                    : "Ship-to state"}
                 <input
                   name="shipToState"
                   type="text"
@@ -227,11 +242,17 @@ export function SeedShopBoard({
                   ? isDelivery
                     ? "Delivery ZIP"
                     : "Pickup ZIP"
-                  : "Ship-to ZIP"}
+                  : lotHold
+                    ? "Your ZIP"
+                    : "Ship-to ZIP"}
                 <input name="shipToZip" type="text" required />
               </label>
               <label>
-                {restaurantOrdering ? "Pickup or delivery" : "Shipping"}
+                {restaurantOrdering
+                  ? "Pickup or delivery"
+                  : lotHold
+                    ? "How you'll get the car"
+                    : "Shipping"}
                 <select
                   name="shippingModeId"
                   value={mode?.id ?? shippingModeId}
@@ -240,7 +261,7 @@ export function SeedShopBoard({
                   {shippingModes.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
-                      {restaurantOrdering ? "" : ` (${item.kind})`} · $
+                      {restaurantOrdering || lotHold ? "" : ` (${item.kind})`} · $
                       {item.baseRateUsd.toFixed(2)}
                     </option>
                   ))}
@@ -252,7 +273,9 @@ export function SeedShopBoard({
                   <option value="invoice">
                     {restaurantOrdering
                       ? "Pay at pickup / on delivery"
-                      : "Pay later / invoice"}
+                      : lotHold
+                        ? "Finance or pay at the lot"
+                        : "Pay later / invoice"}
                   </option>
                   <option value="card">
                     Charge card (Seed checkout — recorded as paid)
@@ -263,10 +286,14 @@ export function SeedShopBoard({
                 {pending
                   ? restaurantOrdering
                     ? "Sending ticket…"
-                    : "Placing order…"
+                    : lotHold
+                      ? "Saving hold…"
+                      : "Placing order…"
                   : restaurantOrdering
                     ? "Place order"
-                    : "Place order"}
+                    : lotHold
+                      ? "Hold this unit"
+                      : "Place order"}
               </button>
             </form>
           </>

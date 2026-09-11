@@ -850,6 +850,12 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   > = [
     ...prepTasks,
     {
+      title: "Search comparable ideal sites and take the best",
+      detail: `HARD RULE: when Seed describes a site, search the internet for comparable ideal sites, compare them, and take the best CTA/headline/nav patterns that still match this brief. A notebook is not research. ${modularsFirst}`,
+      requiredSkills: ["copy", "research"],
+      minSkillLevel: 3,
+    },
+    {
       title: "Adopt existing library modulars",
       detail: modularsFirst,
       requiredSkills: ["architecture", "research"],

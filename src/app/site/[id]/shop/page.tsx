@@ -4,6 +4,7 @@ import {
   briefAsksForEcommerce,
   buildSeedShopPreview,
   proofAndRepairSeedSite,
+  seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -36,6 +37,7 @@ export default async function SeedShopPage({
     project.name,
     project.brief,
   );
+  const lotHold = seedShopUsesLotFulfillment(project.name, project.brief);
 
   return (
     <>
@@ -58,6 +60,7 @@ export default async function SeedShopPage({
           shippingModes={shop.shippingModes}
           salesTax={shop.salesTax}
           restaurantOrdering={restaurantOrdering}
+          lotHold={lotHold}
         />
       </main>
     </>
