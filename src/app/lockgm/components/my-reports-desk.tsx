@@ -12,7 +12,7 @@ import {
 } from "@/lib/lockgm/scout-notebook";
 
 export function MyReportsDesk() {
-  const { sportId, franchise } = useSport();
+  const { sportId, boardProspects } = useSport();
   const [notebook, setNotebook] = useState<ScoutNotebook>(empty);
   const [scoutNumber, setScoutNumber] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -31,8 +31,8 @@ export function MyReportsDesk() {
   }, []);
 
   useEffect(() => {
-    setProspectId(franchise.prospects[0]?.id ?? "");
-  }, [sportId, franchise.prospects]);
+    setProspectId(boardProspects[0]?.id ?? "");
+  }, [sportId, boardProspects]);
 
   function persist(next: ScoutNotebook) {
     setNotebook(next);
@@ -51,8 +51,8 @@ export function MyReportsDesk() {
 
   function addTypedReport() {
     const prospect =
-      franchise.prospects.find((p) => p.id === prospectId) ??
-      franchise.prospects[0];
+      boardProspects.find((p) => p.id === prospectId) ??
+      boardProspects[0];
     if (!prospect || !body.trim()) return;
     const latest = loadNotebook();
     const identity = {
@@ -185,7 +185,7 @@ export function MyReportsDesk() {
               onChange={(e) => setProspectId(e.target.value)}
               className="mt-1 w-full border border-[color:var(--lg-line)] bg-[color:var(--lg-bg)] px-3 py-2"
             >
-              {franchise.prospects.map((p) => (
+              {boardProspects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} · {p.position}
                 </option>

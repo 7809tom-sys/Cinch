@@ -6,17 +6,19 @@ import {
   BASKETBALL_HS_BOARD_YEAR,
   BASEBALL_MILB_BOARD_YEAR,
   FOOTBALL_COLLEGE_BOARD_YEAR,
+  FOOTBALL_FA_BOARD_YEAR,
 } from "@/lib/lockgm/sport-catalog";
 import { ScoutingTierSwitch } from "../components/scouting-tier-switch";
 
 export default function LockgmScoutingPage() {
-  const { sport, franchise } = useSport();
+  const { sport, franchise, footballDesk, boardProspects } = useSport();
   const path = sport.stageOrder
     .map((k) => sport.stages[k]?.split(" ")[0] ?? k)
     .join(" → ");
   const isHoops = sport.id === "basketball";
   const isBaseball = sport.id === "baseball";
   const isFootball = sport.id === "football";
+  const isFaDesk = isFootball && footballDesk === "free_agency";
 
   return (
     <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8">
@@ -26,7 +28,9 @@ export default function LockgmScoutingPage() {
           : isBaseball
             ? "MILB TOP 200 · SCOUTING BOARD"
             : isFootball
-              ? "COLLEGE TOP 300 · JUNIORS & SENIORS"
+              ? isFaDesk
+                ? "2027 NFL FREE AGENTS · SCOUTING DESK"
+                : "COLLEGE TOP 300 · JUNIORS & SENIORS"
               : "SCOUTING PIPELINE"}
       </p>
       <h1 className="mt-3 lockgm-display text-4xl font-extrabold sm:text-5xl">
@@ -35,7 +39,9 @@ export default function LockgmScoutingPage() {
           : isBaseball
             ? `${BASEBALL_MILB_BOARD_YEAR} Farm Board`
             : isFootball
-              ? `${FOOTBALL_COLLEGE_BOARD_YEAR} Draft Cycle`
+              ? isFaDesk
+                ? `${FOOTBALL_FA_BOARD_YEAR} Free Agency`
+                : `${FOOTBALL_COLLEGE_BOARD_YEAR} Draft Cycle`
               : path}
       </h1>
       <p className="mt-4 max-w-2xl text-base leading-relaxed text-[color:var(--lg-mute)]">
@@ -62,16 +68,29 @@ export default function LockgmScoutingPage() {
             All-Sports.
           </>
         ) : isFootball ? (
-          <>
-            LockedGM’s college football board —{" "}
-            <strong className="text-[color:var(--lg-text)]">
-              {franchise.prospects.length} juniors and seniors
-            </strong>{" "}
-            ranked for the {FOOTBALL_COLLEGE_BOARD_YEAR} draft cycle. Play
-            verified highlight clips in-panel, refresh or run AI scout on any
-            talent, and lock picks for draft day. Full write-ups unlock on
-            Reports; deep pipeline tracking unlocks on All-Sports.
-          </>
+          isFaDesk ? (
+            <>
+              LockedGM’s {FOOTBALL_FA_BOARD_YEAR} NFL free-agent desk —{" "}
+              <strong className="text-[color:var(--lg-text)]">
+                {boardProspects.length} players
+              </strong>{" "}
+              hitting unrestricted, restricted, exclusive-rights, or club-option
+              status after the 2026 season. Every name has a LockedGM scouting
+              report. Filter UFA / RFA / ERFA, refresh write-ups, and play
+              highlight clips. Full write-ups unlock on Reports.
+            </>
+          ) : (
+            <>
+              LockedGM’s college football board —{" "}
+              <strong className="text-[color:var(--lg-text)]">
+                {franchise.prospects.length} juniors and seniors
+              </strong>{" "}
+              ranked for the {FOOTBALL_COLLEGE_BOARD_YEAR} draft cycle. Switch
+              to the 2027 free-agent desk for veteran market reports. Play
+              verified highlight clips, refresh or run AI scout, and lock picks
+              for draft day.
+            </>
+          )
         ) : (
           <>
             Follow prospects across stages for {sport.name}. Refresh or run AI
