@@ -77,7 +77,9 @@ import {
   publishSeedWebsite,
   assignWorkAfterSeedEdit,
   restaffSeedProject,
+  switchOpenWorkToAgent,
 } from "@/lib/project-manager";
+import { listSwitchableAgents } from "@/lib/agent-status";
 
 async function maybeGrantMasterAdmin(email: string, name?: string) {
   if (!isMasterEmail(email)) return;
@@ -285,6 +287,7 @@ export async function getPortalProjectSnapshot(projectId: string) {
       project: null,
       watch: null,
       agents: [] as string[],
+      crew: [],
       pmContact: null,
     };
   }
@@ -301,6 +304,7 @@ export async function getPortalProjectSnapshot(projectId: string) {
       project: null,
       watch: null,
       agents: [] as string[],
+      crew: [],
       pmContact: null,
     };
   }
@@ -310,11 +314,10 @@ export async function getPortalProjectSnapshot(projectId: string) {
   const refreshed = (await getProject(project.id)) ?? project;
 
   const watch = await getSeedWatchSnapshot(refreshed.id);
-  const agents = refreshed.invitedAgentIds
-    .map((id) => getAgent(id)?.name)
-    .filter((name): name is string => Boolean(name));
+  const crew = listSwitchableAgents(refreshed);
+  const agents = crew.map((agent) => agent.name);
 
-  return { customer, project: refreshed, watch, agents, pmContact };
+  return { customer, project: refreshed, watch, agents, crew, pmContact };
 }
 
 export async function sendPortalSeedDialogAction(
@@ -681,6 +684,30 @@ export async function portalContinueGrowthAction(projectId: string) {
   await continueSeedGrowth(projectId, { force: true });
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
+  return { ok: true as const };
+}
+
+/** Owner picks another specialist from the green/red status dropdown. */
+export async function portalSwitchAgentAction(
+  projectId: string,
+  agentId: string,
+  taskId?: string,
+) {
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) {
+    return { ok: false as const, error: access.error };
+  }
+  try {
+    await switchOpenWorkToAgent(projectId, agentId, taskId);
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Could not switch AI.",
+    };
+  }
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
+  revalidatePath(`/admin/projects/${projectId}`);
   return { ok: true as const };
 }
 

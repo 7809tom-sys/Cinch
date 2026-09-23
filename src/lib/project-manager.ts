@@ -24,6 +24,7 @@ import {
   JUST_PUTZIT_NOT_ON_SEED,
   isJustPutzItSeedProject,
 } from "./seed-connect";
+import { findSwitchableTask } from "./agent-status";
 import {
   appendNextBuildWave,
   getProject,
@@ -409,6 +410,74 @@ async function ensureSpecialistsInvited(projectId: string): Promise<SeedProject>
   pushActivity(
     project,
     `${pm.name} invited ${missing.map((agent) => agent.name).join(", ")} onto the crew.`,
+    pm.id,
+  );
+  await saveProject(project);
+  return project;
+}
+
+/**
+ * Owner picks another specialist from the status dropdown.
+ * Invites them if needed and moves the open task so it does not sit idle.
+ */
+export async function switchOpenWorkToAgent(
+  projectId: string,
+  agentId: string,
+  taskId?: string,
+): Promise<SeedProject> {
+  const agent = getAgent(agentId);
+  if (!agent || agent.isProjectManager) {
+    throw new Error("Pick a specialist AI to switch to.");
+  }
+
+  await inviteAgent(projectId, agentId);
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const task = taskId
+    ? (project.tasks.find((item) => item.id === taskId) ?? null)
+    : findSwitchableTask(project.tasks);
+  if (!task) {
+    throw new Error("Nothing left to switch — all tasks are done.");
+  }
+  if (task.status === "done") {
+    throw new Error("That task is already finished.");
+  }
+
+  const previous = task.assigneeId ? getAgent(task.assigneeId) : null;
+  const storedKeys = await loadStoredProviderKeys();
+  const configured = listConfiguredProviderIds(storedKeys);
+  const result = routeConductorTask(
+    {
+      title: task.title,
+      detail: task.detail,
+      requiredSkills: task.requiredSkills,
+      minSkillLevel: task.minSkillLevel,
+      tags: task.tags,
+      escalate: task.escalate,
+    },
+    {
+      invitedAgentIds: [agentId],
+      configuredProviders: configured,
+      unavailableProviders: listUnavailableProviders(),
+      requireConfigured: configured.length > 0,
+    },
+  );
+
+  const pm = getProjectManager();
+  task.assigneeId = agentId;
+  task.assignedBy = pm.id;
+  if (task.status === "queued") task.status = "assigned";
+  task.updatedAt = now();
+  if (!isRouteBlocked(result)) {
+    task.tags = result.tags;
+    task.route = result;
+  }
+
+  const from = previous?.name ?? "the previous AI";
+  pushActivity(
+    project,
+    `${pm.name} switched “${task.title}” from ${from} to ${agent.name} (${agent.specialty}).`,
     pm.id,
   );
   await saveProject(project);

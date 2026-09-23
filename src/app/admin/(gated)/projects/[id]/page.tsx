@@ -1,9 +1,17 @@
-import { getProjectSnapshot } from "@/app/admin/actions";
+import {
+  adminSwitchAgentAction,
+  getProjectSnapshot,
+} from "@/app/admin/actions";
 import { ConnectApiControls } from "./connect-api-controls";
 import { ProjectControls } from "./project-controls";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import {
+  AgentStatusDot,
+  AgentStatusSwitch,
+} from "@/components/agent-status-switch";
 import { getAgent } from "@/lib/agents";
+import { listSwitchableAgents } from "@/lib/agent-status";
 import { getCustomerByEmail } from "@/lib/customers";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
 import { liveWebsiteUrl, seedEmbedSnippet } from "@/lib/domain";
@@ -65,6 +73,7 @@ export default async function ProjectAdminPage({ params }: PageProps) {
     project.tasks.length > 0 &&
     project.tasks.every((task) => task.status === "done");
   const listedInLibrary = Boolean(project.marketplaceListingId);
+  const crew = listSwitchableAgents(project);
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
@@ -220,7 +229,16 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                       <p className="mt-2 text-sm break-words text-muted">
                         {task.detail}
                       </p>
-                      <p className="mt-2 text-xs break-words text-muted">
+                      <p className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-xs break-words text-muted">
+                        <AgentStatusDot
+                          status={
+                            assignee &&
+                            (task.status === "assigned" ||
+                              task.status === "in_progress")
+                              ? "active"
+                              : "inactive"
+                          }
+                        />
                         Needs {task.requiredSkills.join(", ")} · min level{" "}
                         {task.minSkillLevel}
                         {assignee
@@ -233,6 +251,17 @@ export default async function ProjectAdminPage({ params }: PageProps) {
                           ? ` · tags ${task.tags.join(", ")}`
                           : ""}
                       </p>
+                      {task.status !== "done" ? (
+                        <div className="mt-3">
+                          <AgentStatusSwitch
+                            projectId={project.id}
+                            taskId={task.id}
+                            currentAgentId={task.assigneeId}
+                            crew={crew}
+                            switchAction={adminSwitchAgentAction}
+                          />
+                        </div>
+                      ) : null}
                     </li>
                   );
                 })}

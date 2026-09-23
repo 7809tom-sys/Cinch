@@ -17,6 +17,7 @@ import {
   sampleConductorRoutes,
   type SeedProviderId,
 } from "../src/lib/conductor-routing";
+import type { AgentSkill } from "../src/lib/agents";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -169,7 +170,7 @@ if (!isRouteBlocked(reactBrief)) {
 const reactInput = {
   title: "React to edited brief",
   detail: "HARD RULE: read the new name and brief and react.",
-  requiredSkills: ["copy", "frontend", "ui"] as const,
+  requiredSkills: ["copy", "frontend", "ui"] as AgentSkill[],
   minSkillLevel: 2,
 };
 const firstReact = pickAgentForTask(reactInput);
