@@ -2,6 +2,8 @@
  * Guard: Conductor multi-provider routing (cost-down, failover, lanes).
  * Run: npx tsx scripts/assert-conductor-routing.ts
  */
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   CONDUCTOR_ROUTING_TABLE,
   EXCLUDED_SEED_PROVIDERS,
@@ -10,6 +12,7 @@ import {
   inferTaskTags,
   isExcludedSeedProvider,
   isRouteBlocked,
+  pickAgentForTask,
   routeConductorTask,
   sampleConductorRoutes,
   type SeedProviderId,
@@ -153,6 +156,59 @@ if (!isRouteBlocked(pii)) {
   assert(pii.tags.includes("pii_sensitive"), "invoice/customer email is PII");
   assert(pii.providerId !== "deepseek", "DeepSeek never sees PII / invoices");
 }
+
+const reactBrief = byLabel["React to edited brief — hand off"];
+assert(!isRouteBlocked(reactBrief), "copy+frontend+ui reaction routes");
+if (!isRouteBlocked(reactBrief)) {
+  assert(
+    reactBrief.agentName === "Atlas" || reactBrief.agentName === "Pixel",
+    "reaction task goes to Atlas or Pixel (best partial match)",
+  );
+}
+
+const reactInput = {
+  title: "React to edited brief",
+  detail: "HARD RULE: read the new name and brief and react.",
+  requiredSkills: ["copy", "frontend", "ui"] as const,
+  minSkillLevel: 2,
+};
+const firstReact = pickAgentForTask(reactInput);
+const handedOff = pickAgentForTask(reactInput, undefined, {
+  unavailableAgentIds: firstReact ? [firstReact.id] : ["ui-atlas"],
+});
+assert(Boolean(firstReact), "reaction task picks a specialist");
+assert(Boolean(handedOff), "busy first specialist hands off to another AI");
+if (firstReact && handedOff) {
+  assert(
+    handedOff.id !== firstReact.id,
+    "handoff skips the busy specialist",
+  );
+}
+
+const handedRoute = routeConductorTask(reactInput, {
+  ...opts,
+  unavailableAgentIds: firstReact ? [firstReact.id] : ["ui-atlas"],
+});
+assert(!isRouteBlocked(handedRoute), "busy specialist still routes the new task");
+if (!isRouteBlocked(handedRoute) && firstReact) {
+  assert(
+    handedRoute.agentId !== firstReact.id,
+    "busy first specialist is skipped for the new Edit Seed task",
+  );
+  assert(
+    /handed off/i.test(handedRoute.reason),
+    "route reason records the handoff",
+  );
+}
+
+const pmSource = readFileSync(
+  join(process.cwd(), "src/lib/project-manager.ts"),
+  "utf8",
+);
+assert(
+  /unavailableAgentIds:\s*busyAgentIdsOnBoard/.test(pmSource),
+  "chooseRoute skips agents already on assigned or in-progress work",
+);
 
 const failover = routeConductorTask(
   {

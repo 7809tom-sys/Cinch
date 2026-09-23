@@ -98,7 +98,25 @@ export type ChooseRouteOptions = {
   storedKeys?: Partial<Record<string, string>>;
   configuredProviders?: SeedProviderId[];
   unavailableProviders?: SeedProviderId[];
+  /** Extra specialists to skip (already handed a task this pass). */
+  busyAgentIds?: string[];
 };
+
+function busyAgentIdsOnBoard(
+  project: SeedProject,
+  task: ProjectTask,
+  extra: string[] = [],
+): string[] {
+  const fromBoard = project.tasks
+    .filter(
+      (item) =>
+        item.id !== task.id &&
+        (item.status === "assigned" || item.status === "in_progress") &&
+        Boolean(item.assigneeId),
+    )
+    .map((item) => item.assigneeId as string);
+  return [...new Set([...extra, ...fromBoard])];
+}
 
 /** Conductor picks agent + cheapest capable provider for this task. */
 export function chooseRoute(
@@ -126,6 +144,11 @@ export function chooseRoute(
       configuredProviders: configured,
       unavailableProviders:
         options.unavailableProviders ?? listUnavailableProviders(),
+      unavailableAgentIds: busyAgentIdsOnBoard(
+        project,
+        task,
+        options.busyAgentIds,
+      ),
       requireConfigured: configured.length > 0,
     },
   );
@@ -392,12 +415,18 @@ async function ensureSpecialistsInvited(projectId: string): Promise<SeedProject>
   return project;
 }
 
-/** After Edit Seed queues reaction tasks, staff and assign so the edit is acted on. */
+/** After Edit Seed queues reaction tasks, staff, assign, and start the work. */
 export async function assignWorkAfterSeedEdit(
   projectId: string,
 ): Promise<SeedProject> {
   await ensureSpecialistsInvited(projectId);
-  return runProjectManagerAssignment(projectId);
+  const assigned = await runProjectManagerAssignment(projectId);
+  const inFlight = assigned.tasks.some((task) => task.status === "in_progress");
+  // Do not finish unrelated in-progress work on Save. When the board is
+  // idle, start the new reaction task so it is not left "not completed".
+  if (inFlight) return assigned;
+  const tick = await tickProjectWork(projectId);
+  return tick.project;
 }
 
 /**
