@@ -58,7 +58,7 @@ export function AgentStatusSwitch({
         <AgentStatusDot status={current?.status ?? "inactive"} />
         <select
           aria-label="Switch AI"
-          disabled={pending || !taskId}
+          disabled={pending}
           value={value}
           onChange={(event) => {
             const next = event.target.value;
@@ -81,6 +81,9 @@ export function AgentStatusSwitch({
           }}
           className="min-h-11 min-w-0 max-w-full rounded-md border border-brand/20 bg-foam px-2 py-1.5 text-sm font-semibold text-brand-deep outline-none ring-brand/30 focus:ring-2 disabled:opacity-60"
         >
+          <option value="">
+            {taskId ? "Switch AI — see what each can do" : "See what each AI can do"}
+          </option>
           {crew.map((agent) => (
             <option key={agent.id} value={agent.id}>
               {agent.status === "active" ? "Green" : "Red"} · {agent.name} —{" "}
