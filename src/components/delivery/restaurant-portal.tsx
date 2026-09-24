@@ -7,6 +7,10 @@ import type {
   MerchantTicketStatus,
 } from "@/lib/seed-delivery";
 import {
+  restaurantNetFromSplit,
+  splitDeliveryLedger,
+} from "@/lib/seed-delivery";
+import {
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
@@ -23,8 +27,17 @@ const NEXT_LABEL: Partial<Record<MerchantTicketStatus, string>> = {
   ready: "Hand to driver",
 };
 
-function restaurantNet(gmv: number) {
-  return Math.round(gmv * 90) / 100;
+function ticketRestaurantNet(ops: DeliveryOps, ticket: MerchantTicket) {
+  const row = ops.ledger.find((item) => item.orderId === ticket.orderId);
+  if (row) return restaurantNetFromSplit(row);
+  return restaurantNetFromSplit(
+    splitDeliveryLedger({
+      gmvUsd: ticket.gmvUsd,
+      deliveryFeeUsd: 0,
+      tipUsd: 0,
+      taxUsd: 0,
+    }),
+  );
 }
 
 export function HometownRestaurantPortal({
@@ -52,9 +65,12 @@ export function HometownRestaurantPortal({
   const done = tickets.filter(
     (row) => row.status === "completed" || row.status === "declined",
   );
-  const liveGmv = tickets
-    .filter((row) => row.status !== "declined")
-    .reduce((sum, row) => sum + row.gmvUsd, 0);
+  const liveTickets = tickets.filter((row) => row.status !== "declined");
+  const liveGmv = liveTickets.reduce((sum, row) => sum + row.gmvUsd, 0);
+  const liveRestaurantNet = liveTickets.reduce(
+    (sum, row) => sum + ticketRestaurantNet(ops, row),
+    0,
+  );
 
   function run(
     fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
@@ -97,7 +113,7 @@ export function HometownRestaurantPortal({
             <p className="mt-2 text-sm text-muted">
               Like DoorDash for the kitchen: new orders, accept or decline, mark
               ready, hand to a Hometown driver. You pay a flat 10% on delivery
-              GMV. You keep 90%.
+              GMV plus card processing (~2.9%). The platform 5% stays whole.
             </p>
           </div>
           {restaurant ? (
@@ -142,10 +158,10 @@ export function HometownRestaurantPortal({
           </div>
           <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
             <dt className="text-xs font-bold tracking-wide text-muted uppercase">
-              You keep 90%
+              You keep (after 10% + 2.9%)
             </dt>
             <dd className="mt-1 text-xl font-extrabold text-brand-deep">
-              ${restaurantNet(liveGmv).toFixed(2)}
+              ${liveRestaurantNet.toFixed(2)}
             </dd>
           </div>
           <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
@@ -160,6 +176,7 @@ export function HometownRestaurantPortal({
       </section>
 
       <OrderLane
+        ops={ops}
         eyebrow="New orders"
         title="Accept like DoorDash"
         empty="No new customer orders. They land here the moment someone checks out."
@@ -173,6 +190,7 @@ export function HometownRestaurantPortal({
         }
       />
       <OrderLane
+        ops={ops}
         eyebrow="In the kitchen"
         title="Prep, then hand to the driver"
         empty="Nothing cooking right now."
@@ -181,6 +199,7 @@ export function HometownRestaurantPortal({
         onAdvance={advance}
       />
       <OrderLane
+        ops={ops}
         eyebrow="Done"
         title="Completed and declined"
         empty="Finished tickets show here."
@@ -198,6 +217,7 @@ export function HometownRestaurantPortal({
 }
 
 function OrderLane({
+  ops,
   eyebrow,
   title,
   empty,
@@ -206,6 +226,7 @@ function OrderLane({
   onAdvance,
   onDecline,
 }: {
+  ops: DeliveryOps;
   eyebrow: string;
   title: string;
   empty: string;
@@ -245,8 +266,8 @@ function OrderLane({
                 </p>
                 <p className="mt-2 text-sm font-bold text-brand-deep">
                   Ticket ${ticket.gmvUsd.toFixed(2)} · you keep $
-                  {restaurantNet(ticket.gmvUsd).toFixed(2)} · Hometown $
-                  {(ticket.gmvUsd * 0.1).toFixed(2)}
+                  {ticketRestaurantNet(ops, ticket).toFixed(2)} · Hometown 10% $
+                  {(ticket.gmvUsd * 0.1).toFixed(2)} · proc ~2.9%
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

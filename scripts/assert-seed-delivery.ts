@@ -48,9 +48,13 @@ assert(
   "processor is ~2.9% of the charged total",
 );
 assert(
-  split.platformNetUsd ===
-    Math.round((split.platformGrossUsd - split.processorFeeUsd) * 100) / 100,
-  "processor comes out of the platform 5%",
+  split.platformNetUsd === split.platformGrossUsd,
+  "platform keeps the full 5% — processor is not taken from the platform",
+);
+assert(
+  split.restaurantNetUsd ===
+    Math.round((100 - 10 - split.processorFeeUsd) * 100) / 100,
+  "processor comes out of the restaurant",
 );
 
 assert(DEFAULT_WEEKLY_GMV_EXAMPLE === 500, "default weekly GMV example is $500");
@@ -220,6 +224,30 @@ assert(
   "Seed portal links restaurant and driver portals",
 );
 assert(adminPage.includes("SeedDeliveryLedger"), "admin mounts the ledger");
+const deliveryLib = readFileSync(
+  join(process.cwd(), "src/lib/seed-delivery.ts"),
+  "utf8",
+);
+const ledgerUi = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/admin/delivery-ledger.tsx"),
+  "utf8",
+);
+const siteCopy = readFileSync(
+  join(process.cwd(), "src/lib/seed-site-copy.ts"),
+  "utf8",
+);
+assert(
+  /comes out of the restaurant/.test(deliveryLib) &&
+    /comes out of the\s+restaurant/.test(ledgerUi) &&
+    /comes out of the restaurant/.test(siteCopy),
+  "ledger rule says processor comes out of the restaurant",
+);
+assert(
+  !/comes out of the platform 5%\./.test(deliveryLib) &&
+    !/comes out of the platform 5%\./.test(ledgerUi) &&
+    !/comes out of the platform 5%\./.test(siteCopy),
+  "ledger no longer takes processor from the platform 5%",
+);
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");
 

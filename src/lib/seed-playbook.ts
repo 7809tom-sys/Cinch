@@ -248,7 +248,7 @@ function deliveryChapters(input: {
       n: 4,
       agent: "Quill",
       title: "Non-negotiables",
-      script: `Hard rules for ${site}: restaurants pay a flat 10% on delivery GMV; platform 5%; originating scout residual 5% (immutable on freeze); drivers keep 100% of delivery fee + tip; processor (~2.9%) comes out of the platform 5%. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
+      script: `Hard rules for ${site}: restaurants pay a flat 10% on delivery GMV; platform 5%; originating scout residual 5% (immutable on freeze); drivers keep 100% of delivery fee + tip; processor (~2.9%) comes out of the restaurant, not the platform 5%. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
       status: "proposed",
     },
     {
