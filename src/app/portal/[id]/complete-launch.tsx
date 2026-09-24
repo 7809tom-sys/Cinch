@@ -21,6 +21,8 @@ export function PortalCompleteLaunch({
   buildComplete = true,
   adminHref = null,
   shopHref = null,
+  restaurantHref = null,
+  driveHref = null,
   editHref = null,
 }: {
   projectId: string;
@@ -35,6 +37,8 @@ export function PortalCompleteLaunch({
   adminHref?: string | null;
   /** Seed-grown shop when the brief asked for e-commerce. */
   shopHref?: string | null;
+  restaurantHref?: string | null;
+  driveHref?: string | null;
   editHref?: string | null;
 }) {
   const router = useRouter();
@@ -151,7 +155,23 @@ export function PortalCompleteLaunch({
             href={shopHref}
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
           >
-            Shop
+            {restaurantHref ? "Customer" : "Shop"}
+          </a>
+        ) : null}
+        {restaurantHref ? (
+          <a
+            href={restaurantHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+          >
+            Restaurant portal
+          </a>
+        ) : null}
+        {driveHref ? (
+          <a
+            href={driveHref}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+          >
+            Driver portal
           </a>
         ) : null}
       </div>

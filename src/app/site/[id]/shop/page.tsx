@@ -63,14 +63,14 @@ export default async function SeedShopPage({
                   className="seed-admin-link"
                   target="_top"
                 >
-                  Merchant
+                  Restaurant portal
                 </Link>
                 <Link
                   href={`/site/${id}/drive`}
                   className="seed-admin-link"
                   target="_top"
                 >
-                  Drive
+                  Driver portal
                 </Link>
               </>
             ) : null}

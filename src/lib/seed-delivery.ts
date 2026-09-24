@@ -25,8 +25,14 @@ export type MerchantTicketStatus =
   | "incoming"
   | "accepted"
   | "ready"
-  | "completed";
-export type DriverRunStatus = "offered" | "accepted" | "picked_up" | "delivered";
+  | "completed"
+  | "declined";
+export type DriverRunStatus =
+  | "offered"
+  | "accepted"
+  | "picked_up"
+  | "delivered"
+  | "cancelled";
 
 export type DeliveryRestaurant = {
   id: string;
@@ -35,6 +41,8 @@ export type DeliveryRestaurant = {
   /** Originating scout — locked when the restaurant first goes active. */
   scoutId: string;
   active: boolean;
+  /** DoorDash-style store pause — does not move scout_id. */
+  paused: boolean;
 };
 
 export type DeliveryDriver = {
@@ -44,6 +52,8 @@ export type DeliveryDriver = {
   licenseOk: boolean;
   insuranceOk: boolean;
   softwareUsdPerYear: number;
+  /** DoorDash-style “Dash now” — offline drivers do not see offers. */
+  online: boolean;
 };
 
 export type DeliveryLedgerSplit = {
@@ -151,7 +161,10 @@ export function weeklyScoutResidualExamples(): Array<{
 
 export function driverCanDispatch(driver: DeliveryDriver): boolean {
   return (
-    driver.status === "approved" && driver.licenseOk && driver.insuranceOk
+    driver.status === "approved" &&
+    driver.licenseOk &&
+    driver.insuranceOk &&
+    driver.online
   );
 }
 
@@ -205,6 +218,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         neighborhood: "Market Street",
         scoutId: "drv-maya",
         active: true,
+        paused: false,
       },
       {
         id: "rest-tacos",
@@ -212,6 +226,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         neighborhood: "Second Street",
         scoutId: "drv-maya",
         active: true,
+        paused: false,
       },
       {
         id: "rest-deli",
@@ -219,6 +234,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         neighborhood: "Riverwalk",
         scoutId: "drv-riley",
         active: true,
+        paused: false,
       },
     ],
     drivers: [
@@ -229,6 +245,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         licenseOk: true,
         insuranceOk: true,
         softwareUsdPerYear: DRIVER_SOFTWARE_USD_PER_YEAR,
+        online: true,
       },
       {
         id: "drv-jordan",
@@ -237,6 +254,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         licenseOk: true,
         insuranceOk: true,
         softwareUsdPerYear: DRIVER_SOFTWARE_USD_PER_YEAR,
+        online: true,
       },
       {
         id: "drv-riley",
@@ -245,6 +263,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         licenseOk: true,
         insuranceOk: false,
         softwareUsdPerYear: DRIVER_SOFTWARE_USD_PER_YEAR,
+        online: false,
       },
     ],
     ledger: [
@@ -304,8 +323,17 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
     }
     return {
       city: parsed.city || "One town",
-      restaurants: parsed.restaurants,
-      drivers: parsed.drivers,
+      restaurants: parsed.restaurants.map((row) => ({
+        ...row,
+        paused: Boolean(row.paused),
+      })),
+      drivers: parsed.drivers.map((row) => ({
+        ...row,
+        online:
+          typeof row.online === "boolean"
+            ? row.online
+            : row.status === "approved",
+      })),
       ledger: parsed.ledger,
       tickets: parsed.tickets,
       runs: parsed.runs,
@@ -329,7 +357,7 @@ export function freezeDeliveryDriver(
     ...ops,
     drivers: ops.drivers.map((driver) =>
       driver.id === driverId
-        ? { ...driver, status: "frozen" as const }
+        ? { ...driver, status: "frozen" as const, online: false }
         : driver,
     ),
     restaurants: ops.restaurants.map((row, index) => ({
@@ -437,16 +465,56 @@ export function recordDeliveryOrder(
   };
 }
 
+export function setRestaurantPaused(
+  ops: DeliveryOps,
+  restaurantId: string,
+  paused: boolean,
+): DeliveryOps {
+  return {
+    ...ops,
+    restaurants: ops.restaurants.map((row) =>
+      row.id === restaurantId ? { ...row, paused } : row,
+    ),
+  };
+}
+
+export function setDriverOnline(
+  ops: DeliveryOps,
+  driverId: string,
+  online: boolean,
+): DeliveryOps {
+  return {
+    ...ops,
+    drivers: ops.drivers.map((driver) =>
+      driver.id === driverId
+        ? {
+            ...driver,
+            online: online && driver.status === "approved",
+          }
+        : driver,
+    ),
+  };
+}
+
 export function setMerchantTicketStatus(
   ops: DeliveryOps,
   ticketId: string,
   status: MerchantTicketStatus,
 ): DeliveryOps {
+  const ticket = ops.tickets.find((row) => row.id === ticketId);
   return {
     ...ops,
-    tickets: ops.tickets.map((ticket) =>
-      ticket.id === ticketId ? { ...ticket, status } : ticket,
+    tickets: ops.tickets.map((row) =>
+      row.id === ticketId ? { ...row, status } : row,
     ),
+    runs:
+      status === "declined" && ticket
+        ? ops.runs.map((run) =>
+            run.orderId === ticket.orderId && run.status === "offered"
+              ? { ...run, status: "cancelled" as const }
+              : run,
+          )
+        : ops.runs,
   };
 }
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
-import { buildSeedSitePreview, proofAndRepairSeedSite } from "@/lib/seed-site";
+import { proofAndRepairSeedSite } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
-import { SeedMerchantBoard } from "./merchant-board";
 
 export const dynamic = "force-dynamic";
 
@@ -20,31 +20,41 @@ export default async function SeedMerchantPage({
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/site/${id}`);
 
-  const preview = await buildSeedSitePreview(project);
-
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: preview.css }} />
-      <main className="seed-run seed-run-merchant">
-        <header className="seed-run-top">
+    <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="seed-run-kicker">Merchant terminal</p>
-            <h1>{preview.brand}</h1>
-            <p className="seed-run-support">
-              Accept tickets, mark ready, and hand to a Hometown driver. You
-              pay a flat 10% on delivery GMV — not a seat at a restaurant host
-              stand.
+            <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+              Hometown Runner
             </p>
+            <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl font-extrabold text-brand-deep">
+              Restaurant portal
+            </h1>
           </div>
-          <nav className="seed-run-links" aria-label="Hometown apps">
-            <Link href={`/site/${id}`}>Website</Link>
-            <Link href={`/site/${id}/shop`}>Customer</Link>
-            <Link href={`/site/${id}/drive`}>Drive</Link>
-            <Link href={`/site/${id}/admin`}>Admin</Link>
+          <nav className="flex flex-wrap gap-2 text-sm font-semibold">
+            <Link
+              className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"
+              href={`/portal/${id}/restaurant`}
+            >
+              Open in portal
+            </Link>
+            <Link
+              className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"
+              href={`/site/${id}/drive`}
+            >
+              Driver portal
+            </Link>
+            <Link
+              className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"
+              href={`/site/${id}/shop`}
+            >
+              Customer
+            </Link>
           </nav>
         </header>
-        <SeedMerchantBoard projectId={id} ops={ops} />
-      </main>
-    </>
+        <HometownRestaurantPortal projectId={id} ops={ops} />
+      </div>
+    </main>
   );
 }

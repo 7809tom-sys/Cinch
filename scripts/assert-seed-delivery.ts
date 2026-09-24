@@ -14,6 +14,9 @@ import {
   driverCanDispatch,
   freezeDeliveryDriver,
   recordDeliveryOrder,
+  setDriverOnline,
+  setMerchantTicketStatus,
+  setRestaurantPaused,
   scoutResidualForWeeklyGmv,
   splitDeliveryLedger,
   starterDeliveryOps,
@@ -102,6 +105,31 @@ assert(
 const blocked = acceptDriverRun(ops, "run-sample-pilot", "drv-riley");
 assert(!blocked.ok, "frozen Riley cannot accept a run");
 
+const paused = setRestaurantPaused(ops, "rest-pilot", true);
+assert(
+  paused.restaurants.find((row) => row.id === "rest-pilot")?.paused === true,
+  "restaurant can pause incoming like DoorDash",
+);
+const offline = setDriverOnline(ops, "drv-jordan", false);
+assert(
+  offline.drivers.find((row) => row.id === "drv-jordan")?.online === false,
+  "driver can go offline",
+);
+const offlineBlock = acceptDriverRun(offline, "run-sample-pilot", "drv-jordan");
+assert(!offlineBlock.ok, "offline driver cannot accept an offer");
+
+const declined = setMerchantTicketStatus(ops, "tkt-sample-pilot", "declined");
+assert(
+  declined.tickets.find((row) => row.id === "tkt-sample-pilot")?.status ===
+    "declined",
+  "restaurant can decline an order",
+);
+assert(
+  declined.runs.find((row) => row.id === "run-sample-pilot")?.status ===
+    "cancelled",
+  "declining an order cancels the offered dash",
+);
+
 const taken = acceptDriverRun(ops, "run-sample-pilot", "drv-jordan");
 assert(taken.ok, "approved Jordan can accept a run");
 if (taken.ok) {
@@ -171,8 +199,26 @@ const landing = readFileSync(
   join(process.cwd(), "src/app/site/[id]/page.tsx"),
   "utf8",
 );
-assert(merchantPage.includes("Merchant terminal"), "merchant app is a live Seed surface");
-assert(drivePage.includes("Driver / scout"), "driver/scout app is a live Seed surface");
+const restaurantPortal = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/restaurant/page.tsx"),
+  "utf8",
+);
+const driverPortal = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/drive/page.tsx"),
+  "utf8",
+);
+const seedPortal = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/page.tsx"),
+  "utf8",
+);
+assert(merchantPage.includes("Restaurant portal"), "restaurant portal is a live Seed surface");
+assert(drivePage.includes("Driver portal"), "driver portal is a live Seed surface");
+assert(restaurantPortal.includes("Restaurant portal"), "portal has a restaurant DoorDash desk");
+assert(driverPortal.includes("Driver portal"), "portal has a driver DoorDash desk");
+assert(
+  seedPortal.includes("/restaurant") && seedPortal.includes("/drive"),
+  "Seed portal links restaurant and driver portals",
+);
 assert(adminPage.includes("SeedDeliveryLedger"), "admin mounts the ledger");
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");

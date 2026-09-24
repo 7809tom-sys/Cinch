@@ -611,12 +611,12 @@ const hometownDrive = readFileSync(
   "utf8",
 );
 assert(
-  hometownMerchant.includes("Merchant terminal"),
-  "Seed builds a merchant terminal for Hometown Runner",
+  hometownMerchant.includes("Restaurant portal"),
+  "Seed builds a restaurant portal for Hometown Runner",
 );
 assert(
-  hometownDrive.includes("Driver / scout"),
-  "Seed builds a driver/scout app for Hometown Runner",
+  hometownDrive.includes("Driver portal"),
+  "Seed builds a driver portal for Hometown Runner",
 );
 
 if (process.exitCode) {

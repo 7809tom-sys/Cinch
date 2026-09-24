@@ -135,12 +135,12 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             ) : null}
             {driveHref ? (
               <li>
-                <a href={driveHref}>Drive</a>
+                <a href={driveHref}>Driver portal</a>
               </li>
             ) : null}
             {merchantHref ? (
               <li>
-                <a href={merchantHref}>Merchant</a>
+                <a href={merchantHref}>Restaurant portal</a>
               </li>
             ) : null}
             <li>
@@ -166,8 +166,10 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             {deliveryPlatform ? (
               <p className="seed-hero-apps">
                 <a href={shopHref ?? "#book"}>Customer</a>
-                {driveHref ? <a href={driveHref}>Drive</a> : null}
-                {merchantHref ? <a href={merchantHref}>Merchant</a> : null}
+                {driveHref ? <a href={driveHref}>Driver portal</a> : null}
+                {merchantHref ? (
+                  <a href={merchantHref}>Restaurant portal</a>
+                ) : null}
                 {businessAdminHref ? (
                   <a href={businessAdminHref}>Admin ledger</a>
                 ) : (

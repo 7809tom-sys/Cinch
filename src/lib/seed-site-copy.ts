@@ -3408,10 +3408,10 @@ export function seedHomePageSource(
   const deliveryNav = input.includeDeliveryApps
     ? `
           <li>
-            <a href="/drive">Drive</a>
+            <a href="/drive">Driver portal</a>
           </li>
           <li>
-            <a href="/merchant">Merchant</a>
+            <a href="/merchant">Restaurant portal</a>
           </li>`
     : "";
   const services = input.services

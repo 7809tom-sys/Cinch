@@ -1,0 +1,118 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import {
+  acceptDriverRun,
+  advanceDriverRun,
+  setDriverOnline,
+  setMerchantTicketStatus,
+  setRestaurantPaused,
+  type MerchantTicketStatus,
+} from "@/lib/seed-delivery";
+import {
+  ensureDeliveryOpsInSeed,
+  saveDeliveryOps,
+} from "@/lib/seed-delivery-io";
+import { getProject } from "@/lib/store";
+
+function revalidateDelivery(projectId: string) {
+  revalidatePath(`/portal/${projectId}/restaurant`);
+  revalidatePath(`/portal/${projectId}/drive`);
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath(`/site/${projectId}/merchant`);
+  revalidatePath(`/site/${projectId}/drive`);
+  revalidatePath(`/site/${projectId}/admin`);
+}
+
+async function loadOps(projectId: string) {
+  const project = await getProject(projectId);
+  if (!project) return { ok: false as const, error: "Seed not found." };
+  const ops = await ensureDeliveryOpsInSeed(project);
+  if (!ops) {
+    return { ok: false as const, error: "Hometown portals are not on this Seed." };
+  }
+  return { ok: true as const, ops };
+}
+
+export async function setRestaurantPausedAction(
+  projectId: string,
+  restaurantId: string,
+  paused: boolean,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    setRestaurantPaused(loaded.ops, restaurantId, paused),
+    paused ? "Restaurant paused incoming orders" : "Restaurant is open",
+  );
+  revalidateDelivery(projectId);
+  return { ok: true as const };
+}
+
+export async function setMerchantTicketStatusAction(
+  projectId: string,
+  ticketId: string,
+  status: MerchantTicketStatus,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const ticket = loaded.ops.tickets.find((row) => row.id === ticketId);
+  if (!ticket) return { ok: false as const, error: "Order not found." };
+  await saveDeliveryOps(
+    projectId,
+    setMerchantTicketStatus(loaded.ops, ticketId, status),
+    `Restaurant marked order ${status}`,
+  );
+  revalidateDelivery(projectId);
+  return { ok: true as const };
+}
+
+export async function setDriverOnlineAction(
+  projectId: string,
+  driverId: string,
+  online: boolean,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    setDriverOnline(loaded.ops, driverId, online),
+    online ? "Driver went online" : "Driver went offline",
+  );
+  revalidateDelivery(projectId);
+  return { ok: true as const };
+}
+
+export async function acceptDriverRunAction(
+  projectId: string,
+  runId: string,
+  driverId: string,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const result = acceptDriverRun(loaded.ops, runId, driverId);
+  if (!result.ok) return result;
+  await saveDeliveryOps(projectId, result.ops, "Driver accepted an offer");
+  revalidateDelivery(projectId);
+  return { ok: true as const };
+}
+
+export async function advanceDriverRunAction(
+  projectId: string,
+  runId: string,
+  driverId: string,
+  next: "picked_up" | "delivered",
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const result = advanceDriverRun(loaded.ops, runId, driverId, next);
+  if (!result.ok) return result;
+  await saveDeliveryOps(
+    projectId,
+    result.ops,
+    next === "picked_up" ? "Driver confirmed pickup" : "Driver completed dropoff",
+  );
+  revalidateDelivery(projectId);
+  return { ok: true as const };
+}

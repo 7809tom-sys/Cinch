@@ -110,18 +110,18 @@ export default async function SeedBusinessAdminPage({
             {delivery ? (
               <>
                 <Link
-                  href={`/site/${id}/merchant`}
+                  href={`/portal/${id}/restaurant`}
                   className="seed-admin-link"
                   target="_top"
                 >
-                  Merchant
+                  Restaurant portal
                 </Link>
                 <Link
-                  href={`/site/${id}/drive`}
+                  href={`/portal/${id}/drive`}
                   className="seed-admin-link"
                   target="_top"
                 >
-                  Drive
+                  Driver portal
                 </Link>
               </>
             ) : null}
