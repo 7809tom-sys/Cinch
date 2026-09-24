@@ -35,6 +35,11 @@ import {
   weeklyScoutResidualExamples,
   withDeliveryDriverPolicyBrief,
 } from "../src/lib/seed-delivery";
+import {
+  customerFacingShopCopy,
+  customerFacingSiteCopy,
+  deliveryLandingLooksLikeOpsEconomics,
+} from "../src/lib/seed-site-copy";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -375,7 +380,43 @@ assert(
   /\$39\/month/.test(siteCopy) &&
     /1099/.test(siteCopy) &&
     !/\$900\/year/.test(siteCopy),
-  "landing copy retired $900/year for the subscription + 1099 rules",
+  "ops surfaces retired $900/year for the subscription + 1099 rules",
+);
+const dinerLanding = customerFacingSiteCopy(
+  "Hometown Runner",
+  "Hyper-local food delivery platform. Order nearby.",
+);
+const dinerShop = customerFacingShopCopy(
+  "Hometown Runner",
+  "Hyper-local food delivery platform. Order nearby.",
+);
+const dinerBlob = [
+  dinerLanding.headline,
+  dinerLanding.support,
+  dinerLanding.aboutBody,
+  dinerLanding.resultsHeadline,
+  dinerLanding.resultsSupport,
+  dinerLanding.profitHeadline,
+  dinerLanding.profitSupport,
+  ...dinerLanding.results.flatMap((item) => [item.label, item.detail]),
+  ...dinerLanding.profitPlays.flatMap((item) => [item.title, item.detail]),
+  dinerShop.support,
+  ...dinerShop.products.map((item) => item.detail),
+].join(" ");
+assert(
+  !deliveryLandingLooksLikeOpsEconomics(dinerBlob) &&
+    !/Flat 10% on delivery GMV/.test(landing) &&
+    !/Flat 10% on delivery GMV/.test(siteCopy),
+  "diner landing and shop stay guest-facing — no 1099 / $39 / GMV",
+);
+assert(
+  /customerFacingSupport\(project\.brief\)/.test(landing) &&
+    !/project\.brief\.slice\(0,\s*160\)/.test(landing),
+  "diner page metadata uses guest support, not the ops brief",
+);
+assert(
+  !/href=\{`\/site\/\$\{project\.id\}\/admin`\}>Admin ledger/.test(landing),
+  "Admin ledger is not a guest hero link",
 );
 const restaurantDesk = readFileSync(
   join(process.cwd(), "src/components/delivery/restaurant-portal.tsx"),

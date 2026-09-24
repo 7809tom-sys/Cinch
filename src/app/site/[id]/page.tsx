@@ -14,7 +14,7 @@ import {
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
-import { seedIndustryKey } from "@/lib/seed-site-copy";
+import { customerFacingSupport, seedIndustryKey } from "@/lib/seed-site-copy";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
 
@@ -32,7 +32,7 @@ export async function generateMetadata({
   if (!project) return { title: "Seed site" };
   return {
     title: project.name,
-    description: project.brief.slice(0, 160),
+    description: customerFacingSupport(project.brief).slice(0, 160),
     robots: project.sitePublishedAt ? "index,follow" : "noindex",
   };
 }
@@ -178,9 +178,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 ) : null}
                 {businessAdminHref ? (
                   <a href={businessAdminHref}>Admin ledger</a>
-                ) : (
-                  <a href={`/site/${project.id}/admin`}>Admin ledger</a>
-                )}
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -355,13 +353,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 {merchantHref ? (
                   <a href={merchantHref}>
                     <strong>Restaurant portal</strong>
-                    <span>Accept tickets. Flat 10% on delivery GMV.</span>
+                    <span>Kitchen desk for tonight’s tickets.</span>
                   </a>
                 ) : null}
                 {driveHref ? (
                   <a href={driveHref}>
                     <strong>Driver portal</strong>
-                    <span>Go online. Keep 100% of fee and tip.</span>
+                    <span>Go online. Pick up bags on these streets.</span>
                   </a>
                 ) : null}
               </div>
