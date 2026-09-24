@@ -2,26 +2,29 @@
  * Hometown Runner v1 — hyper-local food delivery ops (not a restaurant).
  *
  * HARD RULES:
- * - Restaurant pays 10% of delivery GMV.
- * - 5% platform / 5% originating scout residual (scout_id is immutable).
- * - Drivers keep 100% of delivery fee + tip. Never skim.
- * - Card processing (~2.9%) comes out of the restaurant, not the platform 5%.
- * - Driver software: $39/month part-time or $79/month full-time
- *   (weekly installments $9.99 / $19.99).
- * - Full-time = app open more than 30 hours in a week, or more than
- *   120 hours in a 4-week period. Below that is part-time.
+ * - Platform keeps $0 from restaurant orders. Revenue is driver
+ *   subscriptions only ($39/month part-time, $79/month full-time).
+ * - Restaurant pays 10% of delivery GMV. That 10% is fully distributed:
+ *   5% originating scout residual + 5% driver commission. Scout_id
+ *   is immutable on freeze.
+ * - Drivers keep 100% of delivery fee + tip + the 5% commission share.
+ *   ACH from the restaurant: fee, tip, and 5% driver share.
+ * - Restaurant collects the full order (e.g. Stripe). Processing (~2.9%)
+ *   comes out of the restaurant. The other 5% of GMV routes to the scout.
+ * - Weekly installments $9.99 / $19.99. Full-time = app open more than
+ *   30 hours in a week, or more than 120 hours in 4 weeks.
  * - 60 days without opening the app → account auto-suspended.
- * - Restaurants collect the order and pay drivers, so the restaurant
- *   issues 1099s to drivers who meet the criteria.
- * - Freeze a driver for compliance without moving scout ownership.
+ * - Restaurant issues 1099s to drivers who meet the criteria.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
  */
 
 export const DELIVERY_OPS_PATH = "content/delivery.ops.json";
 export const RESTAURANT_COMMISSION_RATE = 0.1;
-export const PLATFORM_SHARE_RATE = 0.05;
+/** $0 from restaurant orders — platform money is subscriptions only. */
+export const PLATFORM_SHARE_RATE = 0;
 export const SCOUT_RESIDUAL_RATE = 0.05;
+export const DRIVER_COMMISSION_RATE = 0.05;
 export const PROCESSOR_RATE = 0.029;
 export const DRIVER_SOFTWARE = {
   partTime: { monthlyUsd: 39, weeklyUsd: 9.99 },
@@ -35,11 +38,16 @@ export const DRIVER_SOFTWARE_USD_PER_YEAR = DRIVER_SOFTWARE.fullTime.monthlyUsd 
 export const WEEKLY_GMV_EXAMPLES = [500, 800, 1000, 2000] as const;
 export const DEFAULT_WEEKLY_GMV_EXAMPLE = 500;
 
+export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
+- Platform revenue: Hometown Runner keeps $0 from restaurant orders. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time).
+- Order commission: the 10% on delivery GMV is fully distributed — 5% scout residual, 5% driver. Not a platform cut.
+- Payment flow: the restaurant collects the full order (e.g. Stripe) and pays the ~2.9% processor. ACH routes delivery fee + tip + the 5% driver share to the driver, and the other 5% to the scout.
+- 1099: the restaurant collects the order and handles payouts, so the restaurant issues 1099s to drivers who meet the criteria.`;
+
 export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
-- Fees: $39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99.
+- Fees: weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly).
 - Full-time: app open more than 30 hours a week, or more than 120 hours in 4 weeks. Below that is part-time.
-- If a driver does not open the app for 60 days, the account is automatically suspended.
-- 1099: restaurants collect the order payment and pay drivers, so the restaurant issues 1099s to drivers who meet the criteria.`;
+- If a driver does not open the app for 60 days, the account is automatically suspended.`;
 
 export type DeliveryDriverStatus =
   | "pending"
@@ -91,8 +99,11 @@ export type DeliveryDriver = {
 export type DeliveryLedgerSplit = {
   gmvUsd: number;
   restaurantCommissionUsd: number;
+  /** Always $0 on restaurant orders — platform money is subscriptions. */
   platformGrossUsd: number;
   scoutResidualUsd: number;
+  /** 5% of GMV — the driver’s half of the 10% commission. */
+  driverCommissionUsd: number;
   deliveryFeeUsd: number;
   tipUsd: number;
   taxUsd: number;
@@ -132,6 +143,7 @@ export type DriverRun = {
   dropoffZip: string;
   deliveryFeeUsd: number;
   tipUsd: number;
+  driverCommissionUsd: number;
   status: DriverRunStatus;
   createdAt: string;
 };
@@ -150,16 +162,27 @@ export function money(value: number): number {
 }
 
 export function briefHasDriverPolicy(brief: string): boolean {
-  return /\$39\s*\/\s*month|1099|60\s*-?\s*days?/i.test(brief);
+  return /\$39\s*\/\s*month|\$9\.99\s*\/\s*week|60\s*-?\s*days?/i.test(brief);
 }
 
-/** Append driver subscription / 1099 rules when a delivery brief is missing them. */
+export function briefHasCurrentEconomics(brief: string): boolean {
+  return /keeps \$0|\$0 from restaurant|5% goes to the driver|5% driver/i.test(
+    brief,
+  );
+}
+
+/** Append payment + subscription rules when a delivery brief is missing them. */
 export function withDeliveryDriverPolicyBrief(brief: string): string {
+  const parts: string[] = [];
   const trimmed = brief.trim();
-  if (briefHasDriverPolicy(trimmed)) return trimmed;
-  return trimmed
-    ? `${trimmed}\n\n${DRIVER_POLICY_BRIEF_BLOCK}`
-    : DRIVER_POLICY_BRIEF_BLOCK;
+  if (trimmed) parts.push(trimmed);
+  if (!briefHasCurrentEconomics(trimmed)) {
+    parts.push(PAYMENT_ECONOMICS_BRIEF_BLOCK);
+  }
+  if (!briefHasDriverPolicy(trimmed)) {
+    parts.push(DRIVER_POLICY_BRIEF_BLOCK);
+  }
+  return parts.join("\n\n");
 }
 
 export function classifyDriverHours(
@@ -246,7 +269,7 @@ export function applyDriverSubscriptionPolicies(
   };
 }
 
-/** 10% / 5% / 5% split. Fee + tip stay with the driver. Processor from restaurant. */
+/** 10% restaurant commission → 5% scout + 5% driver. Platform $0 on the order. */
 export function splitDeliveryLedger(input: {
   gmvUsd: number;
   deliveryFeeUsd: number;
@@ -258,8 +281,8 @@ export function splitDeliveryLedger(input: {
   const tipUsd = money(Math.max(0, input.tipUsd));
   const taxUsd = money(Math.max(0, input.taxUsd));
   const restaurantCommissionUsd = money(gmvUsd * RESTAURANT_COMMISSION_RATE);
-  const platformGrossUsd = money(gmvUsd * PLATFORM_SHARE_RATE);
   const scoutResidualUsd = money(gmvUsd * SCOUT_RESIDUAL_RATE);
+  const driverCommissionUsd = money(gmvUsd * DRIVER_COMMISSION_RATE);
   const chargedUsd = money(gmvUsd + taxUsd + deliveryFeeUsd + tipUsd);
   const processorFeeUsd = money(chargedUsd * PROCESSOR_RATE);
   const restaurantNetUsd = money(
@@ -268,23 +291,36 @@ export function splitDeliveryLedger(input: {
   return {
     gmvUsd,
     restaurantCommissionUsd,
-    platformGrossUsd,
+    platformGrossUsd: 0,
     scoutResidualUsd,
+    driverCommissionUsd,
     deliveryFeeUsd,
     tipUsd,
     taxUsd,
     processorFeeUsd,
     restaurantNetUsd,
-    platformNetUsd: platformGrossUsd,
+    platformNetUsd: 0,
   };
 }
 
-/** Restaurant payout: GMV − 10% − ~2.9% processor. Platform 5% stays whole. */
+/** Restaurant payout: GMV − 10% − ~2.9% processor. */
 export function restaurantNetFromSplit(split: DeliveryLedgerSplit): number {
   return money(
     split.restaurantNetUsd ??
       split.gmvUsd - split.restaurantCommissionUsd - split.processorFeeUsd,
   );
+}
+
+/** Driver ACH: fee + tip + 5% commission share. */
+export function driverPayoutFromSplit(split: {
+  deliveryFeeUsd: number;
+  tipUsd: number;
+  driverCommissionUsd?: number;
+  gmvUsd: number;
+}): number {
+  const commission =
+    split.driverCommissionUsd ?? money(split.gmvUsd * DRIVER_COMMISSION_RATE);
+  return money(split.deliveryFeeUsd + split.tipUsd + commission);
 }
 
 /** Scout residual at a weekly GMV input — never implied as a default promise. */
@@ -472,6 +508,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         dropoffZip: "10001",
         deliveryFeeUsd: split.deliveryFeeUsd,
         tipUsd: split.tipUsd,
+        driverCommissionUsd: split.driverCommissionUsd,
         status: "offered",
         createdAt,
       },
@@ -508,9 +545,26 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
               : row.status === "approved",
         }),
       ),
-      ledger: parsed.ledger,
+      ledger: parsed.ledger.map((row) => {
+        const remint = splitDeliveryLedger({
+          gmvUsd: row.gmvUsd,
+          deliveryFeeUsd: row.deliveryFeeUsd,
+          tipUsd: row.tipUsd,
+          taxUsd: row.taxUsd ?? 0,
+        });
+        return { ...row, ...remint };
+      }),
       tickets: parsed.tickets,
-      runs: parsed.runs,
+      runs: parsed.runs.map((row) => {
+        const led = parsed.ledger.find((item) => item.orderId === row.orderId);
+        return {
+          ...row,
+          driverCommissionUsd:
+            typeof row.driverCommissionUsd === "number"
+              ? row.driverCommissionUsd
+              : money((led?.gmvUsd ?? 0) * DRIVER_COMMISSION_RATE),
+        };
+      }),
     };
   } catch {
     return null;
@@ -629,6 +683,7 @@ export function recordDeliveryOrder(
     dropoffZip: input.dropoffZip,
     deliveryFeeUsd: split.deliveryFeeUsd,
     tipUsd: split.tipUsd,
+    driverCommissionUsd: split.driverCommissionUsd,
     status: "offered",
     createdAt,
   };
@@ -764,6 +819,8 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
   restaurantNetUsd: number;
   platformGrossUsd: number;
   scoutResidualUsd: number;
+  driverCommissionUsd: number;
+  driverPayoutUsd: number;
   deliveryFeeUsd: number;
   tipUsd: number;
   processorFeeUsd: number;
@@ -778,12 +835,19 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
       restaurantNetUsd: money(
         sum.restaurantNetUsd + restaurantNetFromSplit(row),
       ),
-      platformGrossUsd: money(sum.platformGrossUsd + row.platformGrossUsd),
+      platformGrossUsd: 0,
       scoutResidualUsd: money(sum.scoutResidualUsd + row.scoutResidualUsd),
+      driverCommissionUsd: money(
+        sum.driverCommissionUsd +
+          (row.driverCommissionUsd ?? money(row.gmvUsd * DRIVER_COMMISSION_RATE)),
+      ),
+      driverPayoutUsd: money(
+        sum.driverPayoutUsd + driverPayoutFromSplit(row),
+      ),
       deliveryFeeUsd: money(sum.deliveryFeeUsd + row.deliveryFeeUsd),
       tipUsd: money(sum.tipUsd + row.tipUsd),
       processorFeeUsd: money(sum.processorFeeUsd + row.processorFeeUsd),
-      platformNetUsd: money(sum.platformNetUsd + row.platformGrossUsd),
+      platformNetUsd: 0,
     }),
     {
       gmvUsd: 0,
@@ -791,6 +855,8 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
       restaurantNetUsd: 0,
       platformGrossUsd: 0,
       scoutResidualUsd: 0,
+      driverCommissionUsd: 0,
+      driverPayoutUsd: 0,
       deliveryFeeUsd: 0,
       tipUsd: 0,
       processorFeeUsd: 0,

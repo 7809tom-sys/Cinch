@@ -1,6 +1,7 @@
 /**
  * Guard: Hometown Runner v1 is a delivery platform the Seed actually builds.
- * Ledger is 10% / 5% / 5%; drivers keep fee+tip; freeze does not move scout.
+ * Ledger is 10% → 5% scout / 5% driver, $0 platform on orders;
+ * drivers keep fee+tip+5%; freeze does not move scout.
  * Residual examples use $500 / $800 / $1,000 / $2,000 — never a $2,000 default.
  * Run: npx tsx scripts/assert-seed-delivery.ts
  */
@@ -23,6 +24,7 @@ import {
   setMerchantTicketStatus,
   setRestaurantPaused,
   scoutResidualForWeeklyGmv,
+  driverPayoutFromSplit,
   splitDeliveryLedger,
   starterDeliveryOps,
   weeklyScoutResidualExamples,
@@ -45,17 +47,18 @@ const split = splitDeliveryLedger({
   taxUsd: 8.25,
 });
 assert(split.restaurantCommissionUsd === 10, "restaurant takes 10% of GMV");
-assert(split.platformGrossUsd === 5, "platform takes 5% of GMV");
+assert(split.platformGrossUsd === 0 && split.platformNetUsd === 0, "platform keeps $0 on the order");
 assert(split.scoutResidualUsd === 5, "scout residual is 5% of GMV");
+assert(split.driverCommissionUsd === 5, "driver commission is the other 5% of GMV");
 assert(split.deliveryFeeUsd === 5 && split.tipUsd === 4, "fee + tip stay whole");
+assert(
+  driverPayoutFromSplit(split) === 14,
+  "driver ACH is fee + tip + 5% commission",
+);
 assert(
   split.processorFeeUsd ===
     Math.round((100 + 8.25 + 5 + 4) * 0.029 * 100) / 100,
   "processor is ~2.9% of the charged total",
-);
-assert(
-  split.platformNetUsd === split.platformGrossUsd,
-  "platform keeps the full 5% — processor is not taken from the platform",
 );
 assert(
   split.restaurantNetUsd ===
@@ -103,8 +106,9 @@ assert(
 );
 assert(
   /\$39\/month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
-    /1099/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
-  "delivery brief appends driver subscription and 1099 rules",
+    /1099/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
+  "delivery brief appends $0 platform economics and 1099 rules",
 );
 
 const ops = starterDeliveryOps("Hometown Runner");
@@ -330,8 +334,14 @@ const restaurantDesk = readFileSync(
   "utf8",
 );
 assert(
-  /issue the 1099/.test(restaurantDesk),
-  "restaurant portal says the kitchen issues the 1099",
+  /issue the 1099/.test(restaurantDesk) && /keeps\s+\$0/.test(restaurantDesk),
+  "restaurant portal says Hometown keeps $0 and the kitchen issues the 1099",
+);
+assert(
+  /keeps \$0/.test(deliveryLib) &&
+    /DRIVER_COMMISSION_RATE/.test(deliveryLib) &&
+    /keeps \$0/.test(siteCopy),
+  "orders send $0 to the platform and 5% to the driver",
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");

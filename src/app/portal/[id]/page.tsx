@@ -192,7 +192,8 @@ export default async function PortalProjectPage({ params }: PageProps) {
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   DoorDash-style dash: go online, take an offer, pick up, drop
-                  off. You keep 100% of the fee and tip.
+                  off. You keep 100% of the fee, tip, and a 5% commission
+                  share. Hometown keeps $0 on the order.
                 </p>
               </Link>
             </div>

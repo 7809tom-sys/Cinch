@@ -45,7 +45,11 @@ export function HometownDriverPortal({
     (row) => row.driverId === driverId && row.status === "delivered",
   );
   const earned = [...active, ...delivered].reduce(
-    (sum, row) => sum + row.deliveryFeeUsd + row.tipUsd,
+    (sum, row) =>
+      sum +
+      row.deliveryFeeUsd +
+      row.tipUsd +
+      (row.driverCommissionUsd ?? 0),
     0,
   );
   const examples = useMemo(() => weeklyScoutResidualExamples(), []);
@@ -82,7 +86,8 @@ export function HometownDriverPortal({
         </label>
         <p className="mt-3 text-sm text-mist">
           Same idea as DoorDash Dasher: go online, take an offer, pick up,
-          drop off. You keep 100% of the delivery fee and tip. Software is $
+          drop off. You keep 100% of the delivery fee, tip, and a 5%
+          commission share (ACH from the restaurant). Software is $
           {driver
             ? driverSoftwareFeeUsd(
                 driver.classification,
@@ -213,6 +218,9 @@ export function HometownDriverPortal({
                 <p className="mt-2 text-sm font-bold text-brand-deep">
                   You keep ${run.deliveryFeeUsd.toFixed(2)} fee + $
                   {run.tipUsd.toFixed(2)} tip
+                  {run.driverCommissionUsd
+                    ? ` + $${run.driverCommissionUsd.toFixed(2)} of the 10%`
+                    : ""}
                 </p>
                 {run.status === "accepted" ? (
                   <button
@@ -327,7 +335,8 @@ function OfferCard({
   canDispatch: boolean;
   onAccept: () => void;
 }) {
-  const keep = run.deliveryFeeUsd + run.tipUsd;
+  const keep =
+    run.deliveryFeeUsd + run.tipUsd + (run.driverCommissionUsd ?? 0);
   return (
     <li className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-brand/10 bg-white px-4 py-4">
       <div>
@@ -337,8 +346,12 @@ function OfferCard({
         <h3 className="mt-1 font-bold text-brand-deep">{run.customerName}</h3>
         <p className="mt-1 text-sm text-muted">Drop-off ZIP {run.dropoffZip}</p>
         <p className="mt-2 text-sm font-bold text-brand-deep">
-          You keep ${keep.toFixed(2)} (fee ${run.deliveryFeeUsd.toFixed(2)} + tip $
-          {run.tipUsd.toFixed(2)})
+          You keep ${keep.toFixed(2)} (fee ${run.deliveryFeeUsd.toFixed(2)} +
+          tip ${run.tipUsd.toFixed(2)}
+          {run.driverCommissionUsd
+            ? ` + 5% $${run.driverCommissionUsd.toFixed(2)}`
+            : ""}
+          )
         </p>
       </div>
       <button

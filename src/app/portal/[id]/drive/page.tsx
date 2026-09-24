@@ -70,7 +70,8 @@ export default async function PortalDriverPage({
         </h1>
         <p className="mt-2 max-w-2xl text-base text-muted">
           DoorDash for the driver: go online, accept an offer, confirm pickup,
-          complete dropoff. You keep 100% of the fee and tip.
+          complete dropoff. You keep 100% of the fee, tip, and a 5%
+          commission share.
         </p>
         <div className="mt-8">
           <HometownDriverPortal projectId={project.id} ops={ops} />

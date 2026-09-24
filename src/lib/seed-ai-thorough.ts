@@ -525,19 +525,21 @@ export function seedIndustryGrowthBoard(
         },
         {
           value: "5% / 5%",
-          label: "platform / scout",
-          detail: "Originating scout residual is perpetual while the restaurant stays active.",
+          label: "scout / driver",
+          detail:
+            "The 10% is fully distributed. Platform keeps $0 on the order.",
         },
         {
-          value: "100%",
-          label: "driver fee + tip",
-          detail: "Drivers never share delivery fee or tip with the platform.",
+          value: "$0",
+          label: "platform on orders",
+          detail:
+            "Hometown revenue is driver subscriptions only ($39 / $79).",
         },
         {
           value: "~2.9%",
           label: "card processing",
           detail:
-            "Comes out of the restaurant, not the platform 5% — shown in admin economics.",
+            "Restaurant collects on Stripe and pays processing — shown in admin economics.",
         },
       ],
       profitEyebrow: "Pilot one town",
@@ -558,7 +560,7 @@ export function seedIndustryGrowthBoard(
         {
           title: "Ledger every order",
           detail:
-            "Write GMV, 10% commission, 5% platform, 5% scout, fee, tip, processor fees. Chargebacks reverse the row.",
+            "Write GMV, 10% split 5% scout / 5% driver, $0 platform, fee, tip, processor. Chargebacks reverse the row.",
         },
         {
           title: "Driver subscription + 1099",
