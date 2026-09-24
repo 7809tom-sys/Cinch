@@ -12,7 +12,9 @@ import {
   SEED_SITE_MUST_PROOF_RULE,
 } from "../src/lib/seed-site-proof";
 import {
+  briefIsDeliveryPlatform,
   briefIsPizza,
+  customerFacingAdminCopy,
   customerFacingShopCopy,
   customerFacingSiteCopy,
   seedGrowthBoardLooksThin,
@@ -545,6 +547,55 @@ const shopPage = readFileSync(
 assert(
   shopPage.includes("proofAndRepairSeedSite"),
   "opening the shop proofs the site against the brief",
+);
+
+const hometownName = "Hometown Runner";
+const hometownBrief = `Subject: Build Hometown Runner — v1 product brief
+
+Hometown Runner is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Drivers pay ~$900/year for software and keep 100% of delivery fees + tips. Cart, checkout, tip, tracking. Admin / ops.`;
+
+assert(
+  briefIsDeliveryPlatform(hometownName, hometownBrief),
+  "Hometown Runner brief is a delivery platform",
+);
+assert(
+  seedIndustryKey(hometownName, hometownBrief) === "delivery",
+  "Hometown Runner is not classified as a restaurant",
+);
+
+const hometown = customerFacingSiteCopy(hometownName, hometownBrief);
+assert(hometown.cta === "Order nearby", `delivery CTA is Order nearby (got ${hometown.cta})`);
+assert(
+  !/reserve a table|chef.?s dinner|a table worth dressing/i.test(
+    `${hometown.cta} ${hometown.headline} ${hometown.aboutBody} ${hometown.services.map((s) => s.detail).join(" ")}`,
+  ),
+  "Hometown Runner landing is not fine dining",
+);
+assert(
+  !/\$2,000\/week/.test(`${hometown.headline} ${hometown.aboutBody}`),
+  "landing does not default to a $2,000/week restaurant promise",
+);
+
+const hometownShop = customerFacingShopCopy(hometownName, hometownBrief);
+assert(
+  !seedShopMismatchesIndustry(hometownName, hometownBrief, hometownShop),
+  "Hometown Runner shop matches the delivery brief",
+);
+assert(
+  /pilot kitchen/i.test(hometownShop.products.map((p) => p.title).join(" ")),
+  "shop has a live pilot restaurant to order from",
+);
+assert(
+  !/seasonal small plates|chef.?s dinner plate|kitchen ticket/i.test(
+    `${hometownShop.title} ${hometownShop.support} ${hometownShop.products.map((p) => p.title).join(" ")}`,
+  ),
+  "shop is not a single-restaurant plated menu",
+);
+
+const hometownAdmin = customerFacingAdminCopy(hometownName, hometownBrief);
+assert(
+  /ledger|scout|driver/i.test(`${hometownAdmin.title} ${hometownAdmin.support}`),
+  "admin is ops/ledger, not a restaurant host stand",
 );
 
 if (process.exitCode) {

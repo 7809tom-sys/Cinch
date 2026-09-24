@@ -512,6 +512,57 @@ export function seedIndustryGrowthBoard(
     };
   }
 
+  if (key === "delivery") {
+    return {
+      resultsEyebrow: "By the numbers",
+      resultsHeadline: "The split, not a $2,000 promise",
+      resultsSupport: `${brand} shows volume as inputs. Residual is always 5% × restaurant delivery GMV.`,
+      results: [
+        {
+          value: "10%",
+          label: "restaurant commission",
+          detail: "Flat on delivery GMV. Not a 30% aggregator cut.",
+        },
+        {
+          value: "5% / 5%",
+          label: "platform / scout",
+          detail: "Originating scout residual is perpetual while the restaurant stays active.",
+        },
+        {
+          value: "100%",
+          label: "driver fee + tip",
+          detail: "Drivers never share delivery fee or tip with the platform.",
+        },
+        {
+          value: "~2.9%",
+          label: "card processing",
+          detail: "Comes out of the platform’s 5% — shown in admin economics.",
+        },
+      ],
+      profitEyebrow: "Pilot one town",
+      profitHeadline: "Residual examples at real weekly GMV",
+      profitSupport:
+        "At $500 / $800 / $1,000 / $2,000 weekly GMV, scout residual is $25 / $40 / $50 / $100. Never default the UI to $2,000/week.",
+      profitPlays: [
+        {
+          title: "Drivers before restaurants",
+          detail:
+            "Onboard and approve license/insurance first so dispatch exists when the first kitchen goes live.",
+        },
+        {
+          title: "One originating scout",
+          detail:
+            "Lock scout_id when a restaurant activates. A driver freeze does not move that residual.",
+        },
+        {
+          title: "Ledger every order",
+          detail:
+            "Write GMV, 10% commission, 5% platform, 5% scout, fee, tip, processor fees. Chargebacks reverse the row.",
+        },
+      ],
+    };
+  }
+
   return {
     resultsEyebrow: "By the numbers",
     resultsHeadline: "Proof this isn’t a 2020 template",

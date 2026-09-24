@@ -102,6 +102,10 @@ function industryKey(brief: string, name = ""): string {
   if (briefLooksLikeDealership(name, brief)) {
     return "dealership";
   }
+  // Marketplace / Hometown Runner before a single restaurant plate.
+  if (briefIsDeliveryPlatform(name, brief)) {
+    return "delivery";
+  }
   // Pizza before generic food so pies don’t get fine-dining “Reserve a table”.
   if (
     /\b(pizza|pizzerias?|pizzeria|neapolitan|pepperoni|calzones?)\b/.test(lower) ||
@@ -146,6 +150,31 @@ function industryKey(brief: string, name = ""): string {
   }
 
   return "generic";
+}
+
+/**
+ * Hyper-local food *delivery platform* (Hometown Runner): merchant +
+ * driver/scout + customer + admin. Not a single restaurant.
+ */
+export function briefIsDeliveryPlatform(
+  projectName: string,
+  brief: string,
+): boolean {
+  const lower = `${projectName} ${brief}`.toLowerCase();
+  if (/\bhometown\s+runner\b/.test(lower)) return true;
+  if (
+    /\b(hyper-?local food delivery|delivery platform|merchant terminal|driver\s*\/\s*scout|scout residual|delivery gmv)\b/.test(
+      lower,
+    )
+  ) {
+    return true;
+  }
+  return (
+    /\bscout\b/.test(lower) &&
+    /\bgmv\b/.test(lower) &&
+    /\b10%\b/.test(lower) &&
+    /\b(driver|dispatch|restaurant)\b/.test(lower)
+  );
 }
 
 /** Pizza / pizzeria vertical inside food — name or brief. */
@@ -286,6 +315,9 @@ export function customerFacingHeadline(
   if (key === "dealership") {
     return "Clean cars. Straight prices.";
   }
+  if (key === "delivery") {
+    return "Local food. Drivers keep the fee.";
+  }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
       return "Hot pies. Ready when you are.";
@@ -315,6 +347,7 @@ export function customerFacingCta(brief: string, projectName = ""): string {
   if (key === "lawn") return "Get a quote";
   if (key === "garage") return "Book service";
   if (key === "dealership") return "Browse inventory";
+  if (key === "delivery") return "Order nearby";
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) return "Order pizza";
     return "Reserve a table";
@@ -342,6 +375,9 @@ export function customerFacingHeroImage(
   }
   if (key === "dealership") {
     return "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "delivery") {
+    return "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1800&q=80";
   }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
@@ -1227,6 +1263,51 @@ export function customerFacingSiteCopy(
           "Tell us the unit, your timeline, and whether you have a trade — we’ll pull it up front.",
         bookNote: "Bring a license for test drives. Same-day paperwork when the deal is done.",
         footerNote: `${brand} · Used cars · Inventory · Financing`,
+      },
+      key,
+    );
+  }
+
+  if (key === "delivery") {
+    return withBusinessSiteDepth(
+      {
+        brand,
+        headline,
+        support,
+        cta,
+        heroImage,
+        navLabel: "Order",
+        servicesEyebrow: "Three apps + admin",
+        servicesHeadline: "Order, drive, or sign a restaurant",
+        services: [
+          {
+            title: "Order nearby",
+            detail:
+              "Browse restaurants in one town, cart, checkout, tip, and track the driver.",
+          },
+          {
+            title: "Drive and keep the fee",
+            detail:
+              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee and tip. Software is about $900/year.",
+          },
+          {
+            title: "Scout residual",
+            detail:
+              "The driver who first activates a restaurant earns 5% of that restaurant’s delivery GMV — perpetual while they stay on the platform. Examples at $500 / $800 / $1,000 / $2,000 weekly GMV, not a $2,000 default promise.",
+          },
+        ],
+        aboutEyebrow: "The split",
+        aboutHeadline: "10% from the restaurant. Drivers keep the run.",
+        aboutBody:
+          support ||
+          `${brand} is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the platform 5% — we show that in admin economics.`,
+        bookEyebrow: "Pilot one town",
+        bookHeadline: "Start with drivers, then restaurants",
+        bookBody:
+          "Onboard drivers first. One scout can attach many restaurants. Each restaurant has exactly one originating scout. Compliance (license and insurance) can freeze a driver without moving scout ownership.",
+        bookNote:
+          "v1 is one city. No multi-city batching ML, no silent edit of the 50/50 scout split.",
+        footerNote: `${brand} · Local delivery · 10% restaurant / drivers keep the fee`,
       },
       key,
     );
@@ -3721,6 +3802,29 @@ export function customerFacingAdminCopy(
             body: "Park in shade when you can — hot paint flash-dries soap and leaves spots.",
           },
         ]
+      : key === "delivery"
+        ? [
+            {
+              id: "tip-ledger",
+              title: "Write the ledger on every order",
+              body: "GMV, 10% commission, 5% platform, 5% scout_id, delivery fee, tip, processor fees. Residuals are 5% × GMV — show $500 / $800 / $1,000 / $2,000 weekly GMV as inputs, never a $2,000/week default promise.",
+            },
+            {
+              id: "tip-scout",
+              title: "Scout ownership is immutable",
+              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. No silent edit of the 50/50 split without a policy version.",
+            },
+            {
+              id: "tip-fees",
+              title: "Drivers keep fee and tip",
+              body: "Never skim delivery fee or tip. Card processing (~2.9%) comes out of the platform’s 5% — surface it in admin economics.",
+            },
+            {
+              id: "tip-compliance",
+              title: "Block dispatch when papers expire",
+              body: "ID, license, and insurance are product gates. A freeze stops dispatch only — it does not reassign scout residuals.",
+            },
+          ]
       : briefIsPizza(projectName, brief) || key === "food"
         ? [
             {
@@ -3816,6 +3920,7 @@ export function customerFacingAdminCopy(
   const pizzaOrFood = briefIsPizza(projectName, brief) || key === "food";
   const opsHeavy =
     pizzaOrFood ||
+    key === "delivery" ||
     key === "lawn" ||
     key === "garage" ||
     key === "dealership" ||
@@ -3824,14 +3929,18 @@ export function customerFacingAdminCopy(
   return {
     brand,
     title: wantsShop
-      ? pizzaOrFood
-        ? "Business admin · Orders & tax"
-        : "Business admin · Commerce"
+      ? key === "delivery"
+        ? "Admin · Ledger, drivers, scouts"
+        : pizzaOrFood
+          ? "Business admin · Orders & tax"
+          : "Business admin · Commerce"
       : opsHeavy
         ? "Business admin · Profit ops"
         : "Business admin",
     support: wantsShop
-      ? pizzaOrFood
+      ? key === "delivery"
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Processor fees come out of the platform 5%. Do not hide them."
+        : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
       : key === "lawn"
@@ -4119,6 +4228,7 @@ export function seedShopShouldStartEmpty(
   // kitchen sees money per ticket. Empty+scan is for retail inventory intake.
   if (briefIsPizza(projectName, brief)) return false;
   if (industryKey(brief, projectName) === "food") return false;
+  if (industryKey(brief, projectName) === "delivery") return false;
   if (briefAsksForOwnerStockedCatalog(brief)) return true;
   return false;
 }
@@ -4131,7 +4241,8 @@ export function seedShopUsesRestaurantFulfillment(
   if (!briefAsksForEcommerce(brief)) return false;
   return (
     briefIsPizza(projectName, brief) ||
-    industryKey(brief, projectName) === "food"
+    industryKey(brief, projectName) === "food" ||
+    industryKey(brief, projectName) === "delivery"
   );
 }
 
@@ -4276,6 +4387,41 @@ export function seedRestaurantMenuProducts(
   projectName: string,
   brief: string,
 ): SeedShopProduct[] {
+  if (briefIsDeliveryPlatform(projectName, brief)) {
+    return [
+      withInventory({
+        id: "run-pilot-bowl",
+        title: "Pilot Kitchen · Warm grain bowl",
+        detail:
+          "First live restaurant on this town’s board. Customer checkout, tip, and driver tracking.",
+        priceUsd: 14,
+        sku: "RUN-PILOT-BOWL",
+        stockQty: 40,
+        weightLb: 1.2,
+        shipClass: "parcel",
+      }),
+      withInventory({
+        id: "run-pilot-sandwich",
+        title: "Pilot Kitchen · Market sandwich",
+        detail: "Orderable so a customer can complete one live restaurant end-to-end.",
+        priceUsd: 12,
+        sku: "RUN-PILOT-SAND",
+        stockQty: 40,
+        weightLb: 0.9,
+        shipClass: "parcel",
+      }),
+      withInventory({
+        id: "run-pilot-drink",
+        title: "Pilot Kitchen · House drink",
+        detail: "Add-on on the same ticket. Tax and tip stay on the order ledger.",
+        priceUsd: 3,
+        sku: "RUN-PILOT-DRINK",
+        stockQty: 80,
+        weightLb: 0.4,
+        shipClass: "parcel",
+      }),
+    ];
+  }
   if (briefIsPizza(projectName, brief)) {
     return [
       withInventory({
@@ -4584,15 +4730,18 @@ export function customerFacingShopCopy(
   brief: string,
 ): SeedShopCopy {
   const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
-  const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const delivery = industryKey(brief, projectName) === "delivery";
+  const restaurant =
+    seedShopUsesRestaurantFulfillment(projectName, brief) && !delivery;
   const dealership = industryKey(brief, projectName) === "dealership";
   const commerce = {
     originZip: "10001",
-    shippingModes: restaurant
-      ? seedRestaurantFulfillmentModes()
-      : dealership
-        ? seedLotFulfillmentModes()
-        : seedParcelShippingModes(),
+    shippingModes:
+      restaurant || delivery
+        ? seedRestaurantFulfillmentModes()
+        : dealership
+          ? seedLotFulfillmentModes()
+          : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
@@ -4609,19 +4758,29 @@ export function customerFacingShopCopy(
 
   return {
     brand,
-    title: restaurant ? "Order" : dealership ? "Inventory" : "Shop",
+    title: delivery
+      ? "Restaurants"
+      : restaurant
+        ? "Order"
+        : dealership
+          ? "Inventory"
+          : "Shop",
     support: ownerStocks
       ? "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
+      : delivery
+        ? "Order from a live restaurant in this town. Hometown drivers keep 100% of the delivery fee and tip. Restaurant weekly GMV and the 5% scout residual post to the ledger."
+        : restaurant
+          ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
+          : dealership
+            ? "Inspected units from this lot — price on the card. Hold one, book a drive, or ask for dealer delivery. We do not ship cars UPS."
+            : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
+    cta: delivery
+      ? "Add to bag"
       : restaurant
-        ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
+        ? "Add to order"
         : dealership
-          ? "Inspected units from this lot — price on the card. Hold one, book a drive, or ask for dealer delivery. We do not ship cars UPS."
-          : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
-    cta: restaurant
-      ? "Add to order"
-      : dealership
-        ? "Ask about this unit"
-        : "Add to cart",
+          ? "Ask about this unit"
+          : "Add to cart",
     products,
     orders: [],
     ...commerce,
