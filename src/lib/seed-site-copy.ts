@@ -261,6 +261,12 @@ export function seedLandingCopyMismatchesIndustry(
   // Pizza Man / pizzeria stuck on salon, car, or fine-dining rename templates.
   if (briefIsPizza(projectName, brief) && looksLikeSalonCopy) return true;
   if (briefIsPizza(projectName, brief) && looksLikeFineDiningCopy) return true;
+  if (
+    key === "delivery" &&
+    /subject:|v1 product brief|what it is hometown/i.test(blob)
+  ) {
+    return true;
+  }
   if (briefIsPizza(projectName, brief) && !looksLikePizzaCopy && looksLikeRetailCopy)
     return true;
   return false;
@@ -268,6 +274,9 @@ export function seedLandingCopyMismatchesIndustry(
 
 /** Benefit-first support line for visitors — not checklist dumps. */
 export function customerFacingSupport(brief: string): string {
+  if (briefIsDeliveryPlatform("", brief)) {
+    return "Local food. Drivers keep 100% of the fee and tip.";
+  }
   const cleaned = brief.replace(/\s+/g, " ").trim();
   if (!cleaned) return "Quality work, done the way you need it.";
 

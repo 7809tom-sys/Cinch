@@ -35,7 +35,12 @@ export function SeedShopBoard({
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [shippingModeId, setShippingModeId] = useState(
-    shippingModes[0]?.id ?? "",
+    deliveryPlatform
+      ? shippingModes.find((item) => /delivery/i.test(`${item.id} ${item.label}`))
+          ?.id ??
+        shippingModes[0]?.id ??
+        ""
+      : (shippingModes[0]?.id ?? ""),
   );
   const [shipToState, setShipToState] = useState(
     salesTax.nexusStates[0] ?? "NY",

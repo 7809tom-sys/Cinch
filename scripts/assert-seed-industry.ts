@@ -566,6 +566,10 @@ assert(
 const hometown = customerFacingSiteCopy(hometownName, hometownBrief);
 assert(hometown.cta === "Order nearby", `delivery CTA is Order nearby (got ${hometown.cta})`);
 assert(
+  !/subject:|v1 product brief/i.test(hometown.support),
+  "landing support is customer copy, not the pasted brief subject",
+);
+assert(
   !/reserve a table|chef.?s dinner|a table worth dressing/i.test(
     `${hometown.cta} ${hometown.headline} ${hometown.aboutBody} ${hometown.services.map((s) => s.detail).join(" ")}`,
   ),
