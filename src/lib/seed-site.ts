@@ -340,9 +340,12 @@ export async function repairCustomerLandingIfNeeded(
         servicesHeadline?: string;
         services?: SeedService[];
         gallery?: unknown[];
-        process?: unknown[];
+        process?: Array<{ title?: string; detail?: string }>;
         menuItems?: unknown[];
-        proof?: { quote?: string };
+        proof?: { quote?: string; attribution?: string };
+        processHeadline?: string;
+        areaHeadline?: string;
+        bookHeadline?: string;
         aboutImage?: string;
         areaBody?: string;
         results?: unknown[];
@@ -373,6 +376,8 @@ export async function repairCustomerLandingIfNeeded(
           seedGrowthBoardLooksThin(copy) ||
           (foodNeedsMenu &&
             (!Array.isArray(copy.menuItems) || copy.menuItems.length < 4)) ||
+          (briefIsDeliveryPlatform(project.name, project.brief) &&
+            (!Array.isArray(copy.menuItems) || copy.menuItems.length < 3)) ||
           seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
       );
     } catch {

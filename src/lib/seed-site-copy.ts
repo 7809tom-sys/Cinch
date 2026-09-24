@@ -197,6 +197,33 @@ export function seedIndustryKey(projectName: string, brief: string): string {
  * True when saved landing copy is the wrong vertical — e.g. a hair salon Seed
  * still showing the car hero or "Book a detail".
  */
+const CONSULTING_TEMPLATE_FINGERPRINT =
+  /tell us the goal|we map the path|follow through|taylor · returning client|replies during business hours|built for how you already work|clear from the first message|what do you need\?|how the work shows up/;
+
+/** Brochure / agency filler — a Seed a client cannot sell. */
+export function seedLandingLooksUnsellable(copy: {
+  processHeadline?: string;
+  process?: Array<{ title?: string; detail?: string }>;
+  proof?: { quote?: string; attribution?: string };
+  areaBody?: string;
+  areaHeadline?: string;
+  bookHeadline?: string;
+}): boolean {
+  const blob = [
+    copy.processHeadline,
+    copy.areaBody,
+    copy.areaHeadline,
+    copy.bookHeadline,
+    copy.proof?.quote,
+    copy.proof?.attribution,
+    ...(copy.process ?? []).flatMap((step) => [step.title, step.detail]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return CONSULTING_TEMPLATE_FINGERPRINT.test(blob);
+}
+
 export function seedLandingCopyMismatchesIndustry(
   projectName: string,
   brief: string,
@@ -209,6 +236,12 @@ export function seedLandingCopyMismatchesIndustry(
     support?: string;
     footerNote?: string;
     servicesHeadline?: string;
+    processHeadline?: string;
+    process?: Array<{ title?: string; detail?: string }>;
+    proof?: { quote?: string; attribution?: string };
+    areaBody?: string;
+    areaHeadline?: string;
+    bookHeadline?: string;
   },
 ): boolean {
   const key = industryKey(brief, projectName);
@@ -220,7 +253,14 @@ export function seedLandingCopyMismatchesIndustry(
     copy.support,
     copy.footerNote,
     copy.servicesHeadline,
+    copy.processHeadline,
+    copy.areaBody,
+    copy.areaHeadline,
+    copy.bookHeadline,
+    copy.proof?.quote,
+    copy.proof?.attribution,
     ...(copy.services ?? []).flatMap((item) => [item.title, item.detail]),
+    ...(copy.process ?? []).flatMap((item) => [item.title, item.detail]),
   ]
     .filter(Boolean)
     .join(" ")
@@ -274,10 +314,13 @@ export function seedLandingCopyMismatchesIndustry(
     (looksLikeFineDiningCopy ||
       looksLikeRestaurantShopCopy ||
       looksLikeCopiedRestaurantRoom ||
+      seedLandingLooksUnsellable(copy) ||
       /subject:|v1 product brief|what it is hometown/i.test(blob))
   ) {
     return true;
   }
+  // Any vertical that still ships the consulting brochure is unsellable.
+  if (key !== "generic" && seedLandingLooksUnsellable(copy)) return true;
   if (briefIsPizza(projectName, brief) && !looksLikePizzaCopy && looksLikeRetailCopy)
     return true;
   return false;
@@ -1019,11 +1062,66 @@ function withBusinessSiteDepth(
       key,
     );
   }
+  if (key === "delivery") {
+    return withGrowthBoard(
+      {
+        ...core,
+        galleryEyebrow: "Tonight in town",
+        galleryHeadline: "Kitchens packing. Drivers moving.",
+        gallery: [
+          {
+            src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
+            alt: "Plated food ready for pickup",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1200&q=80",
+            alt: "Driver on a local delivery run",
+          },
+          {
+            src: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+            alt: "Restaurant line packing an order",
+          },
+        ],
+        processEyebrow: "How an order runs",
+        processHeadline: "Browse. Tip. Track the bag.",
+        process: [
+          {
+            title: "Pick a kitchen nearby",
+            detail:
+              "Open tonight’s board — real restaurants in this town, not a national grid.",
+          },
+          {
+            title: "Checkout and tip",
+            detail:
+              "Pay the kitchen, add a tip. The driver keeps 100% of the fee and tip.",
+          },
+          {
+            title: "Watch the run",
+            detail:
+              "Kitchen accepts, driver picks up, you track the bag to the door.",
+          },
+        ],
+        aboutImage:
+          "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1400&q=80",
+        proofEyebrow: "On the platform",
+        proofHeadline: "Why a town keeps it",
+        proof: {
+          quote:
+            "I keep the fee and the tip. The kitchen already had the ticket when I walked in — that’s a real dash, not a brochure.",
+          attribution: "Riley · Hometown driver",
+        },
+        areaEyebrow: "One town",
+        areaHeadline: "Pilot one city. Don’t fake a nation.",
+        areaBody: `${brand} is hyper-local. Tonight’s board is the kitchens on these streets — not a 30% aggregator covering a continent.`,
+      },
+      key,
+    );
+  }
   return withGrowthBoard(
     {
     ...core,
     galleryEyebrow: "Look closer",
-    galleryHeadline: "How the work shows up",
+    galleryHeadline: "The work, not a slide deck",
     gallery: [
       {
         src: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80",
@@ -1038,34 +1136,34 @@ function withBusinessSiteDepth(
         alt: "Customer conversation",
       },
     ],
-    processEyebrow: "Working with us",
-    processHeadline: "Clear from the first message",
+    processEyebrow: "How it actually goes",
+    processHeadline: "Ask. Price. Done.",
     process: [
       {
-        title: "Tell us the goal",
-        detail: "What you need and how to reach you — no jargon required.",
+        title: "Tell us what you need",
+        detail: "A short note and the best way to reach you is enough.",
       },
       {
-        title: "We map the path",
-        detail: "Next steps and timing before anything big starts.",
+        title: "Get a clear price",
+        detail: "Written before work starts — no wandering scope.",
       },
       {
-        title: "Follow through",
-        detail: "We stay reachable after the first deliverable lands.",
+        title: "We finish and stay reachable",
+        detail: "You get the deliverable and a number if something slips.",
       },
     ],
     aboutImage:
       "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80",
-    proofEyebrow: "Clients",
-    proofHeadline: "Why they stay",
+    proofEyebrow: "Neighbors",
+    proofHeadline: "Why they send people",
     proof: {
       quote:
-        "They explained the plan in plain language and actually did what they said. That’s the whole standard.",
-      attribution: "Taylor · returning client",
+        "Showed up when they said and finished what they quoted. I sent my sister next week.",
+      attribution: "Sam · neighborhood customer",
     },
-    areaEyebrow: "Reach us",
-    areaHeadline: "Built for how you already work",
-    areaBody: `${brand} replies during business hours. Share what you need and the best way to follow up.`,
+    areaEyebrow: "Around here",
+    areaHeadline: "Local, not a call center",
+    areaBody: `${brand} works this town and the next one over. Text or call — we answer like a neighbor, not a ticket queue.`,
     },
     key,
   );
@@ -1319,12 +1417,71 @@ export function customerFacingSiteCopy(
         aboutEyebrow: "The split",
         aboutHeadline: "10% from the restaurant. Drivers keep the run.",
         aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant — we show that in admin economics.`,
-        bookEyebrow: "Pilot one town",
-        bookHeadline: "Start with drivers, then restaurants",
+        menuEyebrow: "Tonight’s board",
+        menuHeadline: "Kitchens you can order from now",
+        menuSupport:
+          "A real marketplace has more than one restaurant. Open a kitchen, add to bag, tip the driver.",
+        menuItems: [
+          {
+            category: "Pilot Kitchen",
+            name: "Warm grain bowl",
+            detail: "Market Street · packed to go, handed to a Hometown driver.",
+            priceLabel: "$14",
+          },
+          {
+            category: "Pilot Kitchen",
+            name: "Market sandwich",
+            detail: "The first live ticket so a guest can finish an order end-to-end.",
+            priceLabel: "$12",
+          },
+          {
+            category: "Second Street Tacos",
+            name: "Taco plate",
+            detail: "Second Street · two tacos, rice, salsa. Scout residual locked.",
+            priceLabel: "$13",
+          },
+          {
+            category: "Second Street Tacos",
+            name: "Chips & salsa",
+            detail: "Add-on on the same run — tax and tip stay on the ledger.",
+            priceLabel: "$4",
+          },
+          {
+            category: "River Market Deli",
+            name: "Soup and half",
+            detail: "River Market · cup + half sandwich. Originating scout is Riley.",
+            priceLabel: "$11",
+          },
+          {
+            category: "River Market Deli",
+            name: "House cookie",
+            detail: "Same kitchen, same bag. Driver keeps 100% of the fee and tip.",
+            priceLabel: "$3",
+          },
+        ],
+        specialsEyebrow: "This town",
+        specialsHeadline: "Why a kitchen or a driver stays",
+        specials: [
+          {
+            title: "Restaurants pay 10% + processing",
+            detail:
+              "Flat 10% on delivery GMV. Processing (~2.9%) comes out of the restaurant. Not a 30% aggregator.",
+          },
+          {
+            title: "Drivers keep fee + tip",
+            detail: "Software is about $900/year. The run money is yours.",
+          },
+          {
+            title: "Scout residual 5%",
+            detail: "The driver who activates a kitchen earns 5% of that GMV — perpetual.",
+          },
+        ],
+        bookEyebrow: "Open the product",
+        bookHeadline: "Order, cook, or drive — tonight",
         bookBody:
-          "Onboard drivers first. One scout can attach many restaurants. Each restaurant has exactly one originating scout. Compliance (license and insurance) can freeze a driver without moving scout ownership.",
+          "This is a live marketplace, not a contact form. Customers order nearby. Restaurants accept tickets. Drivers take dashes. Admin shows the 10 / 5 / 5 split.",
         bookNote:
-          "v1 is one city. No multi-city batching ML, no silent edit of the 50/50 scout split.",
+          "v1 is one city. Onboard drivers first, then kitchens. Freeze never moves scout ownership.",
         footerNote: `${brand} · Local delivery · 10% restaurant / drivers keep the fee`,
       },
       key,
@@ -1899,6 +2056,45 @@ button {
 
 .seed-hero-apps a:hover {
   text-decoration: underline;
+}
+
+.seed-launch-apps {
+  display: grid;
+  gap: 0.85rem;
+  margin: 1.5rem 0 0;
+}
+
+@media (min-width: 720px) {
+  .seed-launch-apps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.seed-launch-apps a {
+  display: flex;
+  min-height: 5.5rem;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--foam, #fff);
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.seed-launch-apps a strong {
+  font-family: var(--font-display, inherit);
+  font-size: 1.1rem;
+}
+
+.seed-launch-apps a span {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.seed-launch-apps a:hover {
+  border-color: var(--brand);
 }
 
 .seed-section {
@@ -3651,7 +3847,23 @@ ${profitPlays
           <p className="seed-eyebrow">${esc(input.bookEyebrow)}</p>
           <h2>${esc(input.bookHeadline)}</h2>
           <p className="lead">${esc(input.bookBody)}</p>
-          <form className="seed-book-form" action="#" method="post">
+          ${
+            input.includeDeliveryApps
+              ? `<div className="seed-launch-apps">
+            <a href="/shop">
+              <strong>Order nearby</strong>
+              <span>Browse tonight’s kitchens. Tip the driver.</span>
+            </a>
+            <a href="/merchant">
+              <strong>Restaurant portal</strong>
+              <span>Accept tickets. Flat 10% on delivery GMV.</span>
+            </a>
+            <a href="/drive">
+              <strong>Driver portal</strong>
+              <span>Go online. Keep 100% of fee and tip.</span>
+            </a>
+          </div>`
+              : `<form className="seed-book-form" action="#" method="post">
             <label>
               Name
               <input name="name" type="text" autoComplete="name" required />
@@ -3667,7 +3879,8 @@ ${profitPlays
             <button className="cta" type="submit">
               ${cta}
             </button>
-          </form>
+          </form>`
+          }
           <p className="book-note">${esc(input.bookNote)}</p>
         </div>
       </section>
@@ -4620,7 +4833,13 @@ export function seedShopCatalogMismatchesBrief(
   products: Array<{ id?: string; title?: string; detail?: string }>,
 ): boolean {
   if (industryKey(brief, projectName) === "delivery") {
-    if (!products.length) return true;
+    if (products.length < 6) return true;
+    const kitchens = new Set(
+      products
+        .map((p) => (p.title ?? "").split("·")[0]?.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    if (kitchens.size < 2) return true;
     return shopLooksLikeRestaurantCatalog(products);
   }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) {
@@ -4692,32 +4911,110 @@ export function seedRestaurantMenuProducts(
         id: "run-pilot-bowl",
         title: "Pilot Kitchen · Warm grain bowl",
         detail:
-          "First live restaurant on this town’s board. Customer checkout, tip, and driver tracking.",
+          "Market Street · packed to go. First live kitchen on this town’s board.",
         priceUsd: 14,
         sku: "RUN-PILOT-BOWL",
         stockQty: 40,
         weightLb: 1.2,
         shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
       }),
       withInventory({
         id: "run-pilot-sandwich",
         title: "Pilot Kitchen · Market sandwich",
-        detail: "Orderable so a customer can complete one live restaurant end-to-end.",
+        detail: "Market Street · finish a customer ticket end-to-end.",
         priceUsd: 12,
         sku: "RUN-PILOT-SAND",
         stockQty: 40,
         weightLb: 0.9,
         shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80",
       }),
       withInventory({
         id: "run-pilot-drink",
         title: "Pilot Kitchen · House drink",
-        detail: "Add-on on the same ticket. Tax and tip stay on the order ledger.",
+        detail: "Add-on on the same bag. Tax and tip stay on the ledger.",
         priceUsd: 3,
         sku: "RUN-PILOT-DRINK",
         stockQty: 80,
         weightLb: 0.4,
         shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1437418747212-8d9709af9cf0?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "run-tacos-plate",
+        title: "Second Street Tacos · Taco plate",
+        detail: "Second Street · two tacos, rice, salsa. Scout residual locked.",
+        priceUsd: 13,
+        sku: "RUN-TACOS-PLATE",
+        stockQty: 36,
+        weightLb: 1.1,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "run-tacos-chips",
+        title: "Second Street Tacos · Chips & salsa",
+        detail: "Same kitchen, same run. Driver keeps 100% of the fee and tip.",
+        priceUsd: 4,
+        sku: "RUN-TACOS-CHIPS",
+        stockQty: 60,
+        weightLb: 0.6,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1613514785940-daed07799d9b?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "run-tacos-agua",
+        title: "Second Street Tacos · Agua fresca",
+        detail: "Cold drink on the taco ticket. Posts to the 10 / 5 / 5 ledger.",
+        priceUsd: 3,
+        sku: "RUN-TACOS-AGUA",
+        stockQty: 60,
+        weightLb: 0.5,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1544145945-f90425316c8e?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "run-deli-soup",
+        title: "River Market Deli · Soup and half",
+        detail: "River Market · cup + half sandwich. Originating scout is Riley.",
+        priceUsd: 11,
+        sku: "RUN-DELI-SOUP",
+        stockQty: 28,
+        weightLb: 1.3,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "run-deli-salad",
+        title: "River Market Deli · Market salad",
+        detail: "Packed cold. Same driver can take it with the soup ticket.",
+        priceUsd: 10,
+        sku: "RUN-DELI-SALAD",
+        stockQty: 28,
+        weightLb: 0.8,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=800&q=80",
+      }),
+      withInventory({
+        id: "run-deli-cookie",
+        title: "River Market Deli · House cookie",
+        detail: "Add-on. Weekly GMV examples stay $500 / $800 / $1,000 / $2,000.",
+        priceUsd: 3,
+        sku: "RUN-DELI-COOKIE",
+        stockQty: 80,
+        weightLb: 0.3,
+        shipClass: "parcel",
+        imageUrl:
+          "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=800&q=80",
       }),
     ];
   }

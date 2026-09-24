@@ -232,14 +232,20 @@ const ledgerUi = readFileSync(
   join(process.cwd(), "src/app/site/[id]/admin/delivery-ledger.tsx"),
   "utf8",
 );
+const siteCopy = readFileSync(
+  join(process.cwd(), "src/lib/seed-site-copy.ts"),
+  "utf8",
+);
 assert(
   /comes out of the restaurant/.test(deliveryLib) &&
-    /comes out of the\s+restaurant/.test(ledgerUi),
+    /comes out of the\s+restaurant/.test(ledgerUi) &&
+    /comes out of the restaurant/.test(siteCopy),
   "ledger rule says processor comes out of the restaurant",
 );
 assert(
   !/comes out of the platform 5%\./.test(deliveryLib) &&
-    !/comes out of the platform 5%\./.test(ledgerUi),
+    !/comes out of the platform 5%\./.test(ledgerUi) &&
+    !/comes out of the platform 5%\./.test(siteCopy),
   "ledger no longer takes processor from the platform 5%",
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");

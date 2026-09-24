@@ -113,7 +113,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             </li>
             {preview.menuItems && preview.menuItems.length > 0 ? (
               <li>
-                <a href="#menu">{dealershipLot ? "Inventory" : "Menu"}</a>
+                <a href="#menu">
+                  {dealershipLot
+                    ? "Inventory"
+                    : deliveryPlatform
+                      ? "Kitchens"
+                      : "Menu"}
+                </a>
               </li>
             ) : null}
             <li>
@@ -220,7 +226,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                   <a className="cta" href={shopHref}>
                     {dealershipLot
                       ? "Browse these units"
-                      : "Order from this menu"}
+                      : deliveryPlatform
+                        ? "Order from these kitchens"
+                        : "Order from this menu"}
                   </a>
                 </p>
               ) : null}
@@ -338,23 +346,44 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             <p className="seed-eyebrow">{preview.bookEyebrow}</p>
             <h2>{preview.bookHeadline}</h2>
             <p className="lead">{preview.bookBody}</p>
-            <form className="seed-book-form" action="#" method="post">
-              <label>
-                Name
-                <input name="name" type="text" autoComplete="name" required />
-              </label>
-              <label>
-                Phone or email
-                <input name="contact" type="text" autoComplete="tel" required />
-              </label>
-              <label>
-                What do you need?
-                <textarea name="notes" rows={4} />
-              </label>
-              <button className="cta" type="submit">
-                {preview.cta}
-              </button>
-            </form>
+            {deliveryPlatform ? (
+              <div className="seed-launch-apps">
+                <a href={shopHref ?? "#menu"}>
+                  <strong>Order nearby</strong>
+                  <span>Browse tonight’s kitchens. Tip the driver.</span>
+                </a>
+                {merchantHref ? (
+                  <a href={merchantHref}>
+                    <strong>Restaurant portal</strong>
+                    <span>Accept tickets. Flat 10% on delivery GMV.</span>
+                  </a>
+                ) : null}
+                {driveHref ? (
+                  <a href={driveHref}>
+                    <strong>Driver portal</strong>
+                    <span>Go online. Keep 100% of fee and tip.</span>
+                  </a>
+                ) : null}
+              </div>
+            ) : (
+              <form className="seed-book-form" action="#" method="post">
+                <label>
+                  Name
+                  <input name="name" type="text" autoComplete="name" required />
+                </label>
+                <label>
+                  Phone or email
+                  <input name="contact" type="text" autoComplete="tel" required />
+                </label>
+                <label>
+                  What do you need?
+                  <textarea name="notes" rows={4} />
+                </label>
+                <button className="cta" type="submit">
+                  {preview.cta}
+                </button>
+              </form>
+            )}
             <p className="book-note">{preview.bookNote}</p>
           </div>
         </section>
