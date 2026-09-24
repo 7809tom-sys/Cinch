@@ -1318,9 +1318,7 @@ export function customerFacingSiteCopy(
         ],
         aboutEyebrow: "The split",
         aboutHeadline: "10% from the restaurant. Drivers keep the run.",
-        aboutBody:
-          support ||
-          `${brand} is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the platform 5% — we show that in admin economics.`,
+        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant — we show that in admin economics.`,
         bookEyebrow: "Pilot one town",
         bookHeadline: "Start with drivers, then restaurants",
         bookBody:
@@ -4109,7 +4107,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip",
-              body: "Never skim delivery fee or tip. Card processing (~2.9%) comes out of the platform’s 5% — surface it in admin economics.",
+              body: "Never skim delivery fee or tip. Card processing (~2.9%) comes out of the restaurant, not the platform 5% — surface it in admin economics.",
             },
             {
               id: "tip-compliance",
@@ -4231,7 +4229,7 @@ export function customerFacingAdminCopy(
         : "Business admin",
     support: wantsShop
       ? key === "delivery"
-        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Processor fees come out of the platform 5%. Do not hide them."
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Processor fees come out of the restaurant, not the platform 5%. Do not hide them."
         : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."

@@ -5,7 +5,7 @@
  * - Restaurant pays 10% of delivery GMV.
  * - 5% platform / 5% originating scout residual (scout_id is immutable).
  * - Drivers keep 100% of delivery fee + tip. Never skim.
- * - Card processing (~2.9%) comes out of the platform 5%.
+ * - Card processing (~2.9%) comes out of the restaurant, not the platform 5%.
  * - Freeze a driver for compliance without moving scout ownership.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
@@ -65,6 +65,8 @@ export type DeliveryLedgerSplit = {
   tipUsd: number;
   taxUsd: number;
   processorFeeUsd: number;
+  /** GMV minus 10% commission minus processor — restaurant pays card fees. */
+  restaurantNetUsd: number;
   platformNetUsd: number;
 };
 
@@ -115,7 +117,7 @@ export function money(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/** 10% / 5% / 5% split. Fee + tip stay with the driver. Processor from platform. */
+/** 10% / 5% / 5% split. Fee + tip stay with the driver. Processor from restaurant. */
 export function splitDeliveryLedger(input: {
   gmvUsd: number;
   deliveryFeeUsd: number;
@@ -131,6 +133,9 @@ export function splitDeliveryLedger(input: {
   const scoutResidualUsd = money(gmvUsd * SCOUT_RESIDUAL_RATE);
   const chargedUsd = money(gmvUsd + taxUsd + deliveryFeeUsd + tipUsd);
   const processorFeeUsd = money(chargedUsd * PROCESSOR_RATE);
+  const restaurantNetUsd = money(
+    gmvUsd - restaurantCommissionUsd - processorFeeUsd,
+  );
   return {
     gmvUsd,
     restaurantCommissionUsd,
@@ -140,8 +145,17 @@ export function splitDeliveryLedger(input: {
     tipUsd,
     taxUsd,
     processorFeeUsd,
-    platformNetUsd: money(platformGrossUsd - processorFeeUsd),
+    restaurantNetUsd,
+    platformNetUsd: platformGrossUsd,
   };
+}
+
+/** Restaurant payout: GMV − 10% − ~2.9% processor. Platform 5% stays whole. */
+export function restaurantNetFromSplit(split: DeliveryLedgerSplit): number {
+  return money(
+    split.restaurantNetUsd ??
+      split.gmvUsd - split.restaurantCommissionUsd - split.processorFeeUsd,
+  );
 }
 
 /** Scout residual at a weekly GMV input — never implied as a default promise. */
@@ -582,6 +596,7 @@ export function advanceDriverRun(
 export function summarizeDeliveryLedger(ops: DeliveryOps): {
   gmvUsd: number;
   restaurantCommissionUsd: number;
+  restaurantNetUsd: number;
   platformGrossUsd: number;
   scoutResidualUsd: number;
   deliveryFeeUsd: number;
@@ -595,16 +610,20 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
       restaurantCommissionUsd: money(
         sum.restaurantCommissionUsd + row.restaurantCommissionUsd,
       ),
+      restaurantNetUsd: money(
+        sum.restaurantNetUsd + restaurantNetFromSplit(row),
+      ),
       platformGrossUsd: money(sum.platformGrossUsd + row.platformGrossUsd),
       scoutResidualUsd: money(sum.scoutResidualUsd + row.scoutResidualUsd),
       deliveryFeeUsd: money(sum.deliveryFeeUsd + row.deliveryFeeUsd),
       tipUsd: money(sum.tipUsd + row.tipUsd),
       processorFeeUsd: money(sum.processorFeeUsd + row.processorFeeUsd),
-      platformNetUsd: money(sum.platformNetUsd + row.platformNetUsd),
+      platformNetUsd: money(sum.platformNetUsd + row.platformGrossUsd),
     }),
     {
       gmvUsd: 0,
       restaurantCommissionUsd: 0,
+      restaurantNetUsd: 0,
       platformGrossUsd: 0,
       scoutResidualUsd: 0,
       deliveryFeeUsd: 0,
