@@ -9,9 +9,11 @@ import {
   PREP_RULE,
   composePrepBrief,
   emptyPrepBrief,
+  inferSeedNameFromPastedBrief,
   missingPrepFields,
   planPrepBuildTasks,
   prepBriefLooksComplete,
+  resolveNewSeedBrief,
 } from "../src/lib/seed-prep";
 import { PLAYBOOK_METHOD, SEED_PLAYBOOK_RULE } from "../src/lib/seed-playbook";
 
@@ -83,6 +85,44 @@ const form = readFileSync(
 assert(
   form.includes("SeedPrepWorksheet") && form.includes('"build"'),
   "Create Seed defaults to build and uses the prep worksheet",
+);
+assert(
+  form.includes("Cut and paste a brief") && form.includes('value="paste"'),
+  "Create Seed offers cut-and-paste as a briefing option",
+);
+
+const hometown = `Subject: Build Hometown Runner — v1 product brief
+
+What it is
+Hometown Runner is a hyper-local food delivery platform.`;
+assert(
+  inferSeedNameFromPastedBrief(hometown) === "Hometown Runner",
+  "pasted Subject line becomes the Seed name",
+);
+
+const pasted = new FormData();
+pasted.set("seedMode", "build");
+pasted.set("briefEntry", "paste");
+pasted.set("brief", hometown.repeat(2));
+const fromPaste = resolveNewSeedBrief(pasted);
+assert(!fromPaste.error, "paste path does not require the worksheet");
+assert(
+  fromPaste.name === "Hometown Runner",
+  "paste fills the name from the subject",
+);
+assert(
+  fromPaste.brief.includes("hyper-local food delivery"),
+  "paste keeps the brief as-is",
+);
+
+const emptySheet = new FormData();
+emptySheet.set("seedMode", "build");
+emptySheet.set("briefEntry", "worksheet");
+emptySheet.set("name", "Northside Bakery");
+const fromEmpty = resolveNewSeedBrief(emptySheet);
+assert(
+  Boolean(fromEmpty.error && /worksheet/i.test(fromEmpty.error)),
+  "worksheet path still requires prep fields",
 );
 assert(!form.includes("https://justputzit.com"), "Create Seed does not use justputzit.com as the example");
 

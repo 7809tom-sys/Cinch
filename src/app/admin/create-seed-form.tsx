@@ -10,6 +10,9 @@ export function CreateSeedForm() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [seedMode, setSeedMode] = useState<"connect" | "build">("build");
+  const [briefEntry, setBriefEntry] = useState<"worksheet" | "paste">(
+    "worksheet",
+  );
 
   return (
     <form
@@ -72,9 +75,13 @@ export function CreateSeedForm() {
         <span className="text-sm font-medium text-brand-deep">Seed name</span>
         <input
           name="name"
-          required
+          required={seedMode === "connect" || briefEntry === "worksheet"}
           placeholder={
-            seedMode === "connect" ? "Customer live site" : "Acme rebuild Seed"
+            seedMode === "connect"
+              ? "Customer live site"
+              : briefEntry === "paste"
+                ? "Optional if the paste starts with a title"
+                : "Acme rebuild Seed"
           }
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
@@ -112,7 +119,62 @@ export function CreateSeedForm() {
           />
         </label>
       ) : null}
-      {seedMode === "build" ? <SeedPrepWorksheet /> : (
+      {seedMode === "build" ? (
+        <fieldset className="space-y-3">
+          <legend className="text-sm font-medium text-brand-deep">
+            How do you want to brief this Seed?
+          </legend>
+          <label className="flex items-start gap-3 text-sm text-brand-deep">
+            <input
+              type="radio"
+              name="briefEntry"
+              value="worksheet"
+              checked={briefEntry === "worksheet"}
+              onChange={() => setBriefEntry("worksheet")}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-semibold">Fill the prep worksheet</span>
+              <span className="mt-0.5 block text-xs text-muted">
+                Walk the lanes: intent, scope, money, delivery, done looks like.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 text-sm text-brand-deep">
+            <input
+              type="radio"
+              name="briefEntry"
+              value="paste"
+              checked={briefEntry === "paste"}
+              onChange={() => setBriefEntry("paste")}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-semibold">Cut and paste a brief</span>
+              <span className="mt-0.5 block text-xs text-muted">
+                Drop in an email, product brief, or playbook as-is. Conductor
+                builds from this text — no worksheet required.
+              </span>
+            </span>
+          </label>
+          {briefEntry === "worksheet" ? (
+            <SeedPrepWorksheet />
+          ) : (
+            <label className="block">
+              <span className="text-sm font-medium text-brand-deep">
+                Paste brief
+              </span>
+              <textarea
+                name="brief"
+                required
+                rows={16}
+                placeholder="Paste the full brief as-is. Subject lines and titles become the Seed name if you leave that field blank."
+                className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+              />
+            </label>
+          )}
+        </fieldset>
+      ) : (
       <label className="block">
         <span className="text-sm font-medium text-brand-deep">
           Connect brief
