@@ -536,7 +536,8 @@ export function seedIndustryGrowthBoard(
         {
           value: "~2.9%",
           label: "card processing",
-          detail: "Comes out of the platform’s 5% — shown in admin economics.",
+          detail:
+            "Comes out of the restaurant, not the platform 5% — shown in admin economics.",
         },
       ],
       profitEyebrow: "Pilot one town",

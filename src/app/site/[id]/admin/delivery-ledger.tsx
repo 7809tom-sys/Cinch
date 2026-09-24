@@ -43,7 +43,7 @@ export function SeedDeliveryLedger({
       <p className="seed-admin-support">
         Restaurant 10% · platform 5% · scout 5% (scout_id locked). Drivers keep
         100% of delivery fee and tip. Processing (~2.9%) comes out of the
-        platform 5%.
+        restaurant — not the platform 5%.
       </p>
       <dl className="seed-run-stats">
         <div>
@@ -53,6 +53,10 @@ export function SeedDeliveryLedger({
         <div>
           <dt>Restaurant 10%</dt>
           <dd>${totals.restaurantCommissionUsd.toFixed(2)}</dd>
+        </div>
+        <div>
+          <dt>Restaurant net</dt>
+          <dd>${totals.restaurantNetUsd.toFixed(2)}</dd>
         </div>
         <div>
           <dt>Platform 5%</dt>
