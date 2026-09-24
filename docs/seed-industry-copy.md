@@ -59,10 +59,17 @@
  * 10. Seed + Conductor must **proof** landing and shop against the brief.
  *     A checklist is not proof. Restaurant plates / kitchen tickets on a
  *     used-car lot must fail and rewrite (`proofAndRepairSeedSite`).
+ * 11. Hometown Runner / hyper-local delivery is a **delivery platform**,
+ *     not a restaurant. The Seed builds customer + merchant + driver/scout
+ *     + admin ledger. 10% restaurant / 5% platform / 5% scout. Drivers keep
+ *     100% of fee + tip. Freeze never moves scout_id. Residual examples
+ *     use $500 / $800 / $1,000 / $2,000 weekly GMV — never a $2,000 default.
  *
  * Implementation: `src/lib/seed-site-copy.ts` (`industryKey`,
  * `seedLandingCopyMismatchesIndustry`, `seedShopCatalogMismatchesBrief`,
  * `seedShopMismatchesIndustry`), `src/lib/seed-site-proof.ts`, and
  * `src/lib/seed-site.ts` repair. Guard: `npm run assert:seed-industry`.
+ * Hometown Runner live apps: `src/lib/seed-delivery.ts`. Guard:
+ * `npm run assert:seed-delivery`.
  */
 export {};

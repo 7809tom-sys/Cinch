@@ -9,7 +9,11 @@ import { getAgent } from "@/lib/agents";
 import { findSwitchableTask } from "@/lib/agent-status";
 import { liveWebsiteUrl, seedHostHostname } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
-import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "@/lib/seed-site-copy";
+import {
+  briefAsksForEcommerce,
+  briefIsDeliveryPlatform,
+  seedNeedsBusinessAdmin,
+} from "@/lib/seed-site-copy";
 import {
   getPortalProjectSnapshot,
   logoutCustomerAction,
@@ -52,6 +56,10 @@ export default async function PortalProjectPage({ params }: PageProps) {
   const websiteUrl = liveWebsiteUrl(project);
   const developerRatePct = Math.round(SEED_MARKETPLACE_DEVELOPER_RATE * 100);
   const workingOn = activeTasks[0]?.title ?? null;
+  const deliveryPlatform = briefIsDeliveryPlatform(
+    project.name,
+    project.brief,
+  );
   const switchable = findSwitchableTask(project.tasks);
 
   return (
@@ -72,6 +80,22 @@ export default async function PortalProjectPage({ params }: PageProps) {
             >
               Visit website
             </a>
+            {deliveryPlatform ? (
+              <>
+                <Link
+                  href={`/portal/${project.id}/restaurant`}
+                  className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam"
+                >
+                  Restaurant portal
+                </Link>
+                <Link
+                  href={`/portal/${project.id}/drive`}
+                  className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam"
+                >
+                  Driver portal
+                </Link>
+              </>
+            ) : null}
             <Link
               href={`/portal/${project.id}/playbook`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
@@ -138,6 +162,42 @@ export default async function PortalProjectPage({ params }: PageProps) {
               below. Queue only. No final update without owner approval.
             </p>
           ) : null}
+          {deliveryPlatform ? (
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <Link
+                href={`/portal/${project.id}/restaurant`}
+                className="min-w-0 rounded-xl border border-brand/15 bg-foam px-5 py-5 transition-colors hover:border-brand/40"
+              >
+                <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+                  For restaurants
+                </p>
+                <h2 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+                  Restaurant portal
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  DoorDash-style kitchen: open or pause, accept or decline
+                  orders, mark ready, hand to a Hometown driver. Flat 10% on
+                  delivery GMV.
+                </p>
+              </Link>
+              <Link
+                href={`/portal/${project.id}/drive`}
+                className="min-w-0 rounded-xl border border-brand/15 bg-foam px-5 py-5 transition-colors hover:border-brand/40"
+              >
+                <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+                  For drivers
+                </p>
+                <h2 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+                  Driver portal
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  DoorDash-style dash: go online, take an offer, pick up, drop
+                  off. You keep 100% of the fee and tip.
+                </p>
+              </Link>
+            </div>
+          ) : null}
+
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href={`/portal/${project.id}/playbook`}
@@ -235,6 +295,14 @@ export default async function PortalProjectPage({ params }: PageProps) {
                 briefAsksForEcommerce(project.brief)
                   ? `/site/${project.id}/shop`
                   : null
+              }
+              restaurantHref={
+                deliveryPlatform
+                  ? `/portal/${project.id}/restaurant`
+                  : null
+              }
+              driveHref={
+                deliveryPlatform ? `/portal/${project.id}/drive` : null
               }
               editHref={`/portal/${project.id}/edit`}
             />

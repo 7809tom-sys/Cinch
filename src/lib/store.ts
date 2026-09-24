@@ -547,6 +547,11 @@ export async function updateProjectDetails(
   if (briefAsksForEcommerce(project.brief)) {
     await ensureShopInSeed(project);
   }
+  const { briefIsDeliveryPlatform } = await import("./seed-site-copy");
+  if (briefIsDeliveryPlatform(project.name, project.brief)) {
+    const { ensureDeliveryOpsInSeed } = await import("./seed-delivery-io");
+    await ensureDeliveryOpsInSeed(project);
+  }
 
   // Queue agent work for anything the edited brief still needs.
   const fresh = store.projects.find((item) => item.id === projectId);

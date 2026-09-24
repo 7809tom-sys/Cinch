@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "assert:seed-industry": "npx tsx scripts/assert-seed-industry.ts",
+    "assert:seed-delivery": "npx tsx scripts/assert-seed-delivery.ts",
     "assert:seed-edit-react": "npx tsx scripts/assert-seed-edit-react.ts",
     "assert:seed-engagement": "npx tsx scripts/assert-seed-engagement.ts",
     "assert:conductor-routing": "npx tsx scripts/assert-conductor-routing.ts",

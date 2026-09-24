@@ -1,0 +1,230 @@
+/**
+ * Guard: Hometown Runner v1 is a delivery platform the Seed actually builds.
+ * Ledger is 10% / 5% / 5%; drivers keep fee+tip; freeze does not move scout.
+ * Residual examples use $500 / $800 / $1,000 / $2,000 — never a $2,000 default.
+ * Run: npx tsx scripts/assert-seed-delivery.ts
+ */
+import { readFileSync } from "fs";
+import { join } from "path";
+import {
+  DEFAULT_WEEKLY_GMV_EXAMPLE,
+  WEEKLY_GMV_EXAMPLES,
+  acceptDriverRun,
+  approveDeliveryDriver,
+  driverCanDispatch,
+  freezeDeliveryDriver,
+  recordDeliveryOrder,
+  setDriverOnline,
+  setMerchantTicketStatus,
+  setRestaurantPaused,
+  scoutResidualForWeeklyGmv,
+  splitDeliveryLedger,
+  starterDeliveryOps,
+  weeklyScoutResidualExamples,
+} from "../src/lib/seed-delivery";
+
+function assert(condition: boolean, message: string) {
+  if (!condition) {
+    console.error(`FAIL: ${message}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`ok: ${message}`);
+  }
+}
+
+const split = splitDeliveryLedger({
+  gmvUsd: 100,
+  deliveryFeeUsd: 5,
+  tipUsd: 4,
+  taxUsd: 8.25,
+});
+assert(split.restaurantCommissionUsd === 10, "restaurant takes 10% of GMV");
+assert(split.platformGrossUsd === 5, "platform takes 5% of GMV");
+assert(split.scoutResidualUsd === 5, "scout residual is 5% of GMV");
+assert(split.deliveryFeeUsd === 5 && split.tipUsd === 4, "fee + tip stay whole");
+assert(
+  split.processorFeeUsd ===
+    Math.round((100 + 8.25 + 5 + 4) * 0.029 * 100) / 100,
+  "processor is ~2.9% of the charged total",
+);
+assert(
+  split.platformNetUsd ===
+    Math.round((split.platformGrossUsd - split.processorFeeUsd) * 100) / 100,
+  "processor comes out of the platform 5%",
+);
+
+assert(DEFAULT_WEEKLY_GMV_EXAMPLE === 500, "default weekly GMV example is $500");
+assert(
+  WEEKLY_GMV_EXAMPLES.join(",") === "500,800,1000,2000",
+  "examples are $500 / $800 / $1,000 / $2,000",
+);
+assert(
+  scoutResidualForWeeklyGmv(500) === 25 &&
+    scoutResidualForWeeklyGmv(800) === 40 &&
+    scoutResidualForWeeklyGmv(1000) === 50 &&
+    scoutResidualForWeeklyGmv(2000) === 100,
+  "residuals are 5% × weekly GMV at each example",
+);
+assert(
+  weeklyScoutResidualExamples()[0]?.weeklyGmvUsd === 500,
+  "example list does not start at $2,000",
+);
+
+const ops = starterDeliveryOps("Hometown Runner");
+const riley = ops.drivers.find((row) => row.id === "drv-riley");
+const deli = ops.restaurants.find((row) => row.id === "rest-deli");
+assert(Boolean(riley && riley.status === "frozen"), "Riley starts frozen");
+assert(
+  Boolean(deli && deli.scoutId === "drv-riley"),
+  "River Market Deli scout is Riley",
+);
+assert(
+  riley ? !driverCanDispatch(riley) : false,
+  "frozen / expired insurance cannot dispatch",
+);
+
+const frozen = freezeDeliveryDriver(ops, "drv-maya");
+assert(
+  frozen.restaurants.every(
+    (row, index) => row.scoutId === ops.restaurants[index]?.scoutId,
+  ),
+  "freezing Maya does not move any scout_id",
+);
+assert(
+  frozen.drivers.find((row) => row.id === "drv-maya")?.status === "frozen",
+  "Maya is frozen for dispatch",
+);
+
+const approved = approveDeliveryDriver(frozen, "drv-maya");
+assert(
+  approved.restaurants.find((row) => row.id === "rest-deli")?.scoutId ===
+    "drv-riley",
+  "approving Maya still leaves Riley as deli scout",
+);
+
+const blocked = acceptDriverRun(ops, "run-sample-pilot", "drv-riley");
+assert(!blocked.ok, "frozen Riley cannot accept a run");
+
+const paused = setRestaurantPaused(ops, "rest-pilot", true);
+assert(
+  paused.restaurants.find((row) => row.id === "rest-pilot")?.paused === true,
+  "restaurant can pause incoming like DoorDash",
+);
+const offline = setDriverOnline(ops, "drv-jordan", false);
+assert(
+  offline.drivers.find((row) => row.id === "drv-jordan")?.online === false,
+  "driver can go offline",
+);
+const offlineBlock = acceptDriverRun(offline, "run-sample-pilot", "drv-jordan");
+assert(!offlineBlock.ok, "offline driver cannot accept an offer");
+
+const declined = setMerchantTicketStatus(ops, "tkt-sample-pilot", "declined");
+assert(
+  declined.tickets.find((row) => row.id === "tkt-sample-pilot")?.status ===
+    "declined",
+  "restaurant can decline an order",
+);
+assert(
+  declined.runs.find((row) => row.id === "run-sample-pilot")?.status ===
+    "cancelled",
+  "declining an order cancels the offered dash",
+);
+
+const taken = acceptDriverRun(ops, "run-sample-pilot", "drv-jordan");
+assert(taken.ok, "approved Jordan can accept a run");
+if (taken.ok) {
+  assert(
+    taken.ops.runs.find((row) => row.id === "run-sample-pilot")?.driverId ===
+      "drv-jordan",
+    "accepted run is assigned to Jordan",
+  );
+  assert(
+    taken.ops.ledger.find((row) => row.orderId === "ord-sample-pilot")
+      ?.scoutId === "drv-maya",
+    "accepting a run does not rewrite the originating scout",
+  );
+}
+
+const afterOrder = recordDeliveryOrder(ops, {
+  ledgerId: "led-test",
+  ticketId: "tkt-test",
+  runId: "run-test",
+  orderId: "ord-test",
+  customerName: "Sam",
+  dropoffZip: "10002",
+  items: [
+    {
+      productId: "run-pilot-bowl",
+      title: "Pilot Kitchen · Warm grain bowl",
+      qty: 1,
+      priceUsd: 14,
+    },
+  ],
+  gmvUsd: 14,
+  deliveryFeeUsd: 5,
+  tipUsd: 3,
+  taxUsd: 1.16,
+});
+const row = afterOrder.ledger.find((item) => item.id === "led-test");
+assert(Boolean(row), "customer order writes a ledger row");
+assert(row?.restaurantId === "rest-pilot", "pilot SKU maps to Pilot Kitchen");
+assert(row?.scoutId === "drv-maya", "ledger scout_id is the restaurant lock");
+assert(row?.deliveryFeeUsd === 5 && row?.tipUsd === 3, "fee and tip posted whole");
+assert(
+  afterOrder.tickets.some((item) => item.id === "tkt-test"),
+  "merchant ticket is created",
+);
+assert(
+  afterOrder.runs.some((item) => item.id === "run-test" && item.status === "offered"),
+  "driver run is offered",
+);
+
+const merchantPage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/merchant/page.tsx"),
+  "utf8",
+);
+const drivePage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/drive/page.tsx"),
+  "utf8",
+);
+const adminPage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/admin/page.tsx"),
+  "utf8",
+);
+const shopAction = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/shop/actions.ts"),
+  "utf8",
+);
+const landing = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/page.tsx"),
+  "utf8",
+);
+const restaurantPortal = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/restaurant/page.tsx"),
+  "utf8",
+);
+const driverPortal = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/drive/page.tsx"),
+  "utf8",
+);
+const seedPortal = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/page.tsx"),
+  "utf8",
+);
+assert(merchantPage.includes("Restaurant portal"), "restaurant portal is a live Seed surface");
+assert(drivePage.includes("Driver portal"), "driver portal is a live Seed surface");
+assert(restaurantPortal.includes("Restaurant portal"), "portal has a restaurant DoorDash desk");
+assert(driverPortal.includes("Driver portal"), "portal has a driver DoorDash desk");
+assert(
+  seedPortal.includes("/restaurant") && seedPortal.includes("/drive"),
+  "Seed portal links restaurant and driver portals",
+);
+assert(adminPage.includes("SeedDeliveryLedger"), "admin mounts the ledger");
+assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
+assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");
+
+if (process.exitCode) {
+  console.error("\nHometown Runner guards failed.");
+  process.exit(process.exitCode);
+}
+console.log("\nAll Hometown Runner guards passed.");

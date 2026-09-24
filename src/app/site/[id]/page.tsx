@@ -58,7 +58,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   );
   const dealershipLot =
     seedIndustryKey(project.name, project.brief) === "dealership";
+  const deliveryPlatform =
+    seedIndustryKey(project.name, project.brief) === "delivery";
   const shopHref = showShop ? `/site/${project.id}/shop` : null;
+  const merchantHref = deliveryPlatform
+    ? `/site/${project.id}/merchant`
+    : null;
+  const driveHref = deliveryPlatform ? `/site/${project.id}/drive` : null;
 
   const [customer, master] = await Promise.all([
     getCurrentCustomer(),
@@ -121,10 +127,20 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 <a href={shopHref}>
                   {dealershipLot
                     ? "Inventory"
-                    : restaurantOrder
+                    : deliveryPlatform || restaurantOrder
                       ? "Order"
                       : "Shop"}
                 </a>
+              </li>
+            ) : null}
+            {driveHref ? (
+              <li>
+                <a href={driveHref}>Driver portal</a>
+              </li>
+            ) : null}
+            {merchantHref ? (
+              <li>
+                <a href={merchantHref}>Restaurant portal</a>
               </li>
             ) : null}
             <li>
@@ -147,6 +163,20 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             <a className="cta" href={shopHref ?? "#book"}>
               {preview.cta}
             </a>
+            {deliveryPlatform ? (
+              <p className="seed-hero-apps">
+                <a href={shopHref ?? "#book"}>Customer</a>
+                {driveHref ? <a href={driveHref}>Driver portal</a> : null}
+                {merchantHref ? (
+                  <a href={merchantHref}>Restaurant portal</a>
+                ) : null}
+                {businessAdminHref ? (
+                  <a href={businessAdminHref}>Admin ledger</a>
+                ) : (
+                  <a href={`/site/${project.id}/admin`}>Admin ledger</a>
+                )}
+              </p>
+            ) : null}
           </div>
         </section>
 

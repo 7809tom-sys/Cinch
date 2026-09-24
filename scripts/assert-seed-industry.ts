@@ -12,7 +12,10 @@ import {
   SEED_SITE_MUST_PROOF_RULE,
 } from "../src/lib/seed-site-proof";
 import {
+  briefIsDeliveryPlatform,
   briefIsPizza,
+  customerFacingAdminCopy,
+  seedCommerceAdminBoard,
   customerFacingShopCopy,
   customerFacingSiteCopy,
   seedGrowthBoardLooksThin,
@@ -545,6 +548,123 @@ const shopPage = readFileSync(
 assert(
   shopPage.includes("proofAndRepairSeedSite"),
   "opening the shop proofs the site against the brief",
+);
+
+const hometownName = "Hometown Runner";
+const hometownBrief = `Subject: Build Hometown Runner — v1 product brief
+
+Hometown Runner is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Drivers pay ~$900/year for software and keep 100% of delivery fees + tips. Cart, checkout, tip, tracking. Admin / ops.`;
+
+assert(
+  briefIsDeliveryPlatform(hometownName, hometownBrief),
+  "Hometown Runner brief is a delivery platform",
+);
+assert(
+  briefIsDeliveryPlatform("Home Town Runnner", ""),
+  "Home Town Runnner name (spaces + extra n) is still a delivery platform",
+);
+assert(
+  seedIndustryKey(hometownName, hometownBrief) === "delivery",
+  "Hometown Runner is not classified as a restaurant",
+);
+assert(
+  seedIndustryKey("Home Town Runnner", "Pizza and dinner service") ===
+    "delivery",
+  "Home Town Runnner stays delivery even if the brief says pizza",
+);
+
+const hometown = customerFacingSiteCopy(hometownName, hometownBrief);
+assert(hometown.cta === "Order nearby", `delivery CTA is Order nearby (got ${hometown.cta})`);
+assert(
+  !/subject:|v1 product brief/i.test(hometown.support),
+  "landing support is customer copy, not the pasted brief subject",
+);
+assert(
+  !/reserve a table|chef.?s dinner|a table worth dressing/i.test(
+    `${hometown.cta} ${hometown.headline} ${hometown.aboutBody} ${hometown.services.map((s) => s.detail).join(" ")}`,
+  ),
+  "Hometown Runner landing is not fine dining",
+);
+assert(
+  !/\$2,000\/week/.test(`${hometown.headline} ${hometown.aboutBody}`),
+  "landing does not default to a $2,000/week restaurant promise",
+);
+
+const hometownShop = customerFacingShopCopy(hometownName, hometownBrief);
+assert(
+  !seedShopMismatchesIndustry(hometownName, hometownBrief, hometownShop),
+  "Hometown Runner shop matches the delivery brief",
+);
+assert(
+  /pilot kitchen/i.test(hometownShop.products.map((p) => p.title).join(" ")),
+  "shop has a live pilot restaurant to order from",
+);
+assert(
+  !/seasonal small plates|chef.?s dinner plate|kitchen ticket/i.test(
+    `${hometownShop.title} ${hometownShop.support} ${hometownShop.products.map((p) => p.title).join(" ")}`,
+  ),
+  "shop is not a single-restaurant plated menu",
+);
+
+const hometownAdmin = customerFacingAdminCopy(hometownName, hometownBrief);
+assert(
+  /ledger|scout|driver/i.test(`${hometownAdmin.title} ${hometownAdmin.support}`),
+  "admin is ops/ledger, not a restaurant host stand",
+);
+assert(
+  seedLandingCopyMismatchesIndustry("Home Town Runnner", hometownBrief, {
+    headline: "Pizza With Personality",
+    cta: "Reserve a table",
+    servicesHeadline: "Dinner service · private gatherings · bar & small plates",
+    aboutBody: "How guests use the room. Covers and tickets that pay the room.",
+    support: "From reserve to table.",
+  }),
+  "mismatch flags a copied restaurant/pizza stamp on Home Town Runnner",
+);
+assert(
+  collectSeedSiteProofFailures("Home Town Runnner", hometownBrief, {
+    landing: {
+      headline: "Pizza With Personality",
+      cta: "Reserve a table",
+      aboutBody: "How guests use the room",
+    },
+    shop: {
+      title: "Order",
+      support:
+        "Order from the menu — priced items go to the kitchen ticket so the restaurant sees the money.",
+      cta: "Add to order",
+      products: leftoverRestaurantMenu,
+    },
+  }).length >= 2,
+  "proof fails restaurant landing + kitchen-ticket shop on Home Town Runnner",
+);
+const hometownLedger = seedCommerceAdminBoard(hometownName, hometownBrief);
+assert(
+  /10 \/ 5 \/ 5|ledger/i.test(
+    `${hometownLedger.headline} ${hometownLedger.support} ${hometownLedger.ordersHeadline}`,
+  ),
+  "commerce admin is the marketplace ledger, not kitchen tickets",
+);
+assert(
+  !/kitchen tickets & menu money/i.test(hometownLedger.headline),
+  "delivery admin does not stamp kitchen-ticket restaurant chrome",
+);
+
+const hometownMerchant = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/merchant/page.tsx"),
+  "utf8",
+);
+const hometownDrive = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/drive/page.tsx"),
+  "utf8",
+);
+assert(
+  hometownMerchant.includes("Restaurant portal"),
+  "Seed builds a restaurant portal for Hometown Runner",
+);
+assert(
+  hometownDrive.includes("Driver portal"),
+  "Seed builds a driver portal for Hometown Runner",
 );
 
 if (process.exitCode) {

@@ -13,6 +13,7 @@ import {
   SEED_PLAYBOOK_RULE,
   SENTI_DESK_PATH,
   SENTI_NAME,
+  SENTI_THINKS_DELIVERY_RULE,
   chapterIsFilled,
   compileSeedPlaybook,
   exampleSeedPlaybook,
@@ -62,7 +63,36 @@ assert(seedAsksForPlaybook("how do we develop a project"), "playbook ask is reco
 assert(seedAsksForPlaybook("open the instruction pack"), "instruction pack is a playbook ask");
 assert(!seedAsksForPlaybook("what is the weather"), "unrelated talk is not a playbook ask");
 
+assert(
+  /do not copy a dining-room|restaurant portal|driver\/scout portal/i.test(
+    SENTI_THINKS_DELIVERY_RULE,
+  ),
+  "Senti hard rule refuses a copied restaurant format",
+);
+
 const pack = exampleSeedPlaybook();
+assert(pack.seedName === "Hometown Runner", "Senti demo pack is Hometown Runner");
+assert(
+  /delivery platform — not a restaurant/i.test(pack.headline),
+  "Senti headline thinks delivery, not a dining room",
+);
+assert(
+  /restaurant portal/i.test(pack.chapters.map((c) => c.script).join(" ")) &&
+    /driver portal/i.test(pack.chapters.map((c) => c.script).join(" ")),
+  "Senti chapters compile restaurant and driver portals",
+);
+assert(
+  !/northside bakery|morning orders and pickup/i.test(pack.compiledBody),
+  "Senti demo does not stamp a bakery restaurant format",
+);
+assert(
+  /do not invent .*pizza with personality/i.test(pack.compiledBody),
+  "Senti names pizza-with-personality as a void, not a template",
+);
+assert(
+  pack.compiledBody.includes(SENTI_THINKS_DELIVERY_RULE),
+  "compiled pack includes the think-delivery hard rule",
+);
 assert(pack.chapters.length === 7, "prep playbook has seven chapters");
 assert(
   pack.chapters.some((chapter) => /intent/i.test(chapter.title + chapter.script)),
@@ -160,6 +190,26 @@ assert(
 assert(
   generic.compiledBody.includes("Acme Cabinets"),
   "generic compile names the Seed",
+);
+assert(
+  !generic.compiledBody.includes(SENTI_THINKS_DELIVERY_RULE),
+  "a cabinet Seed does not inherit delivery-platform chapters",
+);
+
+const misspelled = compileSeedPlaybook({
+  name: "Home Town Runnner",
+  brief: "Neighborhood food. Order nearby.",
+  seedMode: "build",
+});
+assert(
+  /restaurant portal/i.test(misspelled.chapters.map((c) => c.script).join(" ")),
+  "Home Town Runnner still compiles as a delivery platform",
+);
+assert(
+  /do not copy another restaurant format/i.test(
+    misspelled.chapters.map((c) => c.script).join(" "),
+  ),
+  "misspelled Hometown name still refuses a copied restaurant format",
 );
 
 assert(

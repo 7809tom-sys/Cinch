@@ -4,6 +4,7 @@ import {
   briefAsksForEcommerce,
   buildSeedShopPreview,
   proofAndRepairSeedSite,
+  seedIndustryKey,
   seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
@@ -38,6 +39,8 @@ export default async function SeedShopPage({
     project.brief,
   );
   const lotHold = seedShopUsesLotFulfillment(project.name, project.brief);
+  const deliveryPlatform =
+    seedIndustryKey(project.name, project.brief) === "delivery";
 
   return (
     <>
@@ -49,9 +52,29 @@ export default async function SeedShopPage({
             <h1>{shop.brand}</h1>
             <p className="seed-shop-support">{shop.support}</p>
           </div>
-          <Link href={`/site/${id}`} className="seed-admin-link" target="_top">
-            View website
-          </Link>
+          <div className="seed-admin-links">
+            <Link href={`/site/${id}`} className="seed-admin-link" target="_top">
+              View website
+            </Link>
+            {deliveryPlatform ? (
+              <>
+                <Link
+                  href={`/site/${id}/merchant`}
+                  className="seed-admin-link"
+                  target="_top"
+                >
+                  Restaurant portal
+                </Link>
+                <Link
+                  href={`/site/${id}/drive`}
+                  className="seed-admin-link"
+                  target="_top"
+                >
+                  Driver portal
+                </Link>
+              </>
+            ) : null}
+          </div>
         </header>
         <SeedShopBoard
           projectId={id}
@@ -61,6 +84,7 @@ export default async function SeedShopPage({
           salesTax={shop.salesTax}
           restaurantOrdering={restaurantOrdering}
           lotHold={lotHold}
+          deliveryPlatform={deliveryPlatform}
         />
       </main>
     </>

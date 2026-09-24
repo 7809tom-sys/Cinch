@@ -9,6 +9,7 @@ import {
   getMasterSession,
   isMasterEmail,
 } from "@/lib/master-auth";
+import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import {
   briefAsksForEcommerce,
   buildSeedAdminPreview,
@@ -18,6 +19,7 @@ import {
 import { getProject } from "@/lib/store";
 import { SeedAdminSchedule } from "./schedule-panel";
 import { SeedAdminCommerceOps } from "./commerce-ops";
+import { SeedDeliveryLedger } from "./delivery-ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +77,7 @@ export default async function SeedBusinessAdminPage({
     ? await buildSeedShopPreview(project)
     : null;
   const orders = shop?.orders ?? [];
+  const delivery = await ensureDeliveryOpsInSeed(project);
 
   return (
     <>
@@ -96,11 +99,31 @@ export default async function SeedBusinessAdminPage({
                 className="seed-admin-link"
                 target="_top"
               >
-                {admin.commerce?.ordersHeadline?.includes("ticket") ||
-                admin.commerce?.ordersEyebrow === "Money"
-                  ? "Order menu"
-                  : "Shop"}
+                {delivery
+                  ? "Customer"
+                  : admin.commerce?.ordersHeadline?.includes("ticket") ||
+                      admin.commerce?.ordersEyebrow === "Money"
+                    ? "Order menu"
+                    : "Shop"}
               </Link>
+            ) : null}
+            {delivery ? (
+              <>
+                <Link
+                  href={`/portal/${id}/restaurant`}
+                  className="seed-admin-link"
+                  target="_top"
+                >
+                  Restaurant portal
+                </Link>
+                <Link
+                  href={`/portal/${id}/drive`}
+                  className="seed-admin-link"
+                  target="_top"
+                >
+                  Driver portal
+                </Link>
+              </>
             ) : null}
             <Link
               href={`/portal/${id}`}
@@ -130,6 +153,8 @@ export default async function SeedBusinessAdminPage({
             serviceOptions={admin.services}
           />
         </section>
+
+        {delivery ? <SeedDeliveryLedger projectId={id} ops={delivery} /> : null}
 
         {admin.commerce ? (
           <SeedAdminCommerceOps

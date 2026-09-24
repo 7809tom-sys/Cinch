@@ -94,6 +94,28 @@ const IDEAL_URLS: Record<string, string[]> = {
     "https://www.carvana.com/cars",
     "https://www.carmax.com/cars",
   ],
+  delivery: [
+    "https://www.doordash.com/",
+    "https://www.ubereats.com/",
+    "https://www.grubhub.com/",
+    "https://www.postmates.com/",
+    "https://www.deliveroo.com/",
+    "https://www.just-eat.com/",
+    "https://merchant.doordash.com/",
+    "https://www.uber.com/us/en/deliver/",
+    "https://get.doordash.com/en-us/products/drive",
+    "https://www.skipthedishes.com/",
+    "https://www.instacart.com/",
+    "https://www.gopuff.com/",
+    "https://www.caviar.com/",
+    "https://www.seamless.com/",
+    "https://www.eat24.com/",
+    "https://www.trycaviar.com/",
+    "https://www.relay.delivery/",
+    "https://www.bitesquad.com/",
+    "https://www.chowbus.com/",
+    "https://www.hungrypanda.co/",
+  ],
   food: [
     "https://www.dominos.com/",
     "https://www.papajohns.com/",
@@ -288,6 +310,8 @@ const IDEAL_URLS: Record<string, string[]> = {
 const SEARCH_QUERY: Record<string, string> = {
   dealership:
     "used car dealership website hold a car test drive dealer delivery financing SEO",
+  delivery:
+    "food delivery platform merchant portal driver dasher app order nearby",
   food: "best restaurant website order online menu",
   salon: "best salon website book appointment",
   lawn: "best lawn care website get a quote",
@@ -327,6 +351,9 @@ export function ctaFitsIndustry(cta: string, industry: string): boolean {
     return /inventory|used car|shop cars|browse|view inventory|shop used|search cars|see (?:cars|inventory)|shop now/.test(
       lower,
     );
+  }
+  if (industry === "delivery") {
+    return /order nearby|order|start order|get the app/.test(lower);
   }
   if (industry === "food") {
     return /order|reserve|book a table|start order|menu/.test(lower);
@@ -418,6 +445,9 @@ function pickNav(html: string): string[] {
 
 function industryWords(industry: string): RegExp {
   if (industry === "dealership") return /inventory|used car|financing|trade/i;
+  if (industry === "delivery") {
+    return /order nearby|driver|dasher|scout|merchant|gmv|delivery fee/i;
+  }
   if (industry === "food") return /menu|order|pizza|dining|table/i;
   if (industry === "salon") return /salon|cut|color|appointment|barber/i;
   if (industry === "lawn") return /lawn|mow|yard|quote/i;
@@ -709,6 +739,12 @@ export function applyComparableOverlay(
     !containsForeignBrand(
       headline,
       research.snapshots.map((snap) => snap.host),
+    ) &&
+    !(
+      research.industry === "delivery" &&
+      /pizza with personality|reserve a table|table worth dressing|dinner service|chef/i.test(
+        headline,
+      )
     )
   ) {
     next.headline = headline;

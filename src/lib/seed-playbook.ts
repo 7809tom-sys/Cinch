@@ -10,6 +10,7 @@ import {
   LIVE_UPDATE_REQUIRES_APPROVAL,
   isJustPutzItSeedProject,
 } from "./seed-connect";
+import { briefIsDeliveryPlatform } from "./seed-site-copy";
 
 export const SENTI_NAME = "Senti";
 
@@ -25,6 +26,9 @@ export function portalSeedPlaybookUrl(projectId: string): string {
 }
 
 export const SENTI_DESK_PATH = "/senti";
+
+export const SENTI_THINKS_DELIVERY_RULE =
+  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — customer order nearby, restaurant portal, driver/scout portal, admin ledger. Senti must think through those four apps and the 10% / 5% / 5% split. Do not copy a dining-room, bakery, or pizza restaurant format.";
 
 export type PlaybookChapterId =
   | "discover"
@@ -207,6 +211,74 @@ export function mergePlaybookChapters(
   });
 }
 
+function deliveryChapters(input: {
+  name: string;
+  brief?: string | null;
+  liveUrl?: string | null;
+}): PlaybookChapter[] {
+  const site = input.name.trim() || "this Seed";
+  const host = input.liveUrl?.trim() || "the live host";
+  return [
+    {
+      id: "discover",
+      n: 1,
+      agent: "Conductor",
+      title: "Intent and done line",
+      script: `Think first for ${site}. This is a hyper-local food delivery platform (DoorDash concept): customer order nearby, restaurant portal, driver/scout portal, and admin ledger. It is not a restaurant dining room, bakery, or pizza shop. Do not copy another restaurant format. Host: ${host}. Done looks like: a guest orders nearby food, a restaurant accepts the ticket on the portal, a driver takes the run, and admin shows 10% restaurant / 5% platform / 5% scout.`,
+      status: "ready",
+    },
+    {
+      id: "atlas",
+      n: 2,
+      agent: "Atlas",
+      title: "In scope / out of scope",
+      script: `One job only for ${site}: the marketplace. IN SCOPE: customer order nearby, /portal restaurant desk (pause/online, accept/decline tickets), /portal driver desk (go online, accept run, pickup/drop), admin ledger. OUT OF SCOPE: reserve a table, pizza with personality, chef’s dinner plates, kitchen-ticket single-room copy, a $2,000/week restaurant promise. Source of truth is the product brief — not a restaurant website template.`,
+      status: "proposed",
+    },
+    {
+      id: "pixel",
+      n: 3,
+      agent: "Pixel",
+      title: "Website vs logged-in product",
+      script: `Public job on ${host}: find nearby kitchens and order. Behind login: restaurant portal and driver portal (DoorDash-style desks), plus ops admin. Soft gates: email for a customer order; restaurant and driver accounts for the portals. Do not draw a plated-menu dining room on the public landing.`,
+      status: "proposed",
+    },
+    {
+      id: "quill",
+      n: 4,
+      agent: "Quill",
+      title: "Non-negotiables",
+      script: `Hard rules for ${site}: restaurants pay a flat 10% on delivery GMV; platform 5%; originating scout residual 5% (immutable on freeze); drivers keep 100% of delivery fee + tip; processor (~2.9%) comes out of the platform 5%. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
+      status: "proposed",
+    },
+    {
+      id: "lumen",
+      n: 5,
+      agent: "Lumen",
+      title: "Admin, money, CRM, delivery",
+      script: `Admin is the ops ledger — not a host stand. Accounting is the 10 / 5 / 5 split on every order. CRM/ops is the restaurant roster plus scout attribution. Delivery is the product: restaurant portal + driver portal, DoorDash concept. Do not mark delivery N/A. Do not spec a single dining room.`,
+      status: "proposed",
+    },
+    {
+      id: "sentry",
+      n: 6,
+      agent: "Sentry",
+      title: "Acceptance in five minutes",
+      script: `Five-minute test: land on Order nearby (not Reserve a table); shop is nearby kitchens / Pilot Kitchen, not seasonal small plates; restaurant portal accepts a ticket; driver portal takes a run; admin shows 10 / 5 / 5. Fail if pizza-with-personality, dinner service, or dining-room copy appears on ${site}.`,
+      status: "proposed",
+    },
+    {
+      id: "compile",
+      n: 7,
+      agent: SENTI_NAME,
+      title: "Compile the paste-ready brief",
+      script:
+        "Read every chapter as one brief. Write a single instruction Conductor can paste: build the four apps (customer, restaurant portal, driver portal, admin ledger). Do not open AI cold. Do not stamp a restaurant format.",
+      status: "ready",
+    },
+  ];
+}
+
 function genericChapters(input: {
   name: string;
   brief?: string | null;
@@ -281,12 +353,14 @@ function compileBody(input: {
   liveUrl: string | null;
   chapters: PlaybookChapter[];
   awaitingOwnerApproval: boolean;
+  deliveryPlatform?: boolean;
 }): string {
   const host = input.liveUrl || "the live host";
   const lines = [
     `# ${input.seedName} — Seed instruction pack`,
     "",
     SEED_PLAYBOOK_RULE,
+    input.deliveryPlatform ? SENTI_THINKS_DELIVERY_RULE : null,
     "",
     `Host: ${host}`,
     "",
@@ -357,11 +431,18 @@ export function compileSeedPlaybook(input: {
     liveUrl: input.liveUrl,
     githubRepoUrl: input.githubRepoUrl,
   });
-  const generated = genericChapters({
-    name: seedName,
-    brief: input.brief,
-    liveUrl: plan.liveUrl,
-  });
+  const deliveryPlatform = briefIsDeliveryPlatform(seedName, input.brief ?? "");
+  const generated = deliveryPlatform
+    ? deliveryChapters({
+        name: seedName,
+        brief: input.brief,
+        liveUrl: plan.liveUrl,
+      })
+    : genericChapters({
+        name: seedName,
+        brief: input.brief,
+        liveUrl: plan.liveUrl,
+      });
   const chapters = mergePlaybookChapters(generated, input.draft);
   const awaitingOwnerApproval =
     input.seedMode === "connect" || plan.kind === "social_activity_dating";
@@ -369,9 +450,12 @@ export function compileSeedPlaybook(input: {
   return {
     seedName,
     liveUrl: plan.liveUrl ?? input.liveUrl?.trim() ?? null,
-    headline: `Senti holds the ${seedName} project on this Seed`,
-    summary:
-      "Prep work is everything. Fill each chapter on this Seed — intent, scope, lanes, delivery, money — then Conductor builds one job at a time. Not a dumped file on cinchseed.com.",
+    headline: deliveryPlatform
+      ? `Senti compiles ${seedName} as a delivery platform — not a restaurant`
+      : `Senti holds the ${seedName} project on this Seed`,
+    summary: deliveryPlatform
+      ? "Think through the four apps. Do not stamp a dining-room or pizza template. Customer order, restaurant portal, driver portal, admin ledger. 10% restaurant / 5% platform / 5% scout. Drivers keep 100% of fee and tip."
+      : "Prep work is everything. Fill each chapter on this Seed — intent, scope, lanes, delivery, money — then Conductor builds one job at a time. Not a dumped file on cinchseed.com.",
     method: PLAYBOOK_METHOD,
     chapters,
     compiledTitle: `${seedName} instruction pack`,
@@ -380,6 +464,7 @@ export function compileSeedPlaybook(input: {
       liveUrl: plan.liveUrl ?? input.liveUrl?.trim() ?? null,
       chapters,
       awaitingOwnerApproval,
+      deliveryPlatform,
     }),
     awaitingOwnerApproval,
     filledCount: playbookOwnerFilledCount(input.draft),
@@ -404,8 +489,9 @@ export function playbookDownloadFilename(seedName: string): string {
 
 export function exampleSeedPlaybook(): SeedPlaybook {
   return compileSeedPlaybook({
-    name: "Northside Bakery",
-    brief: "Neighborhood bakery website with morning orders and pickup.",
+    name: "Hometown Runner",
+    brief:
+      "Hometown Runner is a hyper-local food delivery platform. Restaurants pay 10% on delivery GMV. Drivers keep 100% of delivery fees + tips. Restaurant portal, driver portal, customer order nearby, admin ledger.",
     seedMode: "build",
     liveUrl: null,
   });

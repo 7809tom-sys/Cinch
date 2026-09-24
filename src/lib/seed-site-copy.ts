@@ -102,6 +102,10 @@ function industryKey(brief: string, name = ""): string {
   if (briefLooksLikeDealership(name, brief)) {
     return "dealership";
   }
+  // Marketplace / Hometown Runner before a single restaurant plate.
+  if (briefIsDeliveryPlatform(name, brief)) {
+    return "delivery";
+  }
   // Pizza before generic food so pies don’t get fine-dining “Reserve a table”.
   if (
     /\b(pizza|pizzerias?|pizzeria|neapolitan|pepperoni|calzones?)\b/.test(lower) ||
@@ -148,6 +152,33 @@ function industryKey(brief: string, name = ""): string {
   return "generic";
 }
 
+/**
+ * Hyper-local food *delivery platform* (Hometown Runner): merchant +
+ * driver/scout + customer + admin. Not a single restaurant.
+ */
+export function briefIsDeliveryPlatform(
+  projectName: string,
+  brief: string,
+): boolean {
+  const lower = `${projectName} ${brief}`.toLowerCase();
+  // “Hometown Runner”, “Home Town Runnner”, hometownrunner — not a restaurant.
+  if (/home[\s-]*town[\s-]*runn+ers?/.test(lower)) return true;
+  if (/\bhometown\s+runner\b/.test(lower)) return true;
+  if (
+    /\b(hyper-?local food delivery|delivery platform|merchant terminal|driver\s*\/\s*scout|scout residual|delivery gmv)\b/.test(
+      lower,
+    )
+  ) {
+    return true;
+  }
+  return (
+    /\bscout\b/.test(lower) &&
+    /\bgmv\b/.test(lower) &&
+    /\b10%\b/.test(lower) &&
+    /\b(driver|dispatch|restaurant)\b/.test(lower)
+  );
+}
+
 /** Pizza / pizzeria vertical inside food — name or brief. */
 export function briefIsPizza(projectName: string, brief: string): boolean {
   const lower = `${projectName} ${brief}`.toLowerCase();
@@ -171,6 +202,7 @@ export function seedLandingCopyMismatchesIndustry(
   brief: string,
   copy: {
     cta?: string;
+    headline?: string;
     heroImage?: string;
     services?: Array<{ title?: string; detail?: string }>;
     aboutBody?: string;
@@ -182,6 +214,7 @@ export function seedLandingCopyMismatchesIndustry(
   const key = industryKey(brief, projectName);
   const blob = [
     copy.cta,
+    copy.headline,
     copy.heroImage,
     copy.aboutBody,
     copy.support,
@@ -232,6 +265,19 @@ export function seedLandingCopyMismatchesIndustry(
   // Pizza Man / pizzeria stuck on salon, car, or fine-dining rename templates.
   if (briefIsPizza(projectName, brief) && looksLikeSalonCopy) return true;
   if (briefIsPizza(projectName, brief) && looksLikeFineDiningCopy) return true;
+  const looksLikeCopiedRestaurantRoom =
+    /how guests use the room|covers and tickets that pay the room|from reserve to table|a night worth dressing|save your table|pizza with personality|anniversary dinner|chef.?s dinner plates?/.test(
+      blob,
+    );
+  if (
+    key === "delivery" &&
+    (looksLikeFineDiningCopy ||
+      looksLikeRestaurantShopCopy ||
+      looksLikeCopiedRestaurantRoom ||
+      /subject:|v1 product brief|what it is hometown/i.test(blob))
+  ) {
+    return true;
+  }
   if (briefIsPizza(projectName, brief) && !looksLikePizzaCopy && looksLikeRetailCopy)
     return true;
   return false;
@@ -239,6 +285,9 @@ export function seedLandingCopyMismatchesIndustry(
 
 /** Benefit-first support line for visitors — not checklist dumps. */
 export function customerFacingSupport(brief: string): string {
+  if (briefIsDeliveryPlatform("", brief)) {
+    return "Local food. Drivers keep 100% of the fee and tip.";
+  }
   const cleaned = brief.replace(/\s+/g, " ").trim();
   if (!cleaned) return "Quality work, done the way you need it.";
 
@@ -286,6 +335,9 @@ export function customerFacingHeadline(
   if (key === "dealership") {
     return "Clean cars. Straight prices.";
   }
+  if (key === "delivery") {
+    return "Local food. Drivers keep the fee.";
+  }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
       return "Hot pies. Ready when you are.";
@@ -315,6 +367,7 @@ export function customerFacingCta(brief: string, projectName = ""): string {
   if (key === "lawn") return "Get a quote";
   if (key === "garage") return "Book service";
   if (key === "dealership") return "Browse inventory";
+  if (key === "delivery") return "Order nearby";
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) return "Order pizza";
     return "Reserve a table";
@@ -342,6 +395,9 @@ export function customerFacingHeroImage(
   }
   if (key === "dealership") {
     return "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "delivery") {
+    return "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1800&q=80";
   }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
@@ -1232,6 +1288,51 @@ export function customerFacingSiteCopy(
     );
   }
 
+  if (key === "delivery") {
+    return withBusinessSiteDepth(
+      {
+        brand,
+        headline,
+        support,
+        cta,
+        heroImage,
+        navLabel: "Order",
+        servicesEyebrow: "Three apps + admin",
+        servicesHeadline: "Order, drive, or sign a restaurant",
+        services: [
+          {
+            title: "Order nearby",
+            detail:
+              "Browse restaurants in one town, cart, checkout, tip, and track the driver.",
+          },
+          {
+            title: "Drive and keep the fee",
+            detail:
+              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee and tip. Software is about $900/year.",
+          },
+          {
+            title: "Scout residual",
+            detail:
+              "The driver who first activates a restaurant earns 5% of that restaurant’s delivery GMV — perpetual while they stay on the platform. Examples at $500 / $800 / $1,000 / $2,000 weekly GMV, not a $2,000 default promise.",
+          },
+        ],
+        aboutEyebrow: "The split",
+        aboutHeadline: "10% from the restaurant. Drivers keep the run.",
+        aboutBody:
+          support ||
+          `${brand} is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the platform 5% — we show that in admin economics.`,
+        bookEyebrow: "Pilot one town",
+        bookHeadline: "Start with drivers, then restaurants",
+        bookBody:
+          "Onboard drivers first. One scout can attach many restaurants. Each restaurant has exactly one originating scout. Compliance (license and insurance) can freeze a driver without moving scout ownership.",
+        bookNote:
+          "v1 is one city. No multi-city batching ML, no silent edit of the 50/50 scout split.",
+        footerNote: `${brand} · Local delivery · 10% restaurant / drivers keep the fee`,
+      },
+      key,
+    );
+  }
+
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
       return withBusinessSiteDepth(
@@ -1778,6 +1879,28 @@ button {
 .seed-hero .cta:focus-visible {
   outline: 2px solid var(--foam);
   outline-offset: 3px;
+}
+
+.seed-hero-apps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  margin: 1rem 0 0;
+  animation: seed-rise 0.7s ease both;
+  animation-delay: 0.3s;
+}
+
+.seed-hero-apps a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+}
+
+.seed-hero-apps a:hover {
+  text-decoration: underline;
 }
 
 .seed-section {
@@ -3053,6 +3176,218 @@ button {
   color: var(--ink);
   font-size: 1.05rem;
 }
+
+/* —— Hometown Runner apps (merchant / drive / ledger) —— */
+.seed-run {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(94, 234, 212, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(18, 26, 32, 0.9), transparent 50%),
+    var(--foam);
+  color: var(--ink);
+  padding: calc(1.25rem + env(safe-area-inset-top)) var(--pad-inline)
+    calc(2rem + env(safe-area-inset-bottom));
+}
+
+.seed-run-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(100%, var(--content));
+  margin: 0 auto 1.5rem;
+}
+
+.seed-run-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-run-top h1 {
+  margin: 0;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.85rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.seed-run-support {
+  margin: 0.65rem 0 0;
+  max-width: 38rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+
+.seed-run-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.seed-run-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0.55rem 1rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line-dark);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.seed-run-panel {
+  width: min(100%, var(--content));
+  margin: 0 auto 1.25rem;
+  padding: 1.35rem 1.25rem 1.5rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.seed-run-panel h2 {
+  margin: 0 0 0.75rem;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
+}
+
+.seed-run-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 22rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.seed-run-field input,
+.seed-run-field select {
+  min-height: var(--tap);
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.35rem;
+  background: var(--foam);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.seed-run-note,
+.seed-run-meta,
+.seed-run-empty {
+  margin: 0.65rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted-strong);
+}
+
+.seed-run-money {
+  margin: 0.45rem 0 0;
+  font-weight: 700;
+}
+
+.seed-run-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.seed-run-stats div {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.4rem;
+  background: var(--foam);
+}
+
+.seed-run-stats dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-run-stats dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.seed-run-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.seed-run-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line-dark);
+}
+
+.seed-run-list h3 {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+
+.seed-run-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.seed-run-subhead {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.seed-run-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.seed-run-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.seed-run-table th,
+.seed-run-table td {
+  padding: 0.55rem 0.45rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line-dark);
+  white-space: nowrap;
+}
+
+.seed-run-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
 `;
 }
 
@@ -3067,7 +3402,7 @@ function esc(value: string): string {
 
 /** Customer-facing landing page source — full business site, not a thin stub. */
 export function seedHomePageSource(
-  input: SeedSiteCopy & { includeShop?: boolean },
+  input: SeedSiteCopy & { includeShop?: boolean; includeDeliveryApps?: boolean },
 ): string {
   const brand = esc(input.brand);
   const headline = esc(input.headline);
@@ -3079,6 +3414,15 @@ export function seedHomePageSource(
     ? `
           <li>
             <a href="/shop">${lotNav ? "Inventory" : input.menuItems?.length ? "Order" : "Shop"}</a>
+          </li>`
+    : "";
+  const deliveryNav = input.includeDeliveryApps
+    ? `
+          <li>
+            <a href="/drive">Driver portal</a>
+          </li>
+          <li>
+            <a href="/merchant">Restaurant portal</a>
           </li>`
     : "";
   const services = input.services
@@ -3191,7 +3535,7 @@ ${specials
           </li>
           <li>
             <a href="#about">About</a>
-          </li>${shopNav}
+          </li>${shopNav}${deliveryNav}
           <li>
             <a href="#book">${esc(input.cta)}</a>
           </li>
@@ -3557,48 +3901,77 @@ export function seedCommerceAdminBoard(
   brief: string,
 ): SeedAdminCommerce {
   const shop = customerFacingShopCopy(projectName, brief);
-  const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const delivery = industryKey(brief, projectName) === "delivery";
+  const restaurant =
+    !delivery && seedShopUsesRestaurantFulfillment(projectName, brief);
   const lot = seedShopUsesLotFulfillment(projectName, brief);
   return {
-    eyebrow: restaurant ? "Orders & money" : lot ? "The lot" : "Commerce",
-    headline: restaurant
+    eyebrow: delivery
+      ? "Marketplace ledger"
+      : restaurant
+        ? "Orders & money"
+        : lot
+          ? "The lot"
+          : "Commerce",
+    headline: delivery
+      ? "Nearby kitchens, runs, and the 10 / 5 / 5 split"
+      : restaurant
       ? "Kitchen tickets & menu money"
       : lot
         ? "Holds, drives, and dealer delivery"
         : "Shop operations",
-    support: restaurant
+    support: delivery
+      ? "Customer orders from nearby kitchens. Restaurant and driver portals run the ticket. Ledger is 10% restaurant / 5% platform / 5% scout. Do not stamp kitchen-ticket dining-room chrome on a delivery platform."
+      : restaurant
       ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
       : lot
         ? "Units stay on the lot. Customers hold a car, book a drive, or ask for dealer delivery. Never print a UPS label for a vehicle."
         : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
-    inventoryEyebrow: restaurant ? "Menu" : lot ? "Units" : "Stock",
-    inventoryHeadline: restaurant
+    inventoryEyebrow: delivery
+      ? "Pilot kitchens"
+      : restaurant
+        ? "Menu"
+        : lot
+          ? "Units"
+          : "Stock",
+    inventoryHeadline: delivery
+      ? "Nearby kitchens · price on the ticket"
+      : restaurant
       ? "Menu items · price & on-hand"
       : lot
         ? "Featured units · price on the card"
         : "Inventory · scan to add",
     shippingEyebrow: "Fulfillment",
-    shippingHeadline: restaurant
+    shippingHeadline: delivery
+      ? "Customer delivery · driver run"
+      : restaurant
       ? "Pickup & delivery"
       : lot
         ? "Hold · drive · dealer delivery"
         : "Shipping",
     taxEyebrow: "Compliance",
     taxHeadline: "Sales tax",
-    ordersEyebrow: restaurant ? "Money" : "Orders",
-    ordersHeadline: restaurant ? "Tickets & order money" : "Open orders",
+    ordersEyebrow: delivery ? "Ledger" : restaurant ? "Money" : "Orders",
+    ordersHeadline: delivery
+      ? "Runs & the 10 / 5 / 5 split"
+      : restaurant
+        ? "Tickets & order money"
+        : "Open orders",
     originZip: "10001",
-    shippingModes: restaurant
-      ? seedRestaurantFulfillmentModes()
-      : lot
-        ? seedLotFulfillmentModes()
-        : seedParcelShippingModes(),
+    shippingModes:
+      delivery || restaurant
+        ? seedRestaurantFulfillmentModes()
+        : lot
+          ? seedLotFulfillmentModes()
+          : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
       taxInclusive: false,
       nexusStates: ["NY", "NJ", "CT"],
-      notes: restaurant
+      notes: delivery
+        ? "Collect sales tax on the customer ticket. Ledger still splits 10 / 5 / 5 on GMV."
+        : restaurant
         ? "Collect sales tax on taxable order totals for nexus addresses."
         : lot
           ? "Collect sales tax on the unit price for the buyer’s state — not a parcel shipment."
@@ -3721,6 +4094,29 @@ export function customerFacingAdminCopy(
             body: "Park in shade when you can — hot paint flash-dries soap and leaves spots.",
           },
         ]
+      : key === "delivery"
+        ? [
+            {
+              id: "tip-ledger",
+              title: "Write the ledger on every order",
+              body: "GMV, 10% commission, 5% platform, 5% scout_id, delivery fee, tip, processor fees. Residuals are 5% × GMV — show $500 / $800 / $1,000 / $2,000 weekly GMV as inputs, never a $2,000/week default promise.",
+            },
+            {
+              id: "tip-scout",
+              title: "Scout ownership is immutable",
+              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. No silent edit of the 50/50 split without a policy version.",
+            },
+            {
+              id: "tip-fees",
+              title: "Drivers keep fee and tip",
+              body: "Never skim delivery fee or tip. Card processing (~2.9%) comes out of the platform’s 5% — surface it in admin economics.",
+            },
+            {
+              id: "tip-compliance",
+              title: "Block dispatch when papers expire",
+              body: "ID, license, and insurance are product gates. A freeze stops dispatch only — it does not reassign scout residuals.",
+            },
+          ]
       : briefIsPizza(projectName, brief) || key === "food"
         ? [
             {
@@ -3816,6 +4212,7 @@ export function customerFacingAdminCopy(
   const pizzaOrFood = briefIsPizza(projectName, brief) || key === "food";
   const opsHeavy =
     pizzaOrFood ||
+    key === "delivery" ||
     key === "lawn" ||
     key === "garage" ||
     key === "dealership" ||
@@ -3824,14 +4221,18 @@ export function customerFacingAdminCopy(
   return {
     brand,
     title: wantsShop
-      ? pizzaOrFood
-        ? "Business admin · Orders & tax"
-        : "Business admin · Commerce"
+      ? key === "delivery"
+        ? "Admin · Ledger, drivers, scouts"
+        : pizzaOrFood
+          ? "Business admin · Orders & tax"
+          : "Business admin · Commerce"
       : opsHeavy
         ? "Business admin · Profit ops"
         : "Business admin",
     support: wantsShop
-      ? pizzaOrFood
+      ? key === "delivery"
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Processor fees come out of the platform 5%. Do not hide them."
+        : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
       : key === "lawn"
@@ -4058,6 +4459,8 @@ export type SeedShopOrder = {
   totalUsd: number;
   createdAt: string;
   status: "new" | "paid" | "fulfilled";
+  /** Hometown Runner: driver keeps 100% of this tip. */
+  tipUsd?: number;
 };
 
 /** Shop catalog that lives in the Seed source tree (`content/shop.copy.json`). */
@@ -4119,6 +4522,7 @@ export function seedShopShouldStartEmpty(
   // kitchen sees money per ticket. Empty+scan is for retail inventory intake.
   if (briefIsPizza(projectName, brief)) return false;
   if (industryKey(brief, projectName) === "food") return false;
+  if (industryKey(brief, projectName) === "delivery") return false;
   if (briefAsksForOwnerStockedCatalog(brief)) return true;
   return false;
 }
@@ -4131,7 +4535,8 @@ export function seedShopUsesRestaurantFulfillment(
   if (!briefAsksForEcommerce(brief)) return false;
   return (
     briefIsPizza(projectName, brief) ||
-    industryKey(brief, projectName) === "food"
+    industryKey(brief, projectName) === "food" ||
+    industryKey(brief, projectName) === "delivery"
   );
 }
 
@@ -4216,6 +4621,10 @@ export function seedShopCatalogMismatchesBrief(
   brief: string,
   products: Array<{ id?: string; title?: string; detail?: string }>,
 ): boolean {
+  if (industryKey(brief, projectName) === "delivery") {
+    if (!products.length) return true;
+    return shopLooksLikeRestaurantCatalog(products);
+  }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) {
     if (!products.length) return true;
     return shopProductsLookLikeStockCatalog(products);
@@ -4234,6 +4643,9 @@ export function seedShopChromeMismatchesBrief(
   brief: string,
   copy: { title?: string; support?: string; cta?: string },
 ): boolean {
+  if (industryKey(brief, projectName) === "delivery") {
+    return shopChromeLooksLikeRestaurant(copy);
+  }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
   return shopChromeLooksLikeRestaurant(copy);
 }
@@ -4276,6 +4688,41 @@ export function seedRestaurantMenuProducts(
   projectName: string,
   brief: string,
 ): SeedShopProduct[] {
+  if (briefIsDeliveryPlatform(projectName, brief)) {
+    return [
+      withInventory({
+        id: "run-pilot-bowl",
+        title: "Pilot Kitchen · Warm grain bowl",
+        detail:
+          "First live restaurant on this town’s board. Customer checkout, tip, and driver tracking.",
+        priceUsd: 14,
+        sku: "RUN-PILOT-BOWL",
+        stockQty: 40,
+        weightLb: 1.2,
+        shipClass: "parcel",
+      }),
+      withInventory({
+        id: "run-pilot-sandwich",
+        title: "Pilot Kitchen · Market sandwich",
+        detail: "Orderable so a customer can complete one live restaurant end-to-end.",
+        priceUsd: 12,
+        sku: "RUN-PILOT-SAND",
+        stockQty: 40,
+        weightLb: 0.9,
+        shipClass: "parcel",
+      }),
+      withInventory({
+        id: "run-pilot-drink",
+        title: "Pilot Kitchen · House drink",
+        detail: "Add-on on the same ticket. Tax and tip stay on the order ledger.",
+        priceUsd: 3,
+        sku: "RUN-PILOT-DRINK",
+        stockQty: 80,
+        weightLb: 0.4,
+        shipClass: "parcel",
+      }),
+    ];
+  }
   if (briefIsPizza(projectName, brief)) {
     return [
       withInventory({
@@ -4584,15 +5031,18 @@ export function customerFacingShopCopy(
   brief: string,
 ): SeedShopCopy {
   const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
-  const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const delivery = industryKey(brief, projectName) === "delivery";
+  const restaurant =
+    seedShopUsesRestaurantFulfillment(projectName, brief) && !delivery;
   const dealership = industryKey(brief, projectName) === "dealership";
   const commerce = {
     originZip: "10001",
-    shippingModes: restaurant
-      ? seedRestaurantFulfillmentModes()
-      : dealership
-        ? seedLotFulfillmentModes()
-        : seedParcelShippingModes(),
+    shippingModes:
+      restaurant || delivery
+        ? seedRestaurantFulfillmentModes()
+        : dealership
+          ? seedLotFulfillmentModes()
+          : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
@@ -4609,19 +5059,29 @@ export function customerFacingShopCopy(
 
   return {
     brand,
-    title: restaurant ? "Order" : dealership ? "Inventory" : "Shop",
+    title: delivery
+      ? "Restaurants"
+      : restaurant
+        ? "Order"
+        : dealership
+          ? "Inventory"
+          : "Shop",
     support: ownerStocks
       ? "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
+      : delivery
+        ? "Order from a live restaurant in this town. Hometown drivers keep 100% of the delivery fee and tip. Restaurant weekly GMV and the 5% scout residual post to the ledger."
+        : restaurant
+          ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
+          : dealership
+            ? "Inspected units from this lot — price on the card. Hold one, book a drive, or ask for dealer delivery. We do not ship cars UPS."
+            : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
+    cta: delivery
+      ? "Add to bag"
       : restaurant
-        ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
+        ? "Add to order"
         : dealership
-          ? "Inspected units from this lot — price on the card. Hold one, book a drive, or ask for dealer delivery. We do not ship cars UPS."
-          : "Products from this business — grown into the Seed website with inventory, UPS/LTL shipping, and sales tax in admin.",
-    cta: restaurant
-      ? "Add to order"
-      : dealership
-        ? "Ask about this unit"
-        : "Add to cart",
+          ? "Ask about this unit"
+          : "Add to cart",
     products,
     orders: [],
     ...commerce,

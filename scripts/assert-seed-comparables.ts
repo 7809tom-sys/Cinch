@@ -47,6 +47,7 @@ assert(
 );
 for (const industry of [
   "dealership",
+  "delivery",
   "food",
   "salon",
   "lawn",
@@ -91,6 +92,28 @@ assert(
 assert(
   ctaFitsIndustry("Order now", "food"),
   "Order now fits a restaurant",
+);
+assert(
+  idealUrlsForIndustry("delivery").some((url) => /doordash/i.test(url)),
+  "delivery catalog crawls DoorDash, not a pizza restaurant",
+);
+assert(
+  /merchant|driver|dasher/i.test(
+    comparableSearchQuery(
+      "Home Town Runnner",
+      "Hyper-local food delivery platform.",
+    ),
+  ),
+  "Hometown search looks for delivery-platform ideals",
+);
+assert(
+  !/best restaurant website/i.test(
+    comparableSearchQuery(
+      "Home Town Runnner",
+      "Hyper-local food delivery platform.",
+    ),
+  ),
+  "Hometown search does not crawl restaurant website templates",
 );
 
 const weak: Omit<ComparableSnapshot, "score" | "notes"> = {
@@ -260,6 +283,29 @@ assert(
 assert(
   refused.headline !== "Carmax official sale",
   "overlay refuses another brand’s headline",
+);
+
+const hometownLanding = customerFacingSiteCopy(
+  "Home Town Runnner",
+  "Hyper-local food delivery platform. Order nearby.",
+);
+const pizzaStamp = applyComparableOverlay(hometownLanding, {
+  query: "x",
+  industry: "delivery",
+  searchedAt: "2026-01-01T00:00:00.000Z",
+  urlsConsidered: [],
+  snapshots: [],
+  winnerUrl: null,
+  bestCta: "Order nearby",
+  bestHeadline: "Pizza With Personality",
+  bestSeoTitle: null,
+  bestSeoDescription: null,
+  customerFriendlyMethods: [],
+  takeaways: [],
+});
+assert(
+  pizzaStamp.headline !== "Pizza With Personality",
+  "overlay refuses a pizza-restaurant headline on a delivery Seed",
 );
 
 const ddg = parseDuckDuckGoResultUrls(`
