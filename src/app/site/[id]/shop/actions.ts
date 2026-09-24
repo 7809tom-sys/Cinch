@@ -113,8 +113,12 @@ export async function placeSeedShopOrderAction(
     ? Math.round(subtotalUsd * (shop.salesTax.ratePct / 100) * 100) / 100
     : 0;
   const shippingUsd = mode.baseRateUsd;
+  const tipUsd = Math.max(
+    0,
+    Math.round(Number(formData.get("tipUsd") ?? 0) * 100) / 100,
+  );
   const totalUsd =
-    Math.round((subtotalUsd + taxUsd + shippingUsd) * 100) / 100;
+    Math.round((subtotalUsd + taxUsd + shippingUsd + tipUsd) * 100) / 100;
 
   for (const item of items) {
     const product = shop.products.find((row) => row.id === item.productId);
@@ -140,6 +144,7 @@ export async function placeSeedShopOrderAction(
       createdAt: new Date().toISOString(),
       // Seed-grown card checkout stub — not a Cinch platform Stripe charge.
       status: paymentMethod === "card" ? ("paid" as const) : ("new" as const),
+      tipUsd,
     },
     ...shop.orders,
   ].slice(0, 100);
@@ -158,11 +163,45 @@ export async function placeSeedShopOrderAction(
     revalidatePath(`/site/${projectId}/admin`);
   }
 
+  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
+  if (briefIsDeliveryPlatform(project.name, project.brief)) {
+    const { randomUUID } = await import("crypto");
+    const { recordDeliveryOrder } = await import("@/lib/seed-delivery");
+    const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
+      "@/lib/seed-delivery-io"
+    );
+    const ops = await ensureDeliveryOpsInSeed(project);
+    if (ops) {
+      const orderId = shop.orders[0]?.id ?? randomUUID();
+      await saveDeliveryOps(
+        projectId,
+        recordDeliveryOrder(ops, {
+          ledgerId: randomUUID(),
+          ticketId: randomUUID(),
+          runId: randomUUID(),
+          orderId,
+          customerName,
+          dropoffZip: shipToZip,
+          items,
+          gmvUsd: subtotalUsd,
+          deliveryFeeUsd: shippingUsd,
+          tipUsd,
+          taxUsd,
+        }),
+        "Wrote Hometown Runner ledger from a customer order",
+      );
+      revalidatePath(`/site/${projectId}/merchant`);
+      revalidatePath(`/site/${projectId}/drive`);
+      revalidatePath(`/site/${projectId}/admin`);
+    }
+  }
+
   revalidatePath(`/site/${projectId}/shop`);
   return {
     ok: true as const,
     totalUsd,
     taxUsd,
     shippingUsd,
+    tipUsd,
   };
 }

@@ -19,6 +19,7 @@ export function SeedShopBoard({
   salesTax,
   restaurantOrdering = false,
   lotHold = false,
+  deliveryPlatform = false,
 }: {
   projectId: string;
   products: SeedShopProduct[];
@@ -29,6 +30,8 @@ export function SeedShopBoard({
   restaurantOrdering?: boolean;
   /** Used-car lot: hold / drive / dealer delivery — never UPS a car. */
   lotHold?: boolean;
+  /** Hometown Runner: customer app — tip goes 100% to the driver. */
+  deliveryPlatform?: boolean;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [shippingModeId, setShippingModeId] = useState(
@@ -40,6 +43,7 @@ export function SeedShopBoard({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [tipUsd, setTipUsd] = useState(deliveryPlatform ? 4 : 0);
 
   const lines = useMemo(
     () =>
@@ -72,9 +76,10 @@ export function SeedShopBoard({
   const taxUsd = taxApplies
     ? Math.round(subtotal * (salesTax.ratePct / 100) * 100) / 100
     : 0;
-  const total = Math.round((subtotal + taxUsd + shippingUsd) * 100) / 100;
+  const total =
+    Math.round((subtotal + taxUsd + shippingUsd + tipUsd) * 100) / 100;
   const isDelivery =
-    restaurantOrdering &&
+    (restaurantOrdering || deliveryPlatform) &&
     /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
 
   function add(productId: string) {
@@ -104,6 +109,7 @@ export function SeedShopBoard({
     formData.set("cartJson", JSON.stringify(cart));
     formData.set("shippingModeId", mode?.id ?? shippingModeId);
     formData.set("shipToState", shipToState);
+    formData.set("tipUsd", String(deliveryPlatform ? tipUsd : 0));
     startTransition(async () => {
       const result = await placeSeedShopOrderAction(projectId, formData);
       if (!result.ok) {
@@ -112,7 +118,9 @@ export function SeedShopBoard({
       }
       setCart([]);
       setDone(
-        restaurantOrdering
+        deliveryPlatform
+          ? `Order placed — $${result.totalUsd.toFixed(2)}. Driver keeps 100% of the $${result.shippingUsd.toFixed(2)} fee and $${(result.tipUsd ?? 0).toFixed(2)} tip. Tracking is live on Drive.`
+          : restaurantOrdering
           ? `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}${
               result.shippingUsd > 0
                 ? `, delivery $${result.shippingUsd.toFixed(2)}`
@@ -159,7 +167,9 @@ export function SeedShopBoard({
                 {formatSeedMoney(product.priceUsd, lotHold ? "lot" : "retail")}
               </p>
               <p className="seed-shop-meta">
-                {restaurantOrdering
+                {deliveryPlatform
+                  ? `${product.sku} · live restaurant`
+                  : restaurantOrdering
                   ? `${product.sku} · ready to order`
                   : lotHold
                     ? `${product.stockQty} available`
@@ -179,14 +189,24 @@ export function SeedShopBoard({
       </div>
 
       <section className="seed-shop-cart" id="cart">
-        <h2>{restaurantOrdering ? "Your order" : lotHold ? "Hold list" : "Cart"}</h2>
+        <h2>
+          {deliveryPlatform
+            ? "Your bag"
+            : restaurantOrdering
+              ? "Your order"
+              : lotHold
+                ? "Hold list"
+                : "Cart"}
+        </h2>
         {lines.length === 0 ? (
           <p className="seed-shop-cart-empty">
-            {restaurantOrdering
-              ? "Add menu items to build your order."
-              : lotHold
-                ? "Ask about a unit to hold it or book a drive."
-                : "Your cart is empty."}
+            {deliveryPlatform
+              ? "Add from a live restaurant in this town."
+              : restaurantOrdering
+                ? "Add menu items to build your order."
+                : lotHold
+                  ? "Ask about a unit to hold it or book a drive."
+                  : "Your cart is empty."}
           </p>
         ) : (
           <>
@@ -232,7 +252,8 @@ export function SeedShopBoard({
                   : " · Tax $0.00"}
                 {mode
                   ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
-                  : ""}{" "}
+                  : ""}
+                {deliveryPlatform ? ` · Tip $${tipUsd.toFixed(2)}` : ""}{" "}
                 · Total ${total.toFixed(2)}
               </p>
             )}
@@ -254,7 +275,7 @@ export function SeedShopBoard({
                 <input name="contact" type="text" required />
               </label>
               <label>
-                {restaurantOrdering
+                {deliveryPlatform || restaurantOrdering
                   ? isDelivery
                     ? "Delivery state"
                     : "Pickup state"
@@ -273,7 +294,7 @@ export function SeedShopBoard({
                 />
               </label>
               <label>
-                {restaurantOrdering
+                {deliveryPlatform || restaurantOrdering
                   ? isDelivery
                     ? "Delivery ZIP"
                     : "Pickup ZIP"
@@ -283,11 +304,13 @@ export function SeedShopBoard({
                 <input name="shipToZip" type="text" required />
               </label>
               <label>
-                {restaurantOrdering
-                  ? "Pickup or delivery"
-                  : lotHold
-                    ? "How you'll get the car"
-                    : "Shipping"}
+                {deliveryPlatform
+                  ? "Pickup or Hometown delivery"
+                  : restaurantOrdering
+                    ? "Pickup or delivery"
+                    : lotHold
+                      ? "How you'll get the car"
+                      : "Shipping"}
                 <select
                   name="shippingModeId"
                   value={mode?.id ?? shippingModeId}
@@ -296,7 +319,9 @@ export function SeedShopBoard({
                   {shippingModes.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
-                      {restaurantOrdering || lotHold ? "" : ` (${item.kind})`} · $
+                      {restaurantOrdering || lotHold || deliveryPlatform
+                        ? ""
+                        : ` (${item.kind})`} · $
                       {item.baseRateUsd.toFixed(2)}
                     </option>
                   ))}
@@ -306,25 +331,46 @@ export function SeedShopBoard({
                 Payment
                 <select name="paymentMethod" defaultValue="invoice">
                   <option value="invoice">
-                    {restaurantOrdering
-                      ? "Pay at pickup / on delivery"
-                      : lotHold
-                        ? "Finance or pay at the lot"
-                        : "Pay later / invoice"}
+                    {deliveryPlatform
+                      ? "Pay on delivery"
+                      : restaurantOrdering
+                        ? "Pay at pickup / on delivery"
+                        : lotHold
+                          ? "Finance or pay at the lot"
+                          : "Pay later / invoice"}
                   </option>
                   <option value="card">
                     Charge card (Seed checkout — recorded as paid)
                   </option>
                 </select>
               </label>
+              {deliveryPlatform ? (
+                <label>
+                  Tip (100% to the driver)
+                  <input
+                    name="tipUsd"
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    value={tipUsd}
+                    onChange={(event) =>
+                      setTipUsd(Math.max(0, Number(event.target.value) || 0))
+                    }
+                  />
+                </label>
+              ) : null}
               <button type="submit" className="cta" disabled={pending}>
                 {pending
-                  ? restaurantOrdering
+                  ? deliveryPlatform
+                    ? "Sending to Hometown…"
+                    : restaurantOrdering
                     ? "Sending ticket…"
                     : lotHold
                       ? "Saving hold…"
                       : "Placing order…"
-                  : restaurantOrdering
+                  : deliveryPlatform
+                    ? "Place order"
+                    : restaurantOrdering
                     ? "Place order"
                     : lotHold
                       ? "Hold this unit"

@@ -46,6 +46,7 @@ Two failures made that feel like a rename of another project:
 ## Guards
 
 - `npm run assert:seed-industry` — pizza + salon classification and mismatch.
+- `npm run assert:seed-delivery` — Hometown Runner ledger + live apps.
 - `npm run assert:seed-edit-react` — Edit Seed reaction planning.
 - `docs/seed-grown-ecommerce.md` — empty catalog + never rename-only.
 - `docs/seed-industry-copy.md` — industry detection regressions.

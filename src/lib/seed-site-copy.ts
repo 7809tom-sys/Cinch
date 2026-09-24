@@ -1861,6 +1861,28 @@ button {
   outline-offset: 3px;
 }
 
+.seed-hero-apps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  margin: 1rem 0 0;
+  animation: seed-rise 0.7s ease both;
+  animation-delay: 0.3s;
+}
+
+.seed-hero-apps a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+}
+
+.seed-hero-apps a:hover {
+  text-decoration: underline;
+}
+
 .seed-section {
   padding: clamp(3rem, 9vw, 5.5rem) var(--pad-inline);
 }
@@ -3134,6 +3156,218 @@ button {
   color: var(--ink);
   font-size: 1.05rem;
 }
+
+/* —— Hometown Runner apps (merchant / drive / ledger) —— */
+.seed-run {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(94, 234, 212, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(18, 26, 32, 0.9), transparent 50%),
+    var(--foam);
+  color: var(--ink);
+  padding: calc(1.25rem + env(safe-area-inset-top)) var(--pad-inline)
+    calc(2rem + env(safe-area-inset-bottom));
+}
+
+.seed-run-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(100%, var(--content));
+  margin: 0 auto 1.5rem;
+}
+
+.seed-run-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-run-top h1 {
+  margin: 0;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.85rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.seed-run-support {
+  margin: 0.65rem 0 0;
+  max-width: 38rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--muted-strong);
+}
+
+.seed-run-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.seed-run-links a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding: 0.55rem 1rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--line-dark);
+  background: #fff;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.seed-run-panel {
+  width: min(100%, var(--content));
+  margin: 0 auto 1.25rem;
+  padding: 1.35rem 1.25rem 1.5rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.seed-run-panel h2 {
+  margin: 0 0 0.75rem;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: clamp(1.25rem, 3vw, 1.65rem);
+}
+
+.seed-run-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 22rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.seed-run-field input,
+.seed-run-field select {
+  min-height: var(--tap);
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.35rem;
+  background: var(--foam);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.seed-run-note,
+.seed-run-meta,
+.seed-run-empty {
+  margin: 0.65rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--muted-strong);
+}
+
+.seed-run-money {
+  margin: 0.45rem 0 0;
+  font-weight: 700;
+}
+
+.seed-run-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.seed-run-stats div {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line-dark);
+  border-radius: 0.4rem;
+  background: var(--foam);
+}
+
+.seed-run-stats dt {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.seed-run-stats dd {
+  margin: 0.25rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.seed-run-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.seed-run-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line-dark);
+}
+
+.seed-run-list h3 {
+  margin: 0.15rem 0 0;
+  font-size: 1.05rem;
+}
+
+.seed-run-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.seed-run-subhead {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.seed-run-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.seed-run-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.seed-run-table th,
+.seed-run-table td {
+  padding: 0.55rem 0.45rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line-dark);
+  white-space: nowrap;
+}
+
+.seed-run-table th {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
 `;
 }
 
@@ -3148,7 +3382,7 @@ function esc(value: string): string {
 
 /** Customer-facing landing page source — full business site, not a thin stub. */
 export function seedHomePageSource(
-  input: SeedSiteCopy & { includeShop?: boolean },
+  input: SeedSiteCopy & { includeShop?: boolean; includeDeliveryApps?: boolean },
 ): string {
   const brand = esc(input.brand);
   const headline = esc(input.headline);
@@ -3160,6 +3394,15 @@ export function seedHomePageSource(
     ? `
           <li>
             <a href="/shop">${lotNav ? "Inventory" : input.menuItems?.length ? "Order" : "Shop"}</a>
+          </li>`
+    : "";
+  const deliveryNav = input.includeDeliveryApps
+    ? `
+          <li>
+            <a href="/drive">Drive</a>
+          </li>
+          <li>
+            <a href="/merchant">Merchant</a>
           </li>`
     : "";
   const services = input.services
@@ -3272,7 +3515,7 @@ ${specials
           </li>
           <li>
             <a href="#about">About</a>
-          </li>${shopNav}
+          </li>${shopNav}${deliveryNav}
           <li>
             <a href="#book">${esc(input.cta)}</a>
           </li>
@@ -4167,6 +4410,8 @@ export type SeedShopOrder = {
   totalUsd: number;
   createdAt: string;
   status: "new" | "paid" | "fulfilled";
+  /** Hometown Runner: driver keeps 100% of this tip. */
+  tipUsd?: number;
 };
 
 /** Shop catalog that lives in the Seed source tree (`content/shop.copy.json`). */

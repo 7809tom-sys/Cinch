@@ -598,6 +598,23 @@ assert(
   "admin is ops/ledger, not a restaurant host stand",
 );
 
+const hometownMerchant = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/merchant/page.tsx"),
+  "utf8",
+);
+const hometownDrive = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/drive/page.tsx"),
+  "utf8",
+);
+assert(
+  hometownMerchant.includes("Merchant terminal"),
+  "Seed builds a merchant terminal for Hometown Runner",
+);
+assert(
+  hometownDrive.includes("Driver / scout"),
+  "Seed builds a driver/scout app for Hometown Runner",
+);
+
 if (process.exitCode) {
   console.error("\nIndustry copy guards failed.");
   process.exit(process.exitCode);

@@ -10,6 +10,7 @@ import {
 import {
   briefAsksForBusinessAdmin,
   briefAsksForEcommerce,
+  briefIsDeliveryPlatform,
   customerFacingAdminCopy,
   customerFacingShopCopy,
   customerFacingSiteCopy,
@@ -37,6 +38,7 @@ import {
   collectSeedSiteProofFailures,
   type SeedSiteProofFailure,
 } from "./seed-site-proof";
+import { ensureDeliveryOpsInSeed } from "./seed-delivery-io";
 import type { SeedProject } from "./store";
 
 export type SeedSitePreview = SeedSiteCopy & {
@@ -75,6 +77,7 @@ export {
   seedShopUsesRestaurantFulfillment,
   seedStarterShopProducts,
   briefIsPizza,
+  briefIsDeliveryPlatform,
 } from "./seed-site-copy";
 
 export {
@@ -892,7 +895,11 @@ export async function ensureShopInSeed(
   await upsertSourceFile({
     projectId: project.id,
     path: "app/page.tsx",
-    content: seedHomePageSource({ ...landing, includeShop: true }),
+    content: seedHomePageSource({
+      ...landing,
+      includeShop: true,
+      includeDeliveryApps: briefIsDeliveryPlatform(project.name, project.brief),
+    }),
     status: "ready",
     message: "Linked Shop in Seed home nav",
     agentName: "Conductor",
@@ -957,6 +964,9 @@ export async function proofAndRepairSeedSite(project: SeedProject): Promise<{
   await repairCustomerLandingIfNeeded(project);
   if (briefAsksForEcommerce(project.brief) || before.some((f) => f.surface === "shop")) {
     await ensureShopInSeed(project);
+  }
+  if (briefIsDeliveryPlatform(project.name, project.brief)) {
+    await ensureDeliveryOpsInSeed(project);
   }
 
   const after = collectSeedSiteProofFailures(

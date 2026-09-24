@@ -472,3 +472,57 @@ export async function setSeedShopOrderStatusAction(
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
 }
+
+export async function freezeDeliveryDriverAction(
+  projectId: string,
+  driverId: string,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
+    "@/lib/seed-delivery-io"
+  );
+  const { freezeDeliveryDriver } = await import("@/lib/seed-delivery");
+  const ops = await ensureDeliveryOpsInSeed(access.project);
+  if (!ops) {
+    return { ok: false as const, error: "Delivery ops are not on this Seed." };
+  }
+  const before = ops.restaurants.map((row) => row.scoutId).join(",");
+  const next = freezeDeliveryDriver(ops, driverId);
+  const after = next.restaurants.map((row) => row.scoutId).join(",");
+  if (before !== after) {
+    return { ok: false as const, error: "Scout lock must not move on freeze." };
+  }
+  await saveDeliveryOps(projectId, next, "Froze driver dispatch — scout lock held");
+  revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/drive`);
+  return { ok: true as const };
+}
+
+export async function approveDeliveryDriverAction(
+  projectId: string,
+  driverId: string,
+) {
+  const access = await requireBusinessAdmin(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
+    "@/lib/seed-delivery-io"
+  );
+  const { approveDeliveryDriver } = await import("@/lib/seed-delivery");
+  const ops = await ensureDeliveryOpsInSeed(access.project);
+  if (!ops) {
+    return { ok: false as const, error: "Delivery ops are not on this Seed." };
+  }
+  const before = ops.restaurants.map((row) => row.scoutId).join(",");
+  const next = approveDeliveryDriver(ops, driverId);
+  const after = next.restaurants.map((row) => row.scoutId).join(",");
+  if (before !== after) {
+    return { ok: false as const, error: "Scout lock must not move on approve." };
+  }
+  await saveDeliveryOps(projectId, next, "Approved driver — scout lock held");
+  revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/drive`);
+  return { ok: true as const };
+}
