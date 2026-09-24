@@ -24,6 +24,7 @@ import {
   JUST_PUTZIT_NOT_ON_SEED,
   isJustPutzItSeedProject,
 } from "./seed-connect";
+import { findSwitchableTask } from "./agent-status";
 import {
   appendNextBuildWave,
   getProject,
@@ -98,7 +99,25 @@ export type ChooseRouteOptions = {
   storedKeys?: Partial<Record<string, string>>;
   configuredProviders?: SeedProviderId[];
   unavailableProviders?: SeedProviderId[];
+  /** Extra specialists to skip (already handed a task this pass). */
+  busyAgentIds?: string[];
 };
+
+function busyAgentIdsOnBoard(
+  project: SeedProject,
+  task: ProjectTask,
+  extra: string[] = [],
+): string[] {
+  const fromBoard = project.tasks
+    .filter(
+      (item) =>
+        item.id !== task.id &&
+        (item.status === "assigned" || item.status === "in_progress") &&
+        Boolean(item.assigneeId),
+    )
+    .map((item) => item.assigneeId as string);
+  return [...new Set([...extra, ...fromBoard])];
+}
 
 /** Conductor picks agent + cheapest capable provider for this task. */
 export function chooseRoute(
@@ -126,6 +145,11 @@ export function chooseRoute(
       configuredProviders: configured,
       unavailableProviders:
         options.unavailableProviders ?? listUnavailableProviders(),
+      unavailableAgentIds: busyAgentIdsOnBoard(
+        project,
+        task,
+        options.busyAgentIds,
+      ),
       requireConfigured: configured.length > 0,
     },
   );
@@ -392,12 +416,86 @@ async function ensureSpecialistsInvited(projectId: string): Promise<SeedProject>
   return project;
 }
 
-/** After Edit Seed queues reaction tasks, staff and assign so the edit is acted on. */
+/**
+ * Owner picks another specialist from the status dropdown.
+ * Invites them if needed and moves the open task so it does not sit idle.
+ */
+export async function switchOpenWorkToAgent(
+  projectId: string,
+  agentId: string,
+  taskId?: string,
+): Promise<SeedProject> {
+  const agent = getAgent(agentId);
+  if (!agent || agent.isProjectManager) {
+    throw new Error("Pick a specialist AI to switch to.");
+  }
+
+  await inviteAgent(projectId, agentId);
+  const project = await getProject(projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const task = taskId
+    ? (project.tasks.find((item) => item.id === taskId) ?? null)
+    : findSwitchableTask(project.tasks);
+  if (!task) {
+    throw new Error("Nothing left to switch — all tasks are done.");
+  }
+  if (task.status === "done") {
+    throw new Error("That task is already finished.");
+  }
+
+  const previous = task.assigneeId ? getAgent(task.assigneeId) : null;
+  const storedKeys = await loadStoredProviderKeys();
+  const configured = listConfiguredProviderIds(storedKeys);
+  const result = routeConductorTask(
+    {
+      title: task.title,
+      detail: task.detail,
+      requiredSkills: task.requiredSkills,
+      minSkillLevel: task.minSkillLevel,
+      tags: task.tags,
+      escalate: task.escalate,
+    },
+    {
+      invitedAgentIds: [agentId],
+      configuredProviders: configured,
+      unavailableProviders: listUnavailableProviders(),
+      requireConfigured: configured.length > 0,
+    },
+  );
+
+  const pm = getProjectManager();
+  task.assigneeId = agentId;
+  task.assignedBy = pm.id;
+  if (task.status === "queued") task.status = "assigned";
+  task.updatedAt = now();
+  if (!isRouteBlocked(result)) {
+    task.tags = result.tags;
+    task.route = result;
+  }
+
+  const from = previous?.name ?? "the previous AI";
+  pushActivity(
+    project,
+    `${pm.name} switched “${task.title}” from ${from} to ${agent.name} (${agent.specialty}).`,
+    pm.id,
+  );
+  await saveProject(project);
+  return project;
+}
+
+/** After Edit Seed queues reaction tasks, staff, assign, and start the work. */
 export async function assignWorkAfterSeedEdit(
   projectId: string,
 ): Promise<SeedProject> {
   await ensureSpecialistsInvited(projectId);
-  return runProjectManagerAssignment(projectId);
+  const assigned = await runProjectManagerAssignment(projectId);
+  const inFlight = assigned.tasks.some((task) => task.status === "in_progress");
+  // Do not finish unrelated in-progress work on Save. When the board is
+  // idle, start the new reaction task so it is not left "not completed".
+  if (inFlight) return assigned;
+  const tick = await tickProjectWork(projectId);
+  return tick.project;
 }
 
 /**

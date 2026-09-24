@@ -90,6 +90,7 @@ import {
   bootstrapSeedProject,
   runProjectManagerAssignment,
   restaffSeedProject,
+  switchOpenWorkToAgent,
   tickProjectWork,
 } from "@/lib/project-manager";
 import {
@@ -593,6 +594,30 @@ export async function restaffSeedAction(projectId: string) {
   revalidatePath(`/admin/projects/${projectId}`);
   revalidatePath("/admin");
   revalidatePath(`/portal/${projectId}`);
+  return { ok: true as const };
+}
+
+export async function adminSwitchAgentAction(
+  projectId: string,
+  agentId: string,
+  taskId?: string,
+) {
+  const master = await getMasterSession();
+  if (!master) {
+    return { ok: false as const, error: "Admin sign-in required." };
+  }
+  try {
+    await switchOpenWorkToAgent(projectId, agentId, taskId);
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Could not switch AI.",
+    };
+  }
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/admin");
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath("/portal");
   return { ok: true as const };
 }
 
