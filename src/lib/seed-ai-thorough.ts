@@ -560,6 +560,11 @@ export function seedIndustryGrowthBoard(
           detail:
             "Write GMV, 10% commission, 5% platform, 5% scout, fee, tip, processor fees. Chargebacks reverse the row.",
         },
+        {
+          title: "Driver subscription + 1099",
+          detail:
+            "$39/month part-time or $79/month full-time ($9.99 / $19.99 weekly). 60 days off the app suspends the account. The restaurant issues the 1099.",
+        },
       ],
     };
   }

@@ -28,7 +28,7 @@ export function portalSeedPlaybookUrl(projectId: string): string {
 export const SENTI_DESK_PATH = "/senti";
 
 export const SENTI_THINKS_DELIVERY_RULE =
-  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — customer order nearby, restaurant portal, driver/scout portal, admin ledger. Senti must think through those four apps and the 10% / 5% / 5% split. Do not copy a dining-room, bakery, or pizza restaurant format.";
+  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — customer order nearby, restaurant portal, driver/scout portal, admin ledger. Senti must think through those four apps, the 10% / 5% / 5% split, driver software ($39/$79), 60-day suspend, and restaurant-issued 1099s. Do not copy a dining-room, bakery, or pizza restaurant format.";
 
 export type PlaybookChapterId =
   | "discover"
@@ -248,7 +248,7 @@ function deliveryChapters(input: {
       n: 4,
       agent: "Quill",
       title: "Non-negotiables",
-      script: `Hard rules for ${site}: restaurants pay a flat 10% on delivery GMV; platform 5%; originating scout residual 5% (immutable on freeze); drivers keep 100% of delivery fee + tip; processor (~2.9%) comes out of the restaurant, not the platform 5%. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
+      script: `Hard rules for ${site}: restaurants pay a flat 10% on delivery GMV; platform 5%; originating scout residual 5% (immutable on freeze); drivers keep 100% of delivery fee + tip; processor (~2.9%) comes out of the restaurant, not the platform 5%; driver software is $39/month part-time or $79/month full-time (weekly $9.99 / $19.99); full-time is app-open more than 30 hours/week or 120 hours in 4 weeks; 60 days without opening the app auto-suspends the driver; restaurants collect the order and issue 1099s. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
       status: "proposed",
     },
     {
@@ -491,7 +491,7 @@ export function exampleSeedPlaybook(): SeedPlaybook {
   return compileSeedPlaybook({
     name: "Hometown Runner",
     brief:
-      "Hometown Runner is a hyper-local food delivery platform. Restaurants pay 10% on delivery GMV. Drivers keep 100% of delivery fees + tips. Restaurant portal, driver portal, customer order nearby, admin ledger.",
+      "Hometown Runner is a hyper-local food delivery platform. Restaurants pay 10% on delivery GMV. Drivers keep 100% of delivery fees + tips. Driver software is $39/month part-time or $79/month full-time. Restaurants issue 1099s. Restaurant portal, driver portal, customer order nearby, admin ledger.",
     seedMode: "build",
     liveUrl: null,
   });

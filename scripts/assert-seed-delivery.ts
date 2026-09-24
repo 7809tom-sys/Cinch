@@ -8,10 +8,15 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
+  DRIVER_SOFTWARE,
   WEEKLY_GMV_EXAMPLES,
   acceptDriverRun,
+  applyDriverSubscriptionPolicies,
   approveDeliveryDriver,
+  classifyDriverHours,
   driverCanDispatch,
+  driverSoftwareAnnualUsd,
+  driverSoftwareFeeUsd,
   freezeDeliveryDriver,
   recordDeliveryOrder,
   setDriverOnline,
@@ -21,6 +26,7 @@ import {
   splitDeliveryLedger,
   starterDeliveryOps,
   weeklyScoutResidualExamples,
+  withDeliveryDriverPolicyBrief,
 } from "../src/lib/seed-delivery";
 
 function assert(condition: boolean, message: string) {
@@ -74,10 +80,69 @@ assert(
   "example list does not start at $2,000",
 );
 
+assert(
+  classifyDriverHours(29, 120) === "part_time" &&
+    classifyDriverHours(31, 10) === "full_time" &&
+    classifyDriverHours(10, 121) === "full_time",
+  "full-time is >30 hours/week or >120 hours in 4 weeks",
+);
+assert(
+  driverSoftwareFeeUsd("part_time", "monthly") ===
+    DRIVER_SOFTWARE.partTime.monthlyUsd &&
+    driverSoftwareFeeUsd("full_time", "monthly") ===
+      DRIVER_SOFTWARE.fullTime.monthlyUsd &&
+    driverSoftwareFeeUsd("part_time", "weekly") ===
+      DRIVER_SOFTWARE.partTime.weeklyUsd &&
+    driverSoftwareFeeUsd("full_time", "weekly") ===
+      DRIVER_SOFTWARE.fullTime.weeklyUsd,
+  "software is $39/$79 monthly or $9.99/$19.99 weekly",
+);
+assert(
+  driverSoftwareAnnualUsd("full_time", "monthly") === 948,
+  "full-time monthly annualizes to $948",
+);
+assert(
+  /\$39\/month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /1099/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
+  "delivery brief appends driver subscription and 1099 rules",
+);
+
 const ops = starterDeliveryOps("Hometown Runner");
 const riley = ops.drivers.find((row) => row.id === "drv-riley");
+const maya = ops.drivers.find((row) => row.id === "drv-maya");
+const jordan = ops.drivers.find((row) => row.id === "drv-jordan");
+const casey = ops.drivers.find((row) => row.id === "drv-casey");
 const deli = ops.restaurants.find((row) => row.id === "rest-deli");
 assert(Boolean(riley && riley.status === "frozen"), "Riley starts frozen");
+assert(
+  maya?.classification === "full_time" &&
+    maya.softwareUsdPerYear === 948,
+  "Maya is full-time at $79/month",
+);
+assert(
+  jordan?.classification === "part_time" &&
+    jordan.softwareCadence === "weekly",
+  "Jordan is part-time on the weekly installment",
+);
+assert(
+  casey?.status === "suspended" && !driverCanDispatch(casey),
+  "Casey starts suspended after 60 days off the app",
+);
+const stale = applyDriverSubscriptionPolicies(
+  {
+    ...ops,
+    drivers: ops.drivers.map((row) =>
+      row.id === "drv-jordan"
+        ? { ...row, lastAppOpenAt: "2026-07-01T00:00:00.000Z", status: "approved" }
+        : row,
+    ),
+  },
+  new Date("2026-09-24T00:00:00.000Z"),
+);
+assert(
+  stale.drivers.find((row) => row.id === "drv-jordan")?.status === "suspended",
+  "60 days without opening the app auto-suspends an approved driver",
+);
 assert(
   Boolean(deli && deli.scoutId === "drv-riley"),
   "River Market Deli scout is Riley",
@@ -247,6 +312,26 @@ assert(
     !/comes out of the platform 5%\./.test(ledgerUi) &&
     !/comes out of the platform 5%\./.test(siteCopy),
   "ledger no longer takes processor from the platform 5%",
+);
+assert(
+  /\$39\/month/.test(deliveryLib) &&
+    /\$79\/month/.test(deliveryLib) &&
+    /1099/.test(deliveryLib),
+  "delivery engine encodes $39/$79 software and restaurant 1099s",
+);
+assert(
+  /\$39\/month/.test(siteCopy) &&
+    /1099/.test(siteCopy) &&
+    !/\$900\/year/.test(siteCopy),
+  "landing copy retired $900/year for the subscription + 1099 rules",
+);
+const restaurantDesk = readFileSync(
+  join(process.cwd(), "src/components/delivery/restaurant-portal.tsx"),
+  "utf8",
+);
+assert(
+  /issue the 1099/.test(restaurantDesk),
+  "restaurant portal says the kitchen issues the 1099",
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");

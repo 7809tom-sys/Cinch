@@ -315,7 +315,9 @@ export function seedLandingCopyMismatchesIndustry(
       looksLikeRestaurantShopCopy ||
       looksLikeCopiedRestaurantRoom ||
       seedLandingLooksUnsellable(copy) ||
-      /subject:|v1 product brief|what it is hometown/i.test(blob))
+      /subject:|v1 product brief|what it is hometown/i.test(blob) ||
+      /\$900\s*\/\s*year/.test(blob) ||
+      !/\$39/.test(blob))
   ) {
     return true;
   }
@@ -1406,7 +1408,7 @@ export function customerFacingSiteCopy(
           {
             title: "Drive and keep the fee",
             detail:
-              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee and tip. Software is about $900/year.",
+              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee and tip. Software is $39/month part-time or $79/month full-time ($9.99 / $19.99 weekly).",
           },
           {
             title: "Scout residual",
@@ -1416,7 +1418,7 @@ export function customerFacingSiteCopy(
         ],
         aboutEyebrow: "The split",
         aboutHeadline: "10% from the restaurant. Drivers keep the run.",
-        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant — we show that in admin economics.`,
+        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant. Driver software is $39/month part-time or $79/month full-time. Restaurants collect the order and issue 1099s to drivers.`,
         menuEyebrow: "Tonight’s board",
         menuHeadline: "Kitchens you can order from now",
         menuSupport:
@@ -1469,7 +1471,13 @@ export function customerFacingSiteCopy(
           },
           {
             title: "Drivers keep fee + tip",
-            detail: "Software is about $900/year. The run money is yours.",
+            detail:
+              "Software is $39/month part-time or $79/month full-time. The run money is yours.",
+          },
+          {
+            title: "Restaurant issues the 1099",
+            detail:
+              "The kitchen collects the order and pays the driver — so the restaurant issues 1099s. 60 days off the app suspends the account.",
           },
           {
             title: "Scout residual 5%",
@@ -4321,6 +4329,16 @@ export function customerFacingAdminCopy(
               id: "tip-fees",
               title: "Drivers keep fee and tip",
               body: "Never skim delivery fee or tip. Card processing (~2.9%) comes out of the restaurant, not the platform 5% — surface it in admin economics.",
+            },
+            {
+              id: "tip-software",
+              title: "Driver software is a subscription",
+              body: "$39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99. Full-time is the app open more than 30 hours in a week, or more than 120 hours in 4 weeks.",
+            },
+            {
+              id: "tip-1099",
+              title: "Restaurant issues the 1099",
+              body: "The restaurant collects the full order and pays the driver, so the restaurant issues 1099s to drivers who meet the criteria. 60 days without opening the app auto-suspends the account.",
             },
             {
               id: "tip-compliance",

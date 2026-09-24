@@ -554,7 +554,7 @@ assert(
 const hometownName = "Hometown Runner";
 const hometownBrief = `Subject: Build Hometown Runner — v1 product brief
 
-Hometown Runner is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Drivers pay ~$900/year for software and keep 100% of delivery fees + tips. Cart, checkout, tip, tracking. Admin / ops.`;
+Hometown Runner is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Drivers pay $39/month part-time or $79/month full-time for software and keep 100% of delivery fees + tips. Cart, checkout, tip, tracking. Admin / ops.`;
 
 assert(
   briefIsDeliveryPlatform(hometownName, hometownBrief),
@@ -622,6 +622,21 @@ assert(
     areaBody: "Home Town Runnner replies during business hours.",
   }),
   "mismatch flags an unsellable consulting template on Hometown",
+);
+assert(
+  seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, {
+    services: [
+      {
+        title: "Drive and keep the fee",
+        detail: "Software is about $900/year.",
+      },
+    ],
+  }),
+  "mismatch flags the retired $900/year software line",
+);
+assert(
+  !seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, hometown),
+  "fresh Hometown copy includes the $39 subscription",
 );
 
 const hometownShop = customerFacingShopCopy(hometownName, hometownBrief);

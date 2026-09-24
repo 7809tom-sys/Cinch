@@ -11,6 +11,7 @@ export function EditSeedForm({
   cancelHref,
   afterSaveHref,
   seedMode = "build",
+  policyHint = "",
   saveAction = portalUpdateSeedAction,
 }: {
   projectId: string;
@@ -22,6 +23,8 @@ export function EditSeedForm({
   /** Admin stays on the Seed desk after save. */
   afterSaveHref?: string;
   seedMode?: "build" | "connect";
+  /** Extra policy text shown under Build brief (delivery Seeds). */
+  policyHint?: string;
   saveAction?: (
     projectId: string,
     formData: FormData,
@@ -86,6 +89,11 @@ export function EditSeedForm({
             ? "Save updates this Seed on cinchseed.com. It does not rewrite the live host."
             : "Hard rule: Save reads this edit and reacts — rebuilds brand, hero, CTA, services, shop, and admin from this brief, queues any missing capability tasks, then opens the refreshed site."}
         </span>
+        {policyHint ? (
+          <span className="mt-2 block whitespace-pre-wrap rounded-md border border-brand/10 bg-mist/40 px-3 py-2 text-xs leading-relaxed text-brand-deep">
+            {policyHint}
+          </span>
+        ) : null}
       </label>
       <div className="flex flex-wrap gap-2 pt-1">
         <button

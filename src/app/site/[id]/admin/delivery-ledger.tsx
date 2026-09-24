@@ -43,7 +43,9 @@ export function SeedDeliveryLedger({
       <p className="seed-admin-support">
         Restaurant 10% · platform 5% · scout 5% (scout_id locked). Drivers keep
         100% of delivery fee and tip. Processing (~2.9%) comes out of the
-        restaurant — not the platform 5%.
+        restaurant — not the platform 5%. Driver software is $39/month
+        part-time or $79/month full-time ($9.99 / $19.99 weekly). 60 days off
+        the app suspends the driver. The restaurant issues 1099s.
       </p>
       <dl className="seed-run-stats">
         <div>
@@ -144,13 +146,16 @@ export function SeedDeliveryLedger({
                 <h3>{driver.name}</h3>
                 <p className="seed-run-meta">
                   License {driver.licenseOk ? "ok" : "missing"} · insurance{" "}
-                  {driver.insuranceOk ? "ok" : "expired"}
+                  {driver.insuranceOk ? "ok" : "expired"} ·{" "}
+                  {driver.classification === "full_time"
+                    ? "full-time $79/mo"
+                    : "part-time $39/mo"}
                   {scouted.length
                     ? ` · scout lock: ${scouted.map((row) => row.name).join(", ")}`
                     : " · no originating restaurants"}
                 </p>
               </div>
-              {driver.status === "frozen" ? (
+              {driver.status === "frozen" || driver.status === "suspended" ? (
                 <button
                   type="button"
                   className="cta"
