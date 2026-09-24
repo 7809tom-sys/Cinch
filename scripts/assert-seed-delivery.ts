@@ -157,6 +157,13 @@ assert(
   "unassigned incoming ticket waits for a driver to accept",
 );
 assert(
+  Boolean(riley) &&
+    driverPhotoId(riley as NonNullable<typeof riley>).photoIdNumber.includes(
+      "7714",
+    ),
+  "Riley’s scout photo ID is gettable (DL ·••7714)",
+);
+assert(
   deliLedger?.scoutId === "drv-riley" &&
     deliLedger.driverId === "drv-maya" &&
     deliveryDriverDisplayName(ops.drivers, deliLedger.driverId) ===
@@ -380,6 +387,12 @@ assert(
     /ledgerRunDriverId/.test(ledgerUi) &&
     /colSpan=\{12\}/.test(ledgerUi),
   "admin ledger table has a Driver column next to Scout",
+);
+assert(
+  /seed-run-party-open/.test(ledgerUi) &&
+    /Photo ID · \{role\}/.test(ledgerUi) &&
+    /role="Scout"/.test(ledgerUi),
+  "admin ledger opens scout and driver photo ID on the row",
 );
 const siteCopy = readFileSync(
   join(process.cwd(), "src/lib/seed-site-copy.ts"),
