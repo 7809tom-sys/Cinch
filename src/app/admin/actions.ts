@@ -115,11 +115,7 @@ import {
   JUST_PUTZIT_NOT_ON_SEED,
   isJustPutzItSeedProject,
 } from "@/lib/seed-connect";
-import {
-  composePrepBrief,
-  missingPrepFields,
-  prepBriefFromFormData,
-} from "@/lib/seed-prep";
+import { resolveNewSeedBrief } from "@/lib/seed-prep";
 import {
   createProject,
   getProject,
@@ -488,30 +484,20 @@ export async function queueToolFixAction(
 }
 
 export async function createSeedProjectAction(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
   const customerEmail = String(formData.get("customerEmail") ?? "").trim();
   const customerName = String(formData.get("customerName") ?? "").trim();
   const referenceUrl = String(formData.get("referenceUrl") ?? "").trim();
   const githubRepoUrl = String(formData.get("githubRepoUrl") ?? "").trim();
   const seedMode = String(formData.get("seedMode") ?? "").trim();
-  const prep = prepBriefFromFormData(formData);
-  const composed = composePrepBrief({ ...prep, name: name || prep.name });
-  const brief =
-    seedMode === "build" && prep.intent
-      ? composed
-      : String(formData.get("brief") ?? "").trim();
+  const resolved = resolveNewSeedBrief(formData);
+  const name = resolved.name;
+  const brief = resolved.brief;
 
+  if (resolved.error) {
+    return { ok: false as const, error: resolved.error };
+  }
   if (!name || !brief) {
     return { ok: false as const, error: "Name and brief are required." };
-  }
-  if (seedMode === "build") {
-    const missing = missingPrepFields({ ...prep, name });
-    if (missing.length > 0) {
-      return {
-        ok: false as const,
-        error: `Finish the prep worksheet first: ${missing.join(", ")}.`,
-      };
-    }
   }
   if (seedMode === "connect" && !referenceUrl) {
     return {

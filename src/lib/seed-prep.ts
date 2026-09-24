@@ -146,6 +146,96 @@ export function prepBriefLooksComplete(brief: string): boolean {
   );
 }
 
+export type NewSeedBriefEntry = "worksheet" | "paste";
+
+/** Pull a Seed name from a pasted email/subject/title when the name field is blank. */
+export function inferSeedNameFromPastedBrief(brief: string): string {
+  const lines = brief
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    const labeled = line.match(
+      /^(?:subject|project\s*\/\s*site|project|title)\s*:\s*(.+)$/i,
+    );
+    if (!labeled) continue;
+    return labeled[1]
+      .replace(/^Build\s+/i, "")
+      .replace(/\s+[—–-]\s+v\d.*$/i, "")
+      .trim()
+      .slice(0, 120);
+  }
+
+  const heading = lines.find((line) => /^#{1,3}\s+\S/.test(line));
+  if (heading) return heading.replace(/^#+\s+/, "").trim().slice(0, 120);
+
+  const first = lines.find((line) => line.length >= 3 && line.length <= 72);
+  return (first ?? "").slice(0, 120);
+}
+
+export function resolveNewSeedBrief(formData: FormData): {
+  name: string;
+  brief: string;
+  entry: NewSeedBriefEntry;
+  error?: string;
+} {
+  const seedMode = String(formData.get("seedMode") ?? "").trim();
+  const entry: NewSeedBriefEntry =
+    String(formData.get("briefEntry") ?? "").trim() === "paste"
+      ? "paste"
+      : "worksheet";
+  let name = String(formData.get("name") ?? "").trim();
+  const pasted = String(formData.get("brief") ?? "").trim();
+
+  if (seedMode !== "build") {
+    return { name, brief: pasted, entry };
+  }
+
+  if (entry === "paste") {
+    if (pasted.length < 20) {
+      return {
+        name,
+        brief: pasted,
+        entry,
+        error: "Paste the full brief as-is, or switch to the worksheet.",
+      };
+    }
+    if (!name) name = inferSeedNameFromPastedBrief(pasted);
+    if (!name) {
+      return {
+        name,
+        brief: pasted,
+        entry,
+        error: "Add a Seed name, or start the paste with a title.",
+      };
+    }
+    return { name, brief: pasted, entry };
+  }
+
+  const prep = prepBriefFromFormData(formData);
+  const composed = composePrepBrief({ ...prep, name: name || prep.name });
+  if (!name) {
+    return {
+      name,
+      brief: composed,
+      entry,
+      error: "Name and brief are required.",
+    };
+  }
+  const missing = missingPrepFields({ ...prep, name });
+  if (missing.length > 0) {
+    return {
+      name,
+      brief: composed,
+      entry,
+      error: `Finish the prep worksheet first: ${missing.join(", ")}.`,
+    };
+  }
+  return { name, brief: composed, entry };
+}
+
 export function missingPrepFields(input: SeedPrepBrief): string[] {
   const missing: string[] = [];
   if (!input.intent.trim()) missing.push("one-sentence intent");
