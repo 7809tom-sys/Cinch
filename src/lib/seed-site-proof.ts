@@ -38,6 +38,12 @@ export function collectSeedSiteProofFailures(
       support?: string;
       footerNote?: string;
       servicesHeadline?: string;
+      processHeadline?: string;
+      process?: Array<{ title?: string; detail?: string }>;
+      proof?: { quote?: string; attribution?: string };
+      areaBody?: string;
+      areaHeadline?: string;
+      bookHeadline?: string;
     } | null;
     shop?: {
       title?: string;

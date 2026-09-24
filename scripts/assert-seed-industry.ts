@@ -21,6 +21,7 @@ import {
   seedGrowthBoardLooksThin,
   seedIndustryKey,
   seedLandingCopyMismatchesIndustry,
+  seedLandingLooksUnsellable,
   seedRestaurantMenuProducts,
   seedShopCatalogMismatchesBrief,
   seedShopChromeMismatchesBrief,
@@ -589,6 +590,39 @@ assert(
   !/\$2,000\/week/.test(`${hometown.headline} ${hometown.aboutBody}`),
   "landing does not default to a $2,000/week restaurant promise",
 );
+assert(
+  !seedLandingLooksUnsellable(hometown),
+  "fresh Hometown landing is not the consulting brochure",
+);
+assert(
+  !/tell us the goal|we map the path|taylor · returning client|replies during business hours/i.test(
+    `${hometown.processHeadline} ${hometown.process.map((s) => `${s.title} ${s.detail}`).join(" ")} ${hometown.proof.quote} ${hometown.proof.attribution} ${hometown.areaBody}`,
+  ),
+  "Hometown process/proof is a marketplace, not an agency template",
+);
+assert(
+  (hometown.menuItems?.length ?? 0) >= 6,
+  "Hometown landing ships a sellable nearby-kitchen board",
+);
+assert(
+  new Set((hometown.menuItems ?? []).map((item) => item.category)).size >= 2,
+  "kitchen board has more than one restaurant",
+);
+assert(
+  seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, {
+    processHeadline: "Clear from the first message",
+    process: [
+      { title: "Tell us the goal", detail: "What you need" },
+      { title: "We map the path", detail: "Next steps" },
+    ],
+    proof: {
+      quote: "They explained the plan in plain language.",
+      attribution: "Taylor · returning client",
+    },
+    areaBody: "Home Town Runnner replies during business hours.",
+  }),
+  "mismatch flags an unsellable consulting template on Hometown",
+);
 
 const hometownShop = customerFacingShopCopy(hometownName, hometownBrief);
 assert(
@@ -598,6 +632,24 @@ assert(
 assert(
   /pilot kitchen/i.test(hometownShop.products.map((p) => p.title).join(" ")),
   "shop has a live pilot restaurant to order from",
+);
+assert(
+  hometownShop.products.length >= 6,
+  "shop has a sellable multi-kitchen catalog, not three SKUs",
+);
+assert(
+  new Set(
+    hometownShop.products.map((p) => p.title.split("·")[0]?.trim()),
+  ).size >= 2,
+  "shop lists more than one restaurant",
+);
+assert(
+  seedShopCatalogMismatchesBrief(hometownName, hometownBrief, [
+    { id: "run-pilot-bowl", title: "Pilot Kitchen · Warm grain bowl" },
+    { id: "run-pilot-sandwich", title: "Pilot Kitchen · Market sandwich" },
+    { id: "run-pilot-drink", title: "Pilot Kitchen · House drink" },
+  ]),
+  "a one-kitchen three-SKU shop is too thin to sell",
 );
 assert(
   !/seasonal small plates|chef.?s dinner plate|kitchen ticket/i.test(
