@@ -2,13 +2,17 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type {
+  DeliveryDriver,
   DeliveryOps,
   MerchantTicket,
   MerchantTicketStatus,
 } from "@/lib/seed-delivery";
 import {
+  availableDispatchDrivers,
+  driverPhotoId,
   restaurantNetFromSplit,
   splitDeliveryLedger,
+  ticketAssignedDriver,
 } from "@/lib/seed-delivery";
 import {
   setMerchantTicketStatusAction,
@@ -71,6 +75,7 @@ export function HometownRestaurantPortal({
     (sum, row) => sum + ticketRestaurantNet(ops, row),
     0,
   );
+  const availableDrivers = availableDispatchDrivers(ops);
 
   function run(
     fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
@@ -141,7 +146,18 @@ export function HometownRestaurantPortal({
             </button>
           ) : null}
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
+            <dt className="text-xs font-bold tracking-wide text-muted uppercase">
+              Drivers available
+            </dt>
+            <dd className="mt-1 text-xl font-extrabold text-brand-deep">
+              {availableDrivers.length}
+            </dd>
+            <p className="mt-1 text-xs text-muted">
+              Online and cleared to dispatch in this town.
+            </p>
+          </div>
           <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
             <dt className="text-xs font-bold tracking-wide text-muted uppercase">
               New
@@ -271,6 +287,11 @@ function OrderLane({
                   {ticketRestaurantNet(ops, ticket).toFixed(2)} · Hometown 10% $
                   {(ticket.gmvUsd * 0.1).toFixed(2)} · proc ~2.9%
                 </p>
+                {ticket.status !== "declined" ? (
+                  <DriverPhotoIdCard
+                    driver={ticketAssignedDriver(ops, ticket)}
+                  />
+                ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
                 {NEXT[ticket.status] ? (
@@ -299,5 +320,34 @@ function OrderLane({
         </ul>
       )}
     </section>
+  );
+}
+
+function DriverPhotoIdCard({ driver }: { driver: DeliveryDriver | null }) {
+  if (!driver) {
+    return (
+      <p className="mt-3 text-sm text-muted">
+        Waiting for a driver to accept. Name and photo ID appear here for
+        handoff.
+      </p>
+    );
+  }
+  const id = driverPhotoId(driver);
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-md border border-brand/15 bg-mist/40 px-3 py-2">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={id.photoUrl}
+        alt={`Photo ID for ${driver.name}`}
+        className="h-14 w-14 shrink-0 rounded-md object-cover"
+      />
+      <div>
+        <p className="text-xs font-bold tracking-wide text-muted uppercase">
+          Photo ID · accepted driver
+        </p>
+        <p className="font-bold text-brand-deep">{driver.name}</p>
+        <p className="text-sm text-muted">{id.photoIdNumber}</p>
+      </div>
+    </div>
   );
 }

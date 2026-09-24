@@ -14,8 +14,10 @@ import {
   acceptDriverRun,
   applyDriverSubscriptionPolicies,
   approveDeliveryDriver,
+  availableDispatchDrivers,
   classifyDriverHours,
   driverCanDispatch,
+  driverPhotoId,
   driverSoftwareAnnualUsd,
   driverSoftwareFeeUsd,
   freezeDeliveryDriver,
@@ -32,6 +34,7 @@ import {
   parseDeliveryOps,
   splitDeliveryLedger,
   starterDeliveryOps,
+  ticketAssignedDriver,
   weeklyScoutResidualExamples,
   withDeliveryDriverPolicyBrief,
 } from "../src/lib/seed-delivery";
@@ -129,6 +132,30 @@ const casey = ops.drivers.find((row) => row.id === "drv-casey");
 const deli = ops.restaurants.find((row) => row.id === "rest-deli");
 const deliLedger = ops.ledger.find((row) => row.orderId === "ord-sample-deli");
 assert(Boolean(riley && riley.status === "frozen"), "Riley starts frozen");
+assert(
+  availableDispatchDrivers(ops).length === 2 &&
+    availableDispatchDrivers(ops).every((row) =>
+      ["drv-maya", "drv-jordan"].includes(row.id),
+    ),
+  "kitchen sees two available drivers (Maya and Jordan)",
+);
+const deliTicket = ops.tickets.find((row) => row.id === "tkt-sample-deli");
+const pilotTicket = ops.tickets.find((row) => row.id === "tkt-sample-pilot");
+assert(
+  ticketAssignedDriver(ops, deliTicket ?? { orderId: "ord-sample-deli" })
+    ?.name === "Maya Chen" &&
+    Boolean(maya) &&
+    driverPhotoId(maya as NonNullable<typeof maya>).photoIdNumber.includes(
+      "4481",
+    ) &&
+    /^https?:\/\//.test(driverPhotoId(maya as NonNullable<typeof maya>).photoUrl),
+  "accepted deli ticket shows Maya’s name and photo ID",
+);
+assert(
+  ticketAssignedDriver(ops, pilotTicket ?? { orderId: "ord-sample-pilot" }) ===
+    null,
+  "unassigned incoming ticket waits for a driver to accept",
+);
 assert(
   deliLedger?.scoutId === "drv-riley" &&
     deliLedger.driverId === "drv-maya" &&
@@ -429,6 +456,13 @@ assert(
     /pay ~2\.9% processing/.test(restaurantDesk) &&
     !/The 10% on GMV is ACH/.test(restaurantDesk),
   "restaurant portal informs the kitchen: Stripe, 2.9%, $0 platform, fee+tip to driver, 1099",
+);
+assert(
+  /Drivers available/.test(restaurantDesk) &&
+    /Photo ID/.test(restaurantDesk) &&
+    /ticketAssignedDriver/.test(restaurantDesk) &&
+    /availableDispatchDrivers/.test(restaurantDesk),
+  "restaurant portal shows available drivers and accepted-driver photo ID",
 );
 assert(
   /keeps \$0/.test(deliveryLib) &&

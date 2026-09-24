@@ -94,6 +94,10 @@ export type DeliveryDriver = {
   softwareUsdPerYear: number;
   /** DoorDash-style “Dash now” — offline drivers do not see offers. */
   online: boolean;
+  /** Headshot used as photo ID at restaurant handoff. */
+  photoUrl?: string;
+  /** Short license/ID code shown with the photo. */
+  photoIdNumber?: string;
 };
 
 export type DeliveryLedgerSplit = {
@@ -228,6 +232,71 @@ export function driverInactiveTooLong(
   return days >= DRIVER_INACTIVE_SUSPEND_DAYS;
 }
 
+const DRIVER_PHOTO_IDS: Record<
+  string,
+  { photoUrl: string; photoIdNumber: string }
+> = {
+  "drv-maya": {
+    photoUrl:
+      "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=80",
+    photoIdNumber: "DL ·••4481",
+  },
+  "drv-jordan": {
+    photoUrl:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&h=200&q=80",
+    photoIdNumber: "DL ·••2290",
+  },
+  "drv-riley": {
+    photoUrl:
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&h=200&q=80",
+    photoIdNumber: "DL ·••7714",
+  },
+  "drv-casey": {
+    photoUrl:
+      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=200&h=200&q=80",
+    photoIdNumber: "DL ·••9052",
+  },
+};
+
+/** Name-card photo + short ID for kitchen handoff verification. */
+export function driverPhotoId(
+  driver: Pick<DeliveryDriver, "id" | "name" | "photoUrl" | "photoIdNumber">,
+): { photoUrl: string; photoIdNumber: string } {
+  const seeded = DRIVER_PHOTO_IDS[driver.id];
+  const digits = driver.id.replace(/\D/g, "").slice(-4).padStart(4, "0");
+  const fallbackNumber = `DL ·••${digits}`;
+  const fallbackPhoto = `https://ui-avatars.com/api/?name=${encodeURIComponent(driver.name)}&background=0b2e2a&color=fff&size=128`;
+  return {
+    photoUrl:
+      driver.photoUrl && /^https?:\/\//.test(driver.photoUrl)
+        ? driver.photoUrl
+        : (seeded?.photoUrl ?? fallbackPhoto),
+    photoIdNumber:
+      driver.photoIdNumber?.trim() || seeded?.photoIdNumber || fallbackNumber,
+  };
+}
+
+export function availableDispatchDrivers(ops: DeliveryOps): DeliveryDriver[] {
+  return ops.drivers.filter((driver) => driverCanDispatch(driver));
+}
+
+/** Driver who accepted the run — not the originating scout. */
+export function ticketAssignedDriver(
+  ops: DeliveryOps,
+  ticket: Pick<MerchantTicket, "orderId">,
+): DeliveryDriver | null {
+  const run = ops.runs.find((row) => row.orderId === ticket.orderId);
+  if (run && (run.status === "offered" || run.status === "cancelled")) {
+    return null;
+  }
+  const driverId =
+    run?.driverId ??
+    ops.ledger.find((row) => row.orderId === ticket.orderId)?.driverId ??
+    null;
+  if (!driverId) return null;
+  return ops.drivers.find((row) => row.id === driverId) ?? null;
+}
+
 export function normalizeDeliveryDriver(
   row: DeliveryDriver,
   now = new Date(),
@@ -256,6 +325,7 @@ export function normalizeDeliveryDriver(
     softwareUsdPerYear: driverSoftwareAnnualUsd(classification, softwareCadence),
     status,
     online: status === "approved" ? Boolean(row.online) : false,
+    ...driverPhotoId(row),
   };
 }
 
