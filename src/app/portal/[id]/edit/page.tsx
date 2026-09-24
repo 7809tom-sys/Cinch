@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { liveWebsiteUrl } from "@/lib/domain";
+import { withDeliveryDriverPolicyBrief } from "@/lib/seed-delivery";
+import { briefIsDeliveryPlatform } from "@/lib/seed-site-copy";
 import {
   getPortalProjectSnapshot,
   logoutCustomerAction,
@@ -29,6 +31,13 @@ export default async function EditSeedPage({ params }: PageProps) {
   if (!project) notFound();
 
   const websiteUrl = liveWebsiteUrl(project);
+  const deliveryPlatform = briefIsDeliveryPlatform(
+    project.name,
+    project.brief,
+  );
+  const initialBrief = deliveryPlatform
+    ? withDeliveryDriverPolicyBrief(project.brief)
+    : project.brief;
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
@@ -75,8 +84,13 @@ export default async function EditSeedPage({ params }: PageProps) {
           <EditSeedForm
             projectId={project.id}
             initialName={project.name}
-            initialBrief={project.brief}
+            initialBrief={initialBrief}
             websiteUrl={websiteUrl}
+            policyHint={
+              deliveryPlatform
+                ? "Driver fees ($39 / $79), 60-day suspend, and restaurant 1099s are in this brief. Hit Save & refresh website to rebuild."
+                : ""
+            }
             cancelHref={`/portal/${project.id}`}
             seedMode={project.seedMode}
             afterSaveHref={

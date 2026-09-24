@@ -2,6 +2,7 @@ import {
   DELIVERY_OPS_PATH,
   deliveryOpsJson,
   parseDeliveryOps,
+  applyDriverSubscriptionPolicies,
   starterDeliveryOps,
   type DeliveryOps,
 } from "./seed-delivery";
@@ -55,7 +56,7 @@ export async function ensureDeliveryOpsInSeed(
   }
 
   const existing = parseDeliveryOps(raw);
-  if (existing) return existing;
+  if (existing) return applyDriverSubscriptionPolicies(existing);
 
   const ops = starterDeliveryOps(project.name);
   await saveDeliveryOps(

@@ -6,6 +6,13 @@
  * - 5% platform / 5% originating scout residual (scout_id is immutable).
  * - Drivers keep 100% of delivery fee + tip. Never skim.
  * - Card processing (~2.9%) comes out of the restaurant, not the platform 5%.
+ * - Driver software: $39/month part-time or $79/month full-time
+ *   (weekly installments $9.99 / $19.99).
+ * - Full-time = app open more than 30 hours in a week, or more than
+ *   120 hours in a 4-week period. Below that is part-time.
+ * - 60 days without opening the app → account auto-suspended.
+ * - Restaurants collect the order and pay drivers, so the restaurant
+ *   issues 1099s to drivers who meet the criteria.
  * - Freeze a driver for compliance without moving scout ownership.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
@@ -16,11 +23,31 @@ export const RESTAURANT_COMMISSION_RATE = 0.1;
 export const PLATFORM_SHARE_RATE = 0.05;
 export const SCOUT_RESIDUAL_RATE = 0.05;
 export const PROCESSOR_RATE = 0.029;
-export const DRIVER_SOFTWARE_USD_PER_YEAR = 900;
+export const DRIVER_SOFTWARE = {
+  partTime: { monthlyUsd: 39, weeklyUsd: 9.99 },
+  fullTime: { monthlyUsd: 79, weeklyUsd: 19.99 },
+} as const;
+export const FULL_TIME_HOURS_PER_WEEK = 30;
+export const FULL_TIME_HOURS_PER_4_WEEKS = 120;
+export const DRIVER_INACTIVE_SUSPEND_DAYS = 60;
+/** @deprecated Prefer DRIVER_SOFTWARE. Full-time monthly × 12. */
+export const DRIVER_SOFTWARE_USD_PER_YEAR = DRIVER_SOFTWARE.fullTime.monthlyUsd * 12;
 export const WEEKLY_GMV_EXAMPLES = [500, 800, 1000, 2000] as const;
 export const DEFAULT_WEEKLY_GMV_EXAMPLE = 500;
 
-export type DeliveryDriverStatus = "pending" | "approved" | "frozen";
+export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
+- Fees: $39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99.
+- Full-time: app open more than 30 hours a week, or more than 120 hours in 4 weeks. Below that is part-time.
+- If a driver does not open the app for 60 days, the account is automatically suspended.
+- 1099: restaurants collect the order payment and pay drivers, so the restaurant issues 1099s to drivers who meet the criteria.`;
+
+export type DeliveryDriverStatus =
+  | "pending"
+  | "approved"
+  | "frozen"
+  | "suspended";
+export type DriverClassification = "part_time" | "full_time";
+export type DriverSoftwareCadence = "monthly" | "weekly";
 export type MerchantTicketStatus =
   | "incoming"
   | "accepted"
@@ -51,6 +78,11 @@ export type DeliveryDriver = {
   status: DeliveryDriverStatus;
   licenseOk: boolean;
   insuranceOk: boolean;
+  classification: DriverClassification;
+  softwareCadence: DriverSoftwareCadence;
+  hoursOpenThisWeek: number;
+  hoursOpenLast4Weeks: number;
+  lastAppOpenAt: string | null;
   softwareUsdPerYear: number;
   /** DoorDash-style “Dash now” — offline drivers do not see offers. */
   online: boolean;
@@ -115,6 +147,103 @@ export type DeliveryOps = {
 
 export function money(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+export function briefHasDriverPolicy(brief: string): boolean {
+  return /\$39\s*\/\s*month|1099|60\s*-?\s*days?/i.test(brief);
+}
+
+/** Append driver subscription / 1099 rules when a delivery brief is missing them. */
+export function withDeliveryDriverPolicyBrief(brief: string): string {
+  const trimmed = brief.trim();
+  if (briefHasDriverPolicy(trimmed)) return trimmed;
+  return trimmed
+    ? `${trimmed}\n\n${DRIVER_POLICY_BRIEF_BLOCK}`
+    : DRIVER_POLICY_BRIEF_BLOCK;
+}
+
+export function classifyDriverHours(
+  hoursThisWeek: number,
+  hoursLast4Weeks: number,
+): DriverClassification {
+  if (
+    hoursThisWeek > FULL_TIME_HOURS_PER_WEEK ||
+    hoursLast4Weeks > FULL_TIME_HOURS_PER_4_WEEKS
+  ) {
+    return "full_time";
+  }
+  return "part_time";
+}
+
+export function driverSoftwareFeeUsd(
+  classification: DriverClassification,
+  cadence: DriverSoftwareCadence,
+): number {
+  const plan =
+    classification === "full_time"
+      ? DRIVER_SOFTWARE.fullTime
+      : DRIVER_SOFTWARE.partTime;
+  return cadence === "weekly" ? plan.weeklyUsd : plan.monthlyUsd;
+}
+
+export function driverSoftwareAnnualUsd(
+  classification: DriverClassification,
+  cadence: DriverSoftwareCadence,
+): number {
+  const fee = driverSoftwareFeeUsd(classification, cadence);
+  return money(fee * (cadence === "weekly" ? 52 : 12));
+}
+
+export function driverInactiveTooLong(
+  lastAppOpenAt: string | null | undefined,
+  now = new Date(),
+): boolean {
+  if (!lastAppOpenAt) return false;
+  const last = new Date(lastAppOpenAt).getTime();
+  if (Number.isNaN(last)) return false;
+  const days = (now.getTime() - last) / 86_400_000;
+  return days >= DRIVER_INACTIVE_SUSPEND_DAYS;
+}
+
+export function normalizeDeliveryDriver(
+  row: DeliveryDriver,
+  now = new Date(),
+): DeliveryDriver {
+  const hoursOpenThisWeek = Math.max(0, Number(row.hoursOpenThisWeek) || 0);
+  const hoursOpenLast4Weeks = Math.max(0, Number(row.hoursOpenLast4Weeks) || 0);
+  const classification =
+    row.classification === "full_time" || row.classification === "part_time"
+      ? row.classification
+      : classifyDriverHours(hoursOpenThisWeek, hoursOpenLast4Weeks);
+  const softwareCadence =
+    row.softwareCadence === "weekly" ? "weekly" : "monthly";
+  const inactive = driverInactiveTooLong(row.lastAppOpenAt, now);
+  let status = row.status;
+  if (status === "approved" && inactive) status = "suspended";
+  if (status !== "approved" && status !== "pending") {
+    // frozen / suspended stay offline
+  }
+  return {
+    ...row,
+    classification,
+    softwareCadence,
+    hoursOpenThisWeek,
+    hoursOpenLast4Weeks,
+    lastAppOpenAt: row.lastAppOpenAt ?? null,
+    softwareUsdPerYear: driverSoftwareAnnualUsd(classification, softwareCadence),
+    status,
+    online: status === "approved" ? Boolean(row.online) : false,
+  };
+}
+
+export function applyDriverSubscriptionPolicies(
+  ops: DeliveryOps,
+  now = new Date(),
+): DeliveryOps {
+  return {
+    ...ops,
+    drivers: ops.drivers.map((driver) => normalizeDeliveryDriver(driver, now)),
+  };
 }
 
 /** 10% / 5% / 5% split. Fee + tip stay with the driver. Processor from restaurant. */
@@ -258,7 +387,12 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "approved",
         licenseOk: true,
         insuranceOk: true,
-        softwareUsdPerYear: DRIVER_SOFTWARE_USD_PER_YEAR,
+        classification: "full_time",
+        softwareCadence: "monthly",
+        hoursOpenThisWeek: 36,
+        hoursOpenLast4Weeks: 140,
+        lastAppOpenAt: createdAt,
+        softwareUsdPerYear: driverSoftwareAnnualUsd("full_time", "monthly"),
         online: true,
       },
       {
@@ -267,7 +401,12 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "approved",
         licenseOk: true,
         insuranceOk: true,
-        softwareUsdPerYear: DRIVER_SOFTWARE_USD_PER_YEAR,
+        classification: "part_time",
+        softwareCadence: "weekly",
+        hoursOpenThisWeek: 12,
+        hoursOpenLast4Weeks: 40,
+        lastAppOpenAt: createdAt,
+        softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "weekly"),
         online: true,
       },
       {
@@ -276,7 +415,26 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "frozen",
         licenseOk: true,
         insuranceOk: false,
-        softwareUsdPerYear: DRIVER_SOFTWARE_USD_PER_YEAR,
+        classification: "part_time",
+        softwareCadence: "monthly",
+        hoursOpenThisWeek: 8,
+        hoursOpenLast4Weeks: 20,
+        lastAppOpenAt: createdAt,
+        softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "monthly"),
+        online: false,
+      },
+      {
+        id: "drv-casey",
+        name: "Casey Quinn",
+        status: "suspended",
+        licenseOk: true,
+        insuranceOk: true,
+        classification: "part_time",
+        softwareCadence: "monthly",
+        hoursOpenThisWeek: 0,
+        hoursOpenLast4Weeks: 6,
+        lastAppOpenAt: "2026-07-20T18:00:00.000Z",
+        softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "monthly"),
         online: false,
       },
     ],
@@ -341,13 +499,15 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
         ...row,
         paused: Boolean(row.paused),
       })),
-      drivers: parsed.drivers.map((row) => ({
-        ...row,
-        online:
-          typeof row.online === "boolean"
-            ? row.online
-            : row.status === "approved",
-      })),
+      drivers: parsed.drivers.map((row) =>
+        normalizeDeliveryDriver({
+          ...row,
+          online:
+            typeof row.online === "boolean"
+              ? row.online
+              : row.status === "approved",
+        }),
+      ),
       ledger: parsed.ledger,
       tickets: parsed.tickets,
       runs: parsed.runs,
@@ -395,6 +555,7 @@ export function approveDeliveryDriver(
             status: "approved" as const,
             licenseOk: true,
             insuranceOk: true,
+            lastAppOpenAt: new Date().toISOString(),
           }
         : driver,
     ),
@@ -504,6 +665,10 @@ export function setDriverOnline(
         ? {
             ...driver,
             online: online && driver.status === "approved",
+            lastAppOpenAt:
+              online && driver.status === "approved"
+                ? new Date().toISOString()
+                : driver.lastAppOpenAt,
           }
         : driver,
     ),

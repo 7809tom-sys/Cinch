@@ -5,6 +5,7 @@ import type { DeliveryOps, DriverRun } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
   driverCanDispatch,
+  driverSoftwareFeeUsd,
   scoutResidualForWeeklyGmv,
   weeklyScoutResidualExamples,
 } from "@/lib/seed-delivery";
@@ -81,8 +82,16 @@ export function HometownDriverPortal({
         </label>
         <p className="mt-3 text-sm text-mist">
           Same idea as DoorDash Dasher: go online, take an offer, pick up,
-          drop off. You keep 100% of the delivery fee and tip. Software is
-          about ${driver?.softwareUsdPerYear ?? 900}/year.
+          drop off. You keep 100% of the delivery fee and tip. Software is $
+          {driver
+            ? driverSoftwareFeeUsd(
+                driver.classification,
+                driver.softwareCadence,
+              ).toFixed(2)
+            : "39.00"}
+          /{driver?.softwareCadence === "weekly" ? "week" : "month"} (
+          {driver?.classification === "full_time" ? "full-time" : "part-time"}
+          ). Weekly installments are $9.99 part-time or $19.99 full-time.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
@@ -98,11 +107,13 @@ export function HometownDriverPortal({
               online ? "bg-accent text-brand-deep" : "bg-white text-brand-deep"
             }`}
           >
-            {driver?.status !== "approved"
-              ? "Dispatch frozen"
-              : online
-                ? "You’re online · go offline"
-                : "Go online"}
+            {driver?.status === "suspended"
+              ? "Account suspended (60 days off)"
+              : driver?.status !== "approved"
+                ? "Dispatch frozen"
+                : online
+                  ? "You’re online · go offline"
+                  : "Go online"}
           </button>
           <p className="text-sm text-mist">
             License {driver?.licenseOk ? "ok" : "missing"} · insurance{" "}

@@ -554,7 +554,7 @@ assert(
 const hometownName = "Hometown Runner";
 const hometownBrief = `Subject: Build Hometown Runner — v1 product brief
 
-Hometown Runner is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Drivers pay ~$900/year for software and keep 100% of delivery fees + tips. Cart, checkout, tip, tracking. Admin / ops.`;
+Hometown Runner is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Drivers pay $39/month part-time or $79/month full-time for software and keep 100% of delivery fees + tips. Cart, checkout, tip, tracking. Admin / ops.`;
 
 assert(
   briefIsDeliveryPlatform(hometownName, hometownBrief),

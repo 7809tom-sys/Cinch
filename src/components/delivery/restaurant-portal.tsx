@@ -114,6 +114,8 @@ export function HometownRestaurantPortal({
               Like DoorDash for the kitchen: new orders, accept or decline, mark
               ready, hand to a Hometown driver. You pay a flat 10% on delivery
               GMV plus card processing (~2.9%). The platform 5% stays whole.
+              You collect the order and pay the driver, so you issue the 1099
+              when a driver meets the threshold.
             </p>
           </div>
           {restaurant ? (
