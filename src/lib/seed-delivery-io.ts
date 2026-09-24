@@ -44,7 +44,7 @@ export async function ensureDeliveryOpsInSeed(
   const css =
     bundle?.files.find((file) => file.path === "app/globals.css")?.content ??
     "";
-  if (!css.includes("seed-run")) {
+  if (!css.includes("seed-run") || !css.includes("seed-run-party")) {
     await upsertSourceFile({
       projectId: project.id,
       path: "app/globals.css",

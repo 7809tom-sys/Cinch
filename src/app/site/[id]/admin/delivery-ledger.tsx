@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { DeliveryOps } from "@/lib/seed-delivery";
+import type { DeliveryDriver, DeliveryOps } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
   deliveryDriverDisplayName,
   driverAttributedPayoutUsd,
+  driverPhotoId,
   ledgerRunDriverId,
   scoutResidualForWeeklyGmv,
   summarizeDeliveryLedger,
@@ -26,6 +27,10 @@ export function SeedDeliveryLedger({
   const [weeklyGmv, setWeeklyGmv] = useState(DEFAULT_WEEKLY_GMV_EXAMPLE);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [openParty, setOpenParty] = useState<{
+    id: string;
+    role: "scout" | "driver";
+  } | null>(null);
   const totals = summarizeDeliveryLedger(ops);
   const examples = weeklyScoutResidualExamples();
 
@@ -41,6 +46,16 @@ export function SeedDeliveryLedger({
 
   return (
     <section className="seed-admin-section" id="ledger">
+      <style>{`
+        .seed-run-party { position: relative; min-width: 9.5rem; }
+        .seed-run-party-open { display: flex; align-items: center; gap: 0.5rem; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; white-space: normal; }
+        .seed-run-party-open img, .seed-run-party-card img { width: 2.25rem; height: 2.25rem; border-radius: 0.35rem; object-fit: cover; }
+        .seed-run-party-open strong, .seed-run-party-open small { display: block; line-height: 1.2; }
+        .seed-run-party-open small { font-size: 0.72rem; opacity: 0.72; }
+        .seed-run-party-card { position: absolute; z-index: 3; left: 0; top: calc(100% + 0.35rem); display: flex; align-items: center; gap: 0.65rem; min-width: 13rem; padding: 0.55rem 0.7rem; border: 1px solid rgba(11,16,20,0.12); border-radius: 0.5rem; background: #fff; box-shadow: 0 8px 24px rgba(11,16,20,0.12); }
+        .seed-run-party-card img { width: 3.5rem; height: 3.5rem; }
+        .seed-run-party-card p { margin: 0.1rem 0 0; }
+      `}</style>
       <p className="seed-eyebrow">Ledger</p>
       <h2>GMV, 10% → 5% scout / 5% driver, fee, tip, processor</h2>
       <p className="seed-admin-support">
@@ -127,14 +142,50 @@ export function SeedDeliveryLedger({
                       ?.name ?? row.restaurantId}
                   </td>
                   <td>
-                    {ops.drivers.find((item) => item.id === row.scoutId)?.name ??
-                      row.scoutId}
+                    <LedgerPartyId
+                      person={ops.drivers.find((item) => item.id === row.scoutId)}
+                      role="Scout"
+                      fallback={row.scoutId}
+                      open={
+                        openParty?.role === "scout" &&
+                        openParty.id === row.scoutId
+                      }
+                      onOpen={() =>
+                        setOpenParty((current) =>
+                          current?.role === "scout" &&
+                          current.id === row.scoutId
+                            ? null
+                            : { id: row.scoutId, role: "scout" },
+                        )
+                      }
+                    />
                   </td>
                   <td>
-                    {deliveryDriverDisplayName(
-                      ops.drivers,
-                      ledgerRunDriverId(row, ops.runs),
-                    )}
+                    <LedgerPartyId
+                      person={ops.drivers.find(
+                        (item) => item.id === ledgerRunDriverId(row, ops.runs),
+                      )}
+                      role="Driver"
+                      fallback={deliveryDriverDisplayName(
+                        ops.drivers,
+                        ledgerRunDriverId(row, ops.runs),
+                      )}
+                      open={
+                        openParty?.role === "driver" &&
+                        openParty.id ===
+                          (ledgerRunDriverId(row, ops.runs) ?? "")
+                      }
+                      onOpen={() => {
+                        const driverId = ledgerRunDriverId(row, ops.runs);
+                        if (!driverId) return;
+                        setOpenParty((current) =>
+                          current?.role === "driver" &&
+                          current.id === driverId
+                            ? null
+                            : { id: driverId, role: "driver" },
+                        );
+                      }}
+                    />
                   </td>
                   <td>${row.gmvUsd.toFixed(2)}</td>
                   <td>${row.restaurantCommissionUsd.toFixed(2)}</td>
@@ -217,11 +268,23 @@ export function SeedDeliveryLedger({
             <div>
               <h3>{row.name}</h3>
               <p className="seed-run-meta">
-                scout_id {row.scoutId} ·{" "}
-                {ops.drivers.find((item) => item.id === row.scoutId)?.name ??
-                  "unknown"}{" "}
-                — cannot silently edit the 50/50 split
+                scout_id {row.scoutId} · cannot silently edit the 50/50 split
               </p>
+              <LedgerPartyId
+                person={ops.drivers.find((item) => item.id === row.scoutId)}
+                role="Scout"
+                fallback={row.scoutId}
+                open={
+                  openParty?.role === "scout" && openParty.id === row.scoutId
+                }
+                onOpen={() =>
+                  setOpenParty((current) =>
+                    current?.role === "scout" && current.id === row.scoutId
+                      ? null
+                      : { id: row.scoutId, role: "scout" },
+                  )
+                }
+              />
             </div>
           </li>
         ))}
@@ -258,5 +321,50 @@ export function SeedDeliveryLedger({
         </p>
       ) : null}
     </section>
+  );
+}
+
+function LedgerPartyId({
+  person,
+  role,
+  fallback,
+  open,
+  onOpen,
+}: {
+  person?: DeliveryDriver;
+  role: "Scout" | "Driver";
+  fallback: string;
+  open: boolean;
+  onOpen: () => void;
+}) {
+  if (!person) return <span>{fallback}</span>;
+  const id = driverPhotoId(person);
+  return (
+    <div className="seed-run-party">
+      <button
+        type="button"
+        className="seed-run-party-open"
+        onClick={onOpen}
+        aria-expanded={open}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={id.photoUrl} alt="" />
+        <span>
+          <strong>{person.name}</strong>
+          <small>{id.photoIdNumber}</small>
+        </span>
+      </button>
+      {open ? (
+        <aside className="seed-run-party-card" aria-label={`${role} photo ID`}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={id.photoUrl} alt={`Photo ID for ${person.name}`} />
+          <div>
+            <p className="seed-run-kicker">Photo ID · {role}</p>
+            <p>{person.name}</p>
+            <p>{id.photoIdNumber}</p>
+          </div>
+        </aside>
+      ) : null}
+    </div>
   );
 }
