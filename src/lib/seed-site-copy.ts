@@ -1416,9 +1416,7 @@ export function customerFacingSiteCopy(
         ],
         aboutEyebrow: "The split",
         aboutHeadline: "10% from the restaurant. Drivers keep the run.",
-        aboutBody:
-          support ||
-          `${brand} is a hyper-local food delivery platform. Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant — we show that in admin economics.`,
+        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant — we show that in admin economics.`,
         menuEyebrow: "Tonight’s board",
         menuHeadline: "Kitchens you can order from now",
         menuSupport:
