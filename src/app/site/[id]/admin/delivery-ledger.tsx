@@ -4,6 +4,9 @@ import { useState, useTransition } from "react";
 import type { DeliveryOps } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
+  deliveryDriverDisplayName,
+  driverAttributedPayoutUsd,
+  ledgerRunDriverId,
   scoutResidualForWeeklyGmv,
   summarizeDeliveryLedger,
   weeklyScoutResidualExamples,
@@ -46,7 +49,8 @@ export function SeedDeliveryLedger({
         the 5% share via ACH. Processing (~2.9%) comes out of the restaurant.
         Driver software is $39/month part-time or $79/month full-time ($9.99 /
         $19.99 weekly). 60 days off the app suspends the driver. The
-        restaurant issues 1099s.
+        restaurant issues 1099s. Scout is who signed the kitchen. Driver is
+        who ran the bag — fee, tip, and the 5% share belong to that person.
       </p>
       <dl className="seed-run-stats">
         <div>
@@ -98,6 +102,7 @@ export function SeedDeliveryLedger({
               <th>Order</th>
               <th>Restaurant</th>
               <th>Scout</th>
+              <th>Driver</th>
               <th>GMV</th>
               <th>10%</th>
               <th>Plat $0</th>
@@ -111,7 +116,7 @@ export function SeedDeliveryLedger({
           <tbody>
             {ops.ledger.length === 0 ? (
               <tr>
-                <td colSpan={11}>No orders on the ledger yet.</td>
+                <td colSpan={12}>No orders on the ledger yet.</td>
               </tr>
             ) : (
               ops.ledger.map((row) => (
@@ -124,6 +129,12 @@ export function SeedDeliveryLedger({
                   <td>
                     {ops.drivers.find((item) => item.id === row.scoutId)?.name ??
                       row.scoutId}
+                  </td>
+                  <td>
+                    {deliveryDriverDisplayName(
+                      ops.drivers,
+                      ledgerRunDriverId(row, ops.runs),
+                    )}
                   </td>
                   <td>${row.gmvUsd.toFixed(2)}</td>
                   <td>${row.restaurantCommissionUsd.toFixed(2)}</td>
@@ -162,7 +173,10 @@ export function SeedDeliveryLedger({
                   {driver.insuranceOk ? "ok" : "expired"} ·{" "}
                   {driver.classification === "full_time"
                     ? "full-time $79/mo"
-                    : "part-time $39/mo"}
+                    : "part-time $39/mo"}{" "}
+                  · attributed runs $
+                  {driverAttributedPayoutUsd(ops, driver.id).toFixed(2)} (fee +
+                  tip + 5%)
                   {scouted.length
                     ? ` · scout lock: ${scouted.map((row) => row.name).join(", ")}`
                     : " · no originating restaurants"}

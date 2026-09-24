@@ -24,7 +24,12 @@ import {
   setMerchantTicketStatus,
   setRestaurantPaused,
   scoutResidualForWeeklyGmv,
+  deliveryDriverDisplayName,
+  deliveryOpsJson,
+  driverAttributedPayoutUsd,
   driverPayoutFromSplit,
+  ledgerRunDriverId,
+  parseDeliveryOps,
   splitDeliveryLedger,
   starterDeliveryOps,
   weeklyScoutResidualExamples,
@@ -117,7 +122,39 @@ const maya = ops.drivers.find((row) => row.id === "drv-maya");
 const jordan = ops.drivers.find((row) => row.id === "drv-jordan");
 const casey = ops.drivers.find((row) => row.id === "drv-casey");
 const deli = ops.restaurants.find((row) => row.id === "rest-deli");
+const deliLedger = ops.ledger.find((row) => row.orderId === "ord-sample-deli");
 assert(Boolean(riley && riley.status === "frozen"), "Riley starts frozen");
+assert(
+  deliLedger?.scoutId === "drv-riley" &&
+    deliLedger.driverId === "drv-maya" &&
+    deliveryDriverDisplayName(ops.drivers, deliLedger.driverId) ===
+      "Maya Chen",
+  "delivered deli row attributes the run to Maya, not the originating scout",
+);
+const deliPayout = deliLedger ? driverPayoutFromSplit(deliLedger) : null;
+assert(
+  deliPayout !== null &&
+    driverAttributedPayoutUsd(ops, "drv-maya") === deliPayout &&
+    driverAttributedPayoutUsd(ops, "drv-riley") === 0,
+  "fee + tip + 5% sit on the driver who ran the bag",
+);
+const staleLedger = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    ledger: ops.ledger.map((row) =>
+      row.orderId === "ord-sample-deli" ? { ...row, driverId: null } : row,
+    ),
+  }),
+);
+assert(
+  ledgerRunDriverId(
+    { orderId: "ord-sample-deli", driverId: null },
+    ops.runs,
+  ) === "drv-maya" &&
+    staleLedger?.ledger.find((row) => row.orderId === "ord-sample-deli")
+      ?.driverId === "drv-maya",
+  "parse heals a ledger row that forgot the driver already on the run",
+);
 assert(
   maya?.classification === "full_time" &&
     maya.softwareUsdPerYear === 948,
@@ -216,6 +253,11 @@ if (taken.ok) {
       ?.scoutId === "drv-maya",
     "accepting a run does not rewrite the originating scout",
   );
+  assert(
+    taken.ops.ledger.find((row) => row.orderId === "ord-sample-pilot")
+      ?.driverId === "drv-jordan",
+    "accepting a run writes Jordan onto the ledger Driver column",
+  );
 }
 
 const afterOrder = recordDeliveryOrder(ops, {
@@ -300,6 +342,12 @@ const deliveryLib = readFileSync(
 const ledgerUi = readFileSync(
   join(process.cwd(), "src/app/site/[id]/admin/delivery-ledger.tsx"),
   "utf8",
+);
+assert(
+  /<th>Driver<\/th>/.test(ledgerUi) &&
+    /ledgerRunDriverId/.test(ledgerUi) &&
+    /colSpan=\{12\}/.test(ledgerUi),
+  "admin ledger table has a Driver column next to Scout",
 );
 const siteCopy = readFileSync(
   join(process.cwd(), "src/lib/seed-site-copy.ts"),

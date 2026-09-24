@@ -323,6 +323,35 @@ export function driverPayoutFromSplit(split: {
   return money(split.deliveryFeeUsd + split.tipUsd + commission);
 }
 
+/** Who ran the bag — ledger driverId, else the matching run. Scout is not a fallback. */
+export function ledgerRunDriverId(
+  row: Pick<DeliveryLedgerRow, "orderId" | "driverId">,
+  runs: Array<Pick<DriverRun, "orderId" | "driverId">>,
+): string | null {
+  if (row.driverId) return row.driverId;
+  return runs.find((item) => item.orderId === row.orderId)?.driverId ?? null;
+}
+
+export function deliveryDriverDisplayName(
+  drivers: Array<Pick<DeliveryDriver, "id" | "name">>,
+  driverId: string | null,
+): string {
+  if (!driverId) return "Unassigned";
+  return drivers.find((item) => item.id === driverId)?.name ?? driverId;
+}
+
+/** Fee + tip + 5% for rows attributed to this driver (not the originating scout). */
+export function driverAttributedPayoutUsd(
+  ops: DeliveryOps,
+  driverId: string,
+): number {
+  return money(
+    ops.ledger
+      .filter((row) => ledgerRunDriverId(row, ops.runs) === driverId)
+      .reduce((sum, row) => sum + driverPayoutFromSplit(row), 0),
+  );
+}
+
 /** Scout residual at a weekly GMV input — never implied as a default promise. */
 export function scoutResidualForWeeklyGmv(weeklyGmvUsd: number): number {
   return money(Math.max(0, weeklyGmvUsd) * SCOUT_RESIDUAL_RATE);
@@ -388,6 +417,13 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
     taxUsd: 2.15,
   });
   const orderId = "ord-sample-pilot";
+  const deliveredSplit = splitDeliveryLedger({
+    gmvUsd: 11,
+    deliveryFeeUsd: 5,
+    tipUsd: 3,
+    taxUsd: 0.91,
+  });
+  const deliveredAt = "2026-09-23T19:10:00.000Z";
   return {
     city: `${brand} · one town`,
     restaurants: [
@@ -485,6 +521,16 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         customerName: "Alex Rivera",
         createdAt,
       },
+      {
+        ...deliveredSplit,
+        id: "led-sample-deli",
+        orderId: "ord-sample-deli",
+        restaurantId: "rest-deli",
+        scoutId: "drv-riley",
+        driverId: "drv-maya",
+        customerName: "Sam Ortiz",
+        createdAt: deliveredAt,
+      },
     ],
     tickets: [
       {
@@ -496,6 +542,22 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         gmvUsd: split.gmvUsd,
         status: "incoming",
         createdAt,
+      },
+      {
+        id: "tkt-sample-deli",
+        orderId: "ord-sample-deli",
+        restaurantId: "rest-deli",
+        customerName: "Sam Ortiz",
+        items: [
+          {
+            title: "River Market Deli · Soup and half",
+            qty: 1,
+            priceUsd: 11,
+          },
+        ],
+        gmvUsd: deliveredSplit.gmvUsd,
+        status: "completed",
+        createdAt: deliveredAt,
       },
     ],
     runs: [
@@ -511,6 +573,19 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         driverCommissionUsd: split.driverCommissionUsd,
         status: "offered",
         createdAt,
+      },
+      {
+        id: "run-sample-deli",
+        orderId: "ord-sample-deli",
+        restaurantId: "rest-deli",
+        driverId: "drv-maya",
+        customerName: "Sam Ortiz",
+        dropoffZip: "10003",
+        deliveryFeeUsd: deliveredSplit.deliveryFeeUsd,
+        tipUsd: deliveredSplit.tipUsd,
+        driverCommissionUsd: deliveredSplit.driverCommissionUsd,
+        status: "delivered",
+        createdAt: deliveredAt,
       },
     ],
   };
@@ -552,7 +627,12 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
           tipUsd: row.tipUsd,
           taxUsd: row.taxUsd ?? 0,
         });
-        return { ...row, ...remint };
+        const run = parsed.runs.find((item) => item.orderId === row.orderId);
+        return {
+          ...row,
+          ...remint,
+          driverId: row.driverId ?? run?.driverId ?? null,
+        };
       }),
       tickets: parsed.tickets,
       runs: parsed.runs.map((row) => {
