@@ -334,8 +334,12 @@ const restaurantDesk = readFileSync(
   "utf8",
 );
 assert(
-  /issue the 1099/.test(restaurantDesk) && /keeps\s+\$0/.test(restaurantDesk),
-  "restaurant portal says Hometown keeps $0 and the kitchen issues the 1099",
+  /issue the 1099/.test(restaurantDesk) &&
+    /keeps\s+\$0/.test(restaurantDesk) &&
+    /automatically routed to the\s+driver/.test(restaurantDesk) &&
+    /pay ~2\.9% processing/.test(restaurantDesk) &&
+    !/The 10% on GMV is ACH/.test(restaurantDesk),
+  "restaurant portal informs the kitchen: Stripe, 2.9%, $0 platform, fee+tip to driver, 1099",
 );
 assert(
   /keeps \$0/.test(deliveryLib) &&
