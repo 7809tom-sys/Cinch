@@ -44,6 +44,10 @@ export function collectSeedSiteProofFailures(
       areaBody?: string;
       areaHeadline?: string;
       bookHeadline?: string;
+      specials?: Array<{ title?: string; detail?: string }>;
+      results?: Array<{ label?: string; detail?: string }>;
+      profitPlays?: Array<{ title?: string; detail?: string }>;
+      profitSupport?: string;
     } | null;
     shop?: {
       title?: string;

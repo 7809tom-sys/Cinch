@@ -355,13 +355,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 {merchantHref ? (
                   <a href={merchantHref}>
                     <strong>Restaurant portal</strong>
-                    <span>Accept tickets. Flat 10% on delivery GMV.</span>
+                    <span>Kitchen desk for tonight’s tickets.</span>
                   </a>
                 ) : null}
                 {driveHref ? (
                   <a href={driveHref}>
                     <strong>Driver portal</strong>
-                    <span>Go online. Keep 100% of fee and tip.</span>
+                    <span>Go online. Pick up bags on these streets.</span>
                   </a>
                 ) : null}
               </div>

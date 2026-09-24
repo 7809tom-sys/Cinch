@@ -18,6 +18,7 @@ import {
   seedCommerceAdminBoard,
   customerFacingShopCopy,
   customerFacingSiteCopy,
+  deliveryLandingLooksLikeOpsEconomics,
   seedGrowthBoardLooksThin,
   seedIndustryKey,
   seedLandingCopyMismatchesIndustry,
@@ -636,7 +637,44 @@ assert(
 );
 assert(
   !seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, hometown),
-  "fresh Hometown copy includes the $39 subscription",
+  "fresh Hometown diner landing matches the delivery marketplace",
+);
+const hometownDinerBlob = [
+  hometown.headline,
+  hometown.support,
+  hometown.aboutBody,
+  hometown.cta,
+  hometown.servicesHeadline,
+  hometown.footerNote,
+  hometown.bookHeadline,
+  hometown.bookBody,
+  hometown.areaBody,
+  hometown.processHeadline,
+  hometown.resultsHeadline,
+  hometown.resultsSupport,
+  hometown.profitHeadline,
+  hometown.profitSupport,
+  hometown.proof.quote,
+  ...hometown.services.flatMap((item) => [item.title, item.detail]),
+  ...hometown.process.flatMap((item) => [item.title, item.detail]),
+  ...(hometown.specials ?? []).flatMap((item) => [item.title, item.detail]),
+  ...hometown.results.flatMap((item) => [item.label, item.detail]),
+  ...hometown.profitPlays.flatMap((item) => [item.title, item.detail]),
+].join(" ");
+assert(
+  !deliveryLandingLooksLikeOpsEconomics(hometownDinerBlob),
+  "fresh Hometown diner landing does not leak ledger / tax / subscription internals",
+);
+assert(
+  seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, {
+    services: [
+      {
+        title: "Driver software",
+        detail: "Software is $39/month. Platform keeps $0.",
+      },
+    ],
+  }),
+  "mismatch flags diner copy that leaks $39 / $0 platform economics",
 );
 
 const hometownShop = customerFacingShopCopy(hometownName, hometownBrief);
@@ -671,6 +709,20 @@ assert(
     `${hometownShop.title} ${hometownShop.support} ${hometownShop.products.map((p) => p.title).join(" ")}`,
   ),
   "shop is not a single-restaurant plated menu",
+);
+assert(
+  !deliveryLandingLooksLikeOpsEconomics(
+    `${hometownShop.support} ${hometownShop.products.map((p) => p.detail).join(" ")}`,
+  ),
+  "Hometown shop is diner food copy, not ledger notes",
+);
+assert(
+  seedShopMismatchesIndustry(hometownName, hometownBrief, {
+    ...hometownShop,
+    support:
+      "Restaurant weekly GMV and the 5% scout residual post to the ledger.",
+  }),
+  "mismatch flags diner shop support that leaks GMV",
 );
 
 const hometownAdmin = customerFacingAdminCopy(hometownName, hometownBrief);

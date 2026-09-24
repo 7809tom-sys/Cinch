@@ -348,8 +348,8 @@ export async function repairCustomerLandingIfNeeded(
         bookHeadline?: string;
         aboutImage?: string;
         areaBody?: string;
-        results?: unknown[];
-        profitPlays?: unknown[];
+        results?: Array<{ label?: string; detail?: string }>;
+        profitPlays?: Array<{ title?: string; detail?: string }>;
       };
       const brand = brandFromProject(project);
       const foodNeedsMenu =

@@ -51,6 +51,9 @@ function firstSentences(brief: string, count = 2): string[] {
  * - HARD RULE: every Seed must beat 2020-era template sites — thorough pages,
  *   concrete numbers, and profit-maximizing operator help (lawn, garage,
  *   pizza, salon — same bar as AI kitchen design beating 2020 software).
+ * - Delivery diner landing + shop stay guest benefits (nearby food, tip,
+ *   track the bag). Ledger / tax / $39 / 1099 live on restaurant, driver,
+ *   admin, playbook, and Edit Seed — never on the public diner page.
  */
 function briefLooksLikeGarage(name: string, brief: string): boolean {
   const lower = `${name} ${brief}`.toLowerCase();
@@ -224,6 +227,13 @@ export function seedLandingLooksUnsellable(copy: {
   return CONSULTING_TEMPLATE_FINGERPRINT.test(blob);
 }
 
+/** Diner landing / shop should not leak ledger / tax / subscription internals. */
+export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing/.test(
+    blob,
+  );
+}
+
 export function seedLandingCopyMismatchesIndustry(
   projectName: string,
   brief: string,
@@ -242,6 +252,10 @@ export function seedLandingCopyMismatchesIndustry(
     areaBody?: string;
     areaHeadline?: string;
     bookHeadline?: string;
+    specials?: Array<{ title?: string; detail?: string }>;
+    results?: Array<{ label?: string; detail?: string }>;
+    profitPlays?: Array<{ title?: string; detail?: string }>;
+    profitSupport?: string;
   },
 ): boolean {
   const key = industryKey(brief, projectName);
@@ -261,6 +275,10 @@ export function seedLandingCopyMismatchesIndustry(
     copy.proof?.attribution,
     ...(copy.services ?? []).flatMap((item) => [item.title, item.detail]),
     ...(copy.process ?? []).flatMap((item) => [item.title, item.detail]),
+    ...(copy.specials ?? []).flatMap((item) => [item.title, item.detail]),
+    ...(copy.results ?? []).flatMap((item) => [item.label, item.detail]),
+    ...(copy.profitPlays ?? []).flatMap((item) => [item.title, item.detail]),
+    copy.profitSupport,
   ]
     .filter(Boolean)
     .join(" ")
@@ -318,8 +336,7 @@ export function seedLandingCopyMismatchesIndustry(
       /subject:|v1 product brief|what it is hometown/i.test(blob) ||
       /\$900\s*\/\s*year/.test(blob) ||
       /platform keeps 5%|platform 5% stays whole/.test(blob) ||
-      !/\$39/.test(blob) ||
-      !(/keeps \$0|\$0 from restaurant|5% to the driver|5% driver/.test(blob)))
+      deliveryLandingLooksLikeOpsEconomics(blob))
   ) {
     return true;
   }
@@ -333,7 +350,7 @@ export function seedLandingCopyMismatchesIndustry(
 /** Benefit-first support line for visitors — not checklist dumps. */
 export function customerFacingSupport(brief: string): string {
   if (briefIsDeliveryPlatform("", brief)) {
-    return "Local food. Drivers keep 100% of the fee and tip.";
+    return "Kitchens in this town. A driver brings dinner to your door.";
   }
   const cleaned = brief.replace(/\s+/g, " ").trim();
   if (!cleaned) return "Quality work, done the way you need it.";
@@ -383,7 +400,7 @@ export function customerFacingHeadline(
     return "Clean cars. Straight prices.";
   }
   if (key === "delivery") {
-    return "Local food. Drivers keep the fee.";
+    return "Local food. At your door tonight.";
   }
   if (key === "food") {
     if (briefIsPizza(projectName, brief)) {
@@ -536,7 +553,7 @@ export type SeedSiteCopy = {
   resultsHeadline: string;
   resultsSupport: string;
   results: SeedResultStat[];
-  /** Operator profit levers with dollars / % / time. */
+  /** Profit / benefit levers with dollars / % / time (diner benefits on delivery). */
   profitEyebrow: string;
   profitHeadline: string;
   profitSupport: string;
@@ -1097,26 +1114,26 @@ function withBusinessSiteDepth(
           {
             title: "Checkout and tip",
             detail:
-              "Pay the kitchen, add a tip. The driver keeps 100% of the fee and tip.",
+              "Pay for the food and add a tip for the person bringing the bag.",
           },
           {
             title: "Watch the run",
             detail:
-              "Kitchen accepts, driver picks up, you track the bag to the door.",
+              "The kitchen packs it, a driver picks up, you track the bag to the door.",
           },
         ],
         aboutImage:
           "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1400&q=80",
-        proofEyebrow: "On the platform",
-        proofHeadline: "Why a town keeps it",
+        proofEyebrow: "From the stoop",
+        proofHeadline: "Dinner from these streets",
         proof: {
           quote:
-            "I keep the fee and the tip. The kitchen already had the ticket when I walked in — that’s a real dash, not a brochure.",
-          attribution: "Riley · Hometown driver",
+            "I ordered tacos from Second Street and watched the bag leave the kitchen. That’s dinner, not a brochure.",
+          attribution: "Alex · Market Street",
         },
         areaEyebrow: "One town",
-        areaHeadline: "Pilot one city. Don’t fake a nation.",
-        areaBody: `${brand} is hyper-local. Tonight’s board is the kitchens on these streets — not a 30% aggregator covering a continent.`,
+        areaHeadline: "These streets. Tonight.",
+        areaBody: `${brand} is hyper-local. Tonight’s board is the kitchens on these streets — not a national app covering a continent.`,
       },
       key,
     );
@@ -1399,32 +1416,32 @@ export function customerFacingSiteCopy(
         cta,
         heroImage,
         navLabel: "Order",
-        servicesEyebrow: "Three apps + admin",
-        servicesHeadline: "Order, drive, or sign a restaurant",
+        servicesEyebrow: "Tonight nearby",
+        servicesHeadline: "Order from kitchens on these streets",
         services: [
           {
             title: "Order nearby",
             detail:
-              "Browse restaurants in one town, cart, checkout, tip, and track the driver.",
+              "Browse restaurants in one town, add to bag, checkout, and tip the driver.",
           },
           {
-            title: "Drive and keep the fee",
+            title: "Tonight’s kitchens",
             detail:
-              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee, tip, and a 5% commission share. Software is $39/month part-time or $79/month full-time ($9.99 / $19.99 weekly).",
+              "More than one kitchen on the board — bowls, tacos, and the deli, packed to go.",
           },
           {
-            title: "Scout residual",
+            title: "Tip and track",
             detail:
-              "The driver who first activates a restaurant earns 5% of that restaurant’s delivery GMV — perpetual while they stay on the platform. Examples at $500 / $800 / $1,000 / $2,000 weekly GMV, not a $2,000 default promise.",
+              "Add a tip for the person on the run and watch the bag to your door.",
           },
         ],
-        aboutEyebrow: "The split",
-        aboutHeadline: "10% from the restaurant. The platform keeps $0.",
-        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Hometown keeps $0 from restaurant orders — revenue is driver subscriptions only. The 10% on delivery GMV is fully distributed: 5% scout residual, 5% to the driver. Drivers also keep 100% of fee and tip via ACH. The restaurant collects the order (Stripe), pays ~2.9% processing, and issues 1099s.`,
+        aboutEyebrow: "This town",
+        aboutHeadline: "Food from kitchens you already know.",
+        aboutBody: `${support || `${brand} brings nearby kitchens to your door.`} Order from the places on these streets. A driver from this town picks up the bag and brings it over. No national grid. No dining-room reservation.`,
         menuEyebrow: "Tonight’s board",
         menuHeadline: "Kitchens you can order from now",
         menuSupport:
-          "A real marketplace has more than one restaurant. Open a kitchen, add to bag, tip the driver.",
+          "A real town has more than one kitchen. Open a menu, add to bag, tip the driver.",
         menuItems: [
           {
             category: "Pilot Kitchen",
@@ -1435,64 +1452,58 @@ export function customerFacingSiteCopy(
           {
             category: "Pilot Kitchen",
             name: "Market sandwich",
-            detail: "The first live ticket so a guest can finish an order end-to-end.",
+            detail: "The first live ticket so you can finish an order end-to-end.",
             priceLabel: "$12",
           },
           {
             category: "Second Street Tacos",
             name: "Taco plate",
-            detail: "Second Street · two tacos, rice, salsa. Scout residual locked.",
+            detail: "Second Street · two tacos, rice, salsa. Same town, same run.",
             priceLabel: "$13",
           },
           {
             category: "Second Street Tacos",
             name: "Chips & salsa",
-            detail: "Add-on on the same run — tax and tip stay on the ledger.",
+            detail: "Add-on on the same bag — extra for the table at home.",
             priceLabel: "$4",
           },
           {
             category: "River Market Deli",
             name: "Soup and half",
-            detail: "River Market · cup + half sandwich. Originating scout is Riley.",
+            detail: "River Market · cup + half sandwich. Hot food, short hop.",
             priceLabel: "$11",
           },
           {
             category: "River Market Deli",
             name: "House cookie",
-            detail: "Same kitchen, same bag. Driver keeps 100% of the fee and tip.",
+            detail: "Same kitchen, same bag. Something sweet at the door.",
             priceLabel: "$3",
           },
         ],
         specialsEyebrow: "This town",
-        specialsHeadline: "Why a kitchen or a driver stays",
+        specialsHeadline: "Why people order here",
         specials: [
           {
-            title: "Restaurants pay 10% + processing",
+            title: "Kitchens on these streets",
             detail:
-              "Flat 10% on delivery GMV. Processing (~2.9%) comes out of the restaurant. Not a 30% aggregator.",
+              "Tonight’s board is local — not a national list covering a continent.",
           },
           {
-            title: "Drivers keep fee + tip + 5%",
+            title: "A driver from this town",
             detail:
-              "Fee, tip, and the 5% driver share of the 10%. Software is $39/month part-time or $79/month full-time.",
+              "Someone nearby picks up the bag and brings it to your door.",
           },
           {
-            title: "Restaurant issues the 1099",
-            detail:
-              "The kitchen collects the order and pays the driver — so the restaurant issues 1099s. 60 days off the app suspends the account.",
-          },
-          {
-            title: "Scout residual 5%",
-            detail: "The driver who activates a kitchen earns 5% of that GMV — perpetual.",
+            title: "Tip the person at the door",
+            detail: "Add a tip at checkout. It goes to the driver on your run.",
           },
         ],
-        bookEyebrow: "Open the product",
-        bookHeadline: "Order, cook, or drive — tonight",
+        bookEyebrow: "Order tonight",
+        bookHeadline: "Hungry? Order nearby.",
         bookBody:
-          "This is a live marketplace, not a contact form. Customers order nearby. Restaurants accept tickets. Drivers take dashes. Admin shows $0 platform and 5% scout / 5% driver.",
-        bookNote:
-          "v1 is one city. Onboard drivers first, then kitchens. Freeze never moves scout ownership.",
-        footerNote: `${brand} · Local delivery · 10% restaurant / drivers keep the fee`,
+          "Pick a kitchen on these streets, add a tip, track the bag. This is a live order — not a contact form.",
+        bookNote: "One town. Tonight’s board. Food from kitchens you already know.",
+        footerNote: `${brand} · Local delivery · Order nearby`,
       },
       key,
     );
@@ -3620,7 +3631,9 @@ export function seedHomePageSource(
             <a href="/shop">${lotNav ? "Inventory" : input.menuItems?.length ? "Order" : "Shop"}</a>
           </li>`
     : "";
-  const deliveryNav = input.includeDeliveryApps
+  const showDeliveryApps =
+    input.includeDeliveryApps ?? /^order nearby$/i.test(input.cta ?? "");
+  const deliveryNav = showDeliveryApps
     ? `
           <li>
             <a href="/drive">Driver portal</a>
@@ -3858,7 +3871,7 @@ ${profitPlays
           <h2>${esc(input.bookHeadline)}</h2>
           <p className="lead">${esc(input.bookBody)}</p>
           ${
-            input.includeDeliveryApps
+            showDeliveryApps
               ? `<div className="seed-launch-apps">
             <a href="/shop">
               <strong>Order nearby</strong>
@@ -3866,11 +3879,11 @@ ${profitPlays
             </a>
             <a href="/merchant">
               <strong>Restaurant portal</strong>
-              <span>Accept tickets. Flat 10% on delivery GMV.</span>
+              <span>Kitchen desk for tonight’s tickets.</span>
             </a>
             <a href="/drive">
               <strong>Driver portal</strong>
-              <span>Go online. Keep 100% of fee and tip.</span>
+              <span>Go online. Pick up bags on these streets.</span>
             </a>
           </div>`
               : `<form className="seed-book-form" action="#" method="post">
@@ -4860,7 +4873,14 @@ export function seedShopCatalogMismatchesBrief(
         .filter(Boolean),
     );
     if (kitchens.size < 2) return true;
-    return shopLooksLikeRestaurantCatalog(products);
+    const productBlob = products
+      .map((p) => `${p.title ?? ""} ${p.detail ?? ""}`)
+      .join(" ")
+      .toLowerCase();
+    return (
+      shopLooksLikeRestaurantCatalog(products) ||
+      deliveryLandingLooksLikeOpsEconomics(productBlob)
+    );
   }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) {
     if (!products.length) return true;
@@ -4881,7 +4901,11 @@ export function seedShopChromeMismatchesBrief(
   copy: { title?: string; support?: string; cta?: string },
 ): boolean {
   if (industryKey(brief, projectName) === "delivery") {
-    return shopChromeLooksLikeRestaurant(copy);
+    const blob = `${copy.title ?? ""} ${copy.support ?? ""} ${copy.cta ?? ""}`.toLowerCase();
+    return (
+      shopChromeLooksLikeRestaurant(copy) ||
+      deliveryLandingLooksLikeOpsEconomics(blob)
+    );
   }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
   return shopChromeLooksLikeRestaurant(copy);
@@ -4955,7 +4979,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-pilot-drink",
         title: "Pilot Kitchen · House drink",
-        detail: "Add-on on the same bag. Tax and tip stay on the ledger.",
+        detail: "Add-on on the same bag. Cold drink with the sandwich.",
         priceUsd: 3,
         sku: "RUN-PILOT-DRINK",
         stockQty: 80,
@@ -4967,7 +4991,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-tacos-plate",
         title: "Second Street Tacos · Taco plate",
-        detail: "Second Street · two tacos, rice, salsa. Scout residual locked.",
+        detail: "Second Street · two tacos, rice, salsa. Same town, same run.",
         priceUsd: 13,
         sku: "RUN-TACOS-PLATE",
         stockQty: 36,
@@ -4979,7 +5003,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-tacos-chips",
         title: "Second Street Tacos · Chips & salsa",
-        detail: "Same kitchen, same run. Driver keeps 100% of the fee and tip.",
+        detail: "Same kitchen, same bag. Extra for the table at home.",
         priceUsd: 4,
         sku: "RUN-TACOS-CHIPS",
         stockQty: 60,
@@ -4991,7 +5015,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-tacos-agua",
         title: "Second Street Tacos · Agua fresca",
-        detail: "Cold drink on the taco ticket. Posts to the 5% scout / 5% driver ledger.",
+        detail: "Cold drink on the taco ticket. Same run, same door.",
         priceUsd: 3,
         sku: "RUN-TACOS-AGUA",
         stockQty: 60,
@@ -5003,7 +5027,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-deli-soup",
         title: "River Market Deli · Soup and half",
-        detail: "River Market · cup + half sandwich. Originating scout is Riley.",
+        detail: "River Market · cup + half sandwich. Hot food, short hop.",
         priceUsd: 11,
         sku: "RUN-DELI-SOUP",
         stockQty: 28,
@@ -5027,7 +5051,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-deli-cookie",
         title: "River Market Deli · House cookie",
-        detail: "Add-on. Weekly GMV examples stay $500 / $800 / $1,000 / $2,000.",
+        detail: "Add-on. Something sweet on the same bag.",
         priceUsd: 3,
         sku: "RUN-DELI-COOKIE",
         stockQty: 80,
@@ -5384,7 +5408,7 @@ export function customerFacingShopCopy(
     support: ownerStocks
       ? "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
       : delivery
-        ? "Order from a live restaurant in this town. Hometown drivers keep 100% of the delivery fee and tip. Restaurant weekly GMV and the 5% scout residual post to the ledger."
+        ? "Order from a live restaurant in this town. A driver from these streets brings the bag. Tip them at checkout."
         : restaurant
           ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
           : dealership

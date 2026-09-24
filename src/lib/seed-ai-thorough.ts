@@ -514,58 +514,57 @@ export function seedIndustryGrowthBoard(
 
   if (key === "delivery") {
     return {
-      resultsEyebrow: "By the numbers",
-      resultsHeadline: "The split, not a $2,000 promise",
-      resultsSupport: `${brand} shows volume as inputs. Residual is always 5% × restaurant delivery GMV.`,
+      resultsEyebrow: "Tonight nearby",
+      resultsHeadline: "Food from this town, not a continent",
+      resultsSupport: `${brand} is one town. Tonight’s board is kitchens you already know — a driver from these streets brings the bag.`,
       results: [
         {
-          value: "10%",
-          label: "restaurant commission",
-          detail: "Flat on delivery GMV. Not a 30% aggregator cut.",
+          value: "1 town",
+          label: "not a national grid",
+          detail: "These streets only. The board does not cover a continent.",
         },
         {
-          value: "5% / 5%",
-          label: "scout / driver",
+          value: "3+",
+          label: "kitchens tonight",
           detail:
-            "The 10% is fully distributed. Platform keeps $0 on the order.",
+            "Pilot Kitchen, Second Street Tacos, and River Market Deli — more than one place to order.",
         },
         {
-          value: "$0",
-          label: "platform on orders",
-          detail:
-            "Hometown revenue is driver subscriptions only ($39 / $79).",
+          value: "20–40 min",
+          label: "typical nearby run",
+          detail: "A short hop from a kitchen on these streets to your door.",
         },
         {
-          value: "~2.9%",
-          label: "card processing",
+          value: "100%",
+          label: "of your tip",
           detail:
-            "Restaurant collects on Stripe and pays processing — shown in admin economics.",
+            "The tip you add at checkout goes to the person who brings the bag.",
         },
       ],
-      profitEyebrow: "Pilot one town",
-      profitHeadline: "Residual examples at real weekly GMV",
+      profitEyebrow: "Why people order here",
+      profitHeadline: "Dinner from kitchens you already know",
       profitSupport:
-        "At $500 / $800 / $1,000 / $2,000 weekly GMV, scout residual is $25 / $40 / $50 / $100. Never default the UI to $2,000/week.",
+        "Local food, a driver from this town, and a bag you can track — that’s the product.",
       profitPlays: [
         {
-          title: "Drivers before restaurants",
+          title: "Browse tonight’s board",
           detail:
-            "Onboard and approve license/insurance first so dispatch exists when the first kitchen goes live.",
+            "Open three kitchens in one town. Bowls, tacos, and the deli — packed to go.",
         },
         {
-          title: "One originating scout",
+          title: "Tip the person at the door",
           detail:
-            "Lock scout_id when a restaurant activates. A driver freeze does not move that residual.",
+            "Add a tip when you checkout. It goes to the driver on your run, not a distant pool.",
         },
         {
-          title: "Ledger every order",
+          title: "Track the bag",
           detail:
-            "Write GMV, 10% split 5% scout / 5% driver, $0 platform, fee, tip, processor. Chargebacks reverse the row.",
+            "The kitchen packs it, a nearby driver picks up, you watch it to the stoop.",
         },
         {
-          title: "Driver subscription + 1099",
+          title: "Stay in this town",
           detail:
-            "$39/month part-time or $79/month full-time ($9.99 / $19.99 weekly). 60 days off the app suspends the account. The restaurant issues the 1099.",
+            "No dining-room reservation. No national app. Food from the streets you already walk.",
         },
       ],
     };
