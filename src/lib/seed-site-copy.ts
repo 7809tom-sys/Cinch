@@ -317,7 +317,9 @@ export function seedLandingCopyMismatchesIndustry(
       seedLandingLooksUnsellable(copy) ||
       /subject:|v1 product brief|what it is hometown/i.test(blob) ||
       /\$900\s*\/\s*year/.test(blob) ||
-      !/\$39/.test(blob))
+      /platform keeps 5%|platform 5% stays whole/.test(blob) ||
+      !/\$39/.test(blob) ||
+      !(/keeps \$0|\$0 from restaurant|5% to the driver|5% driver/.test(blob)))
   ) {
     return true;
   }
@@ -1408,7 +1410,7 @@ export function customerFacingSiteCopy(
           {
             title: "Drive and keep the fee",
             detail:
-              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee and tip. Software is $39/month part-time or $79/month full-time ($9.99 / $19.99 weekly).",
+              "Accept dispatch, pick up, deliver. You keep 100% of the delivery fee, tip, and a 5% commission share. Software is $39/month part-time or $79/month full-time ($9.99 / $19.99 weekly).",
           },
           {
             title: "Scout residual",
@@ -1417,8 +1419,8 @@ export function customerFacingSiteCopy(
           },
         ],
         aboutEyebrow: "The split",
-        aboutHeadline: "10% from the restaurant. Drivers keep the run.",
-        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Restaurants pay a flat 10% on delivery GMV. Half of that (5%) is a perpetual residual for the originating scout. The platform keeps 5%. Drivers never share fee or tip. Processing (~2.9%) comes out of the restaurant. Driver software is $39/month part-time or $79/month full-time. Restaurants collect the order and issue 1099s to drivers.`,
+        aboutHeadline: "10% from the restaurant. The platform keeps $0.",
+        aboutBody: `${support || `${brand} is a hyper-local food delivery platform.`} Hometown keeps $0 from restaurant orders — revenue is driver subscriptions only. The 10% on delivery GMV is fully distributed: 5% scout residual, 5% to the driver. Drivers also keep 100% of fee and tip via ACH. The restaurant collects the order (Stripe), pays ~2.9% processing, and issues 1099s.`,
         menuEyebrow: "Tonight’s board",
         menuHeadline: "Kitchens you can order from now",
         menuSupport:
@@ -1470,9 +1472,9 @@ export function customerFacingSiteCopy(
               "Flat 10% on delivery GMV. Processing (~2.9%) comes out of the restaurant. Not a 30% aggregator.",
           },
           {
-            title: "Drivers keep fee + tip",
+            title: "Drivers keep fee + tip + 5%",
             detail:
-              "Software is $39/month part-time or $79/month full-time. The run money is yours.",
+              "Fee, tip, and the 5% driver share of the 10%. Software is $39/month part-time or $79/month full-time.",
           },
           {
             title: "Restaurant issues the 1099",
@@ -1487,7 +1489,7 @@ export function customerFacingSiteCopy(
         bookEyebrow: "Open the product",
         bookHeadline: "Order, cook, or drive — tonight",
         bookBody:
-          "This is a live marketplace, not a contact form. Customers order nearby. Restaurants accept tickets. Drivers take dashes. Admin shows the 10 / 5 / 5 split.",
+          "This is a live marketplace, not a contact form. Customers order nearby. Restaurants accept tickets. Drivers take dashes. Admin shows $0 platform and 5% scout / 5% driver.",
         bookNote:
           "v1 is one city. Onboard drivers first, then kitchens. Freeze never moves scout ownership.",
         footerNote: `${brand} · Local delivery · 10% restaurant / drivers keep the fee`,
@@ -4133,14 +4135,14 @@ export function seedCommerceAdminBoard(
           ? "The lot"
           : "Commerce",
     headline: delivery
-      ? "Nearby kitchens, runs, and the 10 / 5 / 5 split"
+      ? "Nearby kitchens, runs, and $0 platform on the order"
       : restaurant
       ? "Kitchen tickets & menu money"
       : lot
         ? "Holds, drives, and dealer delivery"
         : "Shop operations",
     support: delivery
-      ? "Customer orders from nearby kitchens. Restaurant and driver portals run the ticket. Ledger is 10% restaurant / 5% platform / 5% scout. Do not stamp kitchen-ticket dining-room chrome on a delivery platform."
+      ? "Customer orders from nearby kitchens. Restaurant and driver portals run the ticket. Ledger is 10% → 5% scout / 5% driver, $0 platform. Do not stamp kitchen-ticket dining-room chrome on a delivery platform."
       : restaurant
       ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
       : lot
@@ -4172,7 +4174,7 @@ export function seedCommerceAdminBoard(
     taxHeadline: "Sales tax",
     ordersEyebrow: delivery ? "Ledger" : restaurant ? "Money" : "Orders",
     ordersHeadline: delivery
-      ? "Runs & the 10 / 5 / 5 split"
+      ? "Runs & the 5% / 5% community split"
       : restaurant
         ? "Tickets & order money"
         : "Open orders",
@@ -4189,7 +4191,7 @@ export function seedCommerceAdminBoard(
       taxInclusive: false,
       nexusStates: ["NY", "NJ", "CT"],
       notes: delivery
-        ? "Collect sales tax on the customer ticket. Ledger still splits 10 / 5 / 5 on GMV."
+        ? "Collect sales tax on the customer ticket. Ledger still splits 5% scout / 5% driver on GMV. Platform $0."
         : restaurant
         ? "Collect sales tax on taxable order totals for nexus addresses."
         : lot
@@ -4318,7 +4320,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-ledger",
               title: "Write the ledger on every order",
-              body: "GMV, 10% commission, 5% platform, 5% scout_id, delivery fee, tip, processor fees. Residuals are 5% × GMV — show $500 / $800 / $1,000 / $2,000 weekly GMV as inputs, never a $2,000/week default promise.",
+              body: "GMV, 10% commission split 5% scout / 5% driver, $0 platform on the order, delivery fee, tip, processor. Residuals are 5% × GMV — show $500 / $800 / $1,000 / $2,000 weekly GMV as inputs, never a $2,000/week default promise.",
             },
             {
               id: "tip-scout",
@@ -4328,7 +4330,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip",
-              body: "Never skim delivery fee or tip. Card processing (~2.9%) comes out of the restaurant, not the platform 5% — surface it in admin economics.",
+              body: "Never skim delivery fee or tip. The 5% driver share of the 10% ACH’s with fee and tip. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
             },
             {
               id: "tip-software",
@@ -4460,7 +4462,7 @@ export function customerFacingAdminCopy(
         : "Business admin",
     support: wantsShop
       ? key === "delivery"
-        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Processor fees come out of the restaurant, not the platform 5%. Do not hide them."
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 on the order. Processor fees come out of the restaurant. Do not hide them."
         : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
@@ -4989,7 +4991,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-tacos-agua",
         title: "Second Street Tacos · Agua fresca",
-        detail: "Cold drink on the taco ticket. Posts to the 10 / 5 / 5 ledger.",
+        detail: "Cold drink on the taco ticket. Posts to the 5% scout / 5% driver ledger.",
         priceUsd: 3,
         sku: "RUN-TACOS-AGUA",
         stockQty: 60,

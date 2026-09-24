@@ -88,7 +88,7 @@ export default async function EditSeedPage({ params }: PageProps) {
             websiteUrl={websiteUrl}
             policyHint={
               deliveryPlatform
-                ? "Driver fees ($39 / $79), 60-day suspend, and restaurant 1099s are in this brief. Hit Save & refresh website to rebuild."
+                ? "Payment & economics ($0 platform on orders, 5% scout / 5% driver) and driver subscriptions are in this brief. Hit Save & refresh website to rebuild."
                 : ""
             }
             cancelHref={`/portal/${project.id}`}

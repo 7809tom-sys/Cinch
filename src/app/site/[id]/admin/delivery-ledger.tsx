@@ -39,13 +39,14 @@ export function SeedDeliveryLedger({
   return (
     <section className="seed-admin-section" id="ledger">
       <p className="seed-eyebrow">Ledger</p>
-      <h2>GMV, 10% / 5% / 5%, fee, tip, processor</h2>
+      <h2>GMV, 10% → 5% scout / 5% driver, fee, tip, processor</h2>
       <p className="seed-admin-support">
-        Restaurant 10% · platform 5% · scout 5% (scout_id locked). Drivers keep
-        100% of delivery fee and tip. Processing (~2.9%) comes out of the
-        restaurant — not the platform 5%. Driver software is $39/month
-        part-time or $79/month full-time ($9.99 / $19.99 weekly). 60 days off
-        the app suspends the driver. The restaurant issues 1099s.
+        Restaurant 10% is fully distributed — 5% scout, 5% driver. Platform
+        keeps $0 on the order (subscriptions only). Drivers keep fee + tip +
+        the 5% share via ACH. Processing (~2.9%) comes out of the restaurant.
+        Driver software is $39/month part-time or $79/month full-time ($9.99 /
+        $19.99 weekly). 60 days off the app suspends the driver. The
+        restaurant issues 1099s.
       </p>
       <dl className="seed-run-stats">
         <div>
@@ -61,12 +62,16 @@ export function SeedDeliveryLedger({
           <dd>${totals.restaurantNetUsd.toFixed(2)}</dd>
         </div>
         <div>
-          <dt>Platform 5%</dt>
+          <dt>Platform on orders</dt>
           <dd>${totals.platformGrossUsd.toFixed(2)}</dd>
         </div>
         <div>
           <dt>Scout 5%</dt>
           <dd>${totals.scoutResidualUsd.toFixed(2)}</dd>
+        </div>
+        <div>
+          <dt>Driver 5%</dt>
+          <dd>${totals.driverCommissionUsd.toFixed(2)}</dd>
         </div>
         <div>
           <dt>Fee (drivers)</dt>
@@ -95,8 +100,9 @@ export function SeedDeliveryLedger({
               <th>Scout</th>
               <th>GMV</th>
               <th>10%</th>
-              <th>Plat 5%</th>
+              <th>Plat $0</th>
               <th>Scout 5%</th>
+              <th>Drv 5%</th>
               <th>Fee</th>
               <th>Tip</th>
               <th>Proc</th>
@@ -105,7 +111,7 @@ export function SeedDeliveryLedger({
           <tbody>
             {ops.ledger.length === 0 ? (
               <tr>
-                <td colSpan={10}>No orders on the ledger yet.</td>
+                <td colSpan={11}>No orders on the ledger yet.</td>
               </tr>
             ) : (
               ops.ledger.map((row) => (
@@ -123,6 +129,13 @@ export function SeedDeliveryLedger({
                   <td>${row.restaurantCommissionUsd.toFixed(2)}</td>
                   <td>${row.platformGrossUsd.toFixed(2)}</td>
                   <td>${row.scoutResidualUsd.toFixed(2)}</td>
+                  <td>
+                    $
+                    {(
+                      row.driverCommissionUsd ??
+                      Math.round(row.gmvUsd * 5) / 100
+                    ).toFixed(2)}
+                  </td>
                   <td>${row.deliveryFeeUsd.toFixed(2)}</td>
                   <td>${row.tipUsd.toFixed(2)}</td>
                   <td>${row.processorFeeUsd.toFixed(2)}</td>

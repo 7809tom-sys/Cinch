@@ -28,7 +28,7 @@ export function portalSeedPlaybookUrl(projectId: string): string {
 export const SENTI_DESK_PATH = "/senti";
 
 export const SENTI_THINKS_DELIVERY_RULE =
-  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — customer order nearby, restaurant portal, driver/scout portal, admin ledger. Senti must think through those four apps, the 10% / 5% / 5% split, driver software ($39/$79), 60-day suspend, and restaurant-issued 1099s. Do not copy a dining-room, bakery, or pizza restaurant format.";
+  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — customer order nearby, restaurant portal, driver/scout portal, admin ledger. Senti must think through those four apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Driver software ($39/$79), 60-day suspend, restaurant-issued 1099s. Do not copy a dining-room, bakery, or pizza restaurant format.";
 
 export type PlaybookChapterId =
   | "discover"
@@ -224,7 +224,7 @@ function deliveryChapters(input: {
       n: 1,
       agent: "Conductor",
       title: "Intent and done line",
-      script: `Think first for ${site}. This is a hyper-local food delivery platform (DoorDash concept): customer order nearby, restaurant portal, driver/scout portal, and admin ledger. It is not a restaurant dining room, bakery, or pizza shop. Do not copy another restaurant format. Host: ${host}. Done looks like: a guest orders nearby food, a restaurant accepts the ticket on the portal, a driver takes the run, and admin shows 10% restaurant / 5% platform / 5% scout.`,
+      script: `Think first for ${site}. This is a hyper-local food delivery platform (DoorDash concept): customer order nearby, restaurant portal, driver/scout portal, and admin ledger. It is not a restaurant dining room, bakery, or pizza shop. Do not copy another restaurant format. Host: ${host}. Done looks like: a guest orders nearby food, a restaurant accepts the ticket on the portal, a driver takes the run, and admin shows 10% → 5% scout / 5% driver, $0 platform on the order.`,
       status: "ready",
     },
     {
@@ -248,7 +248,7 @@ function deliveryChapters(input: {
       n: 4,
       agent: "Quill",
       title: "Non-negotiables",
-      script: `Hard rules for ${site}: restaurants pay a flat 10% on delivery GMV; platform 5%; originating scout residual 5% (immutable on freeze); drivers keep 100% of delivery fee + tip; processor (~2.9%) comes out of the restaurant, not the platform 5%; driver software is $39/month part-time or $79/month full-time (weekly $9.99 / $19.99); full-time is app-open more than 30 hours/week or 120 hours in 4 weeks; 60 days without opening the app auto-suspends the driver; restaurants collect the order and issue 1099s. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
+      script: `Hard rules for ${site}: platform keeps $0 from restaurant orders (revenue is driver subscriptions); restaurants pay 10% on delivery GMV fully split 5% scout + 5% driver; drivers keep 100% of fee + tip + the 5% share via ACH; restaurant collects on Stripe and pays ~2.9% processor; driver software is $39/month part-time or $79/month full-time (weekly $9.99 / $19.99); full-time is app-open more than 30 hours/week or 120 hours in 4 weeks; 60 days without opening the app auto-suspends the driver; restaurants issue 1099s. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
       status: "proposed",
     },
     {
@@ -256,7 +256,7 @@ function deliveryChapters(input: {
       n: 5,
       agent: "Lumen",
       title: "Admin, money, CRM, delivery",
-      script: `Admin is the ops ledger — not a host stand. Accounting is the 10 / 5 / 5 split on every order. CRM/ops is the restaurant roster plus scout attribution. Delivery is the product: restaurant portal + driver portal, DoorDash concept. Do not mark delivery N/A. Do not spec a single dining room.`,
+      script: `Admin is the ops ledger — not a host stand. Accounting is 10% fully split 5% scout / 5% driver, $0 platform on the order. CRM/ops is the restaurant roster plus scout attribution. Delivery is the product: restaurant portal + driver portal, DoorDash concept. Do not mark delivery N/A. Do not spec a single dining room.`,
       status: "proposed",
     },
     {
@@ -264,7 +264,7 @@ function deliveryChapters(input: {
       n: 6,
       agent: "Sentry",
       title: "Acceptance in five minutes",
-      script: `Five-minute test: land on Order nearby (not Reserve a table); shop is nearby kitchens / Pilot Kitchen, not seasonal small plates; restaurant portal accepts a ticket; driver portal takes a run; admin shows 10 / 5 / 5. Fail if pizza-with-personality, dinner service, or dining-room copy appears on ${site}.`,
+      script: `Five-minute test: land on Order nearby (not Reserve a table); shop is nearby kitchens / Pilot Kitchen, not seasonal small plates; restaurant portal accepts a ticket; driver portal takes a run; admin shows $0 platform and 5% scout / 5% driver. Fail if pizza-with-personality, dinner service, or dining-room copy appears on ${site}.`,
       status: "proposed",
     },
     {
@@ -454,7 +454,7 @@ export function compileSeedPlaybook(input: {
       ? `Senti compiles ${seedName} as a delivery platform — not a restaurant`
       : `Senti holds the ${seedName} project on this Seed`,
     summary: deliveryPlatform
-      ? "Think through the four apps. Do not stamp a dining-room or pizza template. Customer order, restaurant portal, driver portal, admin ledger. 10% restaurant / 5% platform / 5% scout. Drivers keep 100% of fee and tip."
+      ? "Think through the four apps. Do not stamp a dining-room or pizza template. Customer order, restaurant portal, driver portal, admin ledger. Platform $0 on orders. 10% → 5% scout / 5% driver. Drivers keep fee, tip, and the 5% share."
       : "Prep work is everything. Fill each chapter on this Seed — intent, scope, lanes, delivery, money — then Conductor builds one job at a time. Not a dumped file on cinchseed.com.",
     method: PLAYBOOK_METHOD,
     chapters,
@@ -491,7 +491,7 @@ export function exampleSeedPlaybook(): SeedPlaybook {
   return compileSeedPlaybook({
     name: "Hometown Runner",
     brief:
-      "Hometown Runner is a hyper-local food delivery platform. Restaurants pay 10% on delivery GMV. Drivers keep 100% of delivery fees + tips. Driver software is $39/month part-time or $79/month full-time. Restaurants issue 1099s. Restaurant portal, driver portal, customer order nearby, admin ledger.",
+      "Hometown Runner is a hyper-local food delivery platform. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Drivers keep fee, tip, and the 5% share. Driver software is $39/month part-time or $79/month full-time. Restaurants issue 1099s.",
     seedMode: "build",
     liveUrl: null,
   });
