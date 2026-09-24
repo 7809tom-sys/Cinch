@@ -14,7 +14,7 @@ import {
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
-import { seedIndustryKey } from "@/lib/seed-site-copy";
+import { customerFacingSupport, seedIndustryKey } from "@/lib/seed-site-copy";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
 
@@ -32,7 +32,7 @@ export async function generateMetadata({
   if (!project) return { title: "Seed site" };
   return {
     title: project.name,
-    description: project.brief.slice(0, 160),
+    description: customerFacingSupport(project.brief).slice(0, 160),
     robots: project.sitePublishedAt ? "index,follow" : "noindex",
   };
 }
@@ -178,9 +178,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 ) : null}
                 {businessAdminHref ? (
                   <a href={businessAdminHref}>Admin ledger</a>
-                ) : (
-                  <a href={`/site/${project.id}/admin`}>Admin ledger</a>
-                )}
+                ) : null}
               </p>
             ) : null}
           </div>

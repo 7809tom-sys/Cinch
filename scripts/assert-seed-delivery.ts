@@ -361,6 +361,15 @@ assert(
     !/Flat 10% on delivery GMV/.test(siteCopy),
   "diner landing and shop stay guest-facing — no 1099 / $39 / GMV",
 );
+assert(
+  /customerFacingSupport\(project\.brief\)/.test(landing) &&
+    !/project\.brief\.slice\(0,\s*160\)/.test(landing),
+  "diner page metadata uses guest support, not the ops brief",
+);
+assert(
+  !/href=\{`\/site\/\$\{project\.id\}\/admin`\}>Admin ledger/.test(landing),
+  "Admin ledger is not a guest hero link",
+);
 const restaurantDesk = readFileSync(
   join(process.cwd(), "src/components/delivery/restaurant-portal.tsx"),
   "utf8",
