@@ -350,6 +350,7 @@ export async function repairCustomerLandingIfNeeded(
       };
       const brand = brandFromProject(project);
       const foodNeedsMenu =
+        !briefIsDeliveryPlatform(project.name, project.brief) &&
         /\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(
           `${project.name} ${project.brief}`,
         );

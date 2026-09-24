@@ -131,6 +131,12 @@ assert(
   senti.includes("PREP_RULE") && senti.includes("Make a good website"),
   "Senti desk is the prep playbook",
 );
+assert(
+  senti.includes("Hometown Runner") &&
+    /do not copy another\s+restaurant format/i.test(senti),
+  "Senti desk demo is Hometown Runner, not a bakery restaurant stamp",
+);
+assert(!senti.includes("bakery pack"), "Senti desk dropped the bakery walkthrough");
 
 const header = readFileSync(join(process.cwd(), "src/components/site-header.tsx"), "utf8");
 assert(header.includes("/senti"), "home nav points at Senti, not Improve");

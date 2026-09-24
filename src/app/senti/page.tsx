@@ -70,11 +70,14 @@ export default function SentiDeskPage() {
 
         <section className="mt-12">
           <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-            Method demo — build your pack on a Seed
+            Method demo — think, then compile
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-            This bakery pack is a walkthrough of the method. Your real
-            instruction pack is filled chapter by chapter on{" "}
+            This pack is Hometown Runner, a delivery platform — not a dining
+            room. Senti has to think through customer order, restaurant
+            portal, driver portal, and the ledger. Do not copy another
+            restaurant format. Your real instruction pack is filled chapter
+            by chapter on{" "}
             <Link href="/admin" className="font-semibold underline">
               Seed admin
             </Link>{" "}

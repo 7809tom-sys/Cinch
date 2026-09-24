@@ -161,6 +161,8 @@ export function briefIsDeliveryPlatform(
   brief: string,
 ): boolean {
   const lower = `${projectName} ${brief}`.toLowerCase();
+  // “Hometown Runner”, “Home Town Runnner”, hometownrunner — not a restaurant.
+  if (/home[\s-]*town[\s-]*runn+ers?/.test(lower)) return true;
   if (/\bhometown\s+runner\b/.test(lower)) return true;
   if (
     /\b(hyper-?local food delivery|delivery platform|merchant terminal|driver\s*\/\s*scout|scout residual|delivery gmv)\b/.test(
@@ -200,6 +202,7 @@ export function seedLandingCopyMismatchesIndustry(
   brief: string,
   copy: {
     cta?: string;
+    headline?: string;
     heroImage?: string;
     services?: Array<{ title?: string; detail?: string }>;
     aboutBody?: string;
@@ -211,6 +214,7 @@ export function seedLandingCopyMismatchesIndustry(
   const key = industryKey(brief, projectName);
   const blob = [
     copy.cta,
+    copy.headline,
     copy.heroImage,
     copy.aboutBody,
     copy.support,
@@ -261,9 +265,16 @@ export function seedLandingCopyMismatchesIndustry(
   // Pizza Man / pizzeria stuck on salon, car, or fine-dining rename templates.
   if (briefIsPizza(projectName, brief) && looksLikeSalonCopy) return true;
   if (briefIsPizza(projectName, brief) && looksLikeFineDiningCopy) return true;
+  const looksLikeCopiedRestaurantRoom =
+    /how guests use the room|covers and tickets that pay the room|from reserve to table|a night worth dressing|save your table|pizza with personality|anniversary dinner|chef.?s dinner plates?/.test(
+      blob,
+    );
   if (
     key === "delivery" &&
-    /subject:|v1 product brief|what it is hometown/i.test(blob)
+    (looksLikeFineDiningCopy ||
+      looksLikeRestaurantShopCopy ||
+      looksLikeCopiedRestaurantRoom ||
+      /subject:|v1 product brief|what it is hometown/i.test(blob))
   ) {
     return true;
   }
@@ -3890,48 +3901,77 @@ export function seedCommerceAdminBoard(
   brief: string,
 ): SeedAdminCommerce {
   const shop = customerFacingShopCopy(projectName, brief);
-  const restaurant = seedShopUsesRestaurantFulfillment(projectName, brief);
+  const delivery = industryKey(brief, projectName) === "delivery";
+  const restaurant =
+    !delivery && seedShopUsesRestaurantFulfillment(projectName, brief);
   const lot = seedShopUsesLotFulfillment(projectName, brief);
   return {
-    eyebrow: restaurant ? "Orders & money" : lot ? "The lot" : "Commerce",
-    headline: restaurant
+    eyebrow: delivery
+      ? "Marketplace ledger"
+      : restaurant
+        ? "Orders & money"
+        : lot
+          ? "The lot"
+          : "Commerce",
+    headline: delivery
+      ? "Nearby kitchens, runs, and the 10 / 5 / 5 split"
+      : restaurant
       ? "Kitchen tickets & menu money"
       : lot
         ? "Holds, drives, and dealer delivery"
         : "Shop operations",
-    support: restaurant
+    support: delivery
+      ? "Customer orders from nearby kitchens. Restaurant and driver portals run the ticket. Ledger is 10% restaurant / 5% platform / 5% scout. Do not stamp kitchen-ticket dining-room chrome on a delivery platform."
+      : restaurant
       ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
       : lot
         ? "Units stay on the lot. Customers hold a car, book a drive, or ask for dealer delivery. Never print a UPS label for a vehicle."
         : "Scan a barcode to fill manufacturer name, description, and images — then set your price and on-hand qty. UPS parcel and LTL shipping, sales tax, and fulfillment stay in this Seed’s admin, not a separate Cinch product.",
-    inventoryEyebrow: restaurant ? "Menu" : lot ? "Units" : "Stock",
-    inventoryHeadline: restaurant
+    inventoryEyebrow: delivery
+      ? "Pilot kitchens"
+      : restaurant
+        ? "Menu"
+        : lot
+          ? "Units"
+          : "Stock",
+    inventoryHeadline: delivery
+      ? "Nearby kitchens · price on the ticket"
+      : restaurant
       ? "Menu items · price & on-hand"
       : lot
         ? "Featured units · price on the card"
         : "Inventory · scan to add",
     shippingEyebrow: "Fulfillment",
-    shippingHeadline: restaurant
+    shippingHeadline: delivery
+      ? "Customer delivery · driver run"
+      : restaurant
       ? "Pickup & delivery"
       : lot
         ? "Hold · drive · dealer delivery"
         : "Shipping",
     taxEyebrow: "Compliance",
     taxHeadline: "Sales tax",
-    ordersEyebrow: restaurant ? "Money" : "Orders",
-    ordersHeadline: restaurant ? "Tickets & order money" : "Open orders",
+    ordersEyebrow: delivery ? "Ledger" : restaurant ? "Money" : "Orders",
+    ordersHeadline: delivery
+      ? "Runs & the 10 / 5 / 5 split"
+      : restaurant
+        ? "Tickets & order money"
+        : "Open orders",
     originZip: "10001",
-    shippingModes: restaurant
-      ? seedRestaurantFulfillmentModes()
-      : lot
-        ? seedLotFulfillmentModes()
-        : seedParcelShippingModes(),
+    shippingModes:
+      delivery || restaurant
+        ? seedRestaurantFulfillmentModes()
+        : lot
+          ? seedLotFulfillmentModes()
+          : seedParcelShippingModes(),
     salesTax: {
       enabled: true,
       ratePct: 8.25,
       taxInclusive: false,
       nexusStates: ["NY", "NJ", "CT"],
-      notes: restaurant
+      notes: delivery
+        ? "Collect sales tax on the customer ticket. Ledger still splits 10 / 5 / 5 on GMV."
+        : restaurant
         ? "Collect sales tax on taxable order totals for nexus addresses."
         : lot
           ? "Collect sales tax on the unit price for the buyer’s state — not a parcel shipment."
@@ -4581,6 +4621,10 @@ export function seedShopCatalogMismatchesBrief(
   brief: string,
   products: Array<{ id?: string; title?: string; detail?: string }>,
 ): boolean {
+  if (industryKey(brief, projectName) === "delivery") {
+    if (!products.length) return true;
+    return shopLooksLikeRestaurantCatalog(products);
+  }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) {
     if (!products.length) return true;
     return shopProductsLookLikeStockCatalog(products);
@@ -4599,6 +4643,9 @@ export function seedShopChromeMismatchesBrief(
   brief: string,
   copy: { title?: string; support?: string; cta?: string },
 ): boolean {
+  if (industryKey(brief, projectName) === "delivery") {
+    return shopChromeLooksLikeRestaurant(copy);
+  }
   if (seedShopUsesRestaurantFulfillment(projectName, brief)) return false;
   return shopChromeLooksLikeRestaurant(copy);
 }

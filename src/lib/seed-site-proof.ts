@@ -31,6 +31,7 @@ export function collectSeedSiteProofFailures(
   input: {
     landing?: {
       cta?: string;
+      headline?: string;
       heroImage?: string;
       services?: Array<{ title?: string; detail?: string }>;
       aboutBody?: string;

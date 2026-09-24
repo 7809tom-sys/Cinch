@@ -15,6 +15,7 @@ import {
   briefIsDeliveryPlatform,
   briefIsPizza,
   customerFacingAdminCopy,
+  seedCommerceAdminBoard,
   customerFacingShopCopy,
   customerFacingSiteCopy,
   seedGrowthBoardLooksThin,
@@ -559,8 +560,17 @@ assert(
   "Hometown Runner brief is a delivery platform",
 );
 assert(
+  briefIsDeliveryPlatform("Home Town Runnner", ""),
+  "Home Town Runnner name (spaces + extra n) is still a delivery platform",
+);
+assert(
   seedIndustryKey(hometownName, hometownBrief) === "delivery",
   "Hometown Runner is not classified as a restaurant",
+);
+assert(
+  seedIndustryKey("Home Town Runnner", "Pizza and dinner service") ===
+    "delivery",
+  "Home Town Runnner stays delivery even if the brief says pizza",
 );
 
 const hometown = customerFacingSiteCopy(hometownName, hometownBrief);
@@ -600,6 +610,44 @@ const hometownAdmin = customerFacingAdminCopy(hometownName, hometownBrief);
 assert(
   /ledger|scout|driver/i.test(`${hometownAdmin.title} ${hometownAdmin.support}`),
   "admin is ops/ledger, not a restaurant host stand",
+);
+assert(
+  seedLandingCopyMismatchesIndustry("Home Town Runnner", hometownBrief, {
+    headline: "Pizza With Personality",
+    cta: "Reserve a table",
+    servicesHeadline: "Dinner service · private gatherings · bar & small plates",
+    aboutBody: "How guests use the room. Covers and tickets that pay the room.",
+    support: "From reserve to table.",
+  }),
+  "mismatch flags a copied restaurant/pizza stamp on Home Town Runnner",
+);
+assert(
+  collectSeedSiteProofFailures("Home Town Runnner", hometownBrief, {
+    landing: {
+      headline: "Pizza With Personality",
+      cta: "Reserve a table",
+      aboutBody: "How guests use the room",
+    },
+    shop: {
+      title: "Order",
+      support:
+        "Order from the menu — priced items go to the kitchen ticket so the restaurant sees the money.",
+      cta: "Add to order",
+      products: leftoverRestaurantMenu,
+    },
+  }).length >= 2,
+  "proof fails restaurant landing + kitchen-ticket shop on Home Town Runnner",
+);
+const hometownLedger = seedCommerceAdminBoard(hometownName, hometownBrief);
+assert(
+  /10 \/ 5 \/ 5|ledger/i.test(
+    `${hometownLedger.headline} ${hometownLedger.support} ${hometownLedger.ordersHeadline}`,
+  ),
+  "commerce admin is the marketplace ledger, not kitchen tickets",
+);
+assert(
+  !/kitchen tickets & menu money/i.test(hometownLedger.headline),
+  "delivery admin does not stamp kitchen-ticket restaurant chrome",
 );
 
 const hometownMerchant = readFileSync(
