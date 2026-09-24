@@ -623,6 +623,21 @@ assert(
   }),
   "mismatch flags an unsellable consulting template on Hometown",
 );
+assert(
+  seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, {
+    services: [
+      {
+        title: "Drive and keep the fee",
+        detail: "Software is about $900/year.",
+      },
+    ],
+  }),
+  "mismatch flags the retired $900/year software line",
+);
+assert(
+  !seedLandingCopyMismatchesIndustry(hometownName, hometownBrief, hometown),
+  "fresh Hometown copy includes the $39 subscription",
+);
 
 const hometownShop = customerFacingShopCopy(hometownName, hometownBrief);
 assert(

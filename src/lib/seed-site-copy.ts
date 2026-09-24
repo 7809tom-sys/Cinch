@@ -315,7 +315,9 @@ export function seedLandingCopyMismatchesIndustry(
       looksLikeRestaurantShopCopy ||
       looksLikeCopiedRestaurantRoom ||
       seedLandingLooksUnsellable(copy) ||
-      /subject:|v1 product brief|what it is hometown/i.test(blob))
+      /subject:|v1 product brief|what it is hometown/i.test(blob) ||
+      /\$900\s*\/\s*year/.test(blob) ||
+      !/\$39/.test(blob))
   ) {
     return true;
   }
