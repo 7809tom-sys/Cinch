@@ -46,6 +46,16 @@ export function SeedDeliveryLedger({
 
   return (
     <section className="seed-admin-section" id="ledger">
+      <style>{`
+        .seed-run-party { position: relative; min-width: 9.5rem; }
+        .seed-run-party-open { display: flex; align-items: center; gap: 0.5rem; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; text-align: left; white-space: normal; }
+        .seed-run-party-open img, .seed-run-party-card img { width: 2.25rem; height: 2.25rem; border-radius: 0.35rem; object-fit: cover; }
+        .seed-run-party-open strong, .seed-run-party-open small { display: block; line-height: 1.2; }
+        .seed-run-party-open small { font-size: 0.72rem; opacity: 0.72; }
+        .seed-run-party-card { position: absolute; z-index: 3; left: 0; top: calc(100% + 0.35rem); display: flex; align-items: center; gap: 0.65rem; min-width: 13rem; padding: 0.55rem 0.7rem; border: 1px solid rgba(11,16,20,0.12); border-radius: 0.5rem; background: #fff; box-shadow: 0 8px 24px rgba(11,16,20,0.12); }
+        .seed-run-party-card img { width: 3.5rem; height: 3.5rem; }
+        .seed-run-party-card p { margin: 0.1rem 0 0; }
+      `}</style>
       <p className="seed-eyebrow">Ledger</p>
       <h2>GMV, 10% → 5% scout / 5% driver, fee, tip, processor</h2>
       <p className="seed-admin-support">
