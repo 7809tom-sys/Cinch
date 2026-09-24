@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
+import {
+  AgentStatusDot,
+  AgentStatusSwitch,
+} from "@/components/agent-status-switch";
 import { getAgent } from "@/lib/agents";
+import { findSwitchableTask } from "@/lib/agent-status";
 import { liveWebsiteUrl, seedHostHostname } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
 import {
@@ -9,7 +14,11 @@ import {
   briefIsDeliveryPlatform,
   seedNeedsBusinessAdmin,
 } from "@/lib/seed-site-copy";
-import { getPortalProjectSnapshot, logoutCustomerAction } from "../actions";
+import {
+  getPortalProjectSnapshot,
+  logoutCustomerAction,
+  portalSwitchAgentAction,
+} from "../actions";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
@@ -33,7 +42,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PortalProjectPage({ params }: PageProps) {
   const { id } = await params;
-  const { customer, project, watch, agents, pmContact } =
+  const { customer, project, watch, crew, pmContact } =
     await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
   if (!project) notFound();
@@ -51,6 +60,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
     project.name,
     project.brief,
   );
+  const switchable = findSwitchableTask(project.tasks);
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">
@@ -249,6 +259,19 @@ export default async function PortalProjectPage({ params }: PageProps) {
             <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
               What&apos;s being worked on
             </h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              Green light = that AI is active. Red light = inactive. Use the
+              dropdown to switch and see what each AI can do.
+            </p>
+            <div className="mt-3">
+              <AgentStatusSwitch
+                projectId={project.id}
+                taskId={switchable?.id ?? null}
+                currentAgentId={switchable?.assigneeId ?? null}
+                crew={crew}
+                switchAction={portalSwitchAgentAction}
+              />
+            </div>
             <PortalWatchTicker
               projectId={project.id}
               complete={buildComplete}
@@ -313,7 +336,10 @@ export default async function PortalProjectPage({ params }: PageProps) {
                       <p className="mt-1 text-sm text-muted [overflow-wrap:anywhere]">
                         {task.detail}
                       </p>
-                      <p className="mt-2 text-xs text-muted [overflow-wrap:anywhere]">
+                      <p className="mt-2 flex min-w-0 items-center gap-2 text-xs text-muted [overflow-wrap:anywhere]">
+                        <AgentStatusDot
+                          status={assignee ? "active" : "inactive"}
+                        />
                         {assignee
                           ? `${assignee.name} · ${assignee.role}`
                           : "Awaiting assignee"}
@@ -393,11 +419,20 @@ export default async function PortalProjectPage({ params }: PageProps) {
               Crew on this Seed
             </h2>
             <p className="mt-2 text-sm text-muted">
-              {agents.length} agent{agents.length === 1 ? "" : "s"} invited
+              {crew.length} agent{crew.length === 1 ? "" : "s"} — green is
+              active, red is inactive
             </p>
-            <ul className="mt-3 space-y-1 text-sm text-brand-deep">
-              {agents.map((name) => (
-                <li key={name}>{name}</li>
+            <ul className="mt-3 space-y-2 text-sm text-brand-deep">
+              {crew.map((agent) => (
+                <li key={agent.id} className="min-w-0">
+                  <p className="flex min-w-0 items-center gap-2 font-semibold">
+                    <AgentStatusDot status={agent.status} />
+                    {agent.name}
+                  </p>
+                  <p className="mt-0.5 pl-5 text-xs leading-relaxed text-muted [overflow-wrap:anywhere]">
+                    {agent.role}. {agent.specialty}
+                  </p>
+                </li>
               ))}
             </ul>
           </div>

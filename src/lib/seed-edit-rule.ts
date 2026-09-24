@@ -107,6 +107,8 @@ export function planReactionsToEditedBrief(
         {
           title: REACT_TO_EDITED_BRIEF_TITLE,
           detail: `HARD RULE: ${rule} Current brief: ${project.brief.slice(0, 500)}`,
+          // No catalog agent has all three; Conductor hands off to the
+          // best available specialist (full match, then partial, then next free).
           requiredSkills: ["copy", "frontend", "ui"],
           minSkillLevel: 2,
         },

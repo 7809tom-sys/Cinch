@@ -283,6 +283,11 @@ export type RouteTaskOptions = {
   configuredProviders?: SeedProviderId[];
   unavailableProviders?: SeedProviderId[];
   /**
+   * Specialists already on assigned/in-progress work. Conductor prefers
+   * the next free agent so a new task is not left queued as uncompleted.
+   */
+  unavailableAgentIds?: string[];
+  /**
    * When true, skip providers that are not in configuredProviders.
    * When configuredProviders is empty, routing still picks the policy
    * default so the board shows the intended cheap/expensive lane.
@@ -396,13 +401,44 @@ export function taskNeedsExpensiveLane(
   return ESCALATE_TAGS.some((tag) => tags.includes(tag));
 }
 
-function agentCanHandle(
+function agentMeetsFloor(
   agent: AgentDefinition,
   input: RouteTaskInput,
 ): boolean {
   if (agent.isProjectManager) return false;
-  if (agent.skillLevel < (input.minSkillLevel ?? 1)) return false;
-  return input.requiredSkills.every((skill) => agent.skills.includes(skill));
+  return agent.skillLevel >= (input.minSkillLevel ?? 1);
+}
+
+function agentHasAllSkills(
+  agent: AgentDefinition,
+  requiredSkills: AgentSkill[],
+): boolean {
+  return requiredSkills.every((skill) => agent.skills.includes(skill));
+}
+
+function agentSkillCoverage(
+  agent: AgentDefinition,
+  requiredSkills: AgentSkill[],
+): number {
+  if (requiredSkills.length === 0) return 1;
+  return requiredSkills.filter((skill) => agent.skills.includes(skill)).length;
+}
+
+function costRank(agent: AgentDefinition): number {
+  return agent.costHint === "low" ? 0 : agent.costHint === "medium" ? 1 : 2;
+}
+
+function specialistRoster(
+  input: RouteTaskInput,
+  invitedAgentIds?: string[],
+): AgentDefinition[] {
+  return AGENT_CATALOG.filter((agent) => {
+    if (!agentMeetsFloor(agent, input)) return false;
+    if (invitedAgentIds && invitedAgentIds.length > 0) {
+      return invitedAgentIds.includes(agent.id);
+    }
+    return true;
+  });
 }
 
 function preferredAgentId(input: RouteTaskInput): string | null {
@@ -413,33 +449,62 @@ function preferredAgentId(input: RouteTaskInput): string | null {
   return null;
 }
 
+function sortRosterForTask(
+  roster: AgentDefinition[],
+  input: RouteTaskInput,
+): AgentDefinition[] {
+  const preferredId = preferredAgentId(input);
+  return [...roster].sort((a, b) => {
+    const full =
+      Number(agentHasAllSkills(b, input.requiredSkills)) -
+      Number(agentHasAllSkills(a, input.requiredSkills));
+    if (full !== 0) return full;
+
+    const cover =
+      agentSkillCoverage(b, input.requiredSkills) -
+      agentSkillCoverage(a, input.requiredSkills);
+    if (cover !== 0) return cover;
+
+    if (preferredId) {
+      if (a.id === preferredId) return -1;
+      if (b.id === preferredId) return 1;
+    }
+
+    const cost = costRank(a) - costRank(b);
+    if (cost !== 0) return cost;
+    return a.skillLevel - b.skillLevel;
+  });
+}
+
+/**
+ * Rank specialists for a task: full skill match, then best partial, then
+ * any remaining crew. Busy agents are skipped when someone else is free
+ * so a new Edit Seed task is handed off instead of sitting uncompleted.
+ */
+export function rankAgentsForTask(
+  input: RouteTaskInput,
+  options: Pick<
+    RouteTaskOptions,
+    "invitedAgentIds" | "unavailableAgentIds"
+  > = {},
+): AgentDefinition[] {
+  const specialists = specialistRoster(input, options.invitedAgentIds);
+  const busy = new Set(options.unavailableAgentIds ?? []);
+  const free = specialists.filter((agent) => !busy.has(agent.id));
+  return sortRosterForTask(free.length > 0 ? free : specialists, input);
+}
+
 export function pickAgentForTask(
   input: RouteTaskInput,
   invitedAgentIds?: string[],
+  extra?: { unavailableAgentIds?: string[] },
 ): AgentDefinition | null {
-  const roster = AGENT_CATALOG.filter((agent) => {
-    if (agent.isProjectManager) return false;
-    if (invitedAgentIds && invitedAgentIds.length > 0) {
-      return invitedAgentIds.includes(agent.id);
-    }
-    return true;
-  }).filter((agent) => agentCanHandle(agent, input));
-
-  if (roster.length === 0) return null;
-
-  const preferredId = preferredAgentId(input);
-  const preferred = preferredId
-    ? roster.find((agent) => agent.id === preferredId)
-    : undefined;
-  if (preferred) return preferred;
-
-  return [...roster].sort((a, b) => {
-    const cost =
-      (a.costHint === "low" ? 0 : a.costHint === "medium" ? 1 : 2) -
-      (b.costHint === "low" ? 0 : b.costHint === "medium" ? 1 : 2);
-    if (cost !== 0) return cost;
-    return a.skillLevel - b.skillLevel;
-  })[0];
+  return (
+    rankAgentsForTask(input, {
+      invitedAgentIds,
+      unavailableAgentIds: extra?.unavailableAgentIds,
+    })[0] ?? null
+  );
 }
 
 function modelFor(
@@ -553,8 +618,12 @@ function reasonForRoute(input: {
   tags: TaskTag[];
   expensive: boolean;
   reusedModularHint: boolean;
+  handoffFrom?: string;
 }): string {
   const bits: string[] = [];
+  if (input.handoffFrom) {
+    bits.push(`handed off from ${input.handoffFrom}`);
+  }
   if (input.tags.includes("manus_github_install")) {
     bits.push("Manus 1.6 commits watch.js to GitHub so Manus publishes — after owner approval");
   } else if (input.tags.includes("build_site")) {
@@ -585,7 +654,8 @@ export function isRouteBlocked(result: RouteResult): result is RouteBlocked {
 
 /**
  * Conductor picks agent + provider + model for one task.
- * Failover walks the candidate list once; it never loops.
+ * Walks ranked specialists (full match, then partial, then next free)
+ * and each agent's provider list once; it never loops.
  */
 export function routeConductorTask(
   input: RouteTaskInput,
@@ -610,61 +680,78 @@ export function routeConductorTask(
     };
   }
 
-  const agent = pickAgentForTask(input, options.invitedAgentIds);
-  if (!agent) {
+  const ranked = rankAgentsForTask(input, {
+    invitedAgentIds: options.invitedAgentIds,
+    unavailableAgentIds: options.unavailableAgentIds,
+  });
+  if (ranked.length === 0) {
     return {
       blocked: true,
       tags,
       attempts,
-      reason: "No invited specialist can cover this task’s skills.",
+      reason: "No invited specialist is on the crew for this task.",
     };
   }
 
-  const expensive = taskNeedsExpensiveLane(tags, agent.id, input.escalate);
-  const candidates = providerCandidateIds(agent.id, tags, input.escalate);
-  const usable = candidates.filter((id) =>
-    isProviderUsable(id, options, failed),
-  );
+  const firstChoice = rankAgentsForTask(input, {
+    invitedAgentIds: options.invitedAgentIds,
+  })[0];
+  const skipped: string[] = [];
 
-  if (usable.length === 0) {
+  for (const agent of ranked) {
+    const expensive = taskNeedsExpensiveLane(tags, agent.id, input.escalate);
+    const candidates = providerCandidateIds(agent.id, tags, input.escalate);
+    const usable = candidates.filter((id) =>
+      isProviderUsable(id, options, failed),
+    );
+    if (usable.length === 0) {
+      skipped.push(agent.name);
+      continue;
+    }
+
+    const providerId = usable[0];
+    const requestedLane: RouteLane = expensive ? "expensive" : "cheap";
+    const spec = modelFor(providerId, requestedLane, tags);
+    const effectiveLane: RouteLane =
+      expensive || spec.lane === "expensive" ? "expensive" : "cheap";
+
+    const failover = usable.slice(1);
+    const reusedModularHint = /modular/i.test(
+      `${input.title} ${input.detail ?? ""}`,
+    );
+    const handoffFrom =
+      firstChoice && firstChoice.id !== agent.id
+        ? firstChoice.name
+        : skipped[0];
+
     return {
-      blocked: true,
-      tags,
-      attempts,
-      reason:
-        "No capable provider is available (sleeping, missing key, or already failed). Conductor stopped instead of spinning.",
-    };
-  }
-
-  const providerId = usable[0];
-  const requestedLane: RouteLane = expensive ? "expensive" : "cheap";
-  const spec = modelFor(providerId, requestedLane, tags);
-  const effectiveLane: RouteLane =
-    expensive || spec.lane === "expensive" ? "expensive" : "cheap";
-
-  const failover = usable.slice(1);
-  const reusedModularHint = /modular/i.test(
-    `${input.title} ${input.detail ?? ""}`,
-  );
-
-  return {
-    agentId: agent.id,
-    agentName: agent.name,
-    providerId,
-    model: resolveModelId(spec),
-    modelClass: spec.modelClass,
-    lane: effectiveLane,
-    tags,
-    failover,
-    attempts,
-    reason: reasonForRoute({
+      agentId: agent.id,
       agentName: agent.name,
       providerId,
+      model: resolveModelId(spec),
+      modelClass: spec.modelClass,
       lane: effectiveLane,
       tags,
-      expensive,
-      reusedModularHint,
-    }),
+      failover,
+      attempts,
+      reason: reasonForRoute({
+        agentName: agent.name,
+        providerId,
+        lane: effectiveLane,
+        tags,
+        expensive,
+        reusedModularHint,
+        handoffFrom,
+      }),
+    };
+  }
+
+  return {
+    blocked: true,
+    tags,
+    attempts,
+    reason:
+      "No capable provider is available (sleeping, missing key, or already failed). Conductor handed off through the crew, then stopped instead of spinning.",
   };
 }
 
@@ -765,6 +852,16 @@ export function sampleConductorRoutes(options: RouteTaskOptions = {}) {
         title: "Draft customer invoice copy",
         detail: "Includes customer email and invoice totals. No private affiliate leak.",
         requiredSkills: ["copy"],
+        minSkillLevel: 2,
+      },
+    },
+    {
+      label: "React to edited brief — hand off",
+      input: {
+        title: "React to edited brief",
+        detail:
+          "HARD RULE: read the new name and brief and react — rebuild the live site.",
+        requiredSkills: ["copy", "frontend", "ui"],
         minSkillLevel: 2,
       },
     },

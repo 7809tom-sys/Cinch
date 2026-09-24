@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
+import { AgentStatusDot } from "@/components/agent-status-switch";
 import { getAgent } from "@/lib/agents";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { isMasterEmail } from "@/lib/master-auth";
@@ -149,14 +150,30 @@ export default async function PortalHomePage() {
                           {done}/{project.tasks.length || 0} done
                         </p>
                       </div>
-                      <p className="mt-4 text-sm text-brand-deep">
-                        {active.length > 0
-                          ? `In progress: ${active[0]?.title}${working ? ` · ${working}` : ""}`
-                          : project.tasks.length === 0
-                            ? "Website is ready — Visit anytime while the crew plans work"
-                            : complete
-                              ? "Build complete — visit the published preview anytime"
-                              : "Agents between tasks — Visit website to see the live page"}
+                      <p className="mt-4 flex min-w-0 flex-wrap items-center gap-2 text-sm text-brand-deep">
+                        {active.length > 0 ? (
+                          <>
+                            <AgentStatusDot
+                              status={working ? "active" : "inactive"}
+                            />
+                            <span>
+                              In progress: {active[0]?.title}
+                              {working ? ` · ${working}` : ""}
+                            </span>
+                          </>
+                        ) : project.tasks.length === 0 ? (
+                          "Website is ready — Visit anytime while the crew plans work"
+                        ) : complete ? (
+                          "Build complete — visit the published preview anytime"
+                        ) : (
+                          <>
+                            <AgentStatusDot status="inactive" />
+                            <span>
+                              Agents between tasks — Visit website to see the
+                              live page
+                            </span>
+                          </>
+                        )}
                       </p>
                     </Link>
                     <div className="mt-4 flex flex-wrap gap-2">

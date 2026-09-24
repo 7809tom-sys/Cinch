@@ -5,6 +5,11 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
+  isRouteBlocked,
+  routeConductorTask,
+  type SeedProviderId,
+} from "../src/lib/conductor-routing";
+import {
   planReactionsToEditedBrief,
   SEED_EDIT_MUST_REACT_RULE,
   shouldRebuildAfterSeedEdit,
@@ -114,6 +119,42 @@ const editForm = readFileSync(
 assert(
   !/name="brief"[\s\S]*maxLength=\{4000\}/.test(editForm),
   "Edit Seed brief textarea has no 4000-character maxLength",
+);
+
+const reactTask = pizzaPlan.tasks.find((t) =>
+  /react to edited brief/i.test(t.title),
+);
+assert(Boolean(reactTask), "pizza plan has a react task to route");
+if (reactTask) {
+  const allProviders: SeedProviderId[] = [
+    "anthropic",
+    "openai",
+    "deepseek",
+    "google",
+    "manus",
+  ];
+  const routed = routeConductorTask(
+    {
+      title: reactTask.title,
+      detail: reactTask.detail,
+      requiredSkills: reactTask.requiredSkills,
+      minSkillLevel: reactTask.minSkillLevel,
+    },
+    { configuredProviders: allProviders, requireConfigured: true },
+  );
+  assert(
+    !isRouteBlocked(routed),
+    "React to edited brief is assigned, not left uncompleted",
+  );
+}
+
+const pmSource = readFileSync(
+  join(process.cwd(), "src/lib/project-manager.ts"),
+  "utf8",
+);
+assert(
+  /assignWorkAfterSeedEdit[\s\S]*tickProjectWork/.test(pmSource),
+  "Edit Seed assignment starts the new task instead of leaving it queued",
 );
 
 if (process.exitCode) {

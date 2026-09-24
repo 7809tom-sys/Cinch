@@ -12,6 +12,7 @@
     "assert:seed-edit-react": "npx tsx scripts/assert-seed-edit-react.ts",
     "assert:seed-engagement": "npx tsx scripts/assert-seed-engagement.ts",
     "assert:conductor-routing": "npx tsx scripts/assert-conductor-routing.ts",
+    "assert:agent-status": "npx tsx scripts/assert-agent-status.ts",
     "assert:seed-connect": "npx tsx scripts/assert-seed-connect.ts",
     "assert:script-management": "npx tsx scripts/assert-script-management.ts",
     "assert:seed-dialog": "npx tsx scripts/assert-seed-dialog.ts",
