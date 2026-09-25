@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  briefAsksForEcommerce,
   buildSeedShopPreview,
+  seedOffersCustomerShop,
   proofAndRepairSeedSite,
   seedIndustryKey,
   seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
+import { findSellableMenuItems } from "@/lib/seed-delivery";
+import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 import { SeedShopBoard } from "./shop-board";
 
@@ -26,7 +28,7 @@ export default async function SeedShopPage({
   const project = await getProject(id);
   if (!project) notFound();
 
-  if (!briefAsksForEcommerce(project.brief)) {
+  if (!seedOffersCustomerShop(project.name, project.brief)) {
     redirect(`/site/${id}`);
   }
 
@@ -41,6 +43,28 @@ export default async function SeedShopPage({
   const lotHold = seedShopUsesLotFulfillment(project.name, project.brief);
   const deliveryPlatform =
     seedIndustryKey(project.name, project.brief) === "delivery";
+  let products = shop.products;
+  if (deliveryPlatform) {
+    const ops = await ensureDeliveryOpsInSeed(project);
+    if (ops) {
+      const found = findSellableMenuItems(ops);
+      if (found.length > 0) {
+        products = found.map((item) => ({
+          id: `${item.restaurantId}:${item.itemId}`,
+          title: item.title,
+          detail: `${item.restaurantName} · ${item.neighborhood}${
+            item.aliases.length ? ` · ${item.aliases.join(", ")}` : ""
+          }`,
+          priceUsd: item.priceUsd,
+          sku: item.itemId,
+          stockQty: 20,
+          weightLb: 1,
+          shipClass: "parcel" as const,
+          imageUrl: item.photoUrl ?? "",
+        }));
+      }
+    }
+  }
 
   return (
     <>
@@ -69,7 +93,7 @@ export default async function SeedShopPage({
         </header>
         <SeedShopBoard
           projectId={id}
-          products={shop.products}
+          products={products}
           cta={shop.cta}
           shippingModes={shop.shippingModes}
           salesTax={shop.salesTax}

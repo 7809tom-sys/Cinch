@@ -8,8 +8,8 @@ import {
 } from "@/lib/master-auth";
 import {
   buildSeedSitePreview,
-  briefAsksForEcommerce,
   ensureBusinessAdminInSeed,
+  seedOffersCustomerShop,
   proofAndRepairSeedSite,
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
@@ -51,7 +51,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
     await ensureBusinessAdminInSeed(project);
   }
   const preview = await buildSeedSitePreview(project);
-  const showShop = briefAsksForEcommerce(project.brief);
+  const showShop = seedOffersCustomerShop(project.name, project.brief);
   const restaurantOrder = seedShopUsesRestaurantFulfillment(
     project.name,
     project.brief,

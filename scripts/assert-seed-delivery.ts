@@ -10,16 +10,21 @@ import { join } from "path";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
   DRIVER_SOFTWARE,
+  DRIVER_SOFTWARE_FREE_DAYS,
   WEEKLY_GMV_EXAMPLES,
   acceptDriverRun,
+  advanceDriverRun,
   applyDriverSubscriptionPolicies,
   approveDeliveryDriver,
   availableDispatchDrivers,
   classifyDriverHours,
+  driverInFreeTrial,
   driverCanDispatch,
   driverPhotoId,
   driverSoftwareAnnualUsd,
   driverSoftwareFeeUsd,
+  driverSoftwareFreeUntil,
+  firstSuccessfulDriveAt,
   freezeDeliveryDriver,
   recordDeliveryOrder,
   setDriverOnline,
@@ -33,6 +38,9 @@ import {
   driverAttributedPayoutUsd,
   confirmRestaurantMenuPrice,
   crawlRestaurantMenuDraft,
+  findSellableMenuItems,
+  threePartyStripeSplit,
+  uploadRestaurantMenuItem,
   hometownDeliveryFeeUsd,
   sellableRestaurantMenu,
   shouldTriggerDriverPayout,
@@ -67,9 +75,11 @@ import {
   ledgerRunDriverId,
   ledgerScoutPaidDriverId,
   parseDeliveryOps,
+  softwareFeeUsd,
   splitDeliveryLedger,
   starterDeliveryOps,
   ticketAssignedDriver,
+  unsignedRestaurants,
   weeklyScoutResidualExamples,
   withDeliveryDriverPolicyBrief,
 } from "../src/lib/seed-delivery";
@@ -77,6 +87,7 @@ import {
   customerFacingShopCopy,
   customerFacingSiteCopy,
   deliveryLandingLooksLikeOpsEconomics,
+  seedOffersCustomerShop,
 } from "../src/lib/seed-site-copy";
 
 function assert(condition: boolean, message: string) {
@@ -212,8 +223,19 @@ assert(
     /\$37\.28/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /seven couples/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /one delivery a month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
-    /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
-  "delivery brief appends $0 platform, Connect, trip, roles, research, and scout-pay",
+    /three-party/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /cannot keep the 5% on their own/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
+    /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /60 days free/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /first successful drive/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
+    /status === "delivered"/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ),
+  "delivery brief appends $0 platform, three-party Stripe, research, scout-pay, and 60 days free from first delivered run",
 );
 
 const ops = starterDeliveryOps("Hometown Runner");
@@ -308,21 +330,13 @@ assert(
   canSignRestaurantAsScout(jordanDash, "drv-jordan", now),
   "after one delivery Jordan can sign a kitchen as a scout",
 );
-const unsignedKitchen = {
-  id: "rest-bakery",
-  name: "Third Street Bakery",
-  neighborhood: "Third Street",
-  scoutId: "",
-  ownerDriverId: null,
-  active: true,
-  paused: false,
-};
-const bakeryOps = {
-  ...jordanDash,
-  restaurants: [...jordanDash.restaurants, unsignedKitchen],
-};
+assert(
+  unsignedRestaurants(ops).some((row) => row.id === "rest-bakery") &&
+    scoutPayoutDriverId(ops, "rest-bakery", now) === null,
+  "unsigned bakery is waiting for a scout and pays no one yet",
+);
 const signedBakery = assignRestaurantScout(
-  bakeryOps,
+  jordanDash,
   "rest-bakery",
   "drv-jordan",
   now,
@@ -332,6 +346,73 @@ assert(
     signedBakery.ops.restaurants.find((row) => row.id === "rest-bakery")
       ?.scoutId === "drv-jordan",
   "restaurateur Jordan signs the unsigned bakery after one delivery",
+);
+assert(
+  signedBakery.ok &&
+    scoutPayoutDriverId(signedBakery.ops, "rest-pilot", now) === "drv-maya" &&
+    scoutPayoutDriverId(signedBakery.ops, "rest-pilot", now) !== "drv-jordan",
+  "Jordan cannot keep the 5% on Pilot Kitchen — his own restaurant",
+);
+const ownKitchen = assignRestaurantScout(
+  signedBakery.ok
+    ? {
+        ...signedBakery.ops,
+        restaurants: signedBakery.ops.restaurants.map((row) =>
+          row.id === "rest-pilot" ? { ...row, scoutId: "" } : row,
+        ),
+      }
+    : jordanDash,
+  "rest-pilot",
+  "drv-jordan",
+  now,
+);
+assert(
+  !ownKitchen.ok,
+  "assignRestaurantScout refuses the owner’s own kitchen",
+);
+const ownerAsScout = {
+  ...ops,
+  restaurants: ops.restaurants.map((row) =>
+    row.id === "rest-pilot" ? { ...row, scoutId: "drv-jordan" } : row,
+  ),
+  runs: jordanDash.runs,
+};
+assert(
+  scoutPayoutDriverId(ownerAsScout, "rest-pilot", now) === "drv-maya",
+  "if Jordan is listed as Pilot scout, pay still cascades off his own 5%",
+);
+const uploaded = uploadRestaurantMenuItem(ops, "rest-pilot", {
+  title: "Citrus greens",
+  category: "Plates",
+  priceUsd: 13,
+  aliases: ["salad", "greens"],
+});
+assert(
+  findSellableMenuItems(ops, "grain bowl").some(
+    (item) => item.title === "Warm grain bowl",
+  ) &&
+    findSellableMenuItems(uploaded, "salad").some(
+      (item) => item.title === "Citrus greens",
+    ) &&
+    !findSellableMenuItems(ops, "salad").some(
+      (item) => item.title === "Citrus greens",
+    ),
+  "diners find crawled plates by alias and newly uploaded items",
+);
+const deliSplit = deliLedger
+  ? threePartyStripeSplit(ops, deliLedger, now)
+  : null;
+assert(
+  Boolean(deliSplit) &&
+    deliSplit?.restaurant.connectAccountId === "acct_restdeli" &&
+    deliSplit?.scout.driverId === "drv-maya" &&
+    deliSplit?.scout.connectAccountId === "acct_drvmaya" &&
+    deliSplit?.driver.driverId === "drv-maya" &&
+    deliSplit?.driver.connectAccountId === "acct_drvmaya" &&
+    (deliSplit?.restaurant.amountUsd ?? 0) > 0 &&
+    (deliSplit?.scout.amountUsd ?? 0) > 0 &&
+    (deliSplit?.driver.amountUsd ?? 0) > 0,
+  "three-party Stripe pays restaurant, scout, and driver on their own accounts",
 );
 const cascadeRank = signedBakery.ok
   ? {
@@ -366,7 +447,7 @@ const cascadeRank = signedBakery.ok
         },
       ],
     }
-  : bakeryOps;
+  : jordanDash;
 assert(
   scoutEligibleToBePaid(cascadeRank, "drv-maya", now) &&
     scoutPayoutDriverId(cascadeRank, "rest-deli", now) === "drv-jordan",
@@ -374,7 +455,7 @@ assert(
 );
 const nextBelow = {
   ...cascadeRank,
-  runs: cascadeRank.runs.filter((row) => row.driverId !== "drv-jordan"),
+  runs: cascadeRank.runs.filter((row: { driverId: string | null }) => row.driverId !== "drv-jordan"),
 };
 assert(
   scoutPayoutDriverId(nextBelow, "rest-deli", now) === "drv-maya",
@@ -456,13 +537,100 @@ assert(
         row.status === "delivered" &&
         row.driverId === "drv-maya",
     ) &&
-    scoutPayoutDriverId(stalePilotOnly, "rest-deli", now) === "drv-maya",
-  "parse remints the deli cascade sample and Jordan as Pilot owner",
+    scoutPayoutDriverId(stalePilotOnly, "rest-deli", now) === "drv-maya" &&
+    unsignedRestaurants(stalePilotOnly).some((row) => row.id === "rest-bakery"),
+  "parse remints the deli cascade sample, Jordan as Pilot owner, and the unsigned bakery",
+);
+const missingBakery = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    restaurants: ops.restaurants.filter((row) => row.id !== "rest-bakery"),
+  }),
+);
+assert(
+  Boolean(
+    missingBakery?.restaurants.some(
+      (row) => row.id === "rest-bakery" && !row.scoutId,
+    ),
+  ),
+  "parse remints Third Street Bakery as unsigned so a restaurateur can sign it",
+);
+assert(
+  Boolean(
+    stalePilotOnly?.drivers
+      .find((row) => row.id === "drv-maya")
+      ?.firstDeliveredAt?.startsWith("2026-09-23") &&
+      !stalePilotOnly.drivers.find((row) => row.id === "drv-jordan")
+        ?.firstDeliveredAt,
+  ),
+  "parse heals Maya’s firstDeliveredAt from the reminted delivered run; Jordan’s clock stays off",
+);
+const missingFirstDelivered = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    drivers: ops.drivers.map((row) =>
+      row.id === "drv-maya" ? { ...row, firstDeliveredAt: null } : row,
+    ),
+  }),
+);
+assert(
+  Boolean(
+    missingFirstDelivered?.drivers
+      .find((row) => row.id === "drv-maya")
+      ?.firstDeliveredAt?.startsWith("2026-09-23"),
+  ),
+  "parse heals a missing firstDeliveredAt from Maya’s delivered deli run",
 );
 assert(
   maya?.classification === "full_time" &&
     maya.softwareUsdPerYear === 948,
   "Maya is full-time at $79/month",
+);
+assert(
+  DRIVER_SOFTWARE_FREE_DAYS === 60,
+  "everybody gets 60 days free after the first successful drive",
+);
+const mayaFirstDrive = firstSuccessfulDriveAt(ops, "drv-maya");
+const jordanFirstDrive = firstSuccessfulDriveAt(ops, "drv-jordan");
+const trialNow = new Date("2026-09-24T12:00:00.000Z");
+const afterTrial = new Date("2026-11-23T00:00:00.000Z");
+assert(
+  Boolean(mayaFirstDrive?.startsWith("2026-09-23")) &&
+    Boolean(maya?.firstDeliveredAt?.startsWith("2026-09-23")) &&
+    Boolean(driverSoftwareFreeUntil(mayaFirstDrive)?.startsWith("2026-11-22")),
+  "Maya’s free window starts on her delivered deli run (2026-09-23)",
+);
+assert(
+  driverInFreeTrial({ firstDeliveredAt: mayaFirstDrive }, trialNow) &&
+    softwareFeeUsd(
+      "full_time",
+      "monthly",
+      { firstDeliveredAt: mayaFirstDrive },
+      trialNow,
+    ) === 0,
+  "Maya is in the 60-day free trial — software fee is $0",
+);
+assert(
+  !driverInFreeTrial({ firstDeliveredAt: mayaFirstDrive }, afterTrial) &&
+    softwareFeeUsd(
+      "full_time",
+      "monthly",
+      { firstDeliveredAt: mayaFirstDrive },
+      afterTrial,
+    ) === DRIVER_SOFTWARE.fullTime.monthlyUsd,
+  "after day 60 Maya pays $79/month",
+);
+assert(
+  jordanFirstDrive == null &&
+    !jordan?.firstDeliveredAt &&
+    !driverInFreeTrial({ firstDeliveredAt: jordanFirstDrive }, trialNow) &&
+    softwareFeeUsd(
+      "part_time",
+      "weekly",
+      { firstDeliveredAt: jordanFirstDrive },
+      trialNow,
+    ) === 0,
+  "Jordan has no delivered run — clock not started, not in the paid window, fee $0",
 );
 assert(
   jordan?.classification === "part_time" &&
@@ -600,6 +768,41 @@ if (taken.ok) {
       ?.driverId === "drv-jordan",
     "accepting a run writes Jordan onto the ledger Driver column",
   );
+  assert(
+    !taken.ops.drivers.find((row) => row.id === "drv-jordan")
+      ?.firstDeliveredAt,
+    "accepting an offer does not start the 60-day software clock",
+  );
+  const picked = advanceDriverRun(
+    taken.ops,
+    "run-sample-pilot",
+    "drv-jordan",
+    "picked_up",
+  );
+  assert(picked.ok, "Jordan can mark pickup");
+  if (picked.ok) {
+    const dropped = advanceDriverRun(
+      picked.ops,
+      "run-sample-pilot",
+      "drv-jordan",
+      "delivered",
+    );
+    assert(dropped.ok, "Jordan can complete dropoff");
+    if (dropped.ok) {
+      const started = dropped.ops.drivers.find((row) => row.id === "drv-jordan")
+        ?.firstDeliveredAt;
+      assert(
+        Boolean(started) &&
+          driverInFreeTrial({ firstDeliveredAt: started }) &&
+          softwareFeeUsd(
+            "part_time",
+            "weekly",
+            { firstDeliveredAt: started },
+          ) === 0,
+        "Jordan’s first delivered run starts 60 days free and keeps software at $0",
+      );
+    }
+  }
 }
 
 const afterOrder = recordDeliveryOrder(ops, {
@@ -767,6 +970,13 @@ assert(
   "diner landing and shop stay guest-facing — no 1099 / $39 / GMV / research leak",
 );
 assert(
+  deliveryLandingLooksLikeOpsEconomics(
+    "Everybody gets 60 days free starting the first successful drive. Software free until the first delivered run. After the free trial, $39/month.",
+  ) &&
+    !deliveryLandingLooksLikeOpsEconomics(dinerBlob),
+  "diner-leak patterns catch 60 days free / first successful drive without flagging guest copy",
+);
+assert(
   /customerFacingSupport\(project\.brief\)/.test(landing) &&
     !/project\.brief\.slice\(0,\s*160\)/.test(landing),
   "diner page metadata uses guest support, not the ops brief",
@@ -780,14 +990,17 @@ const restaurantDesk = readFileSync(
   "utf8",
 );
 assert(
-  /Stripe Connect/.test(restaurantDesk) &&
+  /three-party/.test(restaurantDesk) &&
     /keeps\s+\$0/.test(restaurantDesk) &&
     /manage their own tax forms/.test(restaurantDesk) &&
     /pay ~2\.9% processing/.test(restaurantDesk) &&
-    /AI crawled your site/.test(restaurantDesk) &&
+    /Upload like DoorDash/.test(restaurantDesk) &&
+    /uploadRestaurantMenuItemAction/.test(restaurantDesk) &&
     /confirmRestaurantMenuPriceAction/.test(restaurantDesk) &&
     !/You issue the 1099/.test(restaurantDesk) &&
-    !/The 10% on GMV is ACH/.test(restaurantDesk),
+    !/The 10% on GMV is ACH/.test(restaurantDesk) &&
+    /Your Stripe/.test(restaurantDesk) &&
+    /connectAccountId/.test(restaurantDesk),
   "restaurant portal informs the kitchen: Connect, 2.9%, $0 platform, tax forms on the driver, menu confirm",
 );
 assert(
@@ -804,6 +1017,30 @@ assert(
   "orders send $0 to the platform and 5% to the driver",
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
+const shopBoard = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/shop/shop-board.tsx"),
+  "utf8",
+);
+assert(
+  /Find an item/.test(shopBoard) &&
+    /findSellableMenuItems/.test(
+      readFileSync(join(process.cwd(), "src/app/site/[id]/shop/page.tsx"), "utf8"),
+    ),
+  "diner shop finds confirmed and uploaded plates",
+);
+assert(
+  seedOffersCustomerShop(
+    "Hometown Runner",
+    "Hyper-local food delivery platform. Restaurants pay 10%.",
+  ) &&
+    /seedOffersCustomerShop/.test(
+      readFileSync(join(process.cwd(), "src/app/site/[id]/shop/page.tsx"), "utf8"),
+    ) &&
+    /seedOffersCustomerShop/.test(
+      readFileSync(join(process.cwd(), "src/app/site/[id]/page.tsx"), "utf8"),
+    ),
+  "diner shop stays on for a Hometown Seed even when the stored brief dropped cart",
+);
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");
 assert(
   enterPage.includes("Role-based login") &&
@@ -831,8 +1068,15 @@ assert(
     /seven couples/.test(driverDesk) &&
     /70% dine-in/.test(driverDesk) &&
     /one delivery a month/.test(driverDesk) &&
-    /paid the 5% this month/.test(driverDesk),
-  "driver portal shows Connect payouts, trip math, tax forms, Riley, and scout-pay cascade",
+    /paid the 5% this month/.test(driverDesk) &&
+    /cannot keep the 5% on their own kitchen/.test(driverDesk) &&
+    /60 days free/.test(driverDesk) &&
+    /first successful drive/.test(driverDesk) &&
+    /softwareFeeUsd/.test(driverDesk) &&
+    /firstSuccessfulDriveAt/.test(driverDesk) &&
+    /assignRestaurantScoutAction/.test(driverDesk) &&
+    /Sign as scout/.test(driverDesk),
+  "driver portal shows Connect payouts, trip math, tax forms, Riley, no own-kitchen 5%, and 60 days free from first successful drive",
 );
 assert(
   /\$37\.28/.test(ledgerUi) &&
@@ -841,8 +1085,24 @@ assert(
     /Paid: \{paidTo\}/.test(ledgerUi) &&
     /tip-riley/.test(siteCopy) &&
     /tip-market/.test(siteCopy) &&
-    /tip-scout/.test(siteCopy),
-  "ledger and playbook tips carry research, Riley, and the scout-pay cascade",
+    /tip-scout/.test(siteCopy) &&
+    /three-party/.test(ledgerUi) &&
+    /cannot keep the 5%/.test(ledgerUi) &&
+    /60 days free/.test(ledgerUi) &&
+    /first successful drive/.test(ledgerUi) &&
+    /first successful drive/.test(siteCopy) &&
+    /threePartyStripeSplit/.test(ledgerUi) &&
+    /Stripe three-party/.test(ledgerUi),
+  "ledger and playbook tips carry research, Riley, three-party Stripe, no own-kitchen 5%, and 60 days free from first successful drive",
+);
+const deliveryActions = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/delivery-actions.ts"),
+  "utf8",
+);
+assert(
+  /assignRestaurantScoutAction/.test(deliveryActions) &&
+    /revalidatePath\(`\/site\/\$\{projectId\}\/shop`\)/.test(deliveryActions),
+  "merchant confirm and upload refresh diner shop; restaurateurs can sign an unsigned kitchen",
 );
 
 if (process.exitCode) {

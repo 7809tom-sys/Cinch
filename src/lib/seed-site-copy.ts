@@ -230,7 +230,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen/.test(
     blob,
   );
 }
@@ -3997,6 +3997,17 @@ export function briefAsksForEcommerce(brief: string): boolean {
   );
 }
 
+/** Hometown diner shop is always on — even when the stored brief dropped “cart”. */
+export function seedOffersCustomerShop(
+  projectName: string,
+  brief: string,
+): boolean {
+  return (
+    briefAsksForEcommerce(brief) ||
+    seedIndustryKey(projectName, brief) === "delivery"
+  );
+}
+
 /** Brief asks to enter catalog items with images in Seed admin. */
 export function briefAsksForProductImages(brief: string): boolean {
   return /\b(product images?|items with (an? )?image|image in the admin|photo(?:s)? for products?|enter items)\b/i.test(
@@ -4401,7 +4412,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-scout",
               title: "Scout ownership is immutable",
-              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. One delivery a month to stay eligible to be paid. Miss a month and the 5% rolls to the next most-active deliverer at that kitchen who has already signed a restaurant, then the next below. A restaurateur can sign other kitchens after one delivery. No silent edit of the 50/50 split without a policy version.",
+              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. One delivery a month to stay eligible to be paid. Miss a month and the 5% rolls to the next most-active deliverer at that kitchen who has already signed a restaurant, then the next below. A restaurateur can sign another kitchen after one delivery — they cannot keep the 5% on their own kitchen. No silent edit of the 50/50 split without a policy version.",
             },
             {
               id: "tip-riley",
@@ -4416,7 +4427,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip on Connect",
-              body: "Never skim delivery fee or tip. Stripe Connect split sends fee, tip, and the 5% driver share directly to the driver — not through the restaurant. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
+              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
             },
             {
               id: "tip-trip",
@@ -4426,12 +4437,12 @@ export function customerFacingAdminCopy(
             {
               id: "tip-roles",
               title: "Three role-based logins",
-              body: "Customer, merchant, and driver each sign in separately. AI crawls the restaurant website for a menu draft; the merchant confirms every price before it sells.",
+              body: "Customer, merchant, and driver each sign in separately. Menu is DoorDash-style: AI crawl plus merchant upload so diners can find the right plate. The merchant confirms every crawled price before it sells.",
             },
             {
               id: "tip-software",
               title: "Driver software is a subscription",
-              body: "$39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99. Full-time is the app open more than 30 hours in a week, or more than 120 hours in 4 weeks.",
+              body: "Everybody gets 60 days free starting the day of their first successful drive (a delivered run) — not signup, first login, or first offer. After day 60, $39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99. Full-time is the app open more than 30 hours in a week, or more than 120 hours in 4 weeks. No restaurant software fee.",
             },
             {
               id: "tip-1099",
@@ -4558,7 +4569,7 @@ export function customerFacingAdminCopy(
         : "Business admin",
     support: wantsShop
       ? key === "delivery"
-        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 on the order. Processor fees come out of the restaurant. Do not hide them."
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 on the order. Processor fees come out of the restaurant. Everybody gets 60 days free from the first successful drive. Do not hide them."
         : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
