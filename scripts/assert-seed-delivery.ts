@@ -447,7 +447,7 @@ const cascadeRank = signedBakery.ok
         },
       ],
     }
-  : bakeryOps;
+  : jordanDash;
 assert(
   scoutEligibleToBePaid(cascadeRank, "drv-maya", now) &&
     scoutPayoutDriverId(cascadeRank, "rest-deli", now) === "drv-jordan",
@@ -455,7 +455,7 @@ assert(
 );
 const nextBelow = {
   ...cascadeRank,
-  runs: cascadeRank.runs.filter((row) => row.driverId !== "drv-jordan"),
+  runs: cascadeRank.runs.filter((row: { driverId: string | null }) => row.driverId !== "drv-jordan"),
 };
 assert(
   scoutPayoutDriverId(nextBelow, "rest-deli", now) === "drv-maya",
@@ -548,17 +548,21 @@ const missingBakery = parseDeliveryOps(
   }),
 );
 assert(
-  missingBakery?.restaurants.some(
-    (row) => row.id === "rest-bakery" && !row.scoutId,
+  Boolean(
+    missingBakery?.restaurants.some(
+      (row) => row.id === "rest-bakery" && !row.scoutId,
+    ),
   ),
   "parse remints Third Street Bakery as unsigned so a restaurateur can sign it",
 );
 assert(
-  stalePilotOnly?.drivers
-    .find((row) => row.id === "drv-maya")
-    ?.firstDeliveredAt?.startsWith("2026-09-23") &&
-    !stalePilotOnly.drivers.find((row) => row.id === "drv-jordan")
-      ?.firstDeliveredAt,
+  Boolean(
+    stalePilotOnly?.drivers
+      .find((row) => row.id === "drv-maya")
+      ?.firstDeliveredAt?.startsWith("2026-09-23") &&
+      !stalePilotOnly.drivers.find((row) => row.id === "drv-jordan")
+        ?.firstDeliveredAt,
+  ),
   "parse heals Maya’s firstDeliveredAt from the reminted delivered run; Jordan’s clock stays off",
 );
 const missingFirstDelivered = parseDeliveryOps(
@@ -570,9 +574,11 @@ const missingFirstDelivered = parseDeliveryOps(
   }),
 );
 assert(
-  missingFirstDelivered?.drivers
-    .find((row) => row.id === "drv-maya")
-    ?.firstDeliveredAt?.startsWith("2026-09-23"),
+  Boolean(
+    missingFirstDelivered?.drivers
+      .find((row) => row.id === "drv-maya")
+      ?.firstDeliveredAt?.startsWith("2026-09-23"),
+  ),
   "parse heals a missing firstDeliveredAt from Maya’s delivered deli run",
 );
 assert(
@@ -590,8 +596,8 @@ const trialNow = new Date("2026-09-24T12:00:00.000Z");
 const afterTrial = new Date("2026-11-23T00:00:00.000Z");
 assert(
   Boolean(mayaFirstDrive?.startsWith("2026-09-23")) &&
-    maya?.firstDeliveredAt?.startsWith("2026-09-23") &&
-    driverSoftwareFreeUntil(mayaFirstDrive)?.startsWith("2026-11-22"),
+    Boolean(maya?.firstDeliveredAt?.startsWith("2026-09-23")) &&
+    Boolean(driverSoftwareFreeUntil(mayaFirstDrive)?.startsWith("2026-11-22")),
   "Maya’s free window starts on her delivered deli run (2026-09-23)",
 );
 assert(
