@@ -1223,7 +1223,7 @@ export function scoutPayoutDriverId(
   now = new Date(),
 ): string | null {
   const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
-  if (!restaurant) return null;
+  if (!restaurant?.scoutId?.trim()) return null;
   const ownerId = restaurant.ownerDriverId ?? null;
   const canCollect = (id: string) =>
     Boolean(id) &&

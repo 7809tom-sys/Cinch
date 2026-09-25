@@ -331,8 +331,9 @@ assert(
   "after one delivery Jordan can sign a kitchen as a scout",
 );
 assert(
-  unsignedRestaurants(ops).some((row) => row.id === "rest-bakery"),
-  "unsigned bakery is waiting for a scout",
+  unsignedRestaurants(ops).some((row) => row.id === "rest-bakery") &&
+    scoutPayoutDriverId(ops, "rest-bakery", now) === null,
+  "unsigned bakery is waiting for a scout and pays no one yet",
 );
 const signedBakery = assignRestaurantScout(
   jordanDash,
