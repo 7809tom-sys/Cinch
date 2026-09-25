@@ -52,8 +52,9 @@ function firstSentences(brief: string, count = 2): string[] {
  *   concrete numbers, and profit-maximizing operator help (lawn, garage,
  *   pizza, salon — same bar as AI kitchen design beating 2020 software).
  * - Delivery diner landing + shop stay guest benefits (nearby food, tip,
- *   track the bag). Ledger / tax / $39 / 1099 live on restaurant, driver,
- *   admin, playbook, and Edit Seed — never on the public diner page.
+ *   track the bag). Ledger / tax / $39 / 1099 / Connect / trip math live
+ *   on restaurant, driver, admin, playbook, and Edit Seed — never on the
+ *   public diner page.
  */
 function briefLooksLikeGarage(name: string, brief: string): boolean {
   const lower = `${name} ${brief}`.toLowerCase();
@@ -229,7 +230,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing/.test(
     blob,
   );
 }
@@ -4404,8 +4405,18 @@ export function customerFacingAdminCopy(
             },
             {
               id: "tip-fees",
-              title: "Drivers keep fee and tip",
-              body: "Never skim delivery fee or tip. The 5% driver share of the 10% ACH’s with fee and tip. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
+              title: "Drivers keep fee and tip on Connect",
+              body: "Never skim delivery fee or tip. Stripe Connect split sends fee, tip, and the 5% driver share directly to the driver — not through the restaurant. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
+            },
+            {
+              id: "tip-trip",
+              title: "Trip is $4.50 plus $1.50 a mile",
+              body: "Charge $4.50 base + $1.50 per mile so drivers clear the $0.76 federal mileage rate. Pickup stays $0.",
+            },
+            {
+              id: "tip-roles",
+              title: "Three role-based logins",
+              body: "Customer, merchant, and driver each sign in separately. AI crawls the restaurant website for a menu draft; the merchant confirms every price before it sells.",
             },
             {
               id: "tip-software",
@@ -4414,8 +4425,8 @@ export function customerFacingAdminCopy(
             },
             {
               id: "tip-1099",
-              title: "Restaurant issues the 1099",
-              body: "The restaurant collects the full order and pays the driver, so the restaurant issues 1099s to drivers who meet the criteria. 60 days without opening the app auto-suspends the account.",
+              title: "Drivers manage their own tax forms",
+              body: "Stripe Connect pays the driver directly, so drivers file their own tax forms. The restaurant does not issue 1099s. Payouts fire at a $25 minimum balance or on the weekly schedule. 60 days without opening the app auto-suspends the account.",
             },
             {
               id: "tip-compliance",

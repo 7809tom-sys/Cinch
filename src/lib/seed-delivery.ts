@@ -2,19 +2,27 @@
  * Hometown Runner v1 — hyper-local food delivery ops (not a restaurant).
  *
  * HARD RULES:
+ * - Three role-based logins: customer, merchant, driver.
+ * - Menu: AI crawls the restaurant website for a draft; the merchant
+ *   confirms each price before it sells.
  * - Platform keeps $0 from restaurant orders. Revenue is driver
  *   subscriptions only ($39/month part-time, $79/month full-time).
  * - Restaurant pays 10% of delivery GMV. That 10% is fully distributed:
  *   5% originating scout residual + 5% driver commission. Scout_id
  *   is immutable on freeze.
  * - Drivers keep 100% of delivery fee + tip + the 5% commission share.
- *   ACH from the restaurant: fee, tip, and 5% driver share.
- * - Restaurant collects the full order (e.g. Stripe). Processing (~2.9%)
+ *   Stripe Connect split: fee, tip, and 5% transfer directly to the
+ *   driver — not through the restaurant — so platform tax/legal
+ *   liability stays low.
+ * - Restaurant collects the food total. Processing (~2.9%)
  *   comes out of the restaurant. The other 5% of GMV routes to the scout.
+ * - Payouts fire automatically at a $25 minimum balance or on the
+ *   weekly schedule. Drivers manage their own tax forms on Connect.
+ * - Trip charge is $4.50 base + $1.50 per mile so drivers clear the
+ *   $0.76 federal mileage rate.
  * - Weekly installments $9.99 / $19.99. Full-time = app open more than
  *   30 hours in a week, or more than 120 hours in 4 weeks.
  * - 60 days without opening the app → account auto-suspended.
- * - Restaurant issues 1099s to drivers who meet the criteria.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
  */
@@ -33,6 +41,14 @@ export const DRIVER_SOFTWARE = {
 export const FULL_TIME_HOURS_PER_WEEK = 30;
 export const FULL_TIME_HOURS_PER_4_WEEKS = 120;
 export const DRIVER_INACTIVE_SUSPEND_DAYS = 60;
+/** Trip: $4.50 base + $1.50/mile so the per-mile rate clears IRS $0.76. */
+export const TRIP_BASE_USD = 4.5;
+export const TRIP_PER_MILE_USD = 1.5;
+export const FEDERAL_MILEAGE_USD = 0.76;
+export const DEFAULT_TOWN_TRIP_MILES = 3;
+/** Auto-payout when the driver's Connect balance hits this, or weekly. */
+export const DRIVER_PAYOUT_MIN_BALANCE_USD = 25;
+export const DRIVER_PAYOUT_WEEK_MS = 7 * 86_400_000;
 /** @deprecated Prefer DRIVER_SOFTWARE. Full-time monthly × 12. */
 export const DRIVER_SOFTWARE_USD_PER_YEAR = DRIVER_SOFTWARE.fullTime.monthlyUsd * 12;
 export const WEEKLY_GMV_EXAMPLES = [500, 800, 1000, 2000] as const;
@@ -41,8 +57,14 @@ export const DEFAULT_WEEKLY_GMV_EXAMPLE = 500;
 export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
 - Platform revenue: Hometown Runner keeps $0 from restaurant orders. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time).
 - Order commission: the 10% on delivery GMV is fully distributed — 5% scout residual, 5% driver. Not a platform cut.
-- Payment flow: the restaurant collects the full order (e.g. Stripe) and pays the ~2.9% processor. ACH routes delivery fee + tip + the 5% driver share to the driver, and the other 5% to the scout.
-- 1099: the restaurant collects the order and handles payouts, so the restaurant issues 1099s to drivers who meet the criteria.`;
+- Payment flow: split-architecture via Stripe Connect. The restaurant collects the food total and pays the ~2.9% processor. Fee, tip, and the 5% driver share transfer directly to the driver's Connect account — not through the restaurant — so the platform's tax and legal liability stays low. The other 5% routes to the scout.
+- Payouts: automatic when the driver hits a $25 minimum balance, or on the weekly schedule.
+- Tax forms: drivers manage their own tax forms on Stripe Connect. The restaurant does not issue 1099s.
+- Trip: $4.50 base plus $1.50 per mile so drivers clear the $0.76 federal mileage rate.`;
+
+export const HOMETOWN_PLATFORM_BRIEF_BLOCK = `Hometown platform:
+- Role logins: three distinct sign-ins — customer (order), merchant (kitchen + menu confirm), and driver (dash + Connect payouts).
+- Menu: AI crawls the restaurant website for an initial draft; the merchant confirms each price before it sells.`;
 
 export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
 - Fees: weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly).
@@ -56,6 +78,49 @@ export type DeliveryDriverStatus =
   | "suspended";
 export type DriverClassification = "part_time" | "full_time";
 export type DriverSoftwareCadence = "monthly" | "weekly";
+export type DriverPayoutTrigger = "min_balance" | "weekly";
+export type HometownRole = "customer" | "merchant" | "driver";
+
+export function hometownRoleCopy(role: HometownRole): {
+  title: string;
+  support: string;
+  cta: string;
+} {
+  if (role === "merchant") {
+    return {
+      title: "Merchant login",
+      support:
+        "Kitchen desk: confirm AI-crawled menu prices, take tickets, hand bags to a Hometown driver.",
+      cta: "Sign in as merchant",
+    };
+  }
+  if (role === "driver") {
+    return {
+      title: "Driver login",
+      support:
+        "Go online, take offers, and get fee + tip + 5% on Stripe Connect. You manage your own tax forms.",
+      cta: "Sign in as driver",
+    };
+  }
+  return {
+    title: "Customer login",
+    support: "Order nearby kitchens. A driver from this town brings dinner.",
+    cta: "Sign in as customer",
+  };
+}
+export type RestaurantMenuItem = {
+  id: string;
+  title: string;
+  category: string;
+  draftPriceUsd: number;
+  confirmedPriceUsd: number | null;
+  source: "ai_crawl" | "merchant";
+};
+export type RestaurantMenuDraft = {
+  sourceUrl: string;
+  crawledAt: string;
+  items: RestaurantMenuItem[];
+};
 export type MerchantTicketStatus =
   | "incoming"
   | "accepted"
@@ -78,6 +143,10 @@ export type DeliveryRestaurant = {
   active: boolean;
   /** DoorDash-style store pause — does not move scout_id. */
   paused: boolean;
+  /** Public site AI crawls for the first menu draft. */
+  websiteUrl?: string;
+  /** Hybrid menu: AI draft, then merchant confirms prices. */
+  menu?: RestaurantMenuDraft;
 };
 
 export type DeliveryDriver = {
@@ -98,6 +167,13 @@ export type DeliveryDriver = {
   photoUrl?: string;
   /** Short license/ID code shown with the photo. */
   photoIdNumber?: string;
+  /** Stripe Connect account — fee/tip/5% land here, not the restaurant. */
+  connectAccountId?: string;
+  payoutTrigger?: DriverPayoutTrigger;
+  pendingPayoutUsd?: number;
+  lastPayoutAt?: string | null;
+  /** Drivers file their own Connect tax forms — restaurant does not 1099. */
+  taxFormsSelfManaged?: boolean;
 };
 
 export type DeliveryLedgerSplit = {
@@ -170,9 +246,13 @@ export function briefHasDriverPolicy(brief: string): boolean {
 }
 
 export function briefHasCurrentEconomics(brief: string): boolean {
-  return /keeps \$0|\$0 from restaurant|5% goes to the driver|5% driver/i.test(
+  return /keeps \$0|\$0 from restaurant|5% goes to the driver|5% driver|stripe connect|\$4\.50/i.test(
     brief,
   );
+}
+
+export function briefHasHometownPlatformSpecs(brief: string): boolean {
+  return /three distinct|role-based|ai crawls|merchant confirms/i.test(brief);
 }
 
 /** Append payment + subscription rules when a delivery brief is missing them. */
@@ -183,10 +263,204 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
   if (!briefHasCurrentEconomics(trimmed)) {
     parts.push(PAYMENT_ECONOMICS_BRIEF_BLOCK);
   }
+  if (!briefHasHometownPlatformSpecs(trimmed)) {
+    parts.push(HOMETOWN_PLATFORM_BRIEF_BLOCK);
+  }
   if (!briefHasDriverPolicy(trimmed)) {
     parts.push(DRIVER_POLICY_BRIEF_BLOCK);
   }
   return parts.join("\n\n");
+}
+
+/** $4.50 + $1.50 × miles. Always clears the $0.76 federal mileage rate. */
+export function tripChargeUsd(miles: number): number {
+  return money(TRIP_BASE_USD + TRIP_PER_MILE_USD * Math.max(0, miles));
+}
+
+/** Same-town hop from the drop-off ZIP — 1–6 miles, default 3. */
+export function estimateTownTripMiles(zip: string): number {
+  const digits = zip.replace(/\D/g, "");
+  if (digits.length < 5) return DEFAULT_TOWN_TRIP_MILES;
+  return Math.min(6, Math.max(1, (Number(digits.slice(-2)) % 6) + 1));
+}
+
+export function hometownDeliveryFeeUsd(zip: string): number {
+  return tripChargeUsd(estimateTownTripMiles(zip));
+}
+
+export function tripClearsFederalMileage(miles = 1): boolean {
+  return (
+    TRIP_PER_MILE_USD > FEDERAL_MILEAGE_USD &&
+    tripChargeUsd(miles) > money(FEDERAL_MILEAGE_USD * Math.max(0, miles))
+  );
+}
+
+/** Auto-payout at $25 pending, or every 7 days on the weekly trigger. */
+export function shouldTriggerDriverPayout(input: {
+  pendingUsd: number;
+  trigger?: DriverPayoutTrigger;
+  lastPayoutAt?: string | null;
+  now?: Date;
+}): boolean {
+  const pending = money(Math.max(0, input.pendingUsd));
+  if (pending <= 0) return false;
+  if (pending >= DRIVER_PAYOUT_MIN_BALANCE_USD) return true;
+  if (input.trigger !== "weekly") return false;
+  if (!input.lastPayoutAt) return true;
+  const last = new Date(input.lastPayoutAt).getTime();
+  if (Number.isNaN(last)) return true;
+  return (input.now ?? new Date()).getTime() - last >= DRIVER_PAYOUT_WEEK_MS;
+}
+
+export function defaultDriverConnectAccountId(driverId: string): string {
+  return `acct_${driverId.replace(/[^a-z0-9]/gi, "")}`;
+}
+
+export function defaultRestaurantWebsiteUrl(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 24) || "kitchen";
+  return `https://${slug}.example.com/menu`;
+}
+
+/** AI crawl of the restaurant website — draft prices the merchant must confirm. */
+export function crawlRestaurantMenuDraft(input: {
+  restaurantName: string;
+  websiteUrl?: string;
+  crawledAt?: string;
+}): RestaurantMenuDraft {
+  const slug = input.restaurantName.toLowerCase();
+  const items: RestaurantMenuItem[] = /taco/.test(slug)
+    ? [
+        {
+          id: "menu-taco-street",
+          title: "Street tacos",
+          category: "Plates",
+          draftPriceUsd: 12,
+          confirmedPriceUsd: null,
+          source: "ai_crawl",
+        },
+        {
+          id: "menu-taco-agua",
+          title: "Agua fresca",
+          category: "Drinks",
+          draftPriceUsd: 4,
+          confirmedPriceUsd: null,
+          source: "ai_crawl",
+        },
+      ]
+    : /deli/.test(slug)
+      ? [
+          {
+            id: "menu-deli-soup",
+            title: "Soup and half",
+            category: "Lunch",
+            draftPriceUsd: 11,
+            confirmedPriceUsd: 11,
+            source: "merchant",
+          },
+          {
+            id: "menu-deli-pickle",
+            title: "House pickle jar",
+            category: "Sides",
+            draftPriceUsd: 4,
+            confirmedPriceUsd: null,
+            source: "ai_crawl",
+          },
+        ]
+      : [
+          {
+            id: "menu-pilot-bowl",
+            title: "Warm grain bowl",
+            category: "Plates",
+            draftPriceUsd: 14,
+            confirmedPriceUsd: 14,
+            source: "merchant",
+          },
+          {
+            id: "menu-pilot-sandwich",
+            title: "Market sandwich",
+            category: "Plates",
+            draftPriceUsd: 12,
+            confirmedPriceUsd: null,
+            source: "ai_crawl",
+          },
+        ];
+  return {
+    sourceUrl:
+      input.websiteUrl?.trim() ||
+      defaultRestaurantWebsiteUrl(input.restaurantName),
+    crawledAt: input.crawledAt ?? "2026-09-23T18:00:00.000Z",
+    items,
+  };
+}
+
+export function sellableRestaurantMenu(
+  restaurant: Pick<DeliveryRestaurant, "menu">,
+): Array<RestaurantMenuItem & { priceUsd: number }> {
+  return (restaurant.menu?.items ?? [])
+    .filter((item) => item.confirmedPriceUsd != null)
+    .map((item) => ({
+      ...item,
+      priceUsd: money(item.confirmedPriceUsd as number),
+    }));
+}
+
+export function confirmRestaurantMenuPrice(
+  ops: DeliveryOps,
+  restaurantId: string,
+  itemId: string,
+  priceUsd: number,
+): DeliveryOps {
+  const confirmed = money(Math.max(0, priceUsd));
+  return {
+    ...ops,
+    restaurants: ops.restaurants.map((row) => {
+      if (row.id !== restaurantId) return row;
+      const menu =
+        row.menu ??
+        crawlRestaurantMenuDraft({
+          restaurantName: row.name,
+          websiteUrl: row.websiteUrl,
+        });
+      return {
+        ...row,
+        menu: {
+          ...menu,
+          items: menu.items.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  confirmedPriceUsd: confirmed,
+                  source: "merchant" as const,
+                }
+              : item,
+          ),
+        },
+      };
+    }),
+  };
+}
+
+export function normalizeDeliveryRestaurant(
+  row: DeliveryRestaurant,
+): DeliveryRestaurant {
+  const websiteUrl =
+    row.websiteUrl?.trim() || defaultRestaurantWebsiteUrl(row.name);
+  const menu =
+    row.menu && Array.isArray(row.menu.items) && row.menu.items.length > 0
+      ? row.menu
+      : crawlRestaurantMenuDraft({
+          restaurantName: row.name,
+          websiteUrl,
+        });
+  return {
+    ...row,
+    paused: Boolean(row.paused),
+    websiteUrl,
+    menu,
+  };
 }
 
 export function classifyDriverHours(
@@ -325,6 +599,12 @@ export function normalizeDeliveryDriver(
     softwareUsdPerYear: driverSoftwareAnnualUsd(classification, softwareCadence),
     status,
     online: status === "approved" ? Boolean(row.online) : false,
+    connectAccountId:
+      row.connectAccountId?.trim() || defaultDriverConnectAccountId(row.id),
+    payoutTrigger: row.payoutTrigger === "weekly" ? "weekly" : "min_balance",
+    pendingPayoutUsd: money(Math.max(0, Number(row.pendingPayoutUsd) || 0)),
+    lastPayoutAt: row.lastPayoutAt ?? null,
+    taxFormsSelfManaged: true,
     ...driverPhotoId(row),
   };
 }
@@ -381,7 +661,7 @@ export function restaurantNetFromSplit(split: DeliveryLedgerSplit): number {
   );
 }
 
-/** Driver ACH: fee + tip + 5% commission share. */
+/** Driver Connect payout: fee + tip + 5% commission share. */
 export function driverPayoutFromSplit(split: {
   deliveryFeeUsd: number;
   tipUsd: number;
@@ -482,14 +762,14 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
   ];
   const split = splitDeliveryLedger({
     gmvUsd: 26,
-    deliveryFeeUsd: 5,
+    deliveryFeeUsd: hometownDeliveryFeeUsd("10001"),
     tipUsd: 4,
     taxUsd: 2.15,
   });
   const orderId = "ord-sample-pilot";
   const deliveredSplit = splitDeliveryLedger({
     gmvUsd: 11,
-    deliveryFeeUsd: 5,
+    deliveryFeeUsd: hometownDeliveryFeeUsd("10003"),
     tipUsd: 3,
     taxUsd: 0.91,
   });
@@ -504,6 +784,11 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         scoutId: "drv-maya",
         active: true,
         paused: false,
+        websiteUrl: defaultRestaurantWebsiteUrl("Pilot Kitchen"),
+        menu: crawlRestaurantMenuDraft({
+          restaurantName: "Pilot Kitchen",
+          websiteUrl: defaultRestaurantWebsiteUrl("Pilot Kitchen"),
+        }),
       },
       {
         id: "rest-tacos",
@@ -512,6 +797,11 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         scoutId: "drv-maya",
         active: true,
         paused: false,
+        websiteUrl: defaultRestaurantWebsiteUrl("Second Street Tacos"),
+        menu: crawlRestaurantMenuDraft({
+          restaurantName: "Second Street Tacos",
+          websiteUrl: defaultRestaurantWebsiteUrl("Second Street Tacos"),
+        }),
       },
       {
         id: "rest-deli",
@@ -520,6 +810,11 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         scoutId: "drv-riley",
         active: true,
         paused: false,
+        websiteUrl: defaultRestaurantWebsiteUrl("River Market Deli"),
+        menu: crawlRestaurantMenuDraft({
+          restaurantName: "River Market Deli",
+          websiteUrl: defaultRestaurantWebsiteUrl("River Market Deli"),
+        }),
       },
     ],
     drivers: [
@@ -536,6 +831,13 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         lastAppOpenAt: createdAt,
         softwareUsdPerYear: driverSoftwareAnnualUsd("full_time", "monthly"),
         online: true,
+        connectAccountId: defaultDriverConnectAccountId("drv-maya"),
+        payoutTrigger: "min_balance",
+        pendingPayoutUsd: money(
+          Math.max(DRIVER_PAYOUT_MIN_BALANCE_USD, driverPayoutFromSplit(deliveredSplit)),
+        ),
+        lastPayoutAt: null,
+        taxFormsSelfManaged: true,
       },
       {
         id: "drv-jordan",
@@ -550,6 +852,11 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         lastAppOpenAt: createdAt,
         softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "weekly"),
         online: true,
+        connectAccountId: defaultDriverConnectAccountId("drv-jordan"),
+        payoutTrigger: "weekly",
+        pendingPayoutUsd: 12,
+        lastPayoutAt: createdAt,
+        taxFormsSelfManaged: true,
       },
       {
         id: "drv-riley",
@@ -564,6 +871,11 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         lastAppOpenAt: createdAt,
         softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "monthly"),
         online: false,
+        connectAccountId: defaultDriverConnectAccountId("drv-riley"),
+        payoutTrigger: "min_balance",
+        pendingPayoutUsd: 0,
+        lastPayoutAt: null,
+        taxFormsSelfManaged: true,
       },
       {
         id: "drv-casey",
@@ -578,6 +890,11 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         lastAppOpenAt: "2026-07-20T18:00:00.000Z",
         softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "monthly"),
         online: false,
+        connectAccountId: defaultDriverConnectAccountId("drv-casey"),
+        payoutTrigger: "weekly",
+        pendingPayoutUsd: 0,
+        lastPayoutAt: "2026-07-20T18:00:00.000Z",
+        taxFormsSelfManaged: true,
       },
     ],
     ledger: [
@@ -677,10 +994,9 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
     }
     return {
       city: parsed.city || "One town",
-      restaurants: parsed.restaurants.map((row) => ({
-        ...row,
-        paused: Boolean(row.paused),
-      })),
+      restaurants: parsed.restaurants.map((row) =>
+        normalizeDeliveryRestaurant(row),
+      ),
       drivers: parsed.drivers.map((row) =>
         normalizeDeliveryDriver({
           ...row,

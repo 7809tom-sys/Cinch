@@ -65,6 +65,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
     ? `/site/${project.id}/merchant`
     : null;
   const driveHref = deliveryPlatform ? `/site/${project.id}/drive` : null;
+  const enterHref = deliveryPlatform ? `/site/${project.id}/enter` : null;
 
   const [customer, master] = await Promise.all([
     getCurrentCustomer(),
@@ -139,14 +140,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 </a>
               </li>
             ) : null}
-            {driveHref ? (
+            {enterHref ? (
               <li>
-                <a href={driveHref}>Driver portal</a>
-              </li>
-            ) : null}
-            {merchantHref ? (
-              <li>
-                <a href={merchantHref}>Restaurant portal</a>
+                <a href={enterHref}>Sign in</a>
               </li>
             ) : null}
             <li>
@@ -172,10 +168,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             {deliveryPlatform ? (
               <p className="seed-hero-apps">
                 <a href={shopHref ?? "#book"}>Customer</a>
-                {driveHref ? <a href={driveHref}>Driver portal</a> : null}
-                {merchantHref ? (
-                  <a href={merchantHref}>Restaurant portal</a>
-                ) : null}
+                {enterHref ? <a href={enterHref}>Sign in</a> : null}
                 {businessAdminHref ? (
                   <a href={businessAdminHref}>Admin ledger</a>
                 ) : null}
@@ -351,13 +344,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                   <span>Browse tonight’s kitchens. Tip the driver.</span>
                 </a>
                 {merchantHref ? (
-                  <a href={merchantHref}>
+                  <a href={`${enterHref ?? merchantHref}?role=merchant`}>
                     <strong>Restaurant portal</strong>
                     <span>Kitchen desk for tonight’s tickets.</span>
                   </a>
                 ) : null}
                 {driveHref ? (
-                  <a href={driveHref}>
+                  <a href={`${enterHref ?? driveHref}?role=driver`}>
                     <strong>Driver portal</strong>
                     <span>Go online. Pick up bags on these streets.</span>
                   </a>

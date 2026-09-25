@@ -4,9 +4,14 @@ import { useMemo, useState, useTransition } from "react";
 import type { DeliveryOps, DriverRun } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
+  DRIVER_PAYOUT_MIN_BALANCE_USD,
+  FEDERAL_MILEAGE_USD,
+  TRIP_BASE_USD,
+  TRIP_PER_MILE_USD,
   driverCanDispatch,
   driverSoftwareFeeUsd,
   scoutResidualForWeeklyGmv,
+  shouldTriggerDriverPayout,
   weeklyScoutResidualExamples,
 } from "@/lib/seed-delivery";
 import {
@@ -53,6 +58,14 @@ export function HometownDriverPortal({
     0,
   );
   const examples = useMemo(() => weeklyScoutResidualExamples(), []);
+  const pendingPayoutUsd = driver?.pendingPayoutUsd ?? 0;
+  const payoutReady = driver
+    ? shouldTriggerDriverPayout({
+        pendingUsd: pendingPayoutUsd,
+        trigger: driver.payoutTrigger,
+        lastPayoutAt: driver.lastPayoutAt,
+      })
+    : false;
 
   function runAction(
     fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
@@ -87,7 +100,10 @@ export function HometownDriverPortal({
         <p className="mt-3 text-sm text-mist">
           Same idea as DoorDash Dasher: go online, take an offer, pick up,
           drop off. You keep 100% of the delivery fee, tip, and a 5%
-          commission share (ACH from the restaurant). Software is $
+          commission share — Stripe Connect pays you directly, not through
+          the restaurant. Trip is ${TRIP_BASE_USD.toFixed(2)} plus $
+          {TRIP_PER_MILE_USD.toFixed(2)} a mile (clears the $
+          {FEDERAL_MILEAGE_USD.toFixed(2)} federal mileage rate). Software is $
           {driver
             ? driverSoftwareFeeUsd(
                 driver.classification,
@@ -97,6 +113,7 @@ export function HometownDriverPortal({
           /{driver?.softwareCadence === "weekly" ? "week" : "month"} (
           {driver?.classification === "full_time" ? "full-time" : "part-time"}
           ). Weekly installments are $9.99 part-time or $19.99 full-time.
+          You manage your own tax forms on Connect.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
@@ -125,12 +142,28 @@ export function HometownDriverPortal({
             {driver?.insuranceOk ? "ok" : "expired"}
           </p>
         </div>
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg bg-white/10 px-3 py-3">
             <dt className="text-xs font-bold tracking-wide text-mist uppercase">
               Today you keep
             </dt>
             <dd className="mt-1 text-xl font-extrabold">${earned.toFixed(2)}</dd>
+          </div>
+          <div className="rounded-lg bg-white/10 px-3 py-3">
+            <dt className="text-xs font-bold tracking-wide text-mist uppercase">
+              Connect payout
+            </dt>
+            <dd className="mt-1 text-xl font-extrabold">
+              ${pendingPayoutUsd.toFixed(2)}
+            </dd>
+            <p className="mt-1 text-xs text-mist">
+              {payoutReady
+                ? "Transfer firing — $25 min or weekly"
+                : `Auto at $${DRIVER_PAYOUT_MIN_BALANCE_USD.toFixed(0)} or weekly`}
+              {driver?.connectAccountId
+                ? ` · ${driver.connectAccountId}`
+                : ""}
+            </p>
           </div>
           <div className="rounded-lg bg-white/10 px-3 py-3">
             <dt className="text-xs font-bold tracking-wide text-mist uppercase">

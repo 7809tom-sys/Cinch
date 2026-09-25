@@ -57,22 +57,13 @@ export default async function SeedShopPage({
               View website
             </Link>
             {deliveryPlatform ? (
-              <>
-                <Link
-                  href={`/site/${id}/merchant`}
-                  className="seed-admin-link"
-                  target="_top"
-                >
-                  Restaurant portal
-                </Link>
-                <Link
-                  href={`/site/${id}/drive`}
-                  className="seed-admin-link"
-                  target="_top"
-                >
-                  Driver portal
-                </Link>
-              </>
+              <Link
+                href={`/site/${id}/enter`}
+                className="seed-admin-link"
+                target="_top"
+              >
+                Sign in
+              </Link>
             ) : null}
           </div>
         </header>
