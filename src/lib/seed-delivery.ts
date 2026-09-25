@@ -3,17 +3,18 @@
  *
  * HARD RULES:
  * - Three role-based logins: customer, merchant, driver.
- * - Menu: AI crawls the restaurant website for a draft; the merchant
- *   confirms each price before it sells.
+ * - Menu: DoorDash-style. AI crawls a draft; the merchant can also
+ *   upload items (name, category, price, photo, find-words) so customers
+ *   search and hit the right plate. Only confirmed / uploaded items sell.
  * - Platform keeps $0 from restaurant orders. Revenue is driver
  *   subscriptions only ($39/month part-time, $79/month full-time).
  * - Restaurant pays 10% of delivery GMV. That 10% is fully distributed:
  *   5% originating scout residual + 5% driver commission. Scout_id
  *   is immutable on freeze.
  * - Drivers keep 100% of delivery fee + tip + the 5% commission share.
- *   Stripe Connect split: fee, tip, and 5% transfer directly to the
- *   driver — not through the restaurant — so platform tax/legal
- *   liability stays low.
+ *   Stripe three-party Connect: restaurant, scout, and driver each have
+ *   their own Stripe account. Food net → restaurant. 5% residual →
+ *   scout. Fee + tip + 5% → driver. Platform $0 on the order.
  * - Restaurant collects the food total. Processing (~2.9%)
  *   comes out of the restaurant. The other 5% of GMV routes to the scout.
  * - Payouts fire automatically at a $25 minimum balance or on the
@@ -48,8 +49,8 @@
  * - Scout pay: one delivery a month to stay eligible for the 5%.
  *   Miss a month and it rolls to the next most-active deliverer at
  *   that kitchen who has already signed a restaurant, then the next
- *   below. scout_id does not move. A restaurateur can scout other
- *   kitchens after making one delivery.
+ *   below. scout_id does not move. A restaurateur can scout another
+ *   kitchen after one delivery — they cannot keep the 5% on their own.
  */
 
 export const DELIVERY_OPS_PATH = "content/delivery.ops.json";
@@ -120,14 +121,15 @@ export const SCOUT_MIN_DELIVERIES_PER_MONTH = 1;
 export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
 - Platform revenue: Hometown Runner keeps $0 from restaurant orders. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time).
 - Order commission: the 10% on delivery GMV is fully distributed — 5% scout residual, 5% driver. Not a platform cut.
-- Payment flow: split-architecture via Stripe Connect. The restaurant collects the food total and pays the ~2.9% processor. Fee, tip, and the 5% driver share transfer directly to the driver's Connect account — not through the restaurant — so the platform's tax and legal liability stays low. The other 5% routes to the scout.
+- Payment flow: Stripe three-party Connect. Restaurant, scout, and driver each have their own Stripe account. Food net (GMV − 10% − ~2.9% processor) lands on the restaurant account. The 5% residual lands on the scout account. Fee, tip, and the 5% driver share land on the driver account. Platform $0 on the order.
 - Payouts: automatic when the driver hits a $25 minimum balance, or on the weekly schedule.
 - Tax forms: drivers manage their own tax forms on Stripe Connect. The restaurant does not issue 1099s.
 - Trip: $4.50 base plus $1.50 per mile so drivers clear the $0.76 federal mileage rate.`;
 
 export const HOMETOWN_PLATFORM_BRIEF_BLOCK = `Hometown platform:
 - Role logins: three distinct sign-ins — customer (order), merchant (kitchen + menu confirm), and driver (dash + Connect payouts).
-- Menu: AI crawls the restaurant website for an initial draft; the merchant confirms each price before it sells.`;
+- Menu: DoorDash-style — AI crawls a draft; the merchant uploads or confirms items so customers can find the right plate (name, category, find-words).
+- Stripe three-party: restaurant, scout, and driver each have a Stripe account.`;
 
 export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Home Town Runner: market research
 - DoorDash AOV: DoorDash does not publish a US average. Rakuten spending data (cited by Business of Apps) puts the average DoorDash order at $37.28, and only about 20% of orders are over $50. Q4 2025 results work out to about $33 per order ($29.7B GOV over 903M orders) — global, and that figure includes taxes, tips, and fees. DoorDash said average order value rose in Q2 2026 because restaurant prices went up.
@@ -135,7 +137,7 @@ export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Home Town Runner: market re
 - Delivery vs pickup vs dine-in (National Restaurant Association, Off-Premises Restaurant Trends 2025, 2024 Circana): across all restaurants, about 3 in 4 visits are now to-go. At full-service restaurants (closest match for independents), about 70% of traffic is dine-in, 24% takeout, 5% delivery, and 2% drive-thru. In 2019, delivery was 2%. At fast food and fast casual, 17% is dine-in, 43% drive-thru, 31% takeout, and 9% delivery. 47% of adults pick up takeout weekly; 37% order delivery weekly.
 - Independent restaurant revenue: BizMetricsHQ (~680 US independents, 2025–2026) puts the median at about $850K a year, most between $450K and $1.6M. By type: fast casual ~$920K, casual dining $1.1M, fine dining $1.8M, food trucks $380K — secondary source, treat as rough. The 2022 Economic Census averages about $1.47M per full-service restaurant and $1.32M per limited-service restaurant (includes chains, so higher than a typical independent). Median pre-tax profit is 2.8% of sales at full-service and 4.0% at limited-service (NRA 2025).
 - Scout relationship: Riley builds a direct relationship with each restaurant by sending it customers. Example: if Riley signs up seven couples in a week to eat there, that kitchen has every reason to treat Riley well. Later, when those same couples want food delivered instead of dining in, the order goes through Riley — that is where Riley gets paid back. Delivery is only about 5% of full-service traffic and dine-in is about 70%, so bringing restaurants dine-in customers is an advantage the national delivery apps do not have, and it builds loyalty that pays off in delivery orders.
-- Scout pay: one delivery a month to stay eligible for the 5% residual. If the originating scout misses that month, the 5% goes to the next most active deliverer to that restaurant who has already signed at least one kitchen, then the next below. scout_id does not move — only who is paid that month. A restaurateur can sign up other restaurants as a scout as long as they make one delivery that month.`;
+- Scout pay: one delivery a month to stay eligible for the 5% residual. If the originating scout misses that month, the 5% goes to the next most active deliverer to that restaurant who has already signed at least one kitchen, then the next below. scout_id does not move — only who is paid that month. A restaurateur can sign up another restaurant as a scout after one delivery — they cannot keep the 5% on their own kitchen.`;
 
 export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
 - Fees: weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly).
@@ -161,7 +163,7 @@ export function hometownRoleCopy(role: HometownRole): {
     return {
       title: "Merchant login",
       support:
-        "Kitchen desk: confirm AI-crawled menu prices, take tickets, hand bags to a Hometown driver.",
+        "Kitchen desk: upload the menu like DoorDash or confirm the AI draft, take tickets, hand bags to a Hometown driver.",
       cta: "Sign in as merchant",
     };
   }
@@ -179,18 +181,35 @@ export function hometownRoleCopy(role: HometownRole): {
     cta: "Sign in as customer",
   };
 }
+export type RestaurantMenuItemSource = "ai_crawl" | "merchant" | "merchant_upload";
 export type RestaurantMenuItem = {
   id: string;
   title: string;
   category: string;
   draftPriceUsd: number;
   confirmedPriceUsd: number | null;
-  source: "ai_crawl" | "merchant";
+  source: RestaurantMenuItemSource;
+  /** Extra words diners type when they look for this plate. */
+  aliases?: string[];
+  description?: string;
+  photoUrl?: string;
 };
 export type RestaurantMenuDraft = {
   sourceUrl: string;
   crawledAt: string;
   items: RestaurantMenuItem[];
+};
+export type FoundMenuItem = {
+  restaurantId: string;
+  restaurantName: string;
+  neighborhood: string;
+  itemId: string;
+  title: string;
+  category: string;
+  priceUsd: number;
+  description?: string;
+  photoUrl?: string;
+  aliases: string[];
 };
 export type MerchantTicketStatus =
   | "incoming"
@@ -211,8 +230,10 @@ export type DeliveryRestaurant = {
   neighborhood: string;
   /** Originating scout — locked when the restaurant first goes active. */
   scoutId: string;
-  /** Kitchen owner — may scout other restaurants after one delivery. */
+  /** Kitchen owner — may scout other restaurants after one delivery; never keeps own 5%. */
   ownerDriverId?: string | null;
+  /** Restaurant Stripe Connect — food net lands here. */
+  connectAccountId?: string;
   active: boolean;
   /** DoorDash-style store pause — does not move scout_id. */
   paused: boolean;
@@ -327,7 +348,9 @@ export function briefHasCurrentEconomics(brief: string): boolean {
 }
 
 export function briefHasHometownPlatformSpecs(brief: string): boolean {
-  return /three distinct|role-based|ai crawls|merchant confirms/i.test(brief);
+  return /three distinct|role-based|ai crawls|merchant confirms|three-party|upload the menu|DoorDash-style/i.test(
+    brief,
+  );
 }
 
 export function briefHasHometownMarketResearch(brief: string): boolean {
@@ -425,6 +448,77 @@ export function defaultDriverConnectAccountId(driverId: string): string {
   return `acct_${driverId.replace(/[^a-z0-9]/gi, "")}`;
 }
 
+export function defaultRestaurantConnectAccountId(restaurantId: string): string {
+  return `acct_${restaurantId.replace(/[^a-z0-9]/gi, "")}`;
+}
+
+export function kitchenOwnerDriverId(
+  ops: Pick<DeliveryOps, "restaurants">,
+  restaurantId: string,
+): string | null {
+  return (
+    ops.restaurants.find((row) => row.id === restaurantId)?.ownerDriverId ?? null
+  );
+}
+
+/** A restaurateur never collects the 5% on their own kitchen. */
+export function driverOwnsThisKitchen(
+  ops: Pick<DeliveryOps, "restaurants">,
+  driverId: string,
+  restaurantId: string,
+): boolean {
+  return kitchenOwnerDriverId(ops, restaurantId) === driverId;
+}
+
+export type ThreePartyStripeSplit = {
+  restaurant: { connectAccountId: string; amountUsd: number };
+  scout: {
+    connectAccountId: string | null;
+    driverId: string | null;
+    amountUsd: number;
+  };
+  driver: {
+    connectAccountId: string | null;
+    driverId: string | null;
+    amountUsd: number;
+  };
+};
+
+/** Food net → restaurant Stripe; 5% → scout Stripe; fee+tip+5% → driver Stripe. */
+export function threePartyStripeSplit(
+  ops: DeliveryOps,
+  row: DeliveryLedgerRow,
+  now = new Date(row.createdAt),
+): ThreePartyStripeSplit {
+  const restaurant = ops.restaurants.find((item) => item.id === row.restaurantId);
+  const scoutId = ledgerScoutPaidDriverId(row, ops, now);
+  const scout = scoutId
+    ? ops.drivers.find((item) => item.id === scoutId)
+    : undefined;
+  const driverId = ledgerRunDriverId(row, ops.runs);
+  const driver = driverId
+    ? ops.drivers.find((item) => item.id === driverId)
+    : undefined;
+  return {
+    restaurant: {
+      connectAccountId:
+        restaurant?.connectAccountId?.trim() ||
+        defaultRestaurantConnectAccountId(row.restaurantId),
+      amountUsd: restaurantNetFromSplit(row),
+    },
+    scout: {
+      connectAccountId: scout?.connectAccountId ?? null,
+      driverId: scoutId || null,
+      amountUsd: scoutId ? row.scoutResidualUsd : 0,
+    },
+    driver: {
+      connectAccountId: driver?.connectAccountId ?? null,
+      driverId,
+      amountUsd: driverId ? driverPayoutFromSplit(row) : 0,
+    },
+  };
+}
+
 export function defaultRestaurantWebsiteUrl(name: string): string {
   const slug = name
     .toLowerCase()
@@ -449,6 +543,7 @@ export function crawlRestaurantMenuDraft(input: {
           draftPriceUsd: 12,
           confirmedPriceUsd: null,
           source: "ai_crawl",
+          aliases: ["tacos", "taco", "street taco"],
         },
         {
           id: "menu-taco-agua",
@@ -457,6 +552,7 @@ export function crawlRestaurantMenuDraft(input: {
           draftPriceUsd: 4,
           confirmedPriceUsd: null,
           source: "ai_crawl",
+          aliases: ["agua", "drink"],
         },
       ]
     : /deli/.test(slug)
@@ -468,6 +564,7 @@ export function crawlRestaurantMenuDraft(input: {
             draftPriceUsd: 11,
             confirmedPriceUsd: 11,
             source: "merchant",
+            aliases: ["soup", "half sandwich", "soup and sandwich"],
           },
           {
             id: "menu-deli-pickle",
@@ -476,6 +573,7 @@ export function crawlRestaurantMenuDraft(input: {
             draftPriceUsd: 4,
             confirmedPriceUsd: null,
             source: "ai_crawl",
+            aliases: ["pickle", "pickles"],
           },
         ]
       : [
@@ -486,6 +584,7 @@ export function crawlRestaurantMenuDraft(input: {
             draftPriceUsd: 14,
             confirmedPriceUsd: 14,
             source: "merchant",
+            aliases: ["grain bowl", "bowl", "grain"],
           },
           {
             id: "menu-pilot-sandwich",
@@ -494,6 +593,7 @@ export function crawlRestaurantMenuDraft(input: {
             draftPriceUsd: 12,
             confirmedPriceUsd: null,
             source: "ai_crawl",
+            aliases: ["sandwich"],
           },
         ];
   return {
@@ -514,6 +614,112 @@ export function sellableRestaurantMenu(
       ...item,
       priceUsd: money(item.confirmedPriceUsd as number),
     }));
+}
+
+export function menuItemSearchHaystack(item: {
+  title: string;
+  category: string;
+  description?: string;
+  aliases?: string[];
+}): string {
+  return [item.title, item.category, item.description, ...(item.aliases ?? [])]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export function menuItemMatchesQuery(
+  item: {
+    title: string;
+    category: string;
+    description?: string;
+    aliases?: string[];
+  },
+  query: string,
+): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return menuItemSearchHaystack(item).includes(needle);
+}
+
+/** Diner find — DoorDash-style search across confirmed / uploaded plates. */
+export function findSellableMenuItems(
+  ops: Pick<DeliveryOps, "restaurants">,
+  query = "",
+): FoundMenuItem[] {
+  return ops.restaurants.flatMap((restaurant) =>
+    sellableRestaurantMenu(restaurant)
+      .filter((item) => menuItemMatchesQuery(item, query))
+      .map((item) => ({
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        neighborhood: restaurant.neighborhood,
+        itemId: item.id,
+        title: item.title,
+        category: item.category,
+        priceUsd: item.priceUsd,
+        description: item.description,
+        photoUrl: item.photoUrl,
+        aliases: item.aliases ?? [],
+      })),
+  );
+}
+
+export function uploadRestaurantMenuItem(
+  ops: DeliveryOps,
+  restaurantId: string,
+  input: {
+    title: string;
+    category?: string;
+    priceUsd: number;
+    description?: string;
+    photoUrl?: string;
+    aliases?: string[];
+    id?: string;
+  },
+): DeliveryOps {
+  const title = input.title.trim();
+  const price = money(Math.max(0, input.priceUsd));
+  if (!title) return ops;
+  const id =
+    input.id?.trim() ||
+    `menu-upload-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 28)}`;
+  const aliases = (input.aliases ?? [])
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const uploaded: RestaurantMenuItem = {
+    id,
+    title,
+    category: input.category?.trim() || "Plates",
+    draftPriceUsd: price,
+    confirmedPriceUsd: price,
+    source: "merchant_upload",
+    aliases,
+    description: input.description?.trim() || undefined,
+    photoUrl: input.photoUrl?.trim() || undefined,
+  };
+  return {
+    ...ops,
+    restaurants: ops.restaurants.map((row) => {
+      if (row.id !== restaurantId) return row;
+      const menu =
+        row.menu ??
+        crawlRestaurantMenuDraft({
+          restaurantName: row.name,
+          websiteUrl: row.websiteUrl,
+        });
+      const existing = menu.items.some((item) => item.id === id);
+      return {
+        ...row,
+        menu: {
+          ...menu,
+          items: existing
+            ? menu.items.map((item) => (item.id === id ? uploaded : item))
+            : [...menu.items, uploaded],
+        },
+      };
+    }),
+  };
 }
 
 export function confirmRestaurantMenuPrice(
@@ -568,6 +774,8 @@ export function normalizeDeliveryRestaurant(
     ...row,
     paused: Boolean(row.paused),
     ownerDriverId: row.ownerDriverId ?? null,
+    connectAccountId:
+      row.connectAccountId?.trim() || defaultRestaurantConnectAccountId(row.id),
     websiteUrl,
     menu,
   };
@@ -891,7 +1099,7 @@ export function canSignRestaurantAsScout(
 /**
  * Originating scout if they dashed once this month; else the next most-active
  * deliverer to that kitchen who has already signed a restaurant, then the next.
- * scout_id does not move.
+ * scout_id does not move. The kitchen owner never collects this 5%.
  */
 export function scoutPayoutDriverId(
   ops: Pick<DeliveryOps, "restaurants" | "runs">,
@@ -900,7 +1108,12 @@ export function scoutPayoutDriverId(
 ): string | null {
   const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
   if (!restaurant) return null;
-  if (scoutEligibleToBePaid(ops, restaurant.scoutId, now)) {
+  const ownerId = restaurant.ownerDriverId ?? null;
+  const canCollect = (id: string) =>
+    Boolean(id) &&
+    id !== ownerId &&
+    scoutEligibleToBePaid(ops, id, now);
+  if (canCollect(restaurant.scoutId)) {
     return restaurant.scoutId;
   }
   const signed = [
@@ -911,7 +1124,7 @@ export function scoutPayoutDriverId(
     ),
   ];
   const ranked = signed
-    .filter((id) => scoutEligibleToBePaid(ops, id, now))
+    .filter((id) => canCollect(id))
     .sort((a, b) => {
       const byKitchen =
         deliveredRunsInMonth(ops, b, now, restaurantId).length -
@@ -930,8 +1143,11 @@ export function ledgerScoutPaidDriverId(
   ops: Pick<DeliveryOps, "restaurants" | "runs">,
   now = new Date(row.createdAt ?? Date.now()),
 ): string {
-  if (row.scoutPaidDriverId) return row.scoutPaidDriverId;
-  return scoutPayoutDriverId(ops, row.restaurantId, now) ?? row.scoutId;
+  const ownerId = kitchenOwnerDriverId(ops, row.restaurantId);
+  if (row.scoutPaidDriverId && row.scoutPaidDriverId !== ownerId) {
+    return row.scoutPaidDriverId;
+  }
+  return scoutPayoutDriverId(ops, row.restaurantId, now) ?? "";
 }
 
 export function scoutAttributedResidualUsd(
@@ -963,6 +1179,13 @@ export function assignRestaurantScout(
   }
   const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
   if (!restaurant) return { ok: false, error: "Restaurant not found." };
+  if (restaurant.ownerDriverId === driverId) {
+    return {
+      ok: false,
+      error:
+        "A restaurateur cannot scout their own kitchen — they do not keep that 5%.",
+    };
+  }
   if (restaurant.scoutId) {
     return { ok: false, error: "scout_id is locked." };
   }
@@ -990,6 +1213,13 @@ export function restaurantForShopItems(
   ops: DeliveryOps,
   items: Array<{ productId?: string; title?: string }>,
 ): DeliveryRestaurant {
+  for (const item of items) {
+    const keyed = item.productId?.split(":")[0];
+    const hit = keyed
+      ? ops.restaurants.find((row) => row.id === keyed)
+      : undefined;
+    if (hit) return hit;
+  }
   const blob = items
     .map((item) => `${item.productId ?? ""} ${item.title ?? ""}`)
     .join(" ")
@@ -1043,6 +1273,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         neighborhood: "Market Street",
         scoutId: "drv-maya",
         ownerDriverId: "drv-jordan",
+        connectAccountId: defaultRestaurantConnectAccountId("rest-pilot"),
         active: true,
         paused: false,
         websiteUrl: defaultRestaurantWebsiteUrl("Pilot Kitchen"),
@@ -1056,6 +1287,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         name: "Second Street Tacos",
         neighborhood: "Second Street",
         scoutId: "drv-maya",
+        connectAccountId: defaultRestaurantConnectAccountId("rest-tacos"),
         active: true,
         paused: false,
         websiteUrl: defaultRestaurantWebsiteUrl("Second Street Tacos"),
@@ -1069,6 +1301,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         name: "River Market Deli",
         neighborhood: "Riverwalk",
         scoutId: "drv-riley",
+        connectAccountId: defaultRestaurantConnectAccountId("rest-deli"),
         active: true,
         paused: false,
         websiteUrl: defaultRestaurantWebsiteUrl("River Market Deli"),

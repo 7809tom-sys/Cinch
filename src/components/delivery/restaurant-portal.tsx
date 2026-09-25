@@ -17,6 +17,7 @@ import {
 } from "@/lib/seed-delivery";
 import {
   confirmRestaurantMenuPriceAction,
+  uploadRestaurantMenuItemAction,
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
@@ -118,13 +119,16 @@ export function HometownRestaurantPortal({
               </select>
             </label>
             <p className="mt-2 text-sm text-muted">
-              Like DoorDash for the kitchen: new orders, accept or decline, mark
-              ready, hand to a Hometown driver. You collect the food total
-              (Stripe) and pay ~2.9% processing. Hometown keeps $0 on the
-              order. Fee, tip, and the 5% driver share go directly to the
-              driver on Stripe Connect — not through your account. Drivers
-              manage their own tax forms. Confirm AI-crawled menu prices
-              before they sell.
+              Like DoorDash for the kitchen: upload your menu so diners can
+              find the right plate, or confirm the AI draft. New orders, accept
+              or decline, mark ready, hand to a Hometown driver. Stripe
+              three-party: you, the scout, and the driver each have a Stripe
+              account. You collect the food net and pay ~2.9% processing.
+              Hometown keeps $0 on the order. The 5% residual goes to the
+              scout’s account; fee, tip, and the 5% driver share go to the
+              driver. You cannot keep the 5% on your own kitchen — sign
+              another restaurant after one delivery if you want to scout.
+              Drivers manage their own tax forms.
             </p>
           </div>
           {restaurant ? (
@@ -211,6 +215,11 @@ export function HometownRestaurantPortal({
               ),
             )
           }
+          onUpload={(input) =>
+            run(() =>
+              uploadRestaurantMenuItemAction(projectId, restaurant.id, input),
+            )
+          }
         />
       ) : null}
 
@@ -259,26 +268,105 @@ function MenuConfirmBoard({
   restaurant,
   pending,
   onConfirm,
+  onUpload,
 }: {
   restaurant: DeliveryRestaurant;
   pending: boolean;
   onConfirm: (itemId: string, priceUsd: number) => void;
+  onUpload: (input: {
+    title: string;
+    category?: string;
+    priceUsd: number;
+    description?: string;
+    aliases?: string;
+  }) => void;
 }) {
   const items = restaurant.menu?.items ?? [];
   const drafts = items.filter((item) => item.confirmedPriceUsd == null);
   return (
     <section className="rounded-xl border border-brand/15 bg-foam p-5">
       <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
-        Menu draft
+        Menu
       </p>
       <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-        AI crawled your site — confirm prices
+        Upload like DoorDash — or confirm the AI draft
       </h2>
       <p className="mt-2 text-sm text-muted">
-        Draft from {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl}. Only
-        confirmed prices sell. {drafts.length} item
+        Add a plate with the words diners type so they find it. Draft from{" "}
+        {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl}. Only confirmed
+        or uploaded prices sell. {drafts.length} item
         {drafts.length === 1 ? "" : "s"} still need your number.
       </p>
+      <form
+        className="mt-4 grid gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3 sm:grid-cols-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = new FormData(event.currentTarget);
+          const title = String(form.get("title") ?? "").trim();
+          const price = Number(form.get("priceUsd"));
+          if (!title || !Number.isFinite(price) || price < 0) return;
+          onUpload({
+            title,
+            category: String(form.get("category") ?? ""),
+            priceUsd: Math.round(price * 100) / 100,
+            description: String(form.get("description") ?? ""),
+            aliases: String(form.get("aliases") ?? ""),
+          });
+          event.currentTarget.reset();
+        }}
+      >
+        <label className="text-sm font-semibold text-brand-deep">
+          Plate name
+          <input
+            name="title"
+            required
+            placeholder="Warm grain bowl"
+            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <label className="text-sm font-semibold text-brand-deep">
+          Price $
+          <input
+            name="priceUsd"
+            type="number"
+            min={0}
+            step={0.25}
+            required
+            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <label className="text-sm font-semibold text-brand-deep">
+          Category
+          <input
+            name="category"
+            placeholder="Plates"
+            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <label className="text-sm font-semibold text-brand-deep">
+          Find words
+          <input
+            name="aliases"
+            placeholder="grain bowl, bowl"
+            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <label className="text-sm font-semibold text-brand-deep sm:col-span-2">
+          Description
+          <input
+            name="description"
+            placeholder="What the diner should see"
+            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60 sm:col-span-2"
+        >
+          Upload item
+        </button>
+      </form>
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-muted">No crawl yet for this kitchen.</p>
       ) : (
@@ -290,7 +378,11 @@ function MenuConfirmBoard({
             >
               <div>
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
-                  {item.source === "ai_crawl" ? "AI draft" : "Merchant confirmed"}{" "}
+                  {item.source === "ai_crawl"
+                    ? "AI draft"
+                    : item.source === "merchant_upload"
+                      ? "Uploaded"
+                      : "Merchant confirmed"}{" "}
                   · {item.category}
                 </p>
                 <h3 className="mt-1 font-bold text-brand-deep">{item.title}</h3>

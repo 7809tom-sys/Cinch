@@ -5,6 +5,7 @@ import {
   acceptDriverRun,
   advanceDriverRun,
   confirmRestaurantMenuPrice,
+  uploadRestaurantMenuItem,
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
@@ -33,6 +34,40 @@ async function loadOps(projectId: string) {
     return { ok: false as const, error: "Hometown portals are not on this Seed." };
   }
   return { ok: true as const, ops };
+}
+
+export async function uploadRestaurantMenuItemAction(
+  projectId: string,
+  restaurantId: string,
+  input: {
+    title: string;
+    category?: string;
+    priceUsd: number;
+    description?: string;
+    aliases?: string;
+  },
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const title = input.title.trim();
+  if (!title) return { ok: false as const, error: "Name the plate." };
+  await saveDeliveryOps(
+    projectId,
+    uploadRestaurantMenuItem(loaded.ops, restaurantId, {
+      title,
+      category: input.category,
+      priceUsd: input.priceUsd,
+      description: input.description,
+      aliases: (input.aliases ?? "")
+        .split(",")
+        .map((word) => word.trim())
+        .filter(Boolean),
+    }),
+    "Merchant uploaded a menu item",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
 }
 
 export async function confirmRestaurantMenuPriceAction(

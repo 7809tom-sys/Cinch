@@ -230,7 +230,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen/.test(
     blob,
   );
 }
@@ -4401,7 +4401,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-scout",
               title: "Scout ownership is immutable",
-              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. One delivery a month to stay eligible to be paid. Miss a month and the 5% rolls to the next most-active deliverer at that kitchen who has already signed a restaurant, then the next below. A restaurateur can sign other kitchens after one delivery. No silent edit of the 50/50 split without a policy version.",
+              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. One delivery a month to stay eligible to be paid. Miss a month and the 5% rolls to the next most-active deliverer at that kitchen who has already signed a restaurant, then the next below. A restaurateur can sign another kitchen after one delivery — they cannot keep the 5% on their own kitchen. No silent edit of the 50/50 split without a policy version.",
             },
             {
               id: "tip-riley",
@@ -4416,7 +4416,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip on Connect",
-              body: "Never skim delivery fee or tip. Stripe Connect split sends fee, tip, and the 5% driver share directly to the driver — not through the restaurant. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
+              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
             },
             {
               id: "tip-trip",
@@ -4426,7 +4426,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-roles",
               title: "Three role-based logins",
-              body: "Customer, merchant, and driver each sign in separately. AI crawls the restaurant website for a menu draft; the merchant confirms every price before it sells.",
+              body: "Customer, merchant, and driver each sign in separately. Menu is DoorDash-style: AI crawl plus merchant upload so diners can find the right plate. The merchant confirms every crawled price before it sells.",
             },
             {
               id: "tip-software",

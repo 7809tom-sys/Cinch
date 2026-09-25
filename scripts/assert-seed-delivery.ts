@@ -33,6 +33,9 @@ import {
   driverAttributedPayoutUsd,
   confirmRestaurantMenuPrice,
   crawlRestaurantMenuDraft,
+  findSellableMenuItems,
+  threePartyStripeSplit,
+  uploadRestaurantMenuItem,
   hometownDeliveryFeeUsd,
   sellableRestaurantMenu,
   shouldTriggerDriverPayout,
@@ -212,8 +215,12 @@ assert(
     /\$37\.28/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /seven couples/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /one delivery a month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /three-party/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /cannot keep the 5% on their own/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
     /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
-  "delivery brief appends $0 platform, Connect, trip, roles, research, and scout-pay",
+  "delivery brief appends $0 platform, three-party Stripe, research, and scout-pay",
 );
 
 const ops = starterDeliveryOps("Hometown Runner");
@@ -332,6 +339,73 @@ assert(
     signedBakery.ops.restaurants.find((row) => row.id === "rest-bakery")
       ?.scoutId === "drv-jordan",
   "restaurateur Jordan signs the unsigned bakery after one delivery",
+);
+assert(
+  signedBakery.ok &&
+    scoutPayoutDriverId(signedBakery.ops, "rest-pilot", now) === "drv-maya" &&
+    scoutPayoutDriverId(signedBakery.ops, "rest-pilot", now) !== "drv-jordan",
+  "Jordan cannot keep the 5% on Pilot Kitchen — his own restaurant",
+);
+const ownKitchen = assignRestaurantScout(
+  signedBakery.ok
+    ? {
+        ...signedBakery.ops,
+        restaurants: signedBakery.ops.restaurants.map((row) =>
+          row.id === "rest-pilot" ? { ...row, scoutId: "" } : row,
+        ),
+      }
+    : bakeryOps,
+  "rest-pilot",
+  "drv-jordan",
+  now,
+);
+assert(
+  !ownKitchen.ok,
+  "assignRestaurantScout refuses the owner’s own kitchen",
+);
+const ownerAsScout = {
+  ...ops,
+  restaurants: ops.restaurants.map((row) =>
+    row.id === "rest-pilot" ? { ...row, scoutId: "drv-jordan" } : row,
+  ),
+  runs: jordanDash.runs,
+};
+assert(
+  scoutPayoutDriverId(ownerAsScout, "rest-pilot", now) === "drv-maya",
+  "if Jordan is listed as Pilot scout, pay still cascades off his own 5%",
+);
+const uploaded = uploadRestaurantMenuItem(ops, "rest-pilot", {
+  title: "Citrus greens",
+  category: "Plates",
+  priceUsd: 13,
+  aliases: ["salad", "greens"],
+});
+assert(
+  findSellableMenuItems(ops, "grain bowl").some(
+    (item) => item.title === "Warm grain bowl",
+  ) &&
+    findSellableMenuItems(uploaded, "salad").some(
+      (item) => item.title === "Citrus greens",
+    ) &&
+    !findSellableMenuItems(ops, "salad").some(
+      (item) => item.title === "Citrus greens",
+    ),
+  "diners find crawled plates by alias and newly uploaded items",
+);
+const deliSplit = deliLedger
+  ? threePartyStripeSplit(ops, deliLedger, now)
+  : null;
+assert(
+  Boolean(deliSplit) &&
+    deliSplit?.restaurant.connectAccountId === "acct_restdeli" &&
+    deliSplit?.scout.driverId === "drv-maya" &&
+    deliSplit?.scout.connectAccountId === "acct_drvmaya" &&
+    deliSplit?.driver.driverId === "drv-maya" &&
+    deliSplit?.driver.connectAccountId === "acct_drvmaya" &&
+    (deliSplit?.restaurant.amountUsd ?? 0) > 0 &&
+    (deliSplit?.scout.amountUsd ?? 0) > 0 &&
+    (deliSplit?.driver.amountUsd ?? 0) > 0,
+  "three-party Stripe pays restaurant, scout, and driver on their own accounts",
 );
 const cascadeRank = signedBakery.ok
   ? {
@@ -780,11 +854,12 @@ const restaurantDesk = readFileSync(
   "utf8",
 );
 assert(
-  /Stripe Connect/.test(restaurantDesk) &&
+  /three-party/.test(restaurantDesk) &&
     /keeps\s+\$0/.test(restaurantDesk) &&
     /manage their own tax forms/.test(restaurantDesk) &&
     /pay ~2\.9% processing/.test(restaurantDesk) &&
-    /AI crawled your site/.test(restaurantDesk) &&
+    /Upload like DoorDash/.test(restaurantDesk) &&
+    /uploadRestaurantMenuItemAction/.test(restaurantDesk) &&
     /confirmRestaurantMenuPriceAction/.test(restaurantDesk) &&
     !/You issue the 1099/.test(restaurantDesk) &&
     !/The 10% on GMV is ACH/.test(restaurantDesk),
@@ -804,6 +879,17 @@ assert(
   "orders send $0 to the platform and 5% to the driver",
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
+const shopBoard = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/shop/shop-board.tsx"),
+  "utf8",
+);
+assert(
+  /Find an item/.test(shopBoard) &&
+    /findSellableMenuItems/.test(
+      readFileSync(join(process.cwd(), "src/app/site/[id]/shop/page.tsx"), "utf8"),
+    ),
+  "diner shop finds confirmed and uploaded plates",
+);
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");
 assert(
   enterPage.includes("Role-based login") &&
@@ -831,8 +917,9 @@ assert(
     /seven couples/.test(driverDesk) &&
     /70% dine-in/.test(driverDesk) &&
     /one delivery a month/.test(driverDesk) &&
-    /paid the 5% this month/.test(driverDesk),
-  "driver portal shows Connect payouts, trip math, tax forms, Riley, and scout-pay cascade",
+    /paid the 5% this month/.test(driverDesk) &&
+    /cannot keep the 5% on their own kitchen/.test(driverDesk),
+  "driver portal shows Connect payouts, trip math, tax forms, Riley, and no own-kitchen 5%",
 );
 assert(
   /\$37\.28/.test(ledgerUi) &&
@@ -841,8 +928,10 @@ assert(
     /Paid: \{paidTo\}/.test(ledgerUi) &&
     /tip-riley/.test(siteCopy) &&
     /tip-market/.test(siteCopy) &&
-    /tip-scout/.test(siteCopy),
-  "ledger and playbook tips carry research, Riley, and the scout-pay cascade",
+    /tip-scout/.test(siteCopy) &&
+    /three-party/.test(ledgerUi) &&
+    /cannot keep the 5%/.test(ledgerUi),
+  "ledger and playbook tips carry research, Riley, three-party Stripe, and no own-kitchen 5%",
 );
 
 if (process.exitCode) {

@@ -77,7 +77,10 @@ export function SeedDeliveryLedger({
         sends dine-in first (seven couples in a week); those tables become
         delivery through Riley. One delivery a month to keep the 5%; miss it
         and pay rolls to the next most-active signed scout at that kitchen.
-        A restaurateur can sign other kitchens after one delivery.
+        A restaurateur can sign another kitchen after one delivery — they
+        cannot keep the 5% on their own kitchen. Stripe three-party: restaurant,
+        scout, and driver each have a Stripe account. Menu is DoorDash-style
+        upload so diners can find the right plate.
       </p>
       <dl className="seed-run-stats">
         <div>

@@ -28,7 +28,7 @@ export function portalSeedPlaybookUrl(projectId: string): string {
 export const SENTI_DESK_PATH = "/senti";
 
 export const SENTI_THINKS_DELIVERY_RULE =
-  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — three role-based logins (customer, merchant, driver), restaurant portal, driver/scout portal, admin ledger. Senti must think through those apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly; they manage their own tax forms. Trip is $4.50 + $1.50/mile. Driver software ($39/$79), 60-day suspend. Scout moat: Riley sends dine-in customers (e.g. seven couples/week) because FSR traffic is ~70% dine-in and only ~5% delivery. Scout pay: one delivery a month or the 5% cascades to the next most-active signed scout at that kitchen. A restaurateur can scout other kitchens after one delivery. Do not copy a dining-room, bakery, or pizza restaurant format.";
+  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — three role-based logins (customer, merchant, driver), restaurant portal, driver/scout portal, admin ledger. Senti must think through those apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Menu is DoorDash-style upload + find. Trip is $4.50 + $1.50/mile. Driver software ($39/$79), 60-day suspend. Scout moat: Riley sends dine-in customers (e.g. seven couples/week) because FSR traffic is ~70% dine-in and only ~5% delivery. Scout pay: one delivery a month or the 5% cascades to the next most-active signed scout at that kitchen. A restaurateur can scout another kitchen after one delivery — they cannot keep the 5% on their own. Do not copy a dining-room, bakery, or pizza restaurant format.";
 
 export type PlaybookChapterId =
   | "discover"
@@ -491,7 +491,7 @@ export function exampleSeedPlaybook(): SeedPlaybook {
   return compileSeedPlaybook({
     name: "Hometown Runner",
     brief:
-      "Hometown Runner is a hyper-local food delivery platform. Three role-based logins. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly. Trip is $4.50 + $1.50/mile. Driver software is $39/month part-time or $79/month full-time. Drivers manage their own tax forms. Riley sends dine-in customers (seven couples in a week) because full-service traffic is about 70% dine-in and only 5% delivery. Scout pay: one delivery a month or the 5% cascades to the next most-active signed scout at that kitchen. A restaurateur can scout other kitchens after one delivery.",
+      "Hometown Runner is a hyper-local food delivery platform. Three role-based logins. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Menu is DoorDash-style upload + find. Trip is $4.50 + $1.50/mile. Driver software is $39/month part-time or $79/month full-time. Drivers manage their own tax forms. Riley sends dine-in customers (seven couples in a week) because full-service traffic is about 70% dine-in and only 5% delivery. Scout pay: one delivery a month or the 5% cascades to the next most-active signed scout at that kitchen. A restaurateur can scout another kitchen after one delivery — they cannot keep the 5% on their own.",
     seedMode: "build",
     liveUrl: null,
   });

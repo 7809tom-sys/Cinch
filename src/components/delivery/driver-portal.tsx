@@ -327,8 +327,10 @@ export function HometownDriverPortal({
           same couples later want the bag at the door, the order goes through
           Riley — that is the payback. Make one delivery a month or the 5%
           rolls to the next most-active scout at that kitchen (someone who
-          already signed a restaurant). A restaurateur can sign other kitchens
-          after one delivery. scout_id stays put.
+          already signed a restaurant). A restaurateur can sign another kitchen
+          after one delivery — they cannot keep the 5% on their own kitchen.
+          scout_id stays put. Each of restaurant, scout, and driver is paid
+          on their own Stripe account.
         </p>
         <p className="mt-3 text-sm font-semibold text-brand-deep">
           {scoutEligible
@@ -338,7 +340,8 @@ export function HometownDriverPortal({
         {owned.length > 0 ? (
           <p className="mt-2 text-sm text-muted">
             You own {owned.map((row) => row.name).join(", ")}. Sign another
-            kitchen as a scout after one delivery this month.
+            kitchen as a scout after one delivery this month — you do not keep
+            the 5% on your own kitchen.
           </p>
         ) : null}
         {paidThisMonth.length > 0 ? (

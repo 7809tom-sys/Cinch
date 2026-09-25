@@ -51,6 +51,7 @@ export function SeedShopBoard({
   const [done, setDone] = useState<string | null>(null);
   const [tipUsd, setTipUsd] = useState(deliveryPlatform ? 4 : 0);
   const [dropoffZip, setDropoffZip] = useState("10001");
+  const [findQuery, setFindQuery] = useState("");
 
   const lines = useMemo(
     () =>
@@ -147,10 +148,36 @@ export function SeedShopBoard({
     });
   }
 
+  const visibleProducts = useMemo(() => {
+    const needle = findQuery.trim().toLowerCase();
+    if (!needle || !deliveryPlatform) return products;
+    return products.filter((product) =>
+      `${product.title} ${product.detail} ${product.sku}`
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [deliveryPlatform, findQuery, products]);
+
   return (
     <>
+      {deliveryPlatform ? (
+        <label className="seed-shop-support" style={{ display: "block", marginBottom: "1rem" }}>
+          Find an item
+          <input
+            type="search"
+            value={findQuery}
+            onChange={(event) => setFindQuery(event.target.value)}
+            placeholder="grain bowl, tacos, soup…"
+            className="seed-shop-checkout"
+            style={{ display: "block", marginTop: "0.35rem", maxWidth: "22rem" }}
+          />
+        </label>
+      ) : null}
+      {deliveryPlatform && visibleProducts.length === 0 ? (
+        <p className="seed-shop-support">No plates match that search. Try another word.</p>
+      ) : null}
       <div className="seed-shop-grid">
-        {products.map((product) => (
+        {visibleProducts.map((product) => (
           <article
             key={product.id}
             className={lotHold ? "seed-shop-card seed-lot-card" : "seed-shop-card"}
