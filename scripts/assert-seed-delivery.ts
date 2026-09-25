@@ -25,6 +25,8 @@ import {
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
+  scoutEligibleToBePaid,
+  scoutPayoutDriverId,
   scoutResidualForWeeklyGmv,
   deliveryDriverDisplayName,
   deliveryOpsJson,
@@ -40,8 +42,30 @@ import {
   TRIP_PER_MILE_USD,
   FEDERAL_MILEAGE_USD,
   DRIVER_PAYOUT_MIN_BALANCE_USD,
+  DOORDASH_AOV_RAKUTEN_USD,
+  DOORDASH_AOV_OVER_50_SHARE,
+  DOORDASH_AOV_Q4_2025_USD,
+  DOORDASH_Q4_2025_GOV_USD,
+  DOORDASH_Q4_2025_ORDERS,
+  DOORDASH_US_DRIVERS_2025,
+  DOORDASH_WORLD_DRIVERS_2025,
+  DOORDASH_TYPICAL_ACTIVE_WEEKS,
+  DOORDASH_TYPICAL_HOURS_PER_WEEK,
+  FULL_SERVICE_DINE_IN_SHARE,
+  FULL_SERVICE_DELIVERY_SHARE,
+  FULL_SERVICE_DELIVERY_SHARE_2019,
+  INDEPENDENT_MEDIAN_REVENUE_USD,
+  FULL_SERVICE_PRETAX_MARGIN,
+  LIMITED_SERVICE_PRETAX_MARGIN,
+  SCOUT_DINE_IN_EXAMPLE_COUPLES,
+  SCOUT_MIN_DELIVERIES_PER_MONTH,
+  assignRestaurantScout,
+  canSignRestaurantAsScout,
+  fullServiceTrafficAddsToOne,
+  qsrTrafficAddsToOne,
   driverPayoutFromSplit,
   ledgerRunDriverId,
+  ledgerScoutPaidDriverId,
   parseDeliveryOps,
   splitDeliveryLedger,
   starterDeliveryOps,
@@ -151,13 +175,45 @@ assert(
   "full-time monthly annualizes to $948",
 );
 assert(
+  DOORDASH_AOV_RAKUTEN_USD === 37.28 &&
+    DOORDASH_AOV_OVER_50_SHARE === 0.2 &&
+    DOORDASH_AOV_Q4_2025_USD === 33 &&
+    Math.round(DOORDASH_Q4_2025_GOV_USD / DOORDASH_Q4_2025_ORDERS) === 33,
+  "DoorDash AOV proxies are $37.28 Rakuten and ~$33 Q4 2025 implied",
+);
+assert(
+  DOORDASH_US_DRIVERS_2025 === 8_000_000 &&
+    DOORDASH_WORLD_DRIVERS_2025 === 9_000_000 &&
+    DOORDASH_TYPICAL_ACTIVE_WEEKS === 10 &&
+    DOORDASH_TYPICAL_HOURS_PER_WEEK === 4,
+  "DoorDash 2025 driver counts and typical hours are encoded",
+);
+assert(
+  fullServiceTrafficAddsToOne() &&
+    qsrTrafficAddsToOne() &&
+    FULL_SERVICE_DINE_IN_SHARE === 0.7 &&
+    FULL_SERVICE_DELIVERY_SHARE === 0.05 &&
+    FULL_SERVICE_DELIVERY_SHARE_2019 === 0.02,
+  "full-service mix is 70% dine-in / 5% delivery (2% in 2019)",
+);
+assert(
+  INDEPENDENT_MEDIAN_REVENUE_USD === 850_000 &&
+    FULL_SERVICE_PRETAX_MARGIN === 0.028 &&
+    LIMITED_SERVICE_PRETAX_MARGIN === 0.04 &&
+    SCOUT_DINE_IN_EXAMPLE_COUPLES === 7,
+  "independent median $850K, NRA margins, and Riley’s seven couples",
+);
+assert(
   /\$39\/month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /Stripe Connect/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /does not issue 1099s/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /\$4\.50/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /three distinct/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /\$37\.28/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /seven couples/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /one delivery a month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
-  "delivery brief appends $0 platform, Connect payouts, trip, and role logins",
+  "delivery brief appends $0 platform, Connect, trip, roles, research, and scout-pay",
 );
 
 const ops = starterDeliveryOps("Hometown Runner");
@@ -205,6 +261,124 @@ assert(
     deliveryDriverDisplayName(ops.drivers, deliLedger.driverId) ===
       "Maya Chen",
   "delivered deli row attributes the run to Maya, not the originating scout",
+);
+const now = new Date("2026-09-25T00:00:00.000Z");
+assert(
+  SCOUT_MIN_DELIVERIES_PER_MONTH === 1,
+  "one delivery a month keeps scout pay",
+);
+assert(
+  !scoutEligibleToBePaid(ops, "drv-riley", now) &&
+    scoutEligibleToBePaid(ops, "drv-maya", now) &&
+    !scoutEligibleToBePaid(ops, "drv-jordan", now),
+  "Riley and Jordan missed September; Maya delivered",
+);
+assert(
+  scoutPayoutDriverId(ops, "rest-deli", now) === "drv-maya" &&
+    deli?.scoutId === "drv-riley" &&
+    ledgerScoutPaidDriverId(deliLedger ?? { restaurantId: "rest-deli", scoutId: "drv-riley" }, ops, now) ===
+      "drv-maya",
+  "deli 5% cascades to Maya; scout_id stays Riley",
+);
+assert(
+  !canSignRestaurantAsScout(ops, "drv-jordan", now) &&
+    !assignRestaurantScout(ops, "rest-deli", "drv-jordan", now).ok,
+  "restaurateur Jordan cannot scout without a delivery, and cannot overwrite Riley",
+);
+const jordanDash = {
+  ...ops,
+  runs: [
+    ...ops.runs,
+    {
+      id: "run-jordan-sep",
+      orderId: "ord-jordan-sep",
+      restaurantId: "rest-pilot",
+      driverId: "drv-jordan",
+      customerName: "Pat Lee",
+      dropoffZip: "10001",
+      deliveryFeeUsd: 7.5,
+      tipUsd: 3,
+      driverCommissionUsd: 1.3,
+      status: "delivered" as const,
+      createdAt: "2026-09-25T12:00:00.000Z",
+    },
+  ],
+};
+assert(
+  canSignRestaurantAsScout(jordanDash, "drv-jordan", now),
+  "after one delivery Jordan can sign a kitchen as a scout",
+);
+const unsignedKitchen = {
+  id: "rest-bakery",
+  name: "Third Street Bakery",
+  neighborhood: "Third Street",
+  scoutId: "",
+  ownerDriverId: null,
+  active: true,
+  paused: false,
+};
+const bakeryOps = {
+  ...jordanDash,
+  restaurants: [...jordanDash.restaurants, unsignedKitchen],
+};
+const signedBakery = assignRestaurantScout(
+  bakeryOps,
+  "rest-bakery",
+  "drv-jordan",
+  now,
+);
+assert(
+  signedBakery.ok &&
+    signedBakery.ops.restaurants.find((row) => row.id === "rest-bakery")
+      ?.scoutId === "drv-jordan",
+  "restaurateur Jordan signs the unsigned bakery after one delivery",
+);
+const cascadeRank = signedBakery.ok
+  ? {
+      ...signedBakery.ops,
+      runs: [
+        ...signedBakery.ops.runs,
+        {
+          id: "run-jordan-deli",
+          orderId: "ord-jordan-deli",
+          restaurantId: "rest-deli",
+          driverId: "drv-jordan",
+          customerName: "Pat Lee",
+          dropoffZip: "10003",
+          deliveryFeeUsd: 7.5,
+          tipUsd: 3,
+          driverCommissionUsd: 0.55,
+          status: "delivered" as const,
+          createdAt: "2026-09-24T16:00:00.000Z",
+        },
+        {
+          id: "run-jordan-deli-2",
+          orderId: "ord-jordan-deli-2",
+          restaurantId: "rest-deli",
+          driverId: "drv-jordan",
+          customerName: "Pat Lee",
+          dropoffZip: "10003",
+          deliveryFeeUsd: 7.5,
+          tipUsd: 3,
+          driverCommissionUsd: 0.55,
+          status: "delivered" as const,
+          createdAt: "2026-09-24T18:00:00.000Z",
+        },
+      ],
+    }
+  : bakeryOps;
+assert(
+  scoutEligibleToBePaid(cascadeRank, "drv-maya", now) &&
+    scoutPayoutDriverId(cascadeRank, "rest-deli", now) === "drv-jordan",
+  "when Riley misses, 5% goes to the signed scout who delivered most to that kitchen",
+);
+const nextBelow = {
+  ...cascadeRank,
+  runs: cascadeRank.runs.filter((row) => row.driverId !== "drv-jordan"),
+};
+assert(
+  scoutPayoutDriverId(nextBelow, "rest-deli", now) === "drv-maya",
+  "if that scout also misses, 5% goes to the next signed scout below",
 );
 const deliPayout = deliLedger ? driverPayoutFromSplit(deliLedger) : null;
 assert(
@@ -261,6 +435,29 @@ assert(
   (oldFlat?.drivers.find((row) => row.id === "drv-maya")?.pendingPayoutUsd ??
     0) > 0,
   "parse heals a missing Connect balance from the driver’s attributed runs",
+);
+const stalePilotOnly = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    restaurants: ops.restaurants.map((row) =>
+      row.id === "rest-pilot" ? { ...row, ownerDriverId: null } : row,
+    ),
+    ledger: ops.ledger.filter((row) => row.orderId !== "ord-sample-deli"),
+    tickets: ops.tickets.filter((row) => row.orderId !== "ord-sample-deli"),
+    runs: ops.runs.filter((row) => row.orderId !== "ord-sample-deli"),
+  }),
+);
+assert(
+  stalePilotOnly?.restaurants.find((row) => row.id === "rest-pilot")
+    ?.ownerDriverId === "drv-jordan" &&
+    stalePilotOnly.runs.some(
+      (row) =>
+        row.orderId === "ord-sample-deli" &&
+        row.status === "delivered" &&
+        row.driverId === "drv-maya",
+    ) &&
+    scoutPayoutDriverId(stalePilotOnly, "rest-deli", now) === "drv-maya",
+  "parse remints the deli cascade sample and Jordan as Pilot owner",
 );
 assert(
   maya?.classification === "full_time" &&
@@ -429,6 +626,10 @@ const row = afterOrder.ledger.find((item) => item.id === "led-test");
 assert(Boolean(row), "customer order writes a ledger row");
 assert(row?.restaurantId === "rest-pilot", "pilot SKU maps to Pilot Kitchen");
 assert(row?.scoutId === "drv-maya", "ledger scout_id is the restaurant lock");
+assert(
+  row?.scoutPaidDriverId === "drv-maya",
+  "new Pilot order pays Maya — she dashed this month",
+);
 assert(row?.deliveryFeeUsd === 5 && row?.tipUsd === 3, "fee and tip posted whole");
 assert(
   afterOrder.tickets.some((item) => item.id === "tkt-test"),
@@ -563,7 +764,7 @@ assert(
   !deliveryLandingLooksLikeOpsEconomics(dinerBlob) &&
     !/Flat 10% on delivery GMV/.test(landing) &&
     !/Flat 10% on delivery GMV/.test(siteCopy),
-  "diner landing and shop stay guest-facing — no 1099 / $39 / GMV",
+  "diner landing and shop stay guest-facing — no 1099 / $39 / GMV / research leak",
 );
 assert(
   /customerFacingSupport\(project\.brief\)/.test(landing) &&
@@ -626,8 +827,22 @@ assert(
   /Stripe Connect/.test(driverDesk) &&
     /tax forms/.test(driverDesk) &&
     /TRIP_BASE_USD/.test(driverDesk) &&
-    /shouldTriggerDriverPayout/.test(driverDesk),
-  "driver portal shows Connect payouts, trip math, and tax forms",
+    /shouldTriggerDriverPayout/.test(driverDesk) &&
+    /seven couples/.test(driverDesk) &&
+    /70% dine-in/.test(driverDesk) &&
+    /one delivery a month/.test(driverDesk) &&
+    /paid the 5% this month/.test(driverDesk),
+  "driver portal shows Connect payouts, trip math, tax forms, Riley, and scout-pay cascade",
+);
+assert(
+  /\$37\.28/.test(ledgerUi) &&
+    /seven couples/.test(ledgerUi) &&
+    /one delivery a month/i.test(ledgerUi) &&
+    /Paid: \{paidTo\}/.test(ledgerUi) &&
+    /tip-riley/.test(siteCopy) &&
+    /tip-market/.test(siteCopy) &&
+    /tip-scout/.test(siteCopy),
+  "ledger and playbook tips carry research, Riley, and the scout-pay cascade",
 );
 
 if (process.exitCode) {
