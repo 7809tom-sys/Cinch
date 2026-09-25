@@ -66,8 +66,11 @@ assert(!seedAsksForPlaybook("what is the weather"), "unrelated talk is not a pla
 assert(
   /do not copy a dining-room|restaurant portal|driver\/scout portal/i.test(
     SENTI_THINKS_DELIVERY_RULE,
-  ),
-  "Senti hard rule refuses a copied restaurant format",
+  ) &&
+    /60 days free from the first successful drive/.test(
+      SENTI_THINKS_DELIVERY_RULE,
+    ),
+  "Senti hard rule refuses a copied restaurant format and encodes 60 days free from first drive",
 );
 
 const pack = exampleSeedPlaybook();
