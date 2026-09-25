@@ -925,7 +925,8 @@ export function scoutPayoutDriverId(
 }
 
 export function ledgerScoutPaidDriverId(
-  row: Pick<DeliveryLedgerRow, "restaurantId" | "scoutId" | "scoutPaidDriverId">,
+  row: Pick<DeliveryLedgerRow, "restaurantId" | "scoutId" | "scoutPaidDriverId"> &
+    Partial<Pick<DeliveryLedgerRow, "createdAt">>,
   ops: Pick<DeliveryOps, "restaurants" | "runs">,
   now = new Date(row.createdAt ?? Date.now()),
 ): string {
