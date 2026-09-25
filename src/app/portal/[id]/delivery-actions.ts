@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   acceptDriverRun,
   advanceDriverRun,
+  assignRestaurantScout,
   confirmRestaurantMenuPrice,
   uploadRestaurantMenuItem,
   setDriverOnline,
@@ -82,6 +83,25 @@ export async function confirmRestaurantMenuPriceAction(
     projectId,
     confirmRestaurantMenuPrice(loaded.ops, restaurantId, itemId, priceUsd),
     "Merchant confirmed a crawled menu price",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function assignRestaurantScoutAction(
+  projectId: string,
+  restaurantId: string,
+  driverId: string,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const result = assignRestaurantScout(loaded.ops, restaurantId, driverId);
+  if (!result.ok) return result;
+  await saveDeliveryOps(
+    projectId,
+    result.ops,
+    "Scout signed an unsigned kitchen",
   );
   revalidateDelivery(projectId);
   return { ok: true as const };

@@ -4,13 +4,20 @@ import { useState, useTransition } from "react";
 import type { DeliveryDriver, DeliveryOps } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
+  DRIVER_SOFTWARE_FREE_DAYS,
   deliveryDriverDisplayName,
   driverAttributedPayoutUsd,
+  driverInFreeTrial,
   driverPhotoId,
+  driverSoftwareFeeUsd,
+  driverSoftwareFreeUntil,
+  firstSuccessfulDriveAt,
   ledgerRunDriverId,
   ledgerScoutPaidDriverId,
   scoutResidualForWeeklyGmv,
+  softwareFeeUsd,
   summarizeDeliveryLedger,
+  threePartyStripeSplit,
   weeklyScoutResidualExamples,
 } from "@/lib/seed-delivery";
 import {
@@ -66,8 +73,12 @@ export function SeedDeliveryLedger({
         (~2.9%) comes out of the restaurant. Trip is $4.50 + $1.50/mile so
         drivers clear the $0.76 federal mileage rate. Payouts fire at a $25
         minimum balance or weekly. Drivers manage their own tax forms.
-        Driver software is $39/month part-time or $79/month full-time ($9.99 /
-        $19.99 weekly). 60 days off the app suspends the driver. Scout is who
+        Everybody gets {DRIVER_SOFTWARE_FREE_DAYS} days free starting the day
+        of their first successful drive (a delivered run) — not signup, first
+        login, or first offer. After day {DRIVER_SOFTWARE_FREE_DAYS}, driver
+        software is $39/month part-time or $79/month full-time ($9.99 /
+        $19.99 weekly). No restaurant software fee. 60 days off the app
+        suspends the driver. Scout is who
         signed the kitchen. Driver is who ran the bag — fee, tip, and the 5%
         share belong to that person. Market: DoorDash has no published US AOV
         (Rakuten $37.28; Q4 2025 implied ~$33 global including tax/tip/fees).
@@ -231,12 +242,63 @@ export function SeedDeliveryLedger({
         </table>
       </div>
 
+      <h3 className="seed-run-subhead">Stripe three-party</h3>
+      <p className="seed-run-note">
+        Each order pays three Connect accounts. Platform keeps $0.
+      </p>
+      {ops.ledger.length === 0 ? (
+        <p className="seed-run-empty">No Stripe destinations until an order posts.</p>
+      ) : (
+        <ul className="seed-run-list">
+          {ops.ledger.map((row) => {
+            const split = threePartyStripeSplit(ops, row);
+            const restaurantName =
+              ops.restaurants.find((item) => item.id === row.restaurantId)
+                ?.name ?? row.restaurantId;
+            return (
+              <li key={`stripe-${row.id}`}>
+                <div>
+                  <p className="seed-run-kicker">{row.customerName}</p>
+                  <h3>{restaurantName}</h3>
+                  <p className="seed-run-meta">
+                    Food net ${split.restaurant.amountUsd.toFixed(2)} →{" "}
+                    {split.restaurant.connectAccountId}
+                    {" · "}
+                    Scout 5% ${split.scout.amountUsd.toFixed(2)} →{" "}
+                    {split.scout.connectAccountId ?? "unassigned"}
+                    {" · "}
+                    Driver fee+tip+5% ${split.driver.amountUsd.toFixed(2)} →{" "}
+                    {split.driver.connectAccountId ?? "unassigned"}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       <h3 className="seed-run-subhead">Drivers — freeze does not move scout</h3>
       <ul className="seed-run-list">
         {ops.drivers.map((driver) => {
           const scouted = ops.restaurants.filter(
             (row) => row.scoutId === driver.id,
           );
+          const firstDriveAt = firstSuccessfulDriveAt(ops, driver.id);
+          const freeUntil = driverSoftwareFreeUntil(firstDriveAt);
+          const inFreeTrial = driverInFreeTrial({
+            firstDeliveredAt: firstDriveAt,
+          });
+          const listFee = driverSoftwareFeeUsd(
+            driver.classification,
+            driver.softwareCadence,
+          );
+          const chargedFee = softwareFeeUsd(
+            driver.classification,
+            driver.softwareCadence,
+            { firstDeliveredAt: firstDriveAt },
+          );
+          const cadenceLabel =
+            driver.softwareCadence === "weekly" ? "wk" : "mo";
           return (
             <li key={driver.id}>
               <div>
@@ -248,6 +310,12 @@ export function SeedDeliveryLedger({
                   {driver.classification === "full_time"
                     ? "full-time $79/mo"
                     : "part-time $39/mo"}{" "}
+                  · software now ${chargedFee.toFixed(2)}/{cadenceLabel}
+                  {!firstDriveAt
+                    ? " · 60 days free not started (no delivered run)"
+                    : inFreeTrial
+                      ? ` · 60 days free until ${freeUntil?.slice(0, 10)} (first successful drive ${firstDriveAt.slice(0, 10)})`
+                      : ` · paid window $${listFee.toFixed(2)}/${cadenceLabel} after first successful drive`}{" "}
                   · attributed runs $
                   {driverAttributedPayoutUsd(ops, driver.id).toFixed(2)} (fee +
                   tip + 5%)

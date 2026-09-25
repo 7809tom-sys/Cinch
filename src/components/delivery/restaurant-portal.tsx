@@ -198,6 +198,19 @@ export function HometownRestaurantPortal({
               ${(Math.round(liveGmv * 10) / 100).toFixed(2)}
             </dd>
           </div>
+          {restaurant?.connectAccountId ? (
+            <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
+              <dt className="text-xs font-bold tracking-wide text-muted uppercase">
+                Your Stripe
+              </dt>
+              <dd className="mt-1 text-sm font-extrabold text-brand-deep">
+                {restaurant.connectAccountId}
+              </dd>
+              <p className="mt-1 text-xs text-muted">
+                Food net lands here. Scout and driver have their own accounts.
+              </p>
+            </div>
+          ) : null}
         </dl>
       </section>
 

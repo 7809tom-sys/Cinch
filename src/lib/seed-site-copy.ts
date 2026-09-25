@@ -230,7 +230,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen/.test(
     blob,
   );
 }
@@ -4431,7 +4431,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-software",
               title: "Driver software is a subscription",
-              body: "$39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99. Full-time is the app open more than 30 hours in a week, or more than 120 hours in 4 weeks.",
+              body: "Everybody gets 60 days free starting the day of their first successful drive (a delivered run) — not signup, first login, or first offer. After day 60, $39/month part-time or $79/month full-time. Weekly installments $9.99 / $19.99. Full-time is the app open more than 30 hours in a week, or more than 120 hours in 4 weeks. No restaurant software fee.",
             },
             {
               id: "tip-1099",
@@ -4558,7 +4558,7 @@ export function customerFacingAdminCopy(
         : "Business admin",
     support: wantsShop
       ? key === "delivery"
-        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 on the order. Processor fees come out of the restaurant. Do not hide them."
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 on the order. Processor fees come out of the restaurant. Everybody gets 60 days free from the first successful drive. Do not hide them."
         : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."

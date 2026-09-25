@@ -5,20 +5,27 @@ import type { DeliveryOps, DriverRun } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
   DRIVER_PAYOUT_MIN_BALANCE_USD,
+  DRIVER_SOFTWARE_FREE_DAYS,
   FEDERAL_MILEAGE_USD,
   TRIP_BASE_USD,
   TRIP_PER_MILE_USD,
   driverCanDispatch,
+  driverInFreeTrial,
   driverSoftwareFeeUsd,
+  driverSoftwareFreeUntil,
+  firstSuccessfulDriveAt,
   scoutEligibleToBePaid,
   scoutPayoutDriverId,
   scoutResidualForWeeklyGmv,
   shouldTriggerDriverPayout,
+  softwareFeeUsd,
+  unsignedRestaurants,
   weeklyScoutResidualExamples,
 } from "@/lib/seed-delivery";
 import {
   acceptDriverRunAction,
   advanceDriverRunAction,
+  assignRestaurantScoutAction,
   setDriverOnlineAction,
 } from "@/app/portal/[id]/delivery-actions";
 
@@ -43,6 +50,7 @@ export function HometownDriverPortal({
   const canDispatch = driver ? driverCanDispatch(driver) : false;
   const scouted = ops.restaurants.filter((row) => row.scoutId === driverId);
   const owned = ops.restaurants.filter((row) => row.ownerDriverId === driverId);
+  const unsignedKitchens = unsignedRestaurants(ops);
   const scoutEligible = scoutEligibleToBePaid(ops, driverId);
   const paidThisMonth = ops.restaurants.filter(
     (row) => scoutPayoutDriverId(ops, row.id) === driverId,
@@ -73,6 +81,27 @@ export function HometownDriverPortal({
         lastPayoutAt: driver.lastPayoutAt,
       })
     : false;
+  const firstDriveAt = driver
+    ? firstSuccessfulDriveAt(ops, driver.id)
+    : null;
+  const freeUntil = driverSoftwareFreeUntil(firstDriveAt);
+  const inFreeTrial = driver
+    ? driverInFreeTrial({ firstDeliveredAt: firstDriveAt })
+    : false;
+  const listSoftwareFee = driver
+    ? driverSoftwareFeeUsd(driver.classification, driver.softwareCadence)
+    : 39;
+  const chargedSoftwareFee = driver
+    ? softwareFeeUsd(
+        driver.classification,
+        driver.softwareCadence,
+        { firstDeliveredAt: firstDriveAt },
+      )
+    : 0;
+  const softwareCadenceLabel =
+    driver?.softwareCadence === "weekly" ? "week" : "month";
+  const softwarePlanLabel =
+    driver?.classification === "full_time" ? "full-time" : "part-time";
 
   function runAction(
     fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
@@ -110,17 +139,22 @@ export function HometownDriverPortal({
           commission share — Stripe Connect pays you directly, not through
           the restaurant. Trip is ${TRIP_BASE_USD.toFixed(2)} plus $
           {TRIP_PER_MILE_USD.toFixed(2)} a mile (clears the $
-          {FEDERAL_MILEAGE_USD.toFixed(2)} federal mileage rate). Software is $
-          {driver
-            ? driverSoftwareFeeUsd(
-                driver.classification,
-                driver.softwareCadence,
-              ).toFixed(2)
-            : "39.00"}
-          /{driver?.softwareCadence === "weekly" ? "week" : "month"} (
-          {driver?.classification === "full_time" ? "full-time" : "part-time"}
-          ). Weekly installments are $9.99 part-time or $19.99 full-time.
-          You manage your own tax forms on Connect.
+          {FEDERAL_MILEAGE_USD.toFixed(2)} federal mileage rate). Everybody
+          gets {DRIVER_SOFTWARE_FREE_DAYS} days free starting the day of
+          their first successful drive (a delivered run) — not signup, first
+          login, or first offer.{" "}
+          {!firstDriveAt
+            ? "You have not completed a delivered run yet, so the 60 days have not started and you are not in the paid window."
+            : inFreeTrial
+              ? `Your first delivered run was ${firstDriveAt.slice(0, 10)} — software is $0 until ${freeUntil?.slice(0, 10)}.`
+              : `The 60-day free window from your first successful drive (${firstDriveAt.slice(0, 10)}) ended ${freeUntil?.slice(0, 10)}.`}{" "}
+          Software is ${chargedSoftwareFee.toFixed(2)}/{softwareCadenceLabel}{" "}
+          now ({softwarePlanLabel}
+          {chargedSoftwareFee === 0
+            ? `; $${listSoftwareFee.toFixed(2)}/${softwareCadenceLabel} after day ${DRIVER_SOFTWARE_FREE_DAYS}`
+            : ""}
+          ). Weekly installments are $9.99 part-time or $19.99 full-time
+          after the free window. You manage your own tax forms on Connect.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
@@ -183,6 +217,21 @@ export function HometownDriverPortal({
               Completed
             </dt>
             <dd className="mt-1 text-xl font-extrabold">{delivered.length}</dd>
+          </div>
+          <div className="rounded-lg bg-white/10 px-3 py-3">
+            <dt className="text-xs font-bold tracking-wide text-mist uppercase">
+              Software
+            </dt>
+            <dd className="mt-1 text-xl font-extrabold">
+              ${chargedSoftwareFee.toFixed(2)}
+            </dd>
+            <p className="mt-1 text-xs text-mist">
+              {!firstDriveAt
+                ? "60 days free starts on first successful drive"
+                : inFreeTrial
+                  ? `Free until ${freeUntil?.slice(0, 10)}`
+                  : `$${listSoftwareFee.toFixed(2)}/${softwareCadenceLabel} after trial`}
+            </p>
           </div>
         </dl>
       </section>
@@ -343,6 +392,32 @@ export function HometownDriverPortal({
             kitchen as a scout after one delivery this month — you do not keep
             the 5% on your own kitchen.
           </p>
+        ) : null}
+        {unsignedKitchens.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {unsignedKitchens.map((row) => (
+              <li
+                key={`sign-${row.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand/10 bg-white px-3 py-2"
+              >
+                <p className="text-sm font-semibold text-brand-deep">
+                  {row.name} · {row.neighborhood} · waiting for a scout
+                </p>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    runAction(() =>
+                      assignRestaurantScoutAction(projectId, row.id, driverId),
+                    )
+                  }
+                  className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam disabled:opacity-60"
+                >
+                  Sign as scout
+                </button>
+              </li>
+            ))}
+          </ul>
         ) : null}
         {paidThisMonth.length > 0 ? (
           <ul className="mt-3 space-y-2">

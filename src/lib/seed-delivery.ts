@@ -23,6 +23,12 @@
  *   $0.76 federal mileage rate.
  * - Weekly installments $9.99 / $19.99. Full-time = app open more than
  *   30 hours in a week, or more than 120 hours in 4 weeks.
+ * - Everybody who would pay software (drivers, including restaurateur-
+ *   scouts who dash) gets 60 days free. The free period starts the day
+ *   of the first successful drive (a run with status === "delivered").
+ *   Do not start the clock on signup, first login, or first offer.
+ *   After day 60 from that first delivered run, $39 / $79 applies.
+ *   No restaurant software fee.
  * - 60 days without opening the app → account auto-suspended.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
@@ -67,6 +73,8 @@ export const DRIVER_SOFTWARE = {
 export const FULL_TIME_HOURS_PER_WEEK = 30;
 export const FULL_TIME_HOURS_PER_4_WEEKS = 120;
 export const DRIVER_INACTIVE_SUSPEND_DAYS = 60;
+/** 60 days free, clock starts on the first delivered run — not signup. */
+export const DRIVER_SOFTWARE_FREE_DAYS = 60;
 /** Trip: $4.50 base + $1.50/mile so the per-mile rate clears IRS $0.76. */
 export const TRIP_BASE_USD = 4.5;
 export const TRIP_PER_MILE_USD = 1.5;
@@ -140,7 +148,8 @@ export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Home Town Runner: market re
 - Scout pay: one delivery a month to stay eligible for the 5% residual. If the originating scout misses that month, the 5% goes to the next most active deliverer to that restaurant who has already signed at least one kitchen, then the next below. scout_id does not move — only who is paid that month. A restaurateur can sign up another restaurant as a scout after one delivery — they cannot keep the 5% on their own kitchen.`;
 
 export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
-- Fees: weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly).
+- Everybody gets 60 days free. The free period starts the day of the first successful drive (a run with status === "delivered"). Do not start the clock on signup, first login, or first offer.
+- After day 60 from that first delivered run, fees are weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly). No restaurant software fee.
 - Full-time: app open more than 30 hours a week, or more than 120 hours in 4 weeks. Below that is part-time.
 - If a driver does not open the app for 60 days, the account is automatically suspended.`;
 
@@ -268,6 +277,12 @@ export type DeliveryDriver = {
   lastPayoutAt?: string | null;
   /** Drivers file their own Connect tax forms — restaurant does not 1099. */
   taxFormsSelfManaged?: boolean;
+  /**
+   * First successful drive (status === "delivered"). Starts the 60-day
+   * software free window. Missing until a delivered run exists — signup
+   * / login / first offer do not start the clock.
+   */
+  firstDeliveredAt?: string | null;
 };
 
 export type DeliveryLedgerSplit = {
@@ -341,6 +356,12 @@ export function briefHasDriverPolicy(brief: string): boolean {
   return /\$39\s*\/\s*month|\$9\.99\s*\/\s*week|60\s*-?\s*days?/i.test(brief);
 }
 
+export function briefHasSoftwareFreeTrial(brief: string): boolean {
+  return /60\s+days free|first successful drive|first delivered run/i.test(
+    brief,
+  );
+}
+
 export function briefHasCurrentEconomics(brief: string): boolean {
   return /keeps \$0|\$0 from restaurant|5% goes to the driver|5% driver|stripe connect|\$4\.50/i.test(
     brief,
@@ -374,6 +395,8 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
     parts.push(HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK);
   }
   if (!briefHasDriverPolicy(trimmed)) {
+    parts.push(DRIVER_POLICY_BRIEF_BLOCK);
+  } else if (!briefHasSoftwareFreeTrial(trimmed)) {
     parts.push(DRIVER_POLICY_BRIEF_BLOCK);
   }
   return parts.join("\n\n");
@@ -813,6 +836,84 @@ export function driverSoftwareAnnualUsd(
   return money(fee * (cadence === "weekly" ? 52 : 12));
 }
 
+/** Earliest delivered-run timestamp for this driver — not signup or first offer. */
+export function earliestDeliveredRunAt(
+  runs: Array<Pick<DriverRun, "driverId" | "status" | "createdAt">>,
+  driverId: string,
+): string | null {
+  const delivered = runs
+    .filter(
+      (row) =>
+        row.driverId === driverId &&
+        row.status === "delivered" &&
+        Boolean(row.createdAt),
+    )
+    .slice()
+    .sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
+  const at = delivered[0]?.createdAt;
+  if (!at) return null;
+  return Number.isNaN(new Date(at).getTime()) ? null : at;
+}
+
+/** Persisted first successful drive, else the earliest delivered run. */
+export function firstSuccessfulDriveAt(
+  ops: Pick<DeliveryOps, "runs" | "drivers">,
+  driverId: string,
+): string | null {
+  const stored = ops.drivers
+    .find((row) => row.id === driverId)
+    ?.firstDeliveredAt?.trim();
+  if (stored && !Number.isNaN(new Date(stored).getTime())) return stored;
+  return earliestDeliveredRunAt(ops.runs, driverId);
+}
+
+/** End of the 60-day free window, or null if the clock has not started. */
+export function driverSoftwareFreeUntil(
+  firstDeliveredAt: string | null | undefined,
+): string | null {
+  if (!firstDeliveredAt) return null;
+  const start = new Date(firstDeliveredAt);
+  if (Number.isNaN(start.getTime())) return null;
+  return new Date(
+    start.getTime() + DRIVER_SOFTWARE_FREE_DAYS * 86_400_000,
+  ).toISOString();
+}
+
+/**
+ * True only while the 60-day window is running. No delivered run means
+ * the clock has not started — not in trial, and not in the paid window.
+ */
+export function driverInFreeTrial(
+  driver: { firstDeliveredAt?: string | null },
+  now = new Date(),
+): boolean {
+  const until = driverSoftwareFreeUntil(driver.firstDeliveredAt);
+  if (!until) return false;
+  return now.getTime() < new Date(until).getTime();
+}
+
+/**
+ * What the driver is charged now. $0 before the clock starts and during
+ * the 60-day free window. After day 60, list $39 / $79 (or weekly).
+ */
+export function softwareFeeUsd(
+  classification: DriverClassification,
+  cadence: DriverSoftwareCadence,
+  trial?: { firstDeliveredAt?: string | null } | string | null,
+  now = new Date(),
+): number {
+  const firstDeliveredAt =
+    typeof trial === "string" || trial == null || trial === undefined
+      ? (trial ?? null)
+      : trial.firstDeliveredAt;
+  if (!firstDeliveredAt) return 0;
+  if (driverInFreeTrial({ firstDeliveredAt }, now)) return 0;
+  return driverSoftwareFeeUsd(classification, cadence);
+}
+
 export function driverInactiveTooLong(
   lastAppOpenAt: string | null | undefined,
   now = new Date(),
@@ -923,8 +1024,18 @@ export function normalizeDeliveryDriver(
     pendingPayoutUsd: money(Math.max(0, Number(row.pendingPayoutUsd) || 0)),
     lastPayoutAt: row.lastPayoutAt ?? null,
     taxFormsSelfManaged: true,
+    firstDeliveredAt: row.firstDeliveredAt ?? null,
     ...driverPhotoId(row),
   };
+}
+
+export function healDriverFirstDeliveredAt(
+  driver: DeliveryDriver,
+  runs: DriverRun[],
+): DeliveryDriver {
+  if (driver.firstDeliveredAt) return driver;
+  const fromRuns = earliestDeliveredRunAt(runs, driver.id);
+  return fromRuns ? { ...driver, firstDeliveredAt: fromRuns } : driver;
 }
 
 export function applyDriverSubscriptionPolicies(
@@ -933,7 +1044,12 @@ export function applyDriverSubscriptionPolicies(
 ): DeliveryOps {
   return {
     ...ops,
-    drivers: ops.drivers.map((driver) => normalizeDeliveryDriver(driver, now)),
+    drivers: ops.drivers.map((driver) =>
+      healDriverFirstDeliveredAt(
+        normalizeDeliveryDriver(driver, now),
+        ops.runs,
+      ),
+    ),
   };
 }
 
@@ -1164,6 +1280,12 @@ export function scoutAttributedResidualUsd(
   );
 }
 
+export function unsignedRestaurants(
+  ops: Pick<DeliveryOps, "restaurants">,
+): DeliveryRestaurant[] {
+  return ops.restaurants.filter((row) => !row.scoutId?.trim());
+}
+
 export function assignRestaurantScout(
   ops: DeliveryOps,
   restaurantId: string,
@@ -1310,6 +1432,31 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
           websiteUrl: defaultRestaurantWebsiteUrl("River Market Deli"),
         }),
       },
+      {
+        id: "rest-bakery",
+        name: "Third Street Bakery",
+        neighborhood: "Third Street",
+        scoutId: "",
+        connectAccountId: defaultRestaurantConnectAccountId("rest-bakery"),
+        active: true,
+        paused: false,
+        websiteUrl: defaultRestaurantWebsiteUrl("Third Street Bakery"),
+        menu: {
+          sourceUrl: defaultRestaurantWebsiteUrl("Third Street Bakery"),
+          crawledAt: createdAt,
+          items: [
+            {
+              id: "menu-bakery-loaf",
+              title: "Sourdough loaf",
+              category: "Bread",
+              draftPriceUsd: 8,
+              confirmedPriceUsd: null,
+              source: "ai_crawl",
+              aliases: ["bread", "loaf", "sourdough"],
+            },
+          ],
+        },
+      },
     ],
     drivers: [
       {
@@ -1332,6 +1479,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         ),
         lastPayoutAt: null,
         taxFormsSelfManaged: true,
+        firstDeliveredAt: deliveredAt,
       },
       {
         id: "drv-jordan",
@@ -1351,6 +1499,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         pendingPayoutUsd: 12,
         lastPayoutAt: createdAt,
         taxFormsSelfManaged: true,
+        firstDeliveredAt: null,
       },
       {
         id: "drv-riley",
@@ -1370,6 +1519,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         pendingPayoutUsd: 0,
         lastPayoutAt: null,
         taxFormsSelfManaged: true,
+        firstDeliveredAt: null,
       },
       {
         id: "drv-casey",
@@ -1389,6 +1539,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         pendingPayoutUsd: 0,
         lastPayoutAt: "2026-07-20T18:00:00.000Z",
         taxFormsSelfManaged: true,
+        firstDeliveredAt: null,
       },
     ],
     ledger: [
@@ -1481,6 +1632,11 @@ export function remintHometownScoutPaySamples(ops: DeliveryOps): DeliveryOps {
       ? { ...row, ownerDriverId: "drv-jordan" }
       : row,
   );
+  const starter = starterDeliveryOps("Hometown Runner");
+  if (!restaurants.some((row) => row.id === "rest-bakery")) {
+    const bakery = starter.restaurants.find((row) => row.id === "rest-bakery");
+    if (bakery) restaurants.push(bakery);
+  }
   const hasDeli = restaurants.some((row) => row.id === "rest-deli");
   const hasDeliDelivered = ops.runs.some(
     (row) => row.restaurantId === "rest-deli" && row.status === "delivered",
@@ -1488,7 +1644,6 @@ export function remintHometownScoutPaySamples(ops: DeliveryOps): DeliveryOps {
   if (!hasDeli || hasDeliDelivered) {
     return { ...ops, restaurants };
   }
-  const starter = starterDeliveryOps("Hometown Runner");
   const missing = (orderId: string) =>
     !ops.ledger.some((row) => row.orderId === orderId) &&
     !ops.runs.some((row) => row.orderId === orderId);
@@ -1596,15 +1751,16 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
           scoutPayoutDriverId(ops, row.restaurantId, new Date(row.createdAt)),
       })),
       drivers: ops.drivers.map((driver) => {
+        const healed = healDriverFirstDeliveredAt(driver, ops.runs);
         const attributed = driverAttributedPayoutUsd(ops, driver.id);
         if (
-          (driver.pendingPayoutUsd ?? 0) === 0 &&
-          !driver.lastPayoutAt &&
+          (healed.pendingPayoutUsd ?? 0) === 0 &&
+          !healed.lastPayoutAt &&
           attributed > 0
         ) {
-          return { ...driver, pendingPayoutUsd: attributed };
+          return { ...healed, pendingPayoutUsd: attributed };
         }
-        return driver;
+        return healed;
       }),
     };
   } catch {
@@ -1848,6 +2004,7 @@ export function advanceDriverRun(
   if (next === "delivered" && run.status !== "picked_up") {
     return { ok: false, error: "Mark pickup before you deliver." };
   }
+  const deliveredAt = new Date().toISOString();
   return {
     ok: true,
     ops: {
@@ -1855,6 +2012,14 @@ export function advanceDriverRun(
       runs: ops.runs.map((row) =>
         row.id === runId ? { ...row, status: next } : row,
       ),
+      drivers:
+        next === "delivered"
+          ? ops.drivers.map((driver) =>
+              driver.id === driverId && !driver.firstDeliveredAt
+                ? { ...driver, firstDeliveredAt: deliveredAt }
+                : driver,
+            )
+          : ops.drivers,
     },
   };
 }
