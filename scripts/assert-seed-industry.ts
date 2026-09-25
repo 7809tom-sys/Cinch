@@ -731,6 +731,19 @@ assert(
   "admin is ops/ledger, not a restaurant host stand",
 );
 assert(
+  /60 days free from the first successful drive/.test(hometownAdmin.support),
+  "admin copy names 60 days free from the first successful drive",
+);
+assert(
+  deliveryLandingLooksLikeOpsEconomics(
+    "Everybody gets 60 days free starting the first successful drive.",
+  ) &&
+    !deliveryLandingLooksLikeOpsEconomics(
+      `${hometown.headline} ${hometown.support} ${hometown.aboutBody}`,
+    ),
+  "diner leak catches 60 days free without flagging Hometown guest copy",
+);
+assert(
   seedLandingCopyMismatchesIndustry("Home Town Runnner", hometownBrief, {
     headline: "Pizza With Personality",
     cta: "Reserve a table",
