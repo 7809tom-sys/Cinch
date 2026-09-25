@@ -230,7 +230,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month/.test(
     blob,
   );
 }
@@ -4401,7 +4401,17 @@ export function customerFacingAdminCopy(
             {
               id: "tip-scout",
               title: "Scout ownership is immutable",
-              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. No silent edit of the 50/50 split without a policy version.",
+              body: "Assign the originating scout when a restaurant first goes active. Freezing a driver does not move that 5%. One delivery a month to stay eligible to be paid. Miss a month and the 5% rolls to the next most-active deliverer at that kitchen who has already signed a restaurant, then the next below. A restaurateur can sign other kitchens after one delivery. No silent edit of the 50/50 split without a policy version.",
+            },
+            {
+              id: "tip-riley",
+              title: "Riley sends dine-in first",
+              body: "Riley builds a direct relationship by sending the kitchen customers — e.g. seven couples in a week to eat there. Full-service traffic is about 70% dine-in and only 5% delivery (NRA / Circana). When those same couples later want the food at the door, the order goes through Riley. National apps do not bring the dining room.",
+            },
+            {
+              id: "tip-market",
+              title: "Size the town against published numbers",
+              body: "DoorDash does not publish a US AOV. Rakuten (via Business of Apps) is $37.28, ~20% of orders over $50; Q4 2025 implied ~$33 global including tax/tip/fees ($29.7B / 903M). 8M+ US Dashers in 2025, 9M+ worldwide — anyone with one delivery; typical US driver ~10 weeks, ~4 hours/week. Independent median ~$850K (BizMetricsHQ, rough). NRA 2025 pre-tax profit 2.8% full-service / 4.0% limited-service.",
             },
             {
               id: "tip-fees",

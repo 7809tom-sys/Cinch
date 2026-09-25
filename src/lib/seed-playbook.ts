@@ -28,7 +28,7 @@ export function portalSeedPlaybookUrl(projectId: string): string {
 export const SENTI_DESK_PATH = "/senti";
 
 export const SENTI_THINKS_DELIVERY_RULE =
-  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — three role-based logins (customer, merchant, driver), restaurant portal, driver/scout portal, admin ledger. Senti must think through those apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly; they manage their own tax forms. Trip is $4.50 + $1.50/mile. Driver software ($39/$79), 60-day suspend. Do not copy a dining-room, bakery, or pizza restaurant format.";
+  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — three role-based logins (customer, merchant, driver), restaurant portal, driver/scout portal, admin ledger. Senti must think through those apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly; they manage their own tax forms. Trip is $4.50 + $1.50/mile. Driver software ($39/$79), 60-day suspend. Scout moat: Riley sends dine-in customers (e.g. seven couples/week) because FSR traffic is ~70% dine-in and only ~5% delivery. Scout pay: one delivery a month or the 5% cascades to the next most-active signed scout at that kitchen. A restaurateur can scout other kitchens after one delivery. Do not copy a dining-room, bakery, or pizza restaurant format.";
 
 export type PlaybookChapterId =
   | "discover"
@@ -256,7 +256,7 @@ function deliveryChapters(input: {
       n: 5,
       agent: "Lumen",
       title: "Admin, money, CRM, delivery",
-      script: `Admin is the ops ledger — not a host stand. Accounting is 10% fully split 5% scout / 5% driver, $0 platform on the order. CRM/ops is the restaurant roster plus scout attribution. Delivery is the product: restaurant portal + driver portal, DoorDash concept. Do not mark delivery N/A. Do not spec a single dining room.`,
+      script: `Admin is the ops ledger — not a host stand. Accounting is 10% fully split 5% scout / 5% driver, $0 platform on the order. CRM/ops is the restaurant roster plus scout attribution. Market: DoorDash has no published US AOV (Rakuten $37.28; Q4 2025 implied ~$33 global); 8M+ US / 9M+ world Dashers in 2025, typical ~10 weeks / 4 hours. FSR mix 70% dine-in / 5% delivery. Independent median ~$850K (rough). Riley sends dine-in first (seven couples in a week), then those tables become delivery through Riley. Delivery is the product: restaurant portal + driver portal, DoorDash concept. Do not mark delivery N/A. Do not spec a single dining room.`,
       status: "proposed",
     },
     {
@@ -491,7 +491,7 @@ export function exampleSeedPlaybook(): SeedPlaybook {
   return compileSeedPlaybook({
     name: "Hometown Runner",
     brief:
-      "Hometown Runner is a hyper-local food delivery platform. Three role-based logins. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly. Trip is $4.50 + $1.50/mile. Driver software is $39/month part-time or $79/month full-time. Drivers manage their own tax forms.",
+      "Hometown Runner is a hyper-local food delivery platform. Three role-based logins. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly. Trip is $4.50 + $1.50/mile. Driver software is $39/month part-time or $79/month full-time. Drivers manage their own tax forms. Riley sends dine-in customers (seven couples in a week) because full-service traffic is about 70% dine-in and only 5% delivery. Scout pay: one delivery a month or the 5% cascades to the next most-active signed scout at that kitchen. A restaurateur can scout other kitchens after one delivery.",
     seedMode: "build",
     liveUrl: null,
   });

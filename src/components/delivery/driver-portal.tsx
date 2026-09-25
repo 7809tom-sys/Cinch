@@ -10,6 +10,8 @@ import {
   TRIP_PER_MILE_USD,
   driverCanDispatch,
   driverSoftwareFeeUsd,
+  scoutEligibleToBePaid,
+  scoutPayoutDriverId,
   scoutResidualForWeeklyGmv,
   shouldTriggerDriverPayout,
   weeklyScoutResidualExamples,
@@ -40,6 +42,11 @@ export function HometownDriverPortal({
   const online = Boolean(driver?.online);
   const canDispatch = driver ? driverCanDispatch(driver) : false;
   const scouted = ops.restaurants.filter((row) => row.scoutId === driverId);
+  const owned = ops.restaurants.filter((row) => row.ownerDriverId === driverId);
+  const scoutEligible = scoutEligibleToBePaid(ops, driverId);
+  const paidThisMonth = ops.restaurants.filter(
+    (row) => scoutPayoutDriverId(ops, row.id) === driverId,
+  );
   const offered = ops.runs.filter((row) => row.status === "offered");
   const active = ops.runs.filter(
     (row) =>
@@ -313,8 +320,37 @@ export function HometownDriverPortal({
         <p className="mt-2 text-sm text-muted">
           5% of that restaurant’s delivery GMV, perpetual while you stay on the
           platform. Examples at $500 / $800 / $1,000 / $2,000 weekly GMV — not a
-          $2,000 default promise.
+          $2,000 default promise. Riley’s job starts in the dining room: send
+          the kitchen customers (seven couples in a week is the example).
+          Full-service traffic is about 70% dine-in and only 5% delivery, so
+          that relationship is the advantage DoorDash does not have. When those
+          same couples later want the bag at the door, the order goes through
+          Riley — that is the payback. Make one delivery a month or the 5%
+          rolls to the next most-active scout at that kitchen (someone who
+          already signed a restaurant). A restaurateur can sign other kitchens
+          after one delivery. scout_id stays put.
         </p>
+        <p className="mt-3 text-sm font-semibold text-brand-deep">
+          {scoutEligible
+            ? "Eligible this month — you made one delivery."
+            : "Not eligible this month — make one delivery to keep or collect the 5%."}
+        </p>
+        {owned.length > 0 ? (
+          <p className="mt-2 text-sm text-muted">
+            You own {owned.map((row) => row.name).join(", ")}. Sign another
+            kitchen as a scout after one delivery this month.
+          </p>
+        ) : null}
+        {paidThisMonth.length > 0 ? (
+          <ul className="mt-3 space-y-2">
+            {paidThisMonth.map((row) => (
+              <li key={`paid-${row.id}`} className="text-sm font-semibold text-brand-deep">
+                {row.name} · paid the 5% this month
+                {row.scoutId !== driverId ? " (cascade)" : ""}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {scouted.length === 0 ? (
           <p className="mt-3 text-sm text-muted">
             This driver has not originated a restaurant yet.
@@ -324,6 +360,9 @@ export function HometownDriverPortal({
             {scouted.map((row) => (
               <li key={row.id} className="text-sm font-semibold text-brand-deep">
                 {row.name} · {row.neighborhood} · scout_id locked
+                {paidThisMonth.some((item) => item.id === row.id)
+                  ? ""
+                  : " · rolled this month"}
               </li>
             ))}
           </ul>

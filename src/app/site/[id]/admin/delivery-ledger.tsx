@@ -8,6 +8,7 @@ import {
   driverAttributedPayoutUsd,
   driverPhotoId,
   ledgerRunDriverId,
+  ledgerScoutPaidDriverId,
   scoutResidualForWeeklyGmv,
   summarizeDeliveryLedger,
   weeklyScoutResidualExamples,
@@ -68,7 +69,15 @@ export function SeedDeliveryLedger({
         Driver software is $39/month part-time or $79/month full-time ($9.99 /
         $19.99 weekly). 60 days off the app suspends the driver. Scout is who
         signed the kitchen. Driver is who ran the bag — fee, tip, and the 5%
-        share belong to that person.
+        share belong to that person. Market: DoorDash has no published US AOV
+        (Rakuten $37.28; Q4 2025 implied ~$33 global including tax/tip/fees).
+        8M+ US / 9M+ world Dashers in 2025 — anyone with one delivery; typical
+        US driver ~10 weeks / ~4 hours. Full-service traffic is about 70%
+        dine-in and 5% delivery. Independent median ~$850K (rough). Riley
+        sends dine-in first (seven couples in a week); those tables become
+        delivery through Riley. One delivery a month to keep the 5%; miss it
+        and pay rolls to the next most-active signed scout at that kitchen.
+        A restaurateur can sign other kitchens after one delivery.
       </p>
       <dl className="seed-run-stats">
         <div>
@@ -148,6 +157,14 @@ export function SeedDeliveryLedger({
                     <LedgerPartyId
                       person={ops.drivers.find((item) => item.id === row.scoutId)}
                       role="Scout"
+                      paidTo={
+                        ledgerScoutPaidDriverId(row, ops) !== row.scoutId
+                          ? deliveryDriverDisplayName(
+                              ops.drivers,
+                              ledgerScoutPaidDriverId(row, ops),
+                            )
+                          : null
+                      }
                       fallback={row.scoutId}
                       open={
                         openParty?.role === "scout" &&
@@ -330,12 +347,14 @@ export function SeedDeliveryLedger({
 function LedgerPartyId({
   person,
   role,
+  paidTo,
   fallback,
   open,
   onOpen,
 }: {
   person?: DeliveryDriver;
   role: "Scout" | "Driver";
+  paidTo?: string | null;
   fallback: string;
   open: boolean;
   onOpen: () => void;
@@ -355,6 +374,7 @@ function LedgerPartyId({
         <span>
           <strong>{person.name}</strong>
           <small>{id.photoIdNumber}</small>
+          {paidTo ? <small>Paid: {paidTo}</small> : null}
         </span>
       </button>
       {open ? (
@@ -365,6 +385,7 @@ function LedgerPartyId({
             <p className="seed-run-kicker">Photo ID · {role}</p>
             <p>{person.name}</p>
             <p>{id.photoIdNumber}</p>
+            {paidTo ? <p>Paid this month: {paidTo}</p> : null}
           </div>
         </aside>
       ) : null}

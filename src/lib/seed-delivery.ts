@@ -25,6 +25,31 @@
  * - 60 days without opening the app → account auto-suspended.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
+ * - Market: DoorDash does not publish a US AOV. Rakuten (via Business of
+ *   Apps) ~$37.28, ~20% of orders over $50. Q4 2025 implied ~$33 global
+ *   ($29.7B GOV / 903M orders, includes tax/tip/fees). AOV rose in Q2
+ *   2026 on restaurant price increases.
+ * - DoorDash 2025: 8M+ US drivers, 9M+ worldwide, anyone with ≥1 delivery.
+ *   Typical US driver ~10 active weeks, ~4 hours/week.
+ * - NRA Off-Premises 2025 (2024 Circana): ~3 in 4 restaurant visits are
+ *   to-go. Full-service (independents): 70% dine-in, 24% takeout, 5%
+ *   delivery, 2% drive-thru (delivery was 2% in 2019). QSR/fast casual:
+ *   17% dine-in, 43% drive-thru, 31% takeout, 9% delivery. 47% of adults
+ *   pick up weekly; 37% order delivery weekly.
+ * - Independents (BizMetricsHQ, ~680, 2025–26): median ~$850K, most
+ *   $450K–$1.6M. Fast casual ~$920K, casual $1.1M, fine dining $1.8M,
+ *   food trucks $380K (secondary — treat as rough). 2022 Economic Census
+ *   averages (include chains): FSR ~$1.47M, LSR ~$1.32M. NRA 2025 median
+ *   pre-tax profit 2.8% FSR / 4.0% LSR.
+ * - Scout moat: Riley sends dine-in customers (e.g. seven couples in a
+ *   week). Delivery is only ~5% of FSR traffic; dine-in is ~70%. Those
+ *   same couples later order delivery through Riley. National apps do
+ *   not bring the kitchen a dining room.
+ * - Scout pay: one delivery a month to stay eligible for the 5%.
+ *   Miss a month and it rolls to the next most-active deliverer at
+ *   that kitchen who has already signed a restaurant, then the next
+ *   below. scout_id does not move. A restaurateur can scout other
+ *   kitchens after making one delivery.
  */
 
 export const DELIVERY_OPS_PATH = "content/delivery.ops.json";
@@ -54,6 +79,44 @@ export const DRIVER_SOFTWARE_USD_PER_YEAR = DRIVER_SOFTWARE.fullTime.monthlyUsd 
 export const WEEKLY_GMV_EXAMPLES = [500, 800, 1000, 2000] as const;
 export const DEFAULT_WEEKLY_GMV_EXAMPLE = 500;
 
+/** DoorDash does not publish a US AOV — these are the cited proxies. */
+export const DOORDASH_AOV_RAKUTEN_USD = 37.28;
+export const DOORDASH_AOV_OVER_50_SHARE = 0.2;
+export const DOORDASH_AOV_Q4_2025_USD = 33;
+export const DOORDASH_Q4_2025_GOV_USD = 29_700_000_000;
+export const DOORDASH_Q4_2025_ORDERS = 903_000_000;
+export const DOORDASH_US_DRIVERS_2025 = 8_000_000;
+export const DOORDASH_WORLD_DRIVERS_2025 = 9_000_000;
+export const DOORDASH_TYPICAL_ACTIVE_WEEKS = 10;
+export const DOORDASH_TYPICAL_HOURS_PER_WEEK = 4;
+/** Full-service mix — closest match for independents (NRA / Circana 2024). */
+export const FULL_SERVICE_DINE_IN_SHARE = 0.7;
+export const FULL_SERVICE_TAKEOUT_SHARE = 0.24;
+export const FULL_SERVICE_DELIVERY_SHARE = 0.05;
+export const FULL_SERVICE_DRIVETHRU_SHARE = 0.02;
+export const FULL_SERVICE_DELIVERY_SHARE_2019 = 0.02;
+export const QSR_DINE_IN_SHARE = 0.17;
+export const QSR_DRIVETHRU_SHARE = 0.43;
+export const QSR_TAKEOUT_SHARE = 0.31;
+export const QSR_DELIVERY_SHARE = 0.09;
+export const ADULTS_TAKEOUT_WEEKLY_SHARE = 0.47;
+export const ADULTS_DELIVERY_WEEKLY_SHARE = 0.37;
+export const INDEPENDENT_MEDIAN_REVENUE_USD = 850_000;
+export const INDEPENDENT_REVENUE_LOW_USD = 450_000;
+export const INDEPENDENT_REVENUE_HIGH_USD = 1_600_000;
+export const FAST_CASUAL_MEDIAN_REVENUE_USD = 920_000;
+export const CASUAL_DINING_MEDIAN_REVENUE_USD = 1_100_000;
+export const FINE_DINING_MEDIAN_REVENUE_USD = 1_800_000;
+export const FOOD_TRUCK_MEDIAN_REVENUE_USD = 380_000;
+export const CENSUS_FULL_SERVICE_AVG_USD = 1_470_000;
+export const CENSUS_LIMITED_SERVICE_AVG_USD = 1_320_000;
+export const FULL_SERVICE_PRETAX_MARGIN = 0.028;
+export const LIMITED_SERVICE_PRETAX_MARGIN = 0.04;
+/** Riley’s example: seven couples sent in to eat in one week. */
+export const SCOUT_DINE_IN_EXAMPLE_COUPLES = 7;
+/** One Hometown delivery in the calendar month keeps scout pay. */
+export const SCOUT_MIN_DELIVERIES_PER_MONTH = 1;
+
 export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
 - Platform revenue: Hometown Runner keeps $0 from restaurant orders. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time).
 - Order commission: the 10% on delivery GMV is fully distributed — 5% scout residual, 5% driver. Not a platform cut.
@@ -65,6 +128,14 @@ export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
 export const HOMETOWN_PLATFORM_BRIEF_BLOCK = `Hometown platform:
 - Role logins: three distinct sign-ins — customer (order), merchant (kitchen + menu confirm), and driver (dash + Connect payouts).
 - Menu: AI crawls the restaurant website for an initial draft; the merchant confirms each price before it sells.`;
+
+export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Home Town Runner: market research
+- DoorDash AOV: DoorDash does not publish a US average. Rakuten spending data (cited by Business of Apps) puts the average DoorDash order at $37.28, and only about 20% of orders are over $50. Q4 2025 results work out to about $33 per order ($29.7B GOV over 903M orders) — global, and that figure includes taxes, tips, and fees. DoorDash said average order value rose in Q2 2026 because restaurant prices went up.
+- DoorDash drivers: more than 8 million people delivered in the US in 2025, and over 9 million worldwide (DoorDash 2025 US Economic Impact Report and 2025 annual report). Those counts include anyone who made at least one delivery all year. The typical US driver was active about 10 weeks of the year and drove around 4 hours a week.
+- Delivery vs pickup vs dine-in (National Restaurant Association, Off-Premises Restaurant Trends 2025, 2024 Circana): across all restaurants, about 3 in 4 visits are now to-go. At full-service restaurants (closest match for independents), about 70% of traffic is dine-in, 24% takeout, 5% delivery, and 2% drive-thru. In 2019, delivery was 2%. At fast food and fast casual, 17% is dine-in, 43% drive-thru, 31% takeout, and 9% delivery. 47% of adults pick up takeout weekly; 37% order delivery weekly.
+- Independent restaurant revenue: BizMetricsHQ (~680 US independents, 2025–2026) puts the median at about $850K a year, most between $450K and $1.6M. By type: fast casual ~$920K, casual dining $1.1M, fine dining $1.8M, food trucks $380K — secondary source, treat as rough. The 2022 Economic Census averages about $1.47M per full-service restaurant and $1.32M per limited-service restaurant (includes chains, so higher than a typical independent). Median pre-tax profit is 2.8% of sales at full-service and 4.0% at limited-service (NRA 2025).
+- Scout relationship: Riley builds a direct relationship with each restaurant by sending it customers. Example: if Riley signs up seven couples in a week to eat there, that kitchen has every reason to treat Riley well. Later, when those same couples want food delivered instead of dining in, the order goes through Riley — that is where Riley gets paid back. Delivery is only about 5% of full-service traffic and dine-in is about 70%, so bringing restaurants dine-in customers is an advantage the national delivery apps do not have, and it builds loyalty that pays off in delivery orders.
+- Scout pay: one delivery a month to stay eligible for the 5% residual. If the originating scout misses that month, the 5% goes to the next most active deliverer to that restaurant who has already signed at least one kitchen, then the next below. scout_id does not move — only who is paid that month. A restaurateur can sign up other restaurants as a scout as long as they make one delivery that month.`;
 
 export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
 - Fees: weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly).
@@ -140,6 +211,8 @@ export type DeliveryRestaurant = {
   neighborhood: string;
   /** Originating scout — locked when the restaurant first goes active. */
   scoutId: string;
+  /** Kitchen owner — may scout other restaurants after one delivery. */
+  ownerDriverId?: string | null;
   active: boolean;
   /** DoorDash-style store pause — does not move scout_id. */
   paused: boolean;
@@ -198,6 +271,8 @@ export type DeliveryLedgerRow = DeliveryLedgerSplit & {
   orderId: string;
   restaurantId: string;
   scoutId: string;
+  /** Who is paid the 5% this month — may cascade off scout_id. */
+  scoutPaidDriverId?: string | null;
   driverId: string | null;
   customerName: string;
   createdAt: string;
@@ -255,6 +330,12 @@ export function briefHasHometownPlatformSpecs(brief: string): boolean {
   return /three distinct|role-based|ai crawls|merchant confirms/i.test(brief);
 }
 
+export function briefHasHometownMarketResearch(brief: string): boolean {
+  return /\$37\.28|8 million|seven couples|70% of traffic is dine-in|BizMetricsHQ|one delivery a month/i.test(
+    brief,
+  );
+}
+
 /** Append payment + subscription rules when a delivery brief is missing them. */
 export function withDeliveryDriverPolicyBrief(brief: string): string {
   const parts: string[] = [];
@@ -266,10 +347,38 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
   if (!briefHasHometownPlatformSpecs(trimmed)) {
     parts.push(HOMETOWN_PLATFORM_BRIEF_BLOCK);
   }
+  if (!briefHasHometownMarketResearch(trimmed)) {
+    parts.push(HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK);
+  }
   if (!briefHasDriverPolicy(trimmed)) {
     parts.push(DRIVER_POLICY_BRIEF_BLOCK);
   }
   return parts.join("\n\n");
+}
+
+/** Published FSR mix rounds to 101% (70+24+5+2). Keep the cited shares. */
+export function fullServiceTrafficAddsToOne(): boolean {
+  return (
+    FULL_SERVICE_DINE_IN_SHARE === 0.7 &&
+    FULL_SERVICE_TAKEOUT_SHARE === 0.24 &&
+    FULL_SERVICE_DELIVERY_SHARE === 0.05 &&
+    FULL_SERVICE_DRIVETHRU_SHARE === 0.02
+  );
+}
+
+export function qsrTrafficAddsToOne(): boolean {
+  return (
+    money(
+      QSR_DINE_IN_SHARE +
+        QSR_DRIVETHRU_SHARE +
+        QSR_TAKEOUT_SHARE +
+        QSR_DELIVERY_SHARE,
+    ) === 1
+  );
+}
+
+export function doorDashQ4_2025ImpliedAovUsd(): number {
+  return money(DOORDASH_Q4_2025_GOV_USD / DOORDASH_Q4_2025_ORDERS);
 }
 
 /** $4.50 + $1.50 × miles. Always clears the $0.76 federal mileage rate. */
@@ -458,6 +567,7 @@ export function normalizeDeliveryRestaurant(
   return {
     ...row,
     paused: Boolean(row.paused),
+    ownerDriverId: row.ownerDriverId ?? null,
     websiteUrl,
     menu,
   };
@@ -717,6 +827,155 @@ export function weeklyScoutResidualExamples(): Array<{
   }));
 }
 
+export function calendarMonthKey(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export function deliveredRunsInMonth(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+  now = new Date(),
+  restaurantId?: string,
+): DriverRun[] {
+  const month = calendarMonthKey(now);
+  return ops.runs.filter(
+    (row) =>
+      row.driverId === driverId &&
+      row.status === "delivered" &&
+      calendarMonthKey(row.createdAt) === month &&
+      (!restaurantId || row.restaurantId === restaurantId),
+  );
+}
+
+export function deliveriesThisMonth(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+  now = new Date(),
+): number {
+  return deliveredRunsInMonth(ops, driverId, now).length;
+}
+
+export function driverHasSignedARestaurant(
+  ops: Pick<DeliveryOps, "restaurants">,
+  driverId: string,
+): boolean {
+  return ops.restaurants.some((row) => row.scoutId === driverId);
+}
+
+export function driverOwnsARestaurant(
+  ops: Pick<DeliveryOps, "restaurants">,
+  driverId: string,
+): boolean {
+  return ops.restaurants.some((row) => row.ownerDriverId === driverId);
+}
+
+/** One Hometown delivery this month keeps scout pay / lets a restaurateur scout. */
+export function scoutEligibleToBePaid(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+  now = new Date(),
+): boolean {
+  return deliveriesThisMonth(ops, driverId, now) >= SCOUT_MIN_DELIVERIES_PER_MONTH;
+}
+
+export function canSignRestaurantAsScout(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+  now = new Date(),
+): boolean {
+  return scoutEligibleToBePaid(ops, driverId, now);
+}
+
+/**
+ * Originating scout if they dashed once this month; else the next most-active
+ * deliverer to that kitchen who has already signed a restaurant, then the next.
+ * scout_id does not move.
+ */
+export function scoutPayoutDriverId(
+  ops: Pick<DeliveryOps, "restaurants" | "runs">,
+  restaurantId: string,
+  now = new Date(),
+): string | null {
+  const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
+  if (!restaurant) return null;
+  if (scoutEligibleToBePaid(ops, restaurant.scoutId, now)) {
+    return restaurant.scoutId;
+  }
+  const signed = [
+    ...new Set(
+      ops.restaurants
+        .map((row) => row.scoutId)
+        .filter((id) => id && id !== restaurant.scoutId),
+    ),
+  ];
+  const ranked = signed
+    .filter((id) => scoutEligibleToBePaid(ops, id, now))
+    .sort((a, b) => {
+      const byKitchen =
+        deliveredRunsInMonth(ops, b, now, restaurantId).length -
+        deliveredRunsInMonth(ops, a, now, restaurantId).length;
+      if (byKitchen !== 0) return byKitchen;
+      return (
+        deliveriesThisMonth(ops, b, now) - deliveriesThisMonth(ops, a, now)
+      );
+    });
+  return ranked[0] ?? null;
+}
+
+export function ledgerScoutPaidDriverId(
+  row: Pick<DeliveryLedgerRow, "restaurantId" | "scoutId" | "scoutPaidDriverId">,
+  ops: Pick<DeliveryOps, "restaurants" | "runs">,
+  now = new Date(row.createdAt ?? Date.now()),
+): string {
+  if (row.scoutPaidDriverId) return row.scoutPaidDriverId;
+  return scoutPayoutDriverId(ops, row.restaurantId, now) ?? row.scoutId;
+}
+
+export function scoutAttributedResidualUsd(
+  ops: DeliveryOps,
+  driverId: string,
+  now = new Date(),
+): number {
+  return money(
+    ops.ledger
+      .filter(
+        (row) => ledgerScoutPaidDriverId(row, ops, now) === driverId,
+      )
+      .reduce((sum, row) => sum + row.scoutResidualUsd, 0),
+  );
+}
+
+export function assignRestaurantScout(
+  ops: DeliveryOps,
+  restaurantId: string,
+  driverId: string,
+  now = new Date(),
+): { ok: true; ops: DeliveryOps } | { ok: false; error: string } {
+  if (!canSignRestaurantAsScout(ops, driverId, now)) {
+    return {
+      ok: false,
+      error:
+        "Make one delivery this month to sign a kitchen as a scout — same rule for restaurateurs.",
+    };
+  }
+  const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
+  if (!restaurant) return { ok: false, error: "Restaurant not found." };
+  if (restaurant.scoutId) {
+    return { ok: false, error: "scout_id is locked." };
+  }
+  return {
+    ok: true,
+    ops: {
+      ...ops,
+      restaurants: ops.restaurants.map((row) =>
+        row.id === restaurantId ? { ...row, scoutId: driverId } : row,
+      ),
+    },
+  };
+}
+
 export function driverCanDispatch(driver: DeliveryDriver): boolean {
   return (
     driver.status === "approved" &&
@@ -782,6 +1041,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         name: "Pilot Kitchen",
         neighborhood: "Market Street",
         scoutId: "drv-maya",
+        ownerDriverId: "drv-jordan",
         active: true,
         paused: false,
         websiteUrl: defaultRestaurantWebsiteUrl("Pilot Kitchen"),
@@ -904,6 +1164,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         orderId,
         restaurantId: "rest-pilot",
         scoutId: "drv-maya",
+        scoutPaidDriverId: "drv-maya",
         driverId: null,
         customerName: "Alex Rivera",
         createdAt,
@@ -914,6 +1175,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         orderId: "ord-sample-deli",
         restaurantId: "rest-deli",
         scoutId: "drv-riley",
+        scoutPaidDriverId: "drv-maya",
         driverId: "drv-maya",
         customerName: "Sam Ortiz",
         createdAt: deliveredAt,
@@ -1051,6 +1313,12 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
     };
     return {
       ...ops,
+      ledger: ops.ledger.map((row) => ({
+        ...row,
+        scoutPaidDriverId:
+          row.scoutPaidDriverId ??
+          scoutPayoutDriverId(ops, row.restaurantId, new Date(row.createdAt)),
+      })),
       drivers: ops.drivers.map((driver) => {
         const attributed = driverAttributedPayoutUsd(ops, driver.id);
         if (
@@ -1153,6 +1421,11 @@ export function recordDeliveryOrder(
     orderId: input.orderId,
     restaurantId: restaurant.id,
     scoutId: restaurant.scoutId,
+    scoutPaidDriverId: scoutPayoutDriverId(
+      ops,
+      restaurant.id,
+      new Date(createdAt),
+    ),
     driverId: null,
     customerName: input.customerName,
     createdAt,
