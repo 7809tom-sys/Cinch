@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { placeSeedShopOrderAction } from "./actions";
+import { hometownDeliveryFeeUsd } from "@/lib/seed-delivery";
 import {
   formatSeedMoney,
   type SeedSalesTaxSettings,
@@ -49,6 +50,7 @@ export function SeedShopBoard({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [tipUsd, setTipUsd] = useState(deliveryPlatform ? 4 : 0);
+  const [dropoffZip, setDropoffZip] = useState("10001");
 
   const lines = useMemo(
     () =>
@@ -73,7 +75,13 @@ export function SeedShopBoard({
       needsLtl ? item.kind === "ltl" : item.kind === "parcel",
     ) ??
     shippingModes[0];
-  const shippingUsd = mode?.baseRateUsd ?? 0;
+  const isDelivery =
+    (restaurantOrdering || deliveryPlatform) &&
+    /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
+  const shippingUsd =
+    deliveryPlatform && isDelivery
+      ? hometownDeliveryFeeUsd(dropoffZip)
+      : (mode?.baseRateUsd ?? 0);
   const taxApplies =
     salesTax.enabled &&
     !salesTax.taxInclusive &&
@@ -83,9 +91,6 @@ export function SeedShopBoard({
     : 0;
   const total =
     Math.round((subtotal + taxUsd + shippingUsd + tipUsd) * 100) / 100;
-  const isDelivery =
-    (restaurantOrdering || deliveryPlatform) &&
-    /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
 
   function add(productId: string) {
     const product = products.find((item) => item.id === productId);
@@ -306,7 +311,19 @@ export function SeedShopBoard({
                   : lotHold
                     ? "Your ZIP"
                     : "Ship-to ZIP"}
-                <input name="shipToZip" type="text" required />
+                <input
+                  name="shipToZip"
+                  type="text"
+                  required
+                  value={deliveryPlatform ? dropoffZip : undefined}
+                  defaultValue={deliveryPlatform ? undefined : "10001"}
+                  onChange={
+                    deliveryPlatform
+                      ? (event) =>
+                          setDropoffZip(event.target.value.replace(/\D/g, "").slice(0, 10))
+                      : undefined
+                  }
+                />
               </label>
               <label>
                 {deliveryPlatform
@@ -326,8 +343,13 @@ export function SeedShopBoard({
                       {item.label}
                       {restaurantOrdering || lotHold || deliveryPlatform
                         ? ""
-                        : ` (${item.kind})`} · $
-                      {item.baseRateUsd.toFixed(2)}
+                        : ` (${item.kind})`}{" "}
+                      · $
+                      {(deliveryPlatform &&
+                      /delivery/i.test(`${item.id} ${item.label}`)
+                        ? hometownDeliveryFeeUsd(dropoffZip)
+                        : item.baseRateUsd
+                      ).toFixed(2)}
                     </option>
                   ))}
                 </select>

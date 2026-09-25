@@ -112,7 +112,13 @@ export async function placeSeedShopOrderAction(
   const taxUsd = taxApplies
     ? Math.round(subtotalUsd * (shop.salesTax.ratePct / 100) * 100) / 100
     : 0;
-  const shippingUsd = mode.baseRateUsd;
+  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
+  const hometownDelivery =
+    briefIsDeliveryPlatform(project.name, project.brief) &&
+    /delivery/i.test(`${mode.id} ${mode.label}`);
+  const shippingUsd = hometownDelivery
+    ? (await import("@/lib/seed-delivery")).hometownDeliveryFeeUsd(shipToZip)
+    : mode.baseRateUsd;
   const tipUsd = Math.max(
     0,
     Math.round(Number(formData.get("tipUsd") ?? 0) * 100) / 100,
@@ -163,7 +169,6 @@ export async function placeSeedShopOrderAction(
     revalidatePath(`/site/${projectId}/admin`);
   }
 
-  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
   if (briefIsDeliveryPlatform(project.name, project.brief)) {
     const { randomUUID } = await import("crypto");
     const { recordDeliveryOrder } = await import("@/lib/seed-delivery");

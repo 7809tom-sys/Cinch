@@ -70,8 +70,9 @@ export default async function PortalDriverPage({
         </h1>
         <p className="mt-2 max-w-2xl text-base text-muted">
           DoorDash for the driver: go online, accept an offer, confirm pickup,
-          complete dropoff. You keep 100% of the fee, tip, and a 5%
-          commission share.
+          complete dropoff. Stripe Connect pays you fee, tip, and a 5%
+          share. Trip is $4.50 plus $1.50 a mile. You manage your own tax
+          forms.
         </p>
         <div className="mt-8">
           <HometownDriverPortal projectId={project.id} ops={ops} />

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
+import { getHometownRoleSession } from "@/lib/hometown-role";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { proofAndRepairSeedSite } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -17,6 +18,10 @@ export default async function SeedDrivePage({
   if (!project) notFound();
 
   await proofAndRepairSeedSite(project);
+  const session = await getHometownRoleSession(id);
+  if (session?.role !== "driver") {
+    redirect(`/site/${id}/enter?role=driver`);
+  }
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/site/${id}`);
 
@@ -35,15 +40,15 @@ export default async function SeedDrivePage({
           <nav className="flex flex-wrap gap-2 text-sm font-semibold">
             <Link
               className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"
-              href={`/portal/${id}/drive`}
+              href={`/site/${id}/enter`}
             >
-              Open in portal
+              Switch role
             </Link>
             <Link
               className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"
-              href={`/site/${id}/merchant`}
+              href={`/portal/${id}/drive`}
             >
-              Restaurant portal
+              Open in portal
             </Link>
             <Link
               className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"

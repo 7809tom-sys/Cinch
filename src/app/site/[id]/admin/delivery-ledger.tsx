@@ -61,11 +61,14 @@ export function SeedDeliveryLedger({
       <p className="seed-admin-support">
         Restaurant 10% is fully distributed — 5% scout, 5% driver. Platform
         keeps $0 on the order (subscriptions only). Drivers keep fee + tip +
-        the 5% share via ACH. Processing (~2.9%) comes out of the restaurant.
+        the 5% share via Stripe Connect (direct to the driver). Processing
+        (~2.9%) comes out of the restaurant. Trip is $4.50 + $1.50/mile so
+        drivers clear the $0.76 federal mileage rate. Payouts fire at a $25
+        minimum balance or weekly. Drivers manage their own tax forms.
         Driver software is $39/month part-time or $79/month full-time ($9.99 /
-        $19.99 weekly). 60 days off the app suspends the driver. The
-        restaurant issues 1099s. Scout is who signed the kitchen. Driver is
-        who ran the bag — fee, tip, and the 5% share belong to that person.
+        $19.99 weekly). 60 days off the app suspends the driver. Scout is who
+        signed the kitchen. Driver is who ran the bag — fee, tip, and the 5%
+        share belong to that person.
       </p>
       <dl className="seed-run-stats">
         <div>

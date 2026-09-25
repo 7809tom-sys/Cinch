@@ -29,6 +29,17 @@ import {
   deliveryDriverDisplayName,
   deliveryOpsJson,
   driverAttributedPayoutUsd,
+  confirmRestaurantMenuPrice,
+  crawlRestaurantMenuDraft,
+  hometownDeliveryFeeUsd,
+  sellableRestaurantMenu,
+  shouldTriggerDriverPayout,
+  tripChargeUsd,
+  tripClearsFederalMileage,
+  TRIP_BASE_USD,
+  TRIP_PER_MILE_USD,
+  FEDERAL_MILEAGE_USD,
+  DRIVER_PAYOUT_MIN_BALANCE_USD,
   driverPayoutFromSplit,
   ledgerRunDriverId,
   parseDeliveryOps,
@@ -53,6 +64,28 @@ function assert(condition: boolean, message: string) {
   }
 }
 
+assert(TRIP_BASE_USD === 4.5 && TRIP_PER_MILE_USD === 1.5, "trip is $4.50 + $1.50/mile");
+assert(FEDERAL_MILEAGE_USD === 0.76, "federal mileage rate is $0.76");
+assert(tripChargeUsd(0) === 4.5 && tripChargeUsd(2) === 7.5, "trip math is base plus miles");
+assert(
+  tripClearsFederalMileage(1) && tripClearsFederalMileage(10),
+  "per-mile $1.50 clears the $0.76 federal mileage rate",
+);
+assert(
+  hometownDeliveryFeeUsd("10001") === tripChargeUsd(2),
+  "ZIP 10001 estimates 2 town miles",
+);
+assert(
+  DRIVER_PAYOUT_MIN_BALANCE_USD === 25 &&
+    shouldTriggerDriverPayout({ pendingUsd: 25, trigger: "min_balance" }) &&
+    !shouldTriggerDriverPayout({ pendingUsd: 24, trigger: "min_balance" }) &&
+    shouldTriggerDriverPayout({
+      pendingUsd: 10,
+      trigger: "weekly",
+      lastPayoutAt: null,
+    }),
+  "payouts fire at $25 or on the weekly schedule",
+);
 const split = splitDeliveryLedger({
   gmvUsd: 100,
   deliveryFeeUsd: 5,
@@ -66,7 +99,7 @@ assert(split.driverCommissionUsd === 5, "driver commission is the other 5% of GM
 assert(split.deliveryFeeUsd === 5 && split.tipUsd === 4, "fee + tip stay whole");
 assert(
   driverPayoutFromSplit(split) === 14,
-  "driver ACH is fee + tip + 5% commission",
+  "driver Connect payout is fee + tip + 5% commission",
 );
 assert(
   split.processorFeeUsd ===
@@ -119,9 +152,12 @@ assert(
 );
 assert(
   /\$39\/month/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
-    /1099/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /Stripe Connect/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /does not issue 1099s/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /\$4\.50/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /three distinct/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")),
-  "delivery brief appends $0 platform economics and 1099 rules",
+  "delivery brief appends $0 platform, Connect payouts, trip, and role logins",
 );
 
 const ops = starterDeliveryOps("Hometown Runner");
@@ -194,6 +230,38 @@ assert(
       ?.driverId === "drv-maya",
   "parse heals a ledger row that forgot the driver already on the run",
 );
+const oldFlat = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    ledger: ops.ledger.map((row) =>
+      row.orderId === "ord-sample-pilot"
+        ? { ...row, deliveryFeeUsd: 5 }
+        : row,
+    ),
+    runs: ops.runs.map((row) =>
+      row.orderId === "ord-sample-pilot"
+        ? { ...row, deliveryFeeUsd: 5, dropoffZip: "10001" }
+        : row,
+    ),
+    drivers: ops.drivers.map((row) =>
+      row.id === "drv-maya"
+        ? { ...row, pendingPayoutUsd: 0, lastPayoutAt: null }
+        : row,
+    ),
+  }),
+);
+assert(
+  oldFlat?.ledger.find((row) => row.orderId === "ord-sample-pilot")
+    ?.deliveryFeeUsd === hometownDeliveryFeeUsd("10001") &&
+    oldFlat?.runs.find((row) => row.orderId === "ord-sample-pilot")
+      ?.deliveryFeeUsd === hometownDeliveryFeeUsd("10001"),
+  "parse remints the old $5 flat onto $4.50 + $1.50/mile",
+);
+assert(
+  (oldFlat?.drivers.find((row) => row.id === "drv-maya")?.pendingPayoutUsd ??
+    0) > 0,
+  "parse heals a missing Connect balance from the driver’s attributed runs",
+);
 assert(
   maya?.classification === "full_time" &&
     maya.softwareUsdPerYear === 948,
@@ -226,6 +294,44 @@ assert(
 assert(
   Boolean(deli && deli.scoutId === "drv-riley"),
   "River Market Deli scout is Riley",
+);
+assert(
+  Boolean(deli?.menu?.items.length) &&
+    sellableRestaurantMenu(deli ?? { menu: undefined }).some(
+      (item) => item.title === "Soup and half",
+    ),
+  "AI crawl drafts the deli menu and the merchant-confirmed soup sells",
+);
+const tacoDraft = crawlRestaurantMenuDraft({
+  restaurantName: "Second Street Tacos",
+});
+assert(
+  tacoDraft.items.every((item) => item.confirmedPriceUsd == null) &&
+    tacoDraft.items[0]?.source === "ai_crawl",
+  "taco crawl stays a draft until the merchant confirms prices",
+);
+const confirmedTacos = confirmRestaurantMenuPrice(
+  ops,
+  "rest-tacos",
+  "menu-taco-street",
+  13,
+);
+assert(
+  confirmedTacos.restaurants
+    .find((row) => row.id === "rest-tacos")
+    ?.menu?.items.find((item) => item.id === "menu-taco-street")
+    ?.confirmedPriceUsd === 13,
+  "merchant confirm writes the selling price",
+);
+assert(
+  maya?.taxFormsSelfManaged === true &&
+    Boolean(maya?.connectAccountId) &&
+    shouldTriggerDriverPayout({
+      pendingUsd: maya?.pendingPayoutUsd ?? 0,
+      trigger: maya?.payoutTrigger,
+      lastPayoutAt: maya?.lastPayoutAt,
+    }),
+  "Maya’s Connect balance is ready to payout; she files her own tax forms",
 );
 assert(
   riley ? !driverCanDispatch(riley) : false,
@@ -341,6 +447,14 @@ const drivePage = readFileSync(
   join(process.cwd(), "src/app/site/[id]/drive/page.tsx"),
   "utf8",
 );
+const enterPage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/enter/page.tsx"),
+  "utf8",
+);
+const roleLogin = readFileSync(
+  join(process.cwd(), "src/components/delivery/role-login.tsx"),
+  "utf8",
+);
 const adminPage = readFileSync(
   join(process.cwd(), "src/app/site/[id]/admin/page.tsx"),
   "utf8",
@@ -413,8 +527,10 @@ assert(
 assert(
   /\$39\/month/.test(deliveryLib) &&
     /\$79\/month/.test(deliveryLib) &&
-    /1099/.test(deliveryLib),
-  "delivery engine encodes $39/$79 software and restaurant 1099s",
+    /does not issue 1099s/.test(deliveryLib) &&
+    /Stripe Connect/.test(deliveryLib) &&
+    /TRIP_BASE_USD/.test(deliveryLib),
+  "delivery engine encodes $39/$79 software, Connect payouts, and trip math",
 );
 assert(
   /\$39\/month/.test(siteCopy) &&
@@ -463,12 +579,15 @@ const restaurantDesk = readFileSync(
   "utf8",
 );
 assert(
-  /issue the 1099/.test(restaurantDesk) &&
+  /Stripe Connect/.test(restaurantDesk) &&
     /keeps\s+\$0/.test(restaurantDesk) &&
-    /automatically routed to the\s+driver/.test(restaurantDesk) &&
+    /manage their own tax forms/.test(restaurantDesk) &&
     /pay ~2\.9% processing/.test(restaurantDesk) &&
+    /AI crawled your site/.test(restaurantDesk) &&
+    /confirmRestaurantMenuPriceAction/.test(restaurantDesk) &&
+    !/You issue the 1099/.test(restaurantDesk) &&
     !/The 10% on GMV is ACH/.test(restaurantDesk),
-  "restaurant portal informs the kitchen: Stripe, 2.9%, $0 platform, fee+tip to driver, 1099",
+  "restaurant portal informs the kitchen: Connect, 2.9%, $0 platform, tax forms on the driver, menu confirm",
 );
 assert(
   /Drivers available/.test(restaurantDesk) &&
@@ -485,6 +604,31 @@ assert(
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");
+assert(
+  enterPage.includes("Role-based login") &&
+    enterPage.includes("customer, merchant, or driver") &&
+    /HometownRoleLogin/.test(enterPage) &&
+    /"customer", "merchant", "driver"/.test(roleLogin) &&
+    /Sign in as merchant/.test(deliveryLib) &&
+    /Sign in as driver/.test(deliveryLib),
+  "three distinct role-based logins for customer, merchant, and driver",
+);
+assert(
+  merchantPage.includes("enter?role=merchant") &&
+    drivePage.includes("enter?role=driver"),
+  "merchant and driver desks require their own role login",
+);
+const driverDesk = readFileSync(
+  join(process.cwd(), "src/components/delivery/driver-portal.tsx"),
+  "utf8",
+);
+assert(
+  /Stripe Connect/.test(driverDesk) &&
+    /tax forms/.test(driverDesk) &&
+    /TRIP_BASE_USD/.test(driverDesk) &&
+    /shouldTriggerDriverPayout/.test(driverDesk),
+  "driver portal shows Connect payouts, trip math, and tax forms",
+);
 
 if (process.exitCode) {
   console.error("\nHometown Runner guards failed.");

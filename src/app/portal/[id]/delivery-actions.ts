@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   acceptDriverRun,
   advanceDriverRun,
+  confirmRestaurantMenuPrice,
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
@@ -32,6 +33,23 @@ async function loadOps(projectId: string) {
     return { ok: false as const, error: "Hometown portals are not on this Seed." };
   }
   return { ok: true as const, ops };
+}
+
+export async function confirmRestaurantMenuPriceAction(
+  projectId: string,
+  restaurantId: string,
+  itemId: string,
+  priceUsd: number,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    confirmRestaurantMenuPrice(loaded.ops, restaurantId, itemId, priceUsd),
+    "Merchant confirmed a crawled menu price",
+  );
+  revalidateDelivery(projectId);
+  return { ok: true as const };
 }
 
 export async function setRestaurantPausedAction(

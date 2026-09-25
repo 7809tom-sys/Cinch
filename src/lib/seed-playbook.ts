@@ -28,7 +28,7 @@ export function portalSeedPlaybookUrl(projectId: string): string {
 export const SENTI_DESK_PATH = "/senti";
 
 export const SENTI_THINKS_DELIVERY_RULE =
-  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — customer order nearby, restaurant portal, driver/scout portal, admin ledger. Senti must think through those four apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Driver software ($39/$79), 60-day suspend, restaurant-issued 1099s. Do not copy a dining-room, bakery, or pizza restaurant format.";
+  "HARD RULE: a delivery-platform Seed (Hometown Runner, Home Town Runnner) is DoorDash-style — three role-based logins (customer, merchant, driver), restaurant portal, driver/scout portal, admin ledger. Senti must think through those apps. Platform keeps $0 on restaurant orders (subscriptions only). The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly; they manage their own tax forms. Trip is $4.50 + $1.50/mile. Driver software ($39/$79), 60-day suspend. Do not copy a dining-room, bakery, or pizza restaurant format.";
 
 export type PlaybookChapterId =
   | "discover"
@@ -240,7 +240,7 @@ function deliveryChapters(input: {
       n: 3,
       agent: "Pixel",
       title: "Website vs logged-in product",
-      script: `Public job on ${host}: find nearby kitchens and order. Behind login: restaurant portal and driver portal (DoorDash-style desks), plus ops admin. Soft gates: email for a customer order; restaurant and driver accounts for the portals. Do not draw a plated-menu dining room on the public landing.`,
+      script: `Public job on ${host}: find nearby kitchens and order. Three role-based logins: customer, merchant, driver. Behind login: restaurant portal (AI menu draft + merchant confirm) and driver portal (DoorDash-style desk + Stripe Connect payouts), plus ops admin. Soft gates: email for a customer order; merchant and driver accounts for the portals. Do not draw a plated-menu dining room on the public landing.`,
       status: "proposed",
     },
     {
@@ -248,7 +248,7 @@ function deliveryChapters(input: {
       n: 4,
       agent: "Quill",
       title: "Non-negotiables",
-      script: `Hard rules for ${site}: platform keeps $0 from restaurant orders (revenue is driver subscriptions); restaurants pay 10% on delivery GMV fully split 5% scout + 5% driver; drivers keep 100% of fee + tip + the 5% share via ACH; restaurant collects on Stripe and pays ~2.9% processor; driver software is $39/month part-time or $79/month full-time (weekly $9.99 / $19.99); full-time is app-open more than 30 hours/week or 120 hours in 4 weeks; 60 days without opening the app auto-suspends the driver; restaurants issue 1099s. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
+      script: `Hard rules for ${site}: platform keeps $0 from restaurant orders (revenue is driver subscriptions); restaurants pay 10% on delivery GMV fully split 5% scout + 5% driver; drivers keep 100% of fee + tip + the 5% share via Stripe Connect (direct to the driver); restaurant collects the food total and pays ~2.9% processor; trip is $4.50 + $1.50/mile so drivers clear the $0.76 federal mileage rate; payouts fire at a $25 minimum balance or weekly; drivers manage their own tax forms (restaurant does not issue 1099s); driver software is $39/month part-time or $79/month full-time (weekly $9.99 / $19.99); full-time is app-open more than 30 hours/week or 120 hours in 4 weeks; 60 days without opening the app auto-suspends the driver. Fail closed if money is unclear. Do not invent “Reserve a table”, “Pizza With Personality”, “how guests use the room”, or kitchen-ticket chrome.`,
       status: "proposed",
     },
     {
@@ -491,7 +491,7 @@ export function exampleSeedPlaybook(): SeedPlaybook {
   return compileSeedPlaybook({
     name: "Hometown Runner",
     brief:
-      "Hometown Runner is a hyper-local food delivery platform. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Drivers keep fee, tip, and the 5% share. Driver software is $39/month part-time or $79/month full-time. Restaurants issue 1099s.",
+      "Hometown Runner is a hyper-local food delivery platform. Three role-based logins. Platform keeps $0 on restaurant orders. The 10% is 5% scout + 5% driver. Stripe Connect pays drivers directly. Trip is $4.50 + $1.50/mile. Driver software is $39/month part-time or $79/month full-time. Drivers manage their own tax forms.",
     seedMode: "build",
     liveUrl: null,
   });

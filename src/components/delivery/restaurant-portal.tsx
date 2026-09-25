@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import type {
   DeliveryDriver,
   DeliveryOps,
+  DeliveryRestaurant,
   MerchantTicket,
   MerchantTicketStatus,
 } from "@/lib/seed-delivery";
@@ -15,6 +16,7 @@ import {
   ticketAssignedDriver,
 } from "@/lib/seed-delivery";
 import {
+  confirmRestaurantMenuPriceAction,
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
@@ -117,10 +119,12 @@ export function HometownRestaurantPortal({
             </label>
             <p className="mt-2 text-sm text-muted">
               Like DoorDash for the kitchen: new orders, accept or decline, mark
-              ready, hand to a Hometown driver. You collect the full order
+              ready, hand to a Hometown driver. You collect the food total
               (Stripe) and pay ~2.9% processing. Hometown keeps $0 on the
-              order. The delivery fee and tip are automatically routed to the
-              driver. You issue the 1099 when a driver meets the threshold.
+              order. Fee, tip, and the 5% driver share go directly to the
+              driver on Stripe Connect — not through your account. Drivers
+              manage their own tax forms. Confirm AI-crawled menu prices
+              before they sell.
             </p>
           </div>
           {restaurant ? (
@@ -193,6 +197,23 @@ export function HometownRestaurantPortal({
         </dl>
       </section>
 
+      {restaurant ? (
+        <MenuConfirmBoard
+          restaurant={restaurant}
+          pending={pending}
+          onConfirm={(itemId, priceUsd) =>
+            run(() =>
+              confirmRestaurantMenuPriceAction(
+                projectId,
+                restaurant.id,
+                itemId,
+                priceUsd,
+              ),
+            )
+          }
+        />
+      ) : null}
+
       <OrderLane
         ops={ops}
         eyebrow="New orders"
@@ -231,6 +252,91 @@ export function HometownRestaurantPortal({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function MenuConfirmBoard({
+  restaurant,
+  pending,
+  onConfirm,
+}: {
+  restaurant: DeliveryRestaurant;
+  pending: boolean;
+  onConfirm: (itemId: string, priceUsd: number) => void;
+}) {
+  const items = restaurant.menu?.items ?? [];
+  const drafts = items.filter((item) => item.confirmedPriceUsd == null);
+  return (
+    <section className="rounded-xl border border-brand/15 bg-foam p-5">
+      <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+        Menu draft
+      </p>
+      <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+        AI crawled your site — confirm prices
+      </h2>
+      <p className="mt-2 text-sm text-muted">
+        Draft from {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl}. Only
+        confirmed prices sell. {drafts.length} item
+        {drafts.length === 1 ? "" : "s"} still need your number.
+      </p>
+      {items.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">No crawl yet for this kitchen.</p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
+            >
+              <div>
+                <p className="text-xs font-bold tracking-wide text-muted uppercase">
+                  {item.source === "ai_crawl" ? "AI draft" : "Merchant confirmed"}{" "}
+                  · {item.category}
+                </p>
+                <h3 className="mt-1 font-bold text-brand-deep">{item.title}</h3>
+                <p className="text-sm text-muted">
+                  Draft ${item.draftPriceUsd.toFixed(2)}
+                  {item.confirmedPriceUsd != null
+                    ? ` · selling at $${item.confirmedPriceUsd.toFixed(2)}`
+                    : " · not selling yet"}
+                </p>
+              </div>
+              <form
+                className="flex flex-wrap items-end gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  const price = Number(form.get("priceUsd"));
+                  if (!Number.isFinite(price) || price < 0) return;
+                  onConfirm(item.id, Math.round(price * 100) / 100);
+                }}
+              >
+                <label className="text-sm font-semibold text-brand-deep">
+                  Confirm $
+                  <input
+                    name="priceUsd"
+                    type="number"
+                    min={0}
+                    step={0.25}
+                    defaultValue={
+                      item.confirmedPriceUsd ?? item.draftPriceUsd
+                    }
+                    className="mt-1 block min-h-11 w-28 rounded-md border border-brand/20 px-3"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                >
+                  {item.confirmedPriceUsd != null ? "Update price" : "Confirm price"}
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
