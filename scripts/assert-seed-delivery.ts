@@ -436,6 +436,29 @@ assert(
     0) > 0,
   "parse heals a missing Connect balance from the driver’s attributed runs",
 );
+const stalePilotOnly = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    restaurants: ops.restaurants.map((row) =>
+      row.id === "rest-pilot" ? { ...row, ownerDriverId: null } : row,
+    ),
+    ledger: ops.ledger.filter((row) => row.orderId !== "ord-sample-deli"),
+    tickets: ops.tickets.filter((row) => row.orderId !== "ord-sample-deli"),
+    runs: ops.runs.filter((row) => row.orderId !== "ord-sample-deli"),
+  }),
+);
+assert(
+  stalePilotOnly?.restaurants.find((row) => row.id === "rest-pilot")
+    ?.ownerDriverId === "drv-jordan" &&
+    stalePilotOnly.runs.some(
+      (row) =>
+        row.orderId === "ord-sample-deli" &&
+        row.status === "delivered" &&
+        row.driverId === "drv-maya",
+    ) &&
+    scoutPayoutDriverId(stalePilotOnly, "rest-deli", now) === "drv-maya",
+  "parse remints the deli cascade sample and Jordan as Pilot owner",
+);
 assert(
   maya?.classification === "full_time" &&
     maya.softwareUsdPerYear === 948,

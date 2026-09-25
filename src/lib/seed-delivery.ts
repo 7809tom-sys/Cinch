@@ -1240,6 +1240,48 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
   };
 }
 
+/** Stale Seeds often have Pilot only — remint Jordan’s kitchen + the deli cascade sample. */
+export function remintHometownScoutPaySamples(ops: DeliveryOps): DeliveryOps {
+  const restaurants = ops.restaurants.map((row) =>
+    row.id === "rest-pilot" && !row.ownerDriverId
+      ? { ...row, ownerDriverId: "drv-jordan" }
+      : row,
+  );
+  const hasDeli = restaurants.some((row) => row.id === "rest-deli");
+  const hasDeliDelivered = ops.runs.some(
+    (row) => row.restaurantId === "rest-deli" && row.status === "delivered",
+  );
+  if (!hasDeli || hasDeliDelivered) {
+    return { ...ops, restaurants };
+  }
+  const starter = starterDeliveryOps("Hometown Runner");
+  const missing = (orderId: string) =>
+    !ops.ledger.some((row) => row.orderId === orderId) &&
+    !ops.runs.some((row) => row.orderId === orderId);
+  return {
+    ...ops,
+    restaurants,
+    ledger: [
+      ...ops.ledger,
+      ...starter.ledger.filter(
+        (row) => row.orderId === "ord-sample-deli" && missing(row.orderId),
+      ),
+    ],
+    tickets: [
+      ...ops.tickets,
+      ...starter.tickets.filter(
+        (row) => row.orderId === "ord-sample-deli" && missing(row.orderId),
+      ),
+    ],
+    runs: [
+      ...ops.runs,
+      ...starter.runs.filter(
+        (row) => row.orderId === "ord-sample-deli" && missing(row.orderId),
+      ),
+    ],
+  };
+}
+
 export function parseDeliveryOps(raw: string): DeliveryOps | null {
   if (!raw.trim()) return null;
   try {
@@ -1293,7 +1335,7 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
             : money((led?.gmvUsd ?? 0) * DRIVER_COMMISSION_RATE),
       };
     });
-    const ops: DeliveryOps = {
+    const ops: DeliveryOps = remintHometownScoutPaySamples({
       city: parsed.city || "One town",
       restaurants: parsed.restaurants.map((row) =>
         normalizeDeliveryRestaurant(row),
@@ -1310,7 +1352,7 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
       ledger,
       tickets: parsed.tickets,
       runs,
-    };
+    });
     return {
       ...ops,
       ledger: ops.ledger.map((row) => ({
