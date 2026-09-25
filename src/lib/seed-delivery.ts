@@ -992,7 +992,46 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
     ) {
       return null;
     }
-    return {
+    const remintTripFee = (orderId: string, zip: string | undefined, current: number) => {
+      if (zip && (current === 5 || /^ord-sample-/.test(orderId))) {
+        return hometownDeliveryFeeUsd(zip);
+      }
+      return money(Math.max(0, current));
+    };
+    const ledger = parsed.ledger.map((row) => {
+      const run = parsed.runs.find((item) => item.orderId === row.orderId);
+      const remint = splitDeliveryLedger({
+        gmvUsd: row.gmvUsd,
+        deliveryFeeUsd: remintTripFee(
+          row.orderId,
+          run?.dropoffZip,
+          row.deliveryFeeUsd,
+        ),
+        tipUsd: row.tipUsd,
+        taxUsd: row.taxUsd ?? 0,
+      });
+      return {
+        ...row,
+        ...remint,
+        driverId: row.driverId ?? run?.driverId ?? null,
+      };
+    });
+    const runs = parsed.runs.map((row) => {
+      const led = ledger.find((item) => item.orderId === row.orderId);
+      return {
+        ...row,
+        deliveryFeeUsd: remintTripFee(
+          row.orderId,
+          row.dropoffZip,
+          row.deliveryFeeUsd,
+        ),
+        driverCommissionUsd:
+          typeof row.driverCommissionUsd === "number" && row.deliveryFeeUsd !== 5
+            ? row.driverCommissionUsd
+            : money((led?.gmvUsd ?? 0) * DRIVER_COMMISSION_RATE),
+      };
+    });
+    const ops: DeliveryOps = {
       city: parsed.city || "One town",
       restaurants: parsed.restaurants.map((row) =>
         normalizeDeliveryRestaurant(row),
@@ -1006,30 +1045,22 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
               : row.status === "approved",
         }),
       ),
-      ledger: parsed.ledger.map((row) => {
-        const remint = splitDeliveryLedger({
-          gmvUsd: row.gmvUsd,
-          deliveryFeeUsd: row.deliveryFeeUsd,
-          tipUsd: row.tipUsd,
-          taxUsd: row.taxUsd ?? 0,
-        });
-        const run = parsed.runs.find((item) => item.orderId === row.orderId);
-        return {
-          ...row,
-          ...remint,
-          driverId: row.driverId ?? run?.driverId ?? null,
-        };
-      }),
+      ledger,
       tickets: parsed.tickets,
-      runs: parsed.runs.map((row) => {
-        const led = parsed.ledger.find((item) => item.orderId === row.orderId);
-        return {
-          ...row,
-          driverCommissionUsd:
-            typeof row.driverCommissionUsd === "number"
-              ? row.driverCommissionUsd
-              : money((led?.gmvUsd ?? 0) * DRIVER_COMMISSION_RATE),
-        };
+      runs,
+    };
+    return {
+      ...ops,
+      drivers: ops.drivers.map((driver) => {
+        const attributed = driverAttributedPayoutUsd(ops, driver.id);
+        if (
+          (driver.pendingPayoutUsd ?? 0) === 0 &&
+          !driver.lastPayoutAt &&
+          attributed > 0
+        ) {
+          return { ...driver, pendingPayoutUsd: attributed };
+        }
+        return driver;
       }),
     };
   } catch {

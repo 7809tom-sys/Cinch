@@ -230,6 +230,38 @@ assert(
       ?.driverId === "drv-maya",
   "parse heals a ledger row that forgot the driver already on the run",
 );
+const oldFlat = parseDeliveryOps(
+  deliveryOpsJson({
+    ...ops,
+    ledger: ops.ledger.map((row) =>
+      row.orderId === "ord-sample-pilot"
+        ? { ...row, deliveryFeeUsd: 5 }
+        : row,
+    ),
+    runs: ops.runs.map((row) =>
+      row.orderId === "ord-sample-pilot"
+        ? { ...row, deliveryFeeUsd: 5, dropoffZip: "10001" }
+        : row,
+    ),
+    drivers: ops.drivers.map((row) =>
+      row.id === "drv-maya"
+        ? { ...row, pendingPayoutUsd: 0, lastPayoutAt: null }
+        : row,
+    ),
+  }),
+);
+assert(
+  oldFlat?.ledger.find((row) => row.orderId === "ord-sample-pilot")
+    ?.deliveryFeeUsd === hometownDeliveryFeeUsd("10001") &&
+    oldFlat?.runs.find((row) => row.orderId === "ord-sample-pilot")
+      ?.deliveryFeeUsd === hometownDeliveryFeeUsd("10001"),
+  "parse remints the old $5 flat onto $4.50 + $1.50/mile",
+);
+assert(
+  (oldFlat?.drivers.find((row) => row.id === "drv-maya")?.pendingPayoutUsd ??
+    0) > 0,
+  "parse heals a missing Connect balance from the driver’s attributed runs",
+);
 assert(
   maya?.classification === "full_time" &&
     maya.softwareUsdPerYear === 948,
