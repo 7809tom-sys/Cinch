@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  briefAsksForEcommerce,
   buildSeedShopPreview,
+  seedOffersCustomerShop,
   proofAndRepairSeedSite,
   seedIndustryKey,
   seedShopUsesLotFulfillment,
@@ -28,7 +28,7 @@ export default async function SeedShopPage({
   const project = await getProject(id);
   if (!project) notFound();
 
-  if (!briefAsksForEcommerce(project.brief)) {
+  if (!seedOffersCustomerShop(project.name, project.brief)) {
     redirect(`/site/${id}`);
   }
 

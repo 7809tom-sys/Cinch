@@ -3997,6 +3997,17 @@ export function briefAsksForEcommerce(brief: string): boolean {
   );
 }
 
+/** Hometown diner shop is always on — even when the stored brief dropped “cart”. */
+export function seedOffersCustomerShop(
+  projectName: string,
+  brief: string,
+): boolean {
+  return (
+    briefAsksForEcommerce(brief) ||
+    seedIndustryKey(projectName, brief) === "delivery"
+  );
+}
+
 /** Brief asks to enter catalog items with images in Seed admin. */
 export function briefAsksForProductImages(brief: string): boolean {
   return /\b(product images?|items with (an? )?image|image in the admin|photo(?:s)? for products?|enter items)\b/i.test(

@@ -11,6 +11,7 @@ import {
   briefAsksForBusinessAdmin,
   briefAsksForEcommerce,
   briefIsDeliveryPlatform,
+  seedOffersCustomerShop,
   customerFacingAdminCopy,
   customerFacingShopCopy,
   customerFacingSiteCopy,
@@ -49,6 +50,7 @@ export type SeedSitePreview = SeedSiteCopy & {
 export {
   briefAsksForBusinessAdmin,
   briefAsksForEcommerce,
+  seedOffersCustomerShop,
   customerFacingAdminCopy,
   customerFacingCta,
   customerFacingHeadline,
@@ -793,7 +795,7 @@ function normalizeShopCopy(
 export async function ensureShopInSeed(
   project: SeedProject,
 ): Promise<SeedShopCopy | null> {
-  if (!briefAsksForEcommerce(project.brief)) return null;
+  if (!seedOffersCustomerShop(project.name, project.brief)) return null;
 
   // E-commerce always grows commerce ops into Seed admin (shipping / tax / stock).
   await ensureBusinessAdminInSeed(project);
@@ -968,7 +970,10 @@ export async function proofAndRepairSeedSite(project: SeedProject): Promise<{
     referenceUrl: project.referenceUrl,
   });
   await repairCustomerLandingIfNeeded(project);
-  if (briefAsksForEcommerce(project.brief) || before.some((f) => f.surface === "shop")) {
+  if (
+    seedOffersCustomerShop(project.name, project.brief) ||
+    before.some((f) => f.surface === "shop")
+  ) {
     await ensureShopInSeed(project);
   }
   if (briefIsDeliveryPlatform(project.name, project.brief)) {

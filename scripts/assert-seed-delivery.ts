@@ -87,6 +87,7 @@ import {
   customerFacingShopCopy,
   customerFacingSiteCopy,
   deliveryLandingLooksLikeOpsEconomics,
+  seedOffersCustomerShop,
 } from "../src/lib/seed-site-copy";
 
 function assert(condition: boolean, message: string) {
@@ -1019,6 +1020,19 @@ assert(
       readFileSync(join(process.cwd(), "src/app/site/[id]/shop/page.tsx"), "utf8"),
     ),
   "diner shop finds confirmed and uploaded plates",
+);
+assert(
+  seedOffersCustomerShop(
+    "Hometown Runner",
+    "Hyper-local food delivery platform. Restaurants pay 10%.",
+  ) &&
+    /seedOffersCustomerShop/.test(
+      readFileSync(join(process.cwd(), "src/app/site/[id]/shop/page.tsx"), "utf8"),
+    ) &&
+    /seedOffersCustomerShop/.test(
+      readFileSync(join(process.cwd(), "src/app/site/[id]/page.tsx"), "utf8"),
+    ),
+  "diner shop stays on for a Hometown Seed even when the stored brief dropped cart",
 );
 assert(landing.includes("merchantHref") && landing.includes("driveHref"), "landing links the apps");
 assert(
