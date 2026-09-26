@@ -231,7 +231,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive/i.test(
     blob,
   );
 }
@@ -4438,7 +4438,12 @@ export function customerFacingAdminCopy(
             {
               id: "tip-roles",
               title: "Three role-based logins",
-              body: "Customer, merchant, and driver each sign in separately. Menu is DoorDash-style: AI crawl plus merchant upload so diners can find the right plate. The merchant confirms every crawled price before it sells.",
+              body: "Customer, merchant, and driver each sign in separately. Menu is photo/PDF first: scout or owner snaps the paper takeout menu, five-minute sign-off, then 86 during service. Website crawl is the fallback. Do not certify Toast / Square / Otter. The merchant confirms every draft price before it sells.",
+            },
+            {
+              id: "tip-menu-ocr",
+              title: "Photo menu, five-minute sign-off, 86",
+              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item, price, modifiers). Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. No Toast / Square / Otter / Red Card / 15% markup. No POS certification.",
             },
             {
               id: "tip-software",

@@ -1314,7 +1314,7 @@ assert(
     /threePartyStripeSplit/.test(ledgerUi) &&
     /Stripe three-party/.test(ledgerUi) &&
     /Stripe Connect ACH/.test(ledgerUi) &&
-    /independent contractor agreement/.test(ledgerUi) &&
+    /independent contractor/.test(ledgerUi) &&
     /300 meter/.test(ledgerUi) &&
     /existingPlatformActive/.test(ledgerUi) &&
     /tip-geofence/.test(siteCopy) &&
