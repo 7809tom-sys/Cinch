@@ -272,7 +272,7 @@ export async function advanceDriverRunAction(
   await saveDeliveryOps(
     projectId,
     result.ops,
-    next === "picked_up" ? "Driver confirmed pickup" : "Driver completed dropoff",
+    next === "picked_up" ? "Driver confirmed pickup" : "Driver completed drop-off",
   );
   revalidateDelivery(projectId);
   return { ok: true as const };
