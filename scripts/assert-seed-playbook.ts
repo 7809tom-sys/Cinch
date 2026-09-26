@@ -69,6 +69,11 @@ assert(
   ) &&
     /60 days free from the first successful drive/.test(
       SENTI_THINKS_DELIVERY_RULE,
+    ) &&
+    /photo\/PDF first/.test(SENTI_THINKS_DELIVERY_RULE) &&
+    /five-minute sign-off/.test(SENTI_THINKS_DELIVERY_RULE) &&
+    /no Toast \/ Square \/ Otter \/ POS certification/.test(
+      SENTI_THINKS_DELIVERY_RULE,
     ),
   "Senti hard rule refuses a copied restaurant format and encodes 60 days free from first drive",
 );
@@ -246,6 +251,16 @@ for (const file of files) {
   const text = readFileSync(join(process.cwd(), file), "utf8");
   assert(/Senti|playbook/i.test(text), `${file} is a Senti playbook surface`);
 }
+const sentiDesk = readFileSync(
+  join(process.cwd(), "src/app/senti/page.tsx"),
+  "utf8",
+);
+assert(
+  /photo\/PDF paper-menu draft/.test(sentiDesk) &&
+    /five-minute sign-off/.test(sentiDesk) &&
+    /no POS certification/.test(sentiDesk),
+  "Senti desk names photo menu, five-minute sign-off, and no POS",
+);
 
 const packUi = readFileSync(
   join(process.cwd(), "src/components/seed-playbook-pack.tsx"),

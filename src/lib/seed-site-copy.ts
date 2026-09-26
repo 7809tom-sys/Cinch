@@ -231,7 +231,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive/i.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive|86'?d|\beighty-?sixed?\b|\bocr\b|vision parser|vision model|red card|deliverect|\botter\b|modifier tree|pos certification|square pos|toast \/ square/i.test(
     blob,
   );
 }
@@ -4443,7 +4443,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-menu-ocr",
               title: "Photo menu, five-minute sign-off, 86",
-              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item, price, modifiers). Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. No Toast / Square / Otter / Red Card / 15% markup. No POS certification.",
+              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item_name, price, description, modifiers: group / required / options). Seed parse is a fixture until a vision key is wired. Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. No Toast / Square / Otter / Deliverect / Red Card / 15% markup. No POS certification.",
             },
             {
               id: "tip-software",

@@ -71,9 +71,10 @@ export default async function PortalRestaurantPage({
           Restaurant portal
         </h1>
         <p className="mt-2 max-w-2xl text-base text-muted">
-          DoorDash for the restaurant: confirm AI-crawled menu prices, open
-          or pause the store, take incoming orders, and hand bags to a
-          Hometown driver. Fee and tip go to the driver on Stripe Connect.
+          Snap the paper takeout menu or upload a PDF, five-minute
+          sign-off, then 86 a plate during service. Open or pause the
+          store, take incoming orders, and hand bags to a Hometown driver.
+          Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">
           <HometownRestaurantPortal projectId={project.id} ops={ops} />

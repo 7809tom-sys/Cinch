@@ -5,8 +5,10 @@
  * - Three role-based logins: customer, merchant, driver.
  * - Menu: photo/PDF first. Scout or merchant snaps 2–3 photos of the
  *   paper takeout menu or uploads a PDF. A vision model (Gemini Flash /
- *   Claude Vision) outputs structured JSON (category, item_name, price,
- *   description, modifiers). parseMenuFromUpload / ingestMenuPhotos
+ *   Claude Vision when a key is wired; Seed parse is a fixture)
+ *   outputs structured JSON (category, item_name, price, description,
+ *   modifiers: [{ group, required, options }]). parseMenuFromUpload /
+ *   ingestMenuPhotos
  *   write a draft store profile. Website crawl is the fallback — not
  *   Red Card or non-consented scraping. Five-minute sign-off: review
  *   prices/modifiers, tap Approve (approveMenuDraft), merchant goes
@@ -223,10 +225,10 @@ export const HOMETOWN_MENU_POS_INTEGRATIONS = [
 ] as const;
 
 export const HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK = `Hometown menu onboard (not POS):
-- Primary path: Scout or merchant snaps 2–3 photos of the paper takeout menu, or uploads a PDF. A vision model (Gemini Flash / Claude Vision) outputs structured JSON: category, item_name, price, description, modifiers (required vs optional groups). parseMenuFromUpload / ingestMenuPhotos turn that into a draft store profile. Website crawl stays as a fallback.
+- Primary path: Scout or merchant snaps 2–3 photos of the paper takeout menu, or uploads a PDF. A vision model (Gemini Flash / Claude Vision when a key is wired; Seed parse is a fixture today) outputs structured JSON: category, item_name, price, description, modifiers [{ group, required, options }]. parseMenuFromUpload / ingestMenuPhotos turn that into a draft store profile. Website crawl stays as a fallback.
 - Five-minute sign-off: the parser creates a draft. Scout or restaurant owner reviews prices and modifiers, taps Approve, and the merchant goes live. Not a data-entry team. approveMenuDraft confirms every parsed item (confirmRestaurantMenuPrice still works one-by-one).
 - 86: one tap to 86 / restore an item during service so it does not sell. setMenuItemEightySixed hides 86'd items from sellableRestaurantMenu and diner find.
-- Do not build Toast / Square / Otter APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
+- Do not build Toast / Square / Otter / Deliverect APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
 
 export const HOMETOWN_DISPATCH_BRIEF_BLOCK = `Hometown dispatch & geofence:
 - Core dispatch + order routing only. No weather/supply algorithms, no KDS fry-fire, no Premier / 15% vs 30% visibility tiers.
@@ -303,7 +305,27 @@ export type MenuModifierGroup = {
   required: boolean;
   choices: MenuModifierChoice[];
 };
-/** Vision-model JSON — Gemini Flash / Claude Vision output shape. */
+/**
+ * Vision-model wire JSON (photo/PDF parse). Matches the Hometown MVP
+ * schema: category, item_name, price, description, modifiers with
+ * `group` + required + `options` (string or { name, price }).
+ */
+export type VisionMenuModifierOption =
+  | string
+  | { name: string; price?: number };
+export type VisionMenuModifierGroup = {
+  group: string;
+  required: boolean;
+  options: VisionMenuModifierOption[];
+};
+export type VisionMenuItemJson = {
+  category: string;
+  item_name: string;
+  price: number;
+  description?: string;
+  modifiers?: VisionMenuModifierGroup[];
+};
+/** Normalized parse row used to write the draft store profile. */
 export type ParsedMenuItem = {
   category: string;
   item_name: string;
@@ -314,6 +336,25 @@ export type ParsedMenuItem = {
 export type ParsedMenuJson = {
   items: ParsedMenuItem[];
 };
+/** Exact Hometown vision example — parser must accept this object. */
+export const HOMETOWN_VISION_MENU_ITEM_EXAMPLE: VisionMenuItemJson = {
+  category: "Sandwiches",
+  item_name: "Classic Cheeseburger",
+  price: 10.99,
+  description: "Quarter pound patty with cheddar, lettuce, tomato",
+  modifiers: [
+    {
+      group: "Cheese",
+      required: true,
+      options: ["Cheddar", "Swiss", "American"],
+    },
+    {
+      group: "Add-ons",
+      required: false,
+      options: [{ name: "Bacon", price: 1.5 }],
+    },
+  ],
+};
 export type MenuUploadKind = "photo" | "pdf" | "fixture";
 export type MenuUploadInput = {
   kind?: MenuUploadKind;
@@ -321,7 +362,7 @@ export type MenuUploadInput = {
   /** Seed / tests: skip a live vision call and use the paper-menu fixture. */
   useFixture?: boolean;
   rawJson?: string;
-  parsed?: ParsedMenuJson;
+  parsed?: ParsedMenuJson | VisionMenuItemJson | VisionMenuItemJson[];
 };
 export type RestaurantMenuItem = {
   id: string;
@@ -548,6 +589,12 @@ export function briefHasStudentScoutTalkingPoints(brief: string): boolean {
   return /Student scout talking points|Riley dine-in first/i.test(brief);
 }
 
+export function briefHasHometownMenuOnboard(brief: string): boolean {
+  return /photo\/PDF|five-minute sign-off|parseMenuFromUpload|86|no POS certification/i.test(
+    brief,
+  );
+}
+
 /** Append payment + subscription rules when a delivery brief is missing them. */
 export function withDeliveryDriverPolicyBrief(brief: string): string {
   const parts: string[] = [];
@@ -580,6 +627,9 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
   }
   if (!briefHasStudentScoutTalkingPoints(trimmed)) {
     parts.push(STUDENT_SCOUT_TALKING_POINTS);
+  }
+  if (!briefHasHometownMenuOnboard(trimmed)) {
+    parts.push(HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK);
   }
   return parts.join("\n\n");
 }
@@ -915,7 +965,7 @@ export function sellableRestaurantMenu(
   restaurant: Pick<DeliveryRestaurant, "menu">,
 ): Array<RestaurantMenuItem & { priceUsd: number }> {
   return (restaurant.menu?.items ?? [])
-    .filter((item) => item.confirmedPriceUsd != null)
+    .filter((item) => item.confirmedPriceUsd != null && !item.eightySixed)
     .map((item) => ({
       ...item,
       priceUsd: money(item.confirmedPriceUsd as number),
@@ -1064,6 +1114,331 @@ export function confirmRestaurantMenuPrice(
   };
 }
 
+/** Paper takeout menu the Seed vision parse returns (2–3 photos / PDF). */
+export const SEED_PAPER_MENU_PARSE_FIXTURE: ParsedMenuJson = {
+  items: [
+    {
+      category: "Heroes",
+      item_name: "Chicken parm hero",
+      price: 15,
+      description: "Breaded cutlet, marinara, melted mozzarella on a hero roll",
+      modifiers: [
+        {
+          id: "size",
+          name: "Size",
+          required: true,
+          choices: [
+            { id: "reg", name: "Regular" },
+            { id: "lg", name: "Large", priceUsd: 3 },
+          ],
+        },
+        {
+          id: "extra-cheese",
+          name: "Extra cheese",
+          required: false,
+          choices: [{ id: "yes", name: "Add extra cheese", priceUsd: 1.5 }],
+        },
+      ],
+    },
+    {
+      category: "Plates",
+      item_name: "Baked ziti",
+      price: 13,
+      description: "Ricotta, mozzarella, house red sauce",
+      modifiers: [
+        {
+          id: "protein",
+          name: "Add protein",
+          required: false,
+          choices: [
+            { id: "meatball", name: "Meatball", priceUsd: 3 },
+            { id: "sausage", name: "Sausage", priceUsd: 3 },
+          ],
+        },
+      ],
+    },
+    {
+      category: "Sweets",
+      item_name: "Cannoli",
+      price: 5,
+      description: "Ricotta cream, chocolate chips",
+    },
+  ],
+};
+
+export function inferredMenuUploadKind(
+  input: MenuUploadInput = {},
+): MenuUploadKind {
+  if (input.kind) return input.kind;
+  const names = input.fileNames ?? [];
+  if (names.some((name) => /\.pdf$/i.test(name))) return "pdf";
+  if (names.length > 0) return "photo";
+  return "fixture";
+}
+
+export function parsedMenuItemId(itemName: string): string {
+  const slug = itemName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  return `menu-parse-${slug || "item"}`;
+}
+
+function rawParsedMenuRows(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return [];
+  const record = raw as { items?: unknown; item_name?: unknown };
+  if (Array.isArray(record.items)) return record.items;
+  if (typeof record.item_name === "string" && record.item_name.trim()) {
+    return [raw];
+  }
+  return [];
+}
+
+function normalizeModifierChoice(
+  raw: unknown,
+  index: number,
+): MenuModifierChoice | null {
+  if (typeof raw === "string") {
+    const name = raw.trim();
+    return name ? { id: `choice-${index}`, name } : null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const choice = raw as {
+    id?: unknown;
+    name?: unknown;
+    price?: unknown;
+    priceUsd?: unknown;
+  };
+  const name = String(choice.name ?? "").trim();
+  if (!name) return null;
+  const priceRaw =
+    typeof choice.priceUsd === "number"
+      ? choice.priceUsd
+      : typeof choice.price === "number"
+        ? choice.price
+        : undefined;
+  return {
+    id: String(choice.id ?? "").trim() || `choice-${index}`,
+    name,
+    priceUsd: typeof priceRaw === "number" ? money(priceRaw) : undefined,
+  };
+}
+
+function normalizeModifierGroup(
+  raw: unknown,
+  index: number,
+): MenuModifierGroup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const group = raw as {
+    id?: unknown;
+    name?: unknown;
+    group?: unknown;
+    required?: unknown;
+    options?: unknown;
+    choices?: unknown;
+  };
+  const groupName = String(group.group ?? group.name ?? "").trim();
+  if (!groupName) return null;
+  const rawChoices = Array.isArray(group.options)
+    ? group.options
+    : Array.isArray(group.choices)
+      ? group.choices
+      : [];
+  return {
+    id:
+      String(group.id ?? "").trim() ||
+      `mod-${index}-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    name: groupName,
+    required: Boolean(group.required),
+    choices: rawChoices
+      .map((choice, choiceIndex) =>
+        normalizeModifierChoice(choice, choiceIndex),
+      )
+      .filter((choice): choice is MenuModifierChoice => Boolean(choice)),
+  };
+}
+
+export function asVisionMenuItemJson(item: ParsedMenuItem): VisionMenuItemJson {
+  return {
+    category: item.category,
+    item_name: item.item_name,
+    price: item.price,
+    description: item.description,
+    modifiers: item.modifiers?.map((group) => ({
+      group: group.name,
+      required: Boolean(group.required),
+      options: group.choices.map((choice) =>
+        typeof choice.priceUsd === "number"
+          ? { name: choice.name, price: choice.priceUsd }
+          : choice.name,
+      ),
+    })),
+  };
+}
+
+export function normalizeParsedMenuJson(raw: unknown): ParsedMenuJson {
+  const items: ParsedMenuItem[] = [];
+  for (const row of rawParsedMenuRows(raw)) {
+    const item = row as Partial<ParsedMenuItem> & {
+      modifiers?: unknown;
+    };
+    const name = String(item.item_name ?? "").trim();
+    const price = money(Math.max(0, Number(item.price) || 0));
+    if (!name) continue;
+    const description = String(item.description ?? "").trim();
+    const modifiers = Array.isArray(item.modifiers)
+      ? item.modifiers
+          .map((group, index) => normalizeModifierGroup(group, index))
+          .filter((group): group is MenuModifierGroup => Boolean(group))
+      : undefined;
+    items.push({
+      category: String(item.category ?? "Plates").trim() || "Plates",
+      item_name: name,
+      price,
+      ...(description ? { description } : {}),
+      ...(modifiers && modifiers.length > 0 ? { modifiers } : {}),
+    });
+  }
+  return { items };
+}
+
+/**
+ * Vision parse of uploaded photos / PDF. Seed uses the paper-menu fixture
+ * so we do not call Toast / Square / Otter or scrape without consent.
+ */
+export function parseMenuFromUpload(
+  input: MenuUploadInput = {},
+): ParsedMenuJson {
+  if (input.parsed) return normalizeParsedMenuJson(input.parsed);
+  if (input.rawJson?.trim()) {
+    try {
+      return normalizeParsedMenuJson(JSON.parse(input.rawJson));
+    } catch {
+      return { items: [] };
+    }
+  }
+  return normalizeParsedMenuJson(SEED_PAPER_MENU_PARSE_FIXTURE);
+}
+
+export function parsedItemToDraft(
+  item: ParsedMenuItem,
+  source: Extract<RestaurantMenuItemSource, "photo_parse" | "pdf_parse">,
+): RestaurantMenuItem {
+  return {
+    id: parsedMenuItemId(item.item_name),
+    title: item.item_name,
+    category: item.category,
+    draftPriceUsd: money(item.price),
+    confirmedPriceUsd: null,
+    source,
+    description: item.description,
+    modifiers: item.modifiers,
+    aliases: [item.item_name, item.category].filter(Boolean),
+    eightySixed: false,
+  };
+}
+
+/** Write parsed photos/PDF (or the Seed fixture) as a draft store profile. */
+export function ingestMenuPhotos(
+  ops: DeliveryOps,
+  restaurantId: string,
+  input: MenuUploadInput = {},
+): DeliveryOps {
+  const parsed = parseMenuFromUpload(input);
+  const kind = inferredMenuUploadKind(input);
+  const source: Extract<RestaurantMenuItemSource, "photo_parse" | "pdf_parse"> =
+    kind === "pdf" ? "pdf_parse" : "photo_parse";
+  const drafts = parsed.items.map((item) => parsedItemToDraft(item, source));
+  if (drafts.length === 0) return ops;
+  const ingestedAt = new Date().toISOString();
+  return {
+    ...ops,
+    restaurants: ops.restaurants.map((row) => {
+      if (row.id !== restaurantId) return row;
+      const menu =
+        row.menu ??
+        crawlRestaurantMenuDraft({
+          restaurantName: row.name,
+          websiteUrl: row.websiteUrl,
+        });
+      const incomingIds = new Set(drafts.map((item) => item.id));
+      const kept = menu.items.filter((item) => !incomingIds.has(item.id));
+      return {
+        ...row,
+        menu: {
+          ...menu,
+          ingestSource: kind,
+          crawledAt: ingestedAt,
+          approvedAt: null,
+          items: [...kept, ...drafts],
+        },
+      };
+    }),
+  };
+}
+
+/** Five-minute sign-off — confirm every parsed / draft plate and go live. */
+export function approveMenuDraft(
+  ops: DeliveryOps,
+  restaurantId: string,
+  priceOverrides: Record<string, number> = {},
+  approvedAt = new Date().toISOString(),
+): DeliveryOps {
+  let next = ops;
+  const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
+  for (const item of restaurant?.menu?.items ?? []) {
+    const override = priceOverrides[item.id];
+    const price =
+      typeof override === "number" ? override : (item.draftPriceUsd ?? 0);
+    next = confirmRestaurantMenuPrice(next, restaurantId, item.id, price);
+  }
+  return {
+    ...next,
+    restaurants: next.restaurants.map((row) => {
+      if (row.id !== restaurantId || !row.menu) return row;
+      return {
+        ...row,
+        menu: {
+          ...row.menu,
+          approvedAt,
+        },
+      };
+    }),
+  };
+}
+
+/** One tap to 86 / restore during service so the plate does not sell. */
+export function setMenuItemEightySixed(
+  ops: DeliveryOps,
+  restaurantId: string,
+  itemId: string,
+  eightySixed: boolean,
+): DeliveryOps {
+  return {
+    ...ops,
+    restaurants: ops.restaurants.map((row) => {
+      if (row.id !== restaurantId) return row;
+      const menu =
+        row.menu ??
+        crawlRestaurantMenuDraft({
+          restaurantName: row.name,
+          websiteUrl: row.websiteUrl,
+        });
+      return {
+        ...row,
+        menu: {
+          ...menu,
+          items: menu.items.map((item) =>
+            item.id === itemId ? { ...item, eightySixed } : item,
+          ),
+        },
+      };
+    }),
+  };
+}
+
 export function normalizeDeliveryRestaurant(
   row: DeliveryRestaurant,
 ): DeliveryRestaurant {
@@ -1071,7 +1446,16 @@ export function normalizeDeliveryRestaurant(
     row.websiteUrl?.trim() || defaultRestaurantWebsiteUrl(row.name);
   const menu =
     row.menu && Array.isArray(row.menu.items) && row.menu.items.length > 0
-      ? row.menu
+      ? {
+          ...row.menu,
+          items: row.menu.items.map((item) => ({
+            ...item,
+            eightySixed: Boolean(item.eightySixed),
+            modifiers: Array.isArray(item.modifiers)
+              ? item.modifiers
+              : undefined,
+          })),
+        }
       : crawlRestaurantMenuDraft({
           restaurantName: row.name,
           websiteUrl,

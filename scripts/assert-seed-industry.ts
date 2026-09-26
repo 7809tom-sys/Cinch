@@ -744,6 +744,13 @@ assert(
   "diner leak catches 60 days free without flagging Hometown guest copy",
 );
 assert(
+  deliveryLandingLooksLikeOpsEconomics(
+    "86'd the plate. OCR vision parser. Red Card. Toast / Square. Deliverect. POS certification.",
+  ) &&
+    !deliveryLandingLooksLikeOpsEconomics(hometownDinerBlob),
+  "diner leak catches OCR / 86 / POS internals without flagging Hometown guest copy",
+);
+assert(
   seedLandingCopyMismatchesIndustry("Home Town Runnner", hometownBrief, {
     headline: "Pizza With Personality",
     cta: "Reserve a table",

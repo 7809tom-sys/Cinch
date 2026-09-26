@@ -18,7 +18,10 @@ import {
   ticketDriverArrived,
 } from "@/lib/seed-delivery";
 import {
+  approveMenuDraftAction,
   confirmRestaurantMenuPriceAction,
+  ingestMenuPhotosAction,
+  setMenuItemEightySixedAction,
   uploadRestaurantMenuItemAction,
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
@@ -121,17 +124,21 @@ export function HometownRestaurantPortal({
               </select>
             </label>
             <p className="mt-2 text-sm text-muted">
-              Like DoorDash for the kitchen: upload your menu so diners can
-              find the right plate, or confirm the AI draft. New orders, accept
-              or decline, mark ready, hand to a Hometown driver. Stripe
-              three-party: you, the scout, and the driver each have a Stripe
-              account. You collect the food net and pay ~2.9% processing.
-              Hometown keeps $0 on the order. The 5% residual goes to the
-              scout’s account; fee, tip, and the 5% driver share go to the
-              driver. You cannot keep the 5% on your own kitchen — sign
-              another restaurant after one delivery if you want to scout.
-              Drivers manage their own tax forms. Delivery radius is a
-              fixed {MERCHANT_DELIVERY_RADIUS_MILES} miles — no expand or
+              Snap 2–3 photos of the paper takeout menu or upload a PDF.
+              Review the draft and Approve — five-minute sign-off, not a
+              data-entry team. Website crawl stays as a fallback. Hometown
+              does not certify Toast, Square, Otter, or Deliverect, and
+              does not run a Red Card crawler. During service, 86 a plate
+              so it does not sell. New orders, accept or decline, mark
+              ready, hand to a Hometown driver. Stripe three-party: you,
+              the scout, and the driver each have a Stripe account. You
+              collect the food net and pay ~2.9% processing. Hometown
+              keeps $0 on the order. The 5% residual goes to the scout’s
+              account; fee, tip, and the 5% driver share go to the driver.
+              You cannot keep the 5% on your own kitchen — sign another
+              restaurant after one delivery if you want to scout. Drivers
+              manage their own tax forms. Delivery radius is a fixed{" "}
+              {MERCHANT_DELIVERY_RADIUS_MILES} miles — no expand or
               Premier tiers. When the driver enters the kitchen geofence,
               the ticket flips to Driver Arrived so you stage the bag.
             </p>
@@ -223,6 +230,24 @@ export function HometownRestaurantPortal({
         <MenuConfirmBoard
           restaurant={restaurant}
           pending={pending}
+          onIngest={(input) =>
+            run(() =>
+              ingestMenuPhotosAction(projectId, restaurant.id, input),
+            )
+          }
+          onApprove={() =>
+            run(() => approveMenuDraftAction(projectId, restaurant.id))
+          }
+          onEightySix={(itemId, eightySixed) =>
+            run(() =>
+              setMenuItemEightySixedAction(
+                projectId,
+                restaurant.id,
+                itemId,
+                eightySixed,
+              ),
+            )
+          }
           onConfirm={(itemId, priceUsd) =>
             run(() =>
               confirmRestaurantMenuPriceAction(
@@ -285,11 +310,21 @@ export function HometownRestaurantPortal({
 function MenuConfirmBoard({
   restaurant,
   pending,
+  onIngest,
+  onApprove,
+  onEightySix,
   onConfirm,
   onUpload,
 }: {
   restaurant: DeliveryRestaurant;
   pending: boolean;
+  onIngest: (input: {
+    kind?: "photo" | "pdf" | "fixture";
+    fileNames?: string[];
+    useFixture?: boolean;
+  }) => void;
+  onApprove: () => void;
+  onEightySix: (itemId: string, eightySixed: boolean) => void;
   onConfirm: (itemId: string, priceUsd: number) => void;
   onUpload: (input: {
     title: string;
@@ -307,14 +342,69 @@ function MenuConfirmBoard({
         Menu
       </p>
       <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-        Upload like DoorDash — or confirm the AI draft
+        Snap the paper menu — five-minute sign-off
       </h2>
       <p className="mt-2 text-sm text-muted">
-        Add a plate with the words diners type so they find it. Draft from{" "}
-        {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl}. Only confirmed
-        or uploaded prices sell. {drafts.length} item
-        {drafts.length === 1 ? "" : "s"} still need your number.
+        Upload 2–3 photos of the paper takeout menu or a PDF. Review prices
+        and modifiers, then Approve. Not a data-entry team. Seed parse
+        writes a paper-menu fixture until a vision API key is wired — not
+        a live Gemini or Claude call. Website crawl from{" "}
+        {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl} is the
+        fallback. No Toast / Square / Otter / Deliverect POS, no Red Card
+        crawler. Only approved plates sell. One tap 86 on this tablet /
+        web view so diners cannot buy it. {drafts.length} item
+        {drafts.length === 1 ? "" : "s"} still need sign-off.
       </p>
+      <form
+        className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const files = Array.from(
+            (form.elements.namedItem("menuFiles") as HTMLInputElement | null)
+              ?.files ?? [],
+          );
+          const fileNames = files.map((file) => file.name);
+          onIngest({
+            kind: fileNames.some((name) => /\.pdf$/i.test(name))
+              ? "pdf"
+              : files.length
+                ? "photo"
+                : "fixture",
+            fileNames,
+            useFixture: true,
+          });
+          form.reset();
+        }}
+      >
+        <label className="text-sm font-semibold text-brand-deep">
+          Photos or PDF
+          <input
+            name="menuFiles"
+            type="file"
+            accept="image/*,.pdf"
+            multiple
+            className="mt-1 block w-full text-sm"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+        >
+          Parse paper menu
+        </button>
+        {drafts.length > 0 ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onApprove}
+            className="inline-flex min-h-11 items-center rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            Approve draft · go live
+          </button>
+        ) : null}
+      </form>
       <form
         className="mt-4 grid gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3 sm:grid-cols-2"
         onSubmit={(event) => {
@@ -392,7 +482,11 @@ function MenuConfirmBoard({
           {items.map((item) => (
             <li
               key={item.id}
-              className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
+              className={`flex flex-wrap items-end justify-between gap-3 rounded-lg border px-4 py-3 ${
+                item.eightySixed
+                  ? "border-brand/10 bg-zinc-100 text-zinc-500 opacity-70"
+                  : "border-brand/10 bg-white"
+              }`}
             >
               <div>
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
@@ -400,17 +494,50 @@ function MenuConfirmBoard({
                     ? "AI draft"
                     : item.source === "merchant_upload"
                       ? "Uploaded"
-                      : "Merchant confirmed"}{" "}
+                      : item.source === "photo_parse"
+                        ? "Photo draft"
+                        : item.source === "pdf_parse"
+                          ? "PDF draft"
+                          : "Merchant confirmed"}{" "}
                   · {item.category}
+                  {item.eightySixed ? " · 86'd" : ""}
                 </p>
-                <h3 className="mt-1 font-bold text-brand-deep">{item.title}</h3>
+                <h3
+                  className={`mt-1 font-bold ${
+                    item.eightySixed
+                      ? "text-zinc-500 line-through"
+                      : "text-brand-deep"
+                  }`}
+                >
+                  {item.title}
+                </h3>
                 <p className="text-sm text-muted">
                   Draft ${item.draftPriceUsd.toFixed(2)}
                   {item.confirmedPriceUsd != null
                     ? ` · selling at $${item.confirmedPriceUsd.toFixed(2)}`
                     : " · not selling yet"}
+                  {item.eightySixed ? " · hidden from diners" : ""}
                 </p>
+                {item.modifiers?.length ? (
+                  <p className="mt-1 text-xs text-muted">
+                    {item.modifiers
+                      .map((group) => {
+                        const options = (group.choices ?? [])
+                          .map((choice) =>
+                            typeof choice.priceUsd === "number"
+                              ? `${choice.name} +$${choice.priceUsd.toFixed(2)}`
+                              : choice.name,
+                          )
+                          .join(", ");
+                        return `${group.name} (${group.required ? "required" : "optional"})${
+                          options ? `: ${options}` : ""
+                        }`;
+                      })
+                      .join(" · ")}
+                  </p>
+                ) : null}
               </div>
+              <div className="flex flex-wrap items-end gap-2">
               <form
                 className="flex flex-wrap items-end gap-2"
                 onSubmit={(event) => {
@@ -442,6 +569,19 @@ function MenuConfirmBoard({
                   {item.confirmedPriceUsd != null ? "Update price" : "Confirm price"}
                 </button>
               </form>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => onEightySix(item.id, !item.eightySixed)}
+                  className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-semibold disabled:opacity-60 ${
+                    item.eightySixed
+                      ? "border border-brand/20 text-brand-deep"
+                      : "bg-amber-100 text-amber-950"
+                  }`}
+                >
+                  {item.eightySixed ? "Restore" : "86"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>
