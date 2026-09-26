@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   acceptDriverRun,
+  advanceDriverArrived,
   advanceDriverRun,
   assignRestaurantScout,
   confirmRestaurantMenuPrice,
@@ -10,6 +11,7 @@ import {
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
+  type GeoPoint,
   type MerchantTicketStatus,
 } from "@/lib/seed-delivery";
 import {
@@ -171,15 +173,41 @@ export async function acceptDriverRunAction(
   return { ok: true as const };
 }
 
+export async function advanceDriverArrivedAction(
+  projectId: string,
+  runId: string,
+  driverId: string,
+  location: GeoPoint,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const result = advanceDriverArrived(loaded.ops, runId, driverId, location);
+  if (!result.ok) return result;
+  await saveDeliveryOps(
+    projectId,
+    result.ops,
+    "Driver arrived — kitchen stages the bag",
+  );
+  revalidateDelivery(projectId);
+  return { ok: true as const };
+}
+
 export async function advanceDriverRunAction(
   projectId: string,
   runId: string,
   driverId: string,
   next: "picked_up" | "delivered",
+  location?: GeoPoint | null,
 ) {
   const loaded = await loadOps(projectId);
   if (!loaded.ok) return loaded;
-  const result = advanceDriverRun(loaded.ops, runId, driverId, next);
+  const result = advanceDriverRun(
+    loaded.ops,
+    runId,
+    driverId,
+    next,
+    location,
+  );
   if (!result.ok) return result;
   await saveDeliveryOps(
     projectId,

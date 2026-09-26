@@ -9,11 +9,13 @@ import type {
   MerchantTicketStatus,
 } from "@/lib/seed-delivery";
 import {
+  MERCHANT_DELIVERY_RADIUS_MILES,
   availableDispatchDrivers,
   driverPhotoId,
   restaurantNetFromSplit,
   splitDeliveryLedger,
   ticketAssignedDriver,
+  ticketDriverArrived,
 } from "@/lib/seed-delivery";
 import {
   confirmRestaurantMenuPriceAction,
@@ -128,7 +130,10 @@ export function HometownRestaurantPortal({
               scout’s account; fee, tip, and the 5% driver share go to the
               driver. You cannot keep the 5% on your own kitchen — sign
               another restaurant after one delivery if you want to scout.
-              Drivers manage their own tax forms.
+              Drivers manage their own tax forms. Delivery radius is a
+              fixed {MERCHANT_DELIVERY_RADIUS_MILES} miles — no expand or
+              Premier tiers. When the driver enters the kitchen geofence,
+              the ticket flips to Driver Arrived so you stage the bag.
             </p>
           </div>
           {restaurant ? (
@@ -483,7 +488,9 @@ function OrderLane({
             >
               <div>
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
-                  {ticket.status}
+                  {ticketDriverArrived(ops, ticket)
+                    ? "Driver Arrived · stage the bag"
+                    : ticket.status}
                 </p>
                 <h3 className="mt-1 font-bold text-brand-deep">
                   {ticket.customerName}
