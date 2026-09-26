@@ -4443,7 +4443,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-menu-ocr",
               title: "Photo menu, five-minute sign-off, 86",
-              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item, price, modifiers). Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. No Toast / Square / Otter / Red Card / 15% markup. No POS certification.",
+              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item_name, price, description, modifiers: group / required / options). Seed parse is a fixture until a vision key is wired. Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. No Toast / Square / Otter / Deliverect / Red Card / 15% markup. No POS certification.",
             },
             {
               id: "tip-software",

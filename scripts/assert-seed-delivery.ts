@@ -55,9 +55,11 @@ import {
   deliveryOpsJson,
   driverAttributedPayoutUsd,
   approveMenuDraft,
+  asVisionMenuItemJson,
   confirmRestaurantMenuPrice,
   crawlRestaurantMenuDraft,
   findSellableMenuItems,
+  HOMETOWN_VISION_MENU_ITEM_EXAMPLE,
   ingestMenuPhotos,
   parseMenuFromUpload,
   SEED_PAPER_MENU_PARSE_FIXTURE,
@@ -840,6 +842,37 @@ assert(
     parsedPaper.items[0]?.modifiers?.some((group) => !group.required),
   "parse fixture returns structured paper-menu JSON with required and optional modifiers",
 );
+const parsedVision = parseMenuFromUpload({
+  rawJson: JSON.stringify(HOMETOWN_VISION_MENU_ITEM_EXAMPLE),
+});
+const visionWire = asVisionMenuItemJson(parsedVision.items[0]!);
+assert(
+  parsedVision.items[0]?.item_name === "Classic Cheeseburger" &&
+    parsedVision.items[0]?.price === 10.99 &&
+    parsedVision.items[0]?.category === "Sandwiches" &&
+    parsedVision.items[0]?.modifiers?.some(
+      (group) =>
+        group.name === "Cheese" &&
+        group.required &&
+        group.choices.some((choice) => choice.name === "Cheddar"),
+    ) &&
+    parsedVision.items[0]?.modifiers?.some(
+      (group) =>
+        group.name === "Add-ons" &&
+        !group.required &&
+        group.choices.some(
+          (choice) => choice.name === "Bacon" && choice.priceUsd === 1.5,
+        ),
+    ) &&
+    visionWire.modifiers?.[0]?.group === "Cheese" &&
+    visionWire.modifiers?.[1]?.options.some(
+      (option) =>
+        typeof option === "object" &&
+        option.name === "Bacon" &&
+        option.price === 1.5,
+    ),
+  "vision wire JSON (group / options) parses into a draft with required and optional modifiers",
+);
 const ingestedPaper = ingestMenuPhotos(ops, "rest-tacos", {
   kind: "photo",
   fileNames: ["takeout-1.jpg", "takeout-2.jpg"],
@@ -1289,6 +1322,11 @@ assert(
     /setMenuItemEightySixedAction/.test(restaurantDesk) &&
     /uploadRestaurantMenuItemAction/.test(restaurantDesk) &&
     /confirmRestaurantMenuPriceAction/.test(restaurantDesk) &&
+    /does not certify Toast/.test(restaurantDesk) &&
+    /Red Card crawler/.test(restaurantDesk) &&
+    /paper-menu fixture/.test(restaurantDesk) &&
+    /eightySixed/.test(restaurantDesk) &&
+    /line-through/.test(restaurantDesk) &&
     !/You issue the 1099/.test(restaurantDesk) &&
     !/The 10% on GMV is ACH/.test(restaurantDesk) &&
     /Your Stripe/.test(restaurantDesk) &&
@@ -1316,11 +1354,15 @@ const shopBoard = readFileSync(
   join(process.cwd(), "src/app/site/[id]/shop/shop-board.tsx"),
   "utf8",
 );
+const shopPage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/shop/page.tsx"),
+  "utf8",
+);
 assert(
   /Find an item/.test(shopBoard) &&
-    /findSellableMenuItems/.test(
-      readFileSync(join(process.cwd(), "src/app/site/[id]/shop/page.tsx"), "utf8"),
-    ),
+    /findSellableMenuItems/.test(shopPage) &&
+    /products = found\.map/.test(shopPage) &&
+    !/if \(found\.length > 0\)/.test(shopPage),
   "diner shop finds confirmed and uploaded plates",
 );
 assert(
@@ -1377,7 +1419,11 @@ assert(
     /KITCHEN_ARRIVAL_GEOFENCE_METERS/.test(driverDesk) &&
     /Complete Delivery/.test(driverDesk) &&
     /existingPlatformActive/.test(driverDesk) &&
-    /snap 2–3 photos of the\s+paper takeout menu/.test(driverDesk),
+    /snap 2–3 photos of the\s+paper takeout menu/.test(driverDesk) &&
+    /ingestMenuPhotosAction/.test(driverDesk) &&
+    /approveMenuDraftAction/.test(driverDesk) &&
+    /Scout paper-menu parse/.test(driverDesk) &&
+    /Red Card crawler/.test(driverDesk),
   "driver portal shows Connect payouts, trip math, tax forms, Riley, no own-kitchen 5%, 60 days free, geofence, IC, and ACH",
 );
 assert(

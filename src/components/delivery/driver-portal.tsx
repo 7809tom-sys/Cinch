@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { DeliveryOps, DriverRun, GeoPoint } from "@/lib/seed-delivery";
+import type {
+  DeliveryOps,
+  DeliveryRestaurant,
+  DriverRun,
+  GeoPoint,
+} from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
   DRIVER_IC_AGREEMENT,
@@ -38,7 +43,9 @@ import {
   acceptDriverRunAction,
   advanceDriverArrivedAction,
   advanceDriverRunAction,
+  approveMenuDraftAction,
   assignRestaurantScoutAction,
+  ingestMenuPhotosAction,
   setDriverOnlineAction,
 } from "@/app/portal/[id]/delivery-actions";
 
@@ -486,10 +493,23 @@ export function HometownDriverPortal({
           already signed a restaurant). A restaurateur can sign another kitchen
           after one delivery — they cannot keep the 5% on their own kitchen.
           scout_id stays put. Each of restaurant, scout, and driver is paid
-          on their own Stripe account. Scouts can snap 2–3 photos of the
-          paper takeout menu so the kitchen reviews a draft in about five
-          minutes instead of typing every plate.
+          on their own Stripe account. Scouts snap 2–3 photos of the
+          paper takeout menu (or upload a PDF) so the kitchen reviews a
+          draft in about five minutes instead of typing every plate. No
+          Toast / Square / Otter / Deliverect POS and no Red Card crawler.
         </p>
+        <ScoutPaperMenuDesk
+          restaurants={scouted.length > 0 ? scouted : ops.restaurants}
+          pending={pending}
+          onIngest={(restaurantId, input) =>
+            runAction(() =>
+              ingestMenuPhotosAction(projectId, restaurantId, input),
+            )
+          }
+          onApprove={(restaurantId) =>
+            runAction(() => approveMenuDraftAction(projectId, restaurantId))
+          }
+        />
         <p className="mt-3 text-sm font-semibold text-brand-deep">
           {scoutEligible
             ? "Eligible this month — you made one delivery."
@@ -601,6 +621,114 @@ export function HometownDriverPortal({
           {DRIVER_IC_AGREEMENT}
         </p>
       </section>
+    </div>
+  );
+}
+
+function ScoutPaperMenuDesk({
+  restaurants,
+  pending,
+  onIngest,
+  onApprove,
+}: {
+  restaurants: DeliveryRestaurant[];
+  pending: boolean;
+  onIngest: (
+    restaurantId: string,
+    input: {
+      kind?: "photo" | "pdf" | "fixture";
+      fileNames?: string[];
+      useFixture?: boolean;
+    },
+  ) => void;
+  onApprove: (restaurantId: string) => void;
+}) {
+  const [restaurantId, setRestaurantId] = useState(
+    restaurants[0]?.id ?? "",
+  );
+  const restaurant =
+    restaurants.find((row) => row.id === restaurantId) ?? restaurants[0];
+  const drafts =
+    restaurant?.menu?.items.filter((item) => item.confirmedPriceUsd == null) ??
+    [];
+  if (!restaurant) return null;
+  return (
+    <div className="mt-4 rounded-lg border border-brand/10 bg-white px-4 py-3">
+      <p className="text-xs font-bold tracking-wide text-muted uppercase">
+        Scout paper-menu parse
+      </p>
+      <h3 className="mt-1 font-bold text-brand-deep">
+        Snap 2–3 photos or upload a PDF
+      </h3>
+      <p className="mt-1 text-sm text-muted">
+        Seed parse writes a fixture draft until a vision key is wired. Glance
+        the prices and modifiers, then Approve — five-minute sign-off. The
+        kitchen 86s plates on the merchant tablet during service.
+      </p>
+      <form
+        className="mt-3 flex flex-wrap items-end gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const files = Array.from(
+            (form.elements.namedItem("menuFiles") as HTMLInputElement | null)
+              ?.files ?? [],
+          );
+          const fileNames = files.map((file) => file.name);
+          onIngest(restaurant.id, {
+            kind: fileNames.some((name) => /\.pdf$/i.test(name))
+              ? "pdf"
+              : files.length
+                ? "photo"
+                : "fixture",
+            fileNames,
+            useFixture: true,
+          });
+          form.reset();
+        }}
+      >
+        <label className="text-sm font-semibold text-brand-deep">
+          Kitchen
+          <select
+            className="mt-1 block min-h-11 min-w-48 rounded-md border border-brand/20 bg-white px-3 text-base"
+            value={restaurant.id}
+            onChange={(event) => setRestaurantId(event.target.value)}
+          >
+            {restaurants.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm font-semibold text-brand-deep">
+          Photos or PDF
+          <input
+            name="menuFiles"
+            type="file"
+            accept="image/*,.pdf"
+            multiple
+            className="mt-1 block w-full text-sm"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+        >
+          Parse paper menu
+        </button>
+        {drafts.length > 0 ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onApprove(restaurant.id)}
+            className="inline-flex min-h-11 items-center rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            Approve draft · go live
+          </button>
+        ) : null}
+      </form>
     </div>
   );
 }

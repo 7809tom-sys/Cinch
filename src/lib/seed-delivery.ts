@@ -5,8 +5,10 @@
  * - Three role-based logins: customer, merchant, driver.
  * - Menu: photo/PDF first. Scout or merchant snaps 2–3 photos of the
  *   paper takeout menu or uploads a PDF. A vision model (Gemini Flash /
- *   Claude Vision) outputs structured JSON (category, item_name, price,
- *   description, modifiers). parseMenuFromUpload / ingestMenuPhotos
+ *   Claude Vision when a key is wired; Seed parse is a fixture)
+ *   outputs structured JSON (category, item_name, price, description,
+ *   modifiers: [{ group, required, options }]). parseMenuFromUpload /
+ *   ingestMenuPhotos
  *   write a draft store profile. Website crawl is the fallback — not
  *   Red Card or non-consented scraping. Five-minute sign-off: review
  *   prices/modifiers, tap Approve (approveMenuDraft), merchant goes
@@ -223,10 +225,10 @@ export const HOMETOWN_MENU_POS_INTEGRATIONS = [
 ] as const;
 
 export const HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK = `Hometown menu onboard (not POS):
-- Primary path: Scout or merchant snaps 2–3 photos of the paper takeout menu, or uploads a PDF. A vision model (Gemini Flash / Claude Vision) outputs structured JSON: category, item_name, price, description, modifiers (required vs optional groups). parseMenuFromUpload / ingestMenuPhotos turn that into a draft store profile. Website crawl stays as a fallback.
+- Primary path: Scout or merchant snaps 2–3 photos of the paper takeout menu, or uploads a PDF. A vision model (Gemini Flash / Claude Vision when a key is wired; Seed parse is a fixture today) outputs structured JSON: category, item_name, price, description, modifiers [{ group, required, options }]. parseMenuFromUpload / ingestMenuPhotos turn that into a draft store profile. Website crawl stays as a fallback.
 - Five-minute sign-off: the parser creates a draft. Scout or restaurant owner reviews prices and modifiers, taps Approve, and the merchant goes live. Not a data-entry team. approveMenuDraft confirms every parsed item (confirmRestaurantMenuPrice still works one-by-one).
 - 86: one tap to 86 / restore an item during service so it does not sell. setMenuItemEightySixed hides 86'd items from sellableRestaurantMenu and diner find.
-- Do not build Toast / Square / Otter APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
+- Do not build Toast / Square / Otter / Deliverect APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
 
 export const HOMETOWN_DISPATCH_BRIEF_BLOCK = `Hometown dispatch & geofence:
 - Core dispatch + order routing only. No weather/supply algorithms, no KDS fry-fire, no Premier / 15% vs 30% visibility tiers.
@@ -303,7 +305,27 @@ export type MenuModifierGroup = {
   required: boolean;
   choices: MenuModifierChoice[];
 };
-/** Vision-model JSON — Gemini Flash / Claude Vision output shape. */
+/**
+ * Vision-model wire JSON (photo/PDF parse). Matches the Hometown MVP
+ * schema: category, item_name, price, description, modifiers with
+ * `group` + required + `options` (string or { name, price }).
+ */
+export type VisionMenuModifierOption =
+  | string
+  | { name: string; price?: number };
+export type VisionMenuModifierGroup = {
+  group: string;
+  required: boolean;
+  options: VisionMenuModifierOption[];
+};
+export type VisionMenuItemJson = {
+  category: string;
+  item_name: string;
+  price: number;
+  description?: string;
+  modifiers?: VisionMenuModifierGroup[];
+};
+/** Normalized parse row used to write the draft store profile. */
 export type ParsedMenuItem = {
   category: string;
   item_name: string;
@@ -314,6 +336,25 @@ export type ParsedMenuItem = {
 export type ParsedMenuJson = {
   items: ParsedMenuItem[];
 };
+/** Exact Hometown vision example — parser must accept this object. */
+export const HOMETOWN_VISION_MENU_ITEM_EXAMPLE: VisionMenuItemJson = {
+  category: "Sandwiches",
+  item_name: "Classic Cheeseburger",
+  price: 10.99,
+  description: "Quarter pound patty with cheddar, lettuce, tomato",
+  modifiers: [
+    {
+      group: "Cheese",
+      required: true,
+      options: ["Cheddar", "Swiss", "American"],
+    },
+    {
+      group: "Add-ons",
+      required: false,
+      options: [{ name: "Bacon", price: 1.5 }],
+    },
+  ],
+};
 export type MenuUploadKind = "photo" | "pdf" | "fixture";
 export type MenuUploadInput = {
   kind?: MenuUploadKind;
@@ -321,7 +362,7 @@ export type MenuUploadInput = {
   /** Seed / tests: skip a live vision call and use the paper-menu fixture. */
   useFixture?: boolean;
   rawJson?: string;
-  parsed?: ParsedMenuJson;
+  parsed?: ParsedMenuJson | VisionMenuItemJson | VisionMenuItemJson[];
 };
 export type RestaurantMenuItem = {
   id: string;
@@ -1144,50 +1185,112 @@ export function parsedMenuItemId(itemName: string): string {
   return `menu-parse-${slug || "item"}`;
 }
 
-export function normalizeParsedMenuJson(raw: unknown): ParsedMenuJson {
-  const items = Array.isArray((raw as { items?: unknown })?.items)
-    ? ((raw as { items: unknown[] }).items)
-    : Array.isArray(raw)
-      ? raw
+function rawParsedMenuRows(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) return raw;
+  if (!raw || typeof raw !== "object") return [];
+  const record = raw as { items?: unknown; item_name?: unknown };
+  if (Array.isArray(record.items)) return record.items;
+  if (typeof record.item_name === "string" && record.item_name.trim()) {
+    return [raw];
+  }
+  return [];
+}
+
+function normalizeModifierChoice(
+  raw: unknown,
+  index: number,
+): MenuModifierChoice | null {
+  if (typeof raw === "string") {
+    const name = raw.trim();
+    return name ? { id: `choice-${index}`, name } : null;
+  }
+  if (!raw || typeof raw !== "object") return null;
+  const choice = raw as {
+    id?: unknown;
+    name?: unknown;
+    price?: unknown;
+    priceUsd?: unknown;
+  };
+  const name = String(choice.name ?? "").trim();
+  if (!name) return null;
+  const priceRaw =
+    typeof choice.priceUsd === "number"
+      ? choice.priceUsd
+      : typeof choice.price === "number"
+        ? choice.price
+        : undefined;
+  return {
+    id: String(choice.id ?? "").trim() || `choice-${index}`,
+    name,
+    priceUsd: typeof priceRaw === "number" ? money(priceRaw) : undefined,
+  };
+}
+
+function normalizeModifierGroup(
+  raw: unknown,
+  index: number,
+): MenuModifierGroup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const group = raw as {
+    id?: unknown;
+    name?: unknown;
+    group?: unknown;
+    required?: unknown;
+    options?: unknown;
+    choices?: unknown;
+  };
+  const groupName = String(group.group ?? group.name ?? "").trim();
+  if (!groupName) return null;
+  const rawChoices = Array.isArray(group.options)
+    ? group.options
+    : Array.isArray(group.choices)
+      ? group.choices
       : [];
   return {
-    items: items
+    id:
+      String(group.id ?? "").trim() ||
+      `mod-${index}-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    name: groupName,
+    required: Boolean(group.required),
+    choices: rawChoices
+      .map((choice, choiceIndex) =>
+        normalizeModifierChoice(choice, choiceIndex),
+      )
+      .filter((choice): choice is MenuModifierChoice => Boolean(choice)),
+  };
+}
+
+export function asVisionMenuItemJson(item: ParsedMenuItem): VisionMenuItemJson {
+  return {
+    category: item.category,
+    item_name: item.item_name,
+    price: item.price,
+    description: item.description,
+    modifiers: item.modifiers?.map((group) => ({
+      group: group.name,
+      required: Boolean(group.required),
+      options: group.choices.map((choice) =>
+        typeof choice.priceUsd === "number"
+          ? { name: choice.name, price: choice.priceUsd }
+          : choice.name,
+      ),
+    })),
+  };
+}
+
+export function normalizeParsedMenuJson(raw: unknown): ParsedMenuJson {
+  return {
+    items: rawParsedMenuRows(raw)
       .map((row) => {
-        const item = row as Partial<ParsedMenuItem>;
+        const item = row as Partial<ParsedMenuItem> & {
+          modifiers?: unknown;
+        };
         const name = String(item.item_name ?? "").trim();
         const price = money(Math.max(0, Number(item.price) || 0));
         if (!name) return null;
         const modifiers = Array.isArray(item.modifiers)
           ? item.modifiers
-              .map((group, index) => {
-                const groupName = String(group?.name ?? "").trim();
-                if (!groupName) return null;
-                return {
-                  id:
-                    String(group.id ?? "").trim() ||
-                    `mod-${index}-${groupName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-                  name: groupName,
-                  required: Boolean(group.required),
-                  choices: (group.choices ?? [])
-                    .map((choice, choiceIndex) => {
-                      const choiceName = String(choice?.name ?? "").trim();
-                      if (!choiceName) return null;
-                      return {
-                        id:
-                          String(choice.id ?? "").trim() ||
-                          `choice-${choiceIndex}`,
-                        name: choiceName,
-                        priceUsd:
-                          typeof choice.priceUsd === "number"
-                            ? money(choice.priceUsd)
-                            : undefined,
-                      };
-                    })
-                    .filter((choice): choice is MenuModifierChoice =>
-                      Boolean(choice),
-                    ),
-                };
-              })
+              .map((group, index) => normalizeModifierGroup(group, index))
               .filter((group): group is MenuModifierGroup => Boolean(group))
           : undefined;
         return {

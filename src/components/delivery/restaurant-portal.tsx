@@ -126,17 +126,19 @@ export function HometownRestaurantPortal({
             <p className="mt-2 text-sm text-muted">
               Snap 2–3 photos of the paper takeout menu or upload a PDF.
               Review the draft and Approve — five-minute sign-off, not a
-              data-entry team. Website crawl stays as a fallback. During
-              service, 86 a plate so it does not sell. New orders, accept
-              or decline, mark ready, hand to a Hometown driver. Stripe
-              three-party: you, the scout, and the driver each have a Stripe
-              account. You collect the food net and pay ~2.9% processing.
-              Hometown keeps $0 on the order. The 5% residual goes to the
-              scout’s account; fee, tip, and the 5% driver share go to the
-              driver. You cannot keep the 5% on your own kitchen — sign
-              another restaurant after one delivery if you want to scout.
-              Drivers manage their own tax forms. Delivery radius is a
-              fixed {MERCHANT_DELIVERY_RADIUS_MILES} miles — no expand or
+              data-entry team. Website crawl stays as a fallback. Hometown
+              does not certify Toast, Square, Otter, or Deliverect, and
+              does not run a Red Card crawler. During service, 86 a plate
+              so it does not sell. New orders, accept or decline, mark
+              ready, hand to a Hometown driver. Stripe three-party: you,
+              the scout, and the driver each have a Stripe account. You
+              collect the food net and pay ~2.9% processing. Hometown
+              keeps $0 on the order. The 5% residual goes to the scout’s
+              account; fee, tip, and the 5% driver share go to the driver.
+              You cannot keep the 5% on your own kitchen — sign another
+              restaurant after one delivery if you want to scout. Drivers
+              manage their own tax forms. Delivery radius is a fixed{" "}
+              {MERCHANT_DELIVERY_RADIUS_MILES} miles — no expand or
               Premier tiers. When the driver enters the kitchen geofence,
               the ticket flips to Driver Arrived so you stage the bag.
             </p>
@@ -344,10 +346,13 @@ function MenuConfirmBoard({
       </h2>
       <p className="mt-2 text-sm text-muted">
         Upload 2–3 photos of the paper takeout menu or a PDF. Review prices
-        and modifiers, then Approve. Not a data-entry team. Website crawl
-        from {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl} is the
-        fallback. Only approved plates sell. 86 a plate during service so
-        diners cannot buy it. {drafts.length} item
+        and modifiers, then Approve. Not a data-entry team. Seed parse
+        writes a paper-menu fixture until a vision API key is wired — not
+        a live Gemini or Claude call. Website crawl from{" "}
+        {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl} is the
+        fallback. No Toast / Square / Otter / Deliverect POS, no Red Card
+        crawler. Only approved plates sell. One tap 86 on this tablet /
+        web view so diners cannot buy it. {drafts.length} item
         {drafts.length === 1 ? "" : "s"} still need sign-off.
       </p>
       <form
@@ -477,7 +482,11 @@ function MenuConfirmBoard({
           {items.map((item) => (
             <li
               key={item.id}
-              className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
+              className={`flex flex-wrap items-end justify-between gap-3 rounded-lg border px-4 py-3 ${
+                item.eightySixed
+                  ? "border-brand/10 bg-zinc-100 text-zinc-500 opacity-70"
+                  : "border-brand/10 bg-white"
+              }`}
             >
               <div>
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
@@ -493,7 +502,15 @@ function MenuConfirmBoard({
                   · {item.category}
                   {item.eightySixed ? " · 86'd" : ""}
                 </p>
-                <h3 className="mt-1 font-bold text-brand-deep">{item.title}</h3>
+                <h3
+                  className={`mt-1 font-bold ${
+                    item.eightySixed
+                      ? "text-zinc-500 line-through"
+                      : "text-brand-deep"
+                  }`}
+                >
+                  {item.title}
+                </h3>
                 <p className="text-sm text-muted">
                   Draft ${item.draftPriceUsd.toFixed(2)}
                   {item.confirmedPriceUsd != null
@@ -504,10 +521,18 @@ function MenuConfirmBoard({
                 {item.modifiers?.length ? (
                   <p className="mt-1 text-xs text-muted">
                     {item.modifiers
-                      .map(
-                        (group) =>
-                          `${group.name} (${group.required ? "required" : "optional"})`,
-                      )
+                      .map((group) => {
+                        const options = (group.choices ?? [])
+                          .map((choice) =>
+                            typeof choice.priceUsd === "number"
+                              ? `${choice.name} +$${choice.priceUsd.toFixed(2)}`
+                              : choice.name,
+                          )
+                          .join(", ");
+                        return `${group.name} (${group.required ? "required" : "optional"})${
+                          options ? `: ${options}` : ""
+                        }`;
+                      })
                       .join(" · ")}
                   </p>
                 ) : null}

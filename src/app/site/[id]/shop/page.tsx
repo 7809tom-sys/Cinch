@@ -48,21 +48,19 @@ export default async function SeedShopPage({
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
       const found = findSellableMenuItems(ops);
-      if (found.length > 0) {
-        products = found.map((item) => ({
-          id: `${item.restaurantId}:${item.itemId}`,
-          title: item.title,
-          detail: `${item.restaurantName} · ${item.neighborhood}${
-            item.aliases.length ? ` · ${item.aliases.join(", ")}` : ""
-          }`,
-          priceUsd: item.priceUsd,
-          sku: item.itemId,
-          stockQty: 20,
-          weightLb: 1,
-          shipClass: "parcel" as const,
-          imageUrl: item.photoUrl ?? "",
-        }));
-      }
+      products = found.map((item) => ({
+        id: `${item.restaurantId}:${item.itemId}`,
+        title: item.title,
+        detail: `${item.restaurantName} · ${item.neighborhood}${
+          item.aliases.length ? ` · ${item.aliases.join(", ")}` : ""
+        }`,
+        priceUsd: item.priceUsd,
+        sku: item.itemId,
+        stockQty: 20,
+        weightLb: 1,
+        shipClass: "parcel" as const,
+        imageUrl: item.photoUrl ?? "",
+      }));
     }
   }
 
