@@ -74,7 +74,8 @@ assert(
     /five-minute sign-off/.test(SENTI_THINKS_DELIVERY_RULE) &&
     /no Toast \/ Square \/ Otter \/ POS certification/.test(
       SENTI_THINKS_DELIVERY_RULE,
-    ),
+    ) &&
+    /\$0\.25 per order for API expenses/.test(SENTI_THINKS_DELIVERY_RULE),
   "Senti hard rule refuses a copied restaurant format and encodes 60 days free from first drive",
 );
 

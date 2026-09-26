@@ -1,6 +1,7 @@
 /**
  * Guard: Hometown Runner v1 is a delivery platform the Seed actually builds.
- * Ledger is 10% → 5% scout / 5% driver, $0 platform on orders;
+ * Ledger is 10% → 5% scout / 5% driver, $0 food-share platform,
+ * plus $0.25 API expense from the restaurant;
  * drivers keep fee+tip+5%; freeze does not move scout.
  * Residual examples use $500 / $800 / $1,000 / $2,000 — never a $2,000 default.
  * Run: npx tsx scripts/assert-seed-delivery.ts
@@ -67,6 +68,8 @@ import {
   threePartyStripeSplit,
   uploadRestaurantMenuItem,
   hometownDeliveryFeeUsd,
+  HOMETOWN_API_EXPENSE_CENTS,
+  HOMETOWN_API_EXPENSE_USD,
   sellableRestaurantMenu,
   shouldTriggerDriverPayout,
   ticketDriverArrived,
@@ -154,7 +157,15 @@ const split = splitDeliveryLedger({
   taxUsd: 8.25,
 });
 assert(split.restaurantCommissionUsd === 10, "restaurant takes 10% of GMV");
-assert(split.platformGrossUsd === 0 && split.platformNetUsd === 0, "platform keeps $0 on the order");
+assert(
+  HOMETOWN_API_EXPENSE_USD === 0.25 && HOMETOWN_API_EXPENSE_CENTS === 25,
+  "API expense constant is $0.25 / 25 cents",
+);
+assert(
+  split.apiExpenseUsd === HOMETOWN_API_EXPENSE_USD,
+  "restaurant pays $0.25 API expense per order",
+);
+assert(split.platformGrossUsd === 0 && split.platformNetUsd === 0, "food-share platform stays $0 on the order");
 assert(split.scoutResidualUsd === 5, "scout residual is 5% of GMV");
 assert(split.driverCommissionUsd === 5, "driver commission is the other 5% of GMV");
 assert(split.deliveryFeeUsd === 5 && split.tipUsd === 4, "fee + tip stay whole");
@@ -169,8 +180,8 @@ assert(
 );
 assert(
   split.restaurantNetUsd ===
-    Math.round((100 - 10 - split.processorFeeUsd) * 100) / 100,
-  "processor comes out of the restaurant",
+    Math.round((100 - 10 - split.processorFeeUsd - 0.25) * 100) / 100,
+  "processor and $0.25 API expense come out of the restaurant",
 );
 
 assert(DEFAULT_WEEKLY_GMV_EXAMPLE === 500, "default weekly GMV example is $500");
@@ -254,6 +265,9 @@ assert(
       withDeliveryDriverPolicyBrief("Hometown delivery"),
     ) &&
     /keeps \$0/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /\$0\.25 per order for API expenses/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
     /60 days free/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
     /first successful drive/.test(
       withDeliveryDriverPolicyBrief("Hometown delivery"),
@@ -549,15 +563,19 @@ const deliSplit = deliLedger
   ? threePartyStripeSplit(ops, deliLedger, now)
   : null;
 assert(
-  Boolean(deliSplit) &&
-    deliSplit?.restaurant.connectAccountId === "acct_restdeli" &&
-    deliSplit?.scout.driverId === "drv-maya" &&
-    deliSplit?.scout.connectAccountId === "acct_drvmaya" &&
-    deliSplit?.driver.driverId === "drv-maya" &&
-    deliSplit?.driver.connectAccountId === "acct_drvmaya" &&
-    (deliSplit?.restaurant.amountUsd ?? 0) > 0 &&
-    (deliSplit?.scout.amountUsd ?? 0) > 0 &&
-    (deliSplit?.driver.amountUsd ?? 0) > 0,
+  Boolean(
+    deliSplit &&
+      deliSplit.restaurant.connectAccountId === "acct_restdeli" &&
+      deliSplit.scout.driverId === "drv-maya" &&
+      deliSplit.scout.connectAccountId === "acct_drvmaya" &&
+      deliSplit.driver.driverId === "drv-maya" &&
+      deliSplit.driver.connectAccountId === "acct_drvmaya" &&
+      deliSplit.restaurant.amountUsd > 0 &&
+      deliSplit.scout.amountUsd > 0 &&
+      deliSplit.driver.amountUsd > 0 &&
+      deliLedger?.apiExpenseUsd === HOMETOWN_API_EXPENSE_USD &&
+      deliSplit.restaurant.amountUsd === deliLedger?.restaurantNetUsd,
+  ),
   "three-party Stripe pays restaurant, scout, and driver on their own accounts",
 );
 const cascadeRank = signedBakery.ok
@@ -1207,8 +1225,10 @@ const ledgerUi = readFileSync(
 assert(
   /<th>Driver<\/th>/.test(ledgerUi) &&
     /ledgerRunDriverId/.test(ledgerUi) &&
-    /colSpan=\{12\}/.test(ledgerUi),
-  "admin ledger table has a Driver column next to Scout",
+    /colSpan=\{13\}/.test(ledgerUi) &&
+    /API expense/.test(ledgerUi) &&
+    /HOMETOWN_API_EXPENSE_USD/.test(ledgerUi),
+  "admin ledger table has a Driver column next to Scout and an API expense column",
 );
 assert(
   /seed-run-party-open/.test(ledgerUi) &&
@@ -1223,8 +1243,11 @@ const siteCopy = readFileSync(
 assert(
   /comes out of the restaurant/.test(deliveryLib) &&
     /comes out of the\s+restaurant/.test(ledgerUi) &&
-    /comes out of the restaurant/.test(siteCopy),
-  "ledger rule says processor comes out of the restaurant",
+    /comes out of the restaurant/.test(siteCopy) &&
+    /\$0\.25 per order for API expenses/.test(deliveryLib) &&
+    /\$0\.25 per order for API expenses/.test(ledgerUi) &&
+    /Hometown charges \$0\.25 per order for API expenses/.test(siteCopy),
+  "ledger rule says processor and $0.25 API expense come out of the restaurant",
 );
 assert(
   !/comes out of the platform 5%\./.test(deliveryLib) &&
@@ -1274,8 +1297,10 @@ assert(
     !/geofence/i.test(dinerBlob) &&
     !/independent contractor/i.test(dinerBlob) &&
     !/\bach\b/i.test(dinerBlob) &&
-    !/background check/i.test(dinerBlob),
-  "diner landing and shop stay guest-facing — no 1099 / $39 / GMV / research leak",
+    !/background check/i.test(dinerBlob) &&
+    !/API expense/i.test(dinerBlob) &&
+    !/\$0\.25/.test(dinerBlob),
+  "diner landing and shop stay guest-facing — no 1099 / $39 / GMV / API expense leak",
 );
 assert(
   deliveryLandingLooksLikeOpsEconomics("kitchen arrival geofence 300 meters") &&
@@ -1291,8 +1316,11 @@ assert(
     !deliveryLandingLooksLikeOpsEconomics(dinerBlob) &&
     deliveryLandingLooksLikeOpsEconomics(
       "86'd this plate. OCR vision parser. Red Card. Toast / Square. Deliverect. POS certification. modifier tree.",
+    ) &&
+    deliveryLandingLooksLikeOpsEconomics(
+      "Hometown charges $0.25 per order for API expenses.",
     ),
-  "diner-leak patterns catch 60 days free / first successful drive without flagging guest copy",
+  "diner-leak patterns catch 60 days free / first successful drive / $0.25 API without flagging guest copy",
 );
 assert(
   !/86'?d|\bOCR\b|vision parser|Red Card|Deliverect|POS certification|modifier tree/i.test(
@@ -1318,6 +1346,8 @@ assert(
     /keeps\s+\$0/.test(restaurantDesk) &&
     /manage their own tax forms/.test(restaurantDesk) &&
     /pay ~2\.9% processing/.test(restaurantDesk) &&
+    /\$0\.25/.test(restaurantDesk) &&
+    /API expenses/.test(restaurantDesk) &&
     /five-minute sign-off/.test(restaurantDesk) &&
     /Parse paper menu/.test(restaurantDesk) &&
     /Approve draft/.test(restaurantDesk) &&
@@ -1452,8 +1482,10 @@ assert(
     /tip-geofence/.test(siteCopy) &&
     /tip-ic/.test(siteCopy) &&
     /tip-menu-ocr/.test(siteCopy) &&
-    /No POS certification/.test(siteCopy),
-  "ledger and playbook tips carry research, Riley, three-party Stripe, no own-kitchen 5%, and 60 days free from first successful drive",
+    /No POS certification/.test(siteCopy) &&
+    /\$0\.25 per order for API expenses/.test(ledgerUi) &&
+    /\$0\.25 API expense/.test(siteCopy),
+  "ledger and playbook tips carry research, Riley, three-party Stripe, $0.25 API, no own-kitchen 5%, and 60 days free from first successful drive",
 );
 assert(
   /Independent contractor agreement/.test(deliveryLib) &&

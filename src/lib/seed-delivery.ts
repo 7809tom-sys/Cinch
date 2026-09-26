@@ -16,17 +16,20 @@
  *   works one plate at a time. 86: setMenuItemEightySixed hides an
  *   item from sellableRestaurantMenu / diner find during service.
  *   Do NOT build Toast / Square / Otter APIs, 15% markup rules, or POS.
- * - Platform keeps $0 from restaurant orders. Revenue is driver
+ * - Platform food cut stays $0 from restaurant orders. Revenue is driver
  *   subscriptions only ($39/month part-time, $79/month full-time).
+ *   Hometown also charges the restaurant a flat $0.25 per order for
+ *   API expenses (not the diner, driver, or scout residual).
  * - Restaurant pays 10% of delivery GMV. That 10% is fully distributed:
  *   5% originating scout residual + 5% driver commission. Scout_id
  *   is immutable on freeze.
  * - Drivers keep 100% of delivery fee + tip + the 5% commission share.
  *   Stripe three-party Connect: restaurant, scout, and driver each have
  *   their own Stripe account. Food net → restaurant. 5% residual →
- *   scout. Fee + tip + 5% → driver. Platform $0 on the order.
+ *   scout. Fee + tip + 5% → driver. Platform food share $0 on the order.
  * - Restaurant collects the food total. Processing (~2.9%)
- *   comes out of the restaurant. The other 5% of GMV routes to the scout.
+ *   comes out of the restaurant. The $0.25 API expense also comes
+ *   out of the restaurant. The other 5% of GMV routes to the scout.
  * - Payouts fire automatically at a $25 minimum balance or on the
  *   weekly schedule. Drivers manage their own tax forms on Connect.
  * - Trip charge is $4.50 base + $1.50 per mile so drivers clear the
@@ -93,6 +96,9 @@ export const PLATFORM_SHARE_RATE = 0;
 export const SCOUT_RESIDUAL_RATE = 0.05;
 export const DRIVER_COMMISSION_RATE = 0.05;
 export const PROCESSOR_RATE = 0.029;
+/** Flat $0.25 / order charged to the restaurant for API expenses. */
+export const HOMETOWN_API_EXPENSE_USD = 0.25;
+export const HOMETOWN_API_EXPENSE_CENTS = 25;
 export const DRIVER_SOFTWARE = {
   partTime: { monthlyUsd: 39, weeklyUsd: 9.99 },
   fullTime: { monthlyUsd: 79, weeklyUsd: 19.99 },
@@ -184,9 +190,9 @@ export const STARTER_DROPOFF_COORDS: Record<string, GeoPoint> = {
 };
 
 export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
-- Platform revenue: Hometown Runner keeps $0 from restaurant orders. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time).
+- Platform revenue: Hometown Runner keeps $0 from restaurant food share. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time). Hometown charges the restaurant $0.25 per order for API expenses — not the diner, driver, or scout.
 - Order commission: the 10% on delivery GMV is fully distributed — 5% scout residual, 5% driver. Not a platform cut.
-- Payment flow: Stripe three-party Connect. Restaurant, scout, and driver each have their own Stripe account. Food net (GMV − 10% − ~2.9% processor) lands on the restaurant account. The 5% residual lands on the scout account. Fee, tip, and the 5% driver share land on the driver account. Platform $0 on the order.
+- Payment flow: Stripe three-party Connect. Restaurant, scout, and driver each have their own Stripe account. Food net (GMV − 10% − ~2.9% processor − $0.25 API expense) lands on the restaurant account. The 5% residual lands on the scout account. Fee, tip, and the 5% driver share land on the driver account. Platform food share $0 on the order.
 - ACH rail: subscription deductions ($39 / $79 after the free window) and payouts use Stripe Connect ACH — not card, so we avoid card surcharges.
 - Payouts: automatic when the driver hits a $25 minimum balance, or on the weekly schedule. ACH deposit to the driver’s bank.
 - Tax forms: drivers manage their own tax forms on Stripe Connect. The restaurant does not issue 1099s.
@@ -475,7 +481,7 @@ export type DeliveryDriver = {
 export type DeliveryLedgerSplit = {
   gmvUsd: number;
   restaurantCommissionUsd: number;
-  /** Always $0 on restaurant orders — platform money is subscriptions. */
+  /** Always $0 on restaurant food share — platform money is subscriptions. */
   platformGrossUsd: number;
   scoutResidualUsd: number;
   /** 5% of GMV — the driver’s half of the 10% commission. */
@@ -484,7 +490,9 @@ export type DeliveryLedgerSplit = {
   tipUsd: number;
   taxUsd: number;
   processorFeeUsd: number;
-  /** GMV minus 10% commission minus processor — restaurant pays card fees. */
+  /** Flat $0.25 / order — restaurant pays Hometown API expenses. */
+  apiExpenseUsd: number;
+  /** GMV − 10% − processor − $0.25 API — restaurant pays card fees and API. */
   restaurantNetUsd: number;
   platformNetUsd: number;
 };
@@ -840,7 +848,7 @@ export type ThreePartyStripeSplit = {
   };
 };
 
-/** Food net → restaurant Stripe; 5% → scout Stripe; fee+tip+5% → driver Stripe. */
+/** Food net (after 10% + 2.9% + $0.25 API) → restaurant Stripe; 5% → scout; fee+tip+5% → driver. */
 export function threePartyStripeSplit(
   ops: DeliveryOps,
   row: DeliveryLedgerRow,
@@ -1725,7 +1733,7 @@ export function applyDriverSubscriptionPolicies(
   };
 }
 
-/** 10% restaurant commission → 5% scout + 5% driver. Platform $0 on the order. */
+/** 10% restaurant commission → 5% scout + 5% driver. Food-share platform $0. */
 export function splitDeliveryLedger(input: {
   gmvUsd: number;
   deliveryFeeUsd: number;
@@ -1741,8 +1749,9 @@ export function splitDeliveryLedger(input: {
   const driverCommissionUsd = money(gmvUsd * DRIVER_COMMISSION_RATE);
   const chargedUsd = money(gmvUsd + taxUsd + deliveryFeeUsd + tipUsd);
   const processorFeeUsd = money(chargedUsd * PROCESSOR_RATE);
+  const apiExpenseUsd = money(HOMETOWN_API_EXPENSE_USD);
   const restaurantNetUsd = money(
-    gmvUsd - restaurantCommissionUsd - processorFeeUsd,
+    gmvUsd - restaurantCommissionUsd - processorFeeUsd - apiExpenseUsd,
   );
   return {
     gmvUsd,
@@ -1754,16 +1763,30 @@ export function splitDeliveryLedger(input: {
     tipUsd,
     taxUsd,
     processorFeeUsd,
+    apiExpenseUsd,
     restaurantNetUsd,
     platformNetUsd: 0,
   };
 }
 
-/** Restaurant payout: GMV − 10% − ~2.9% processor. */
+/** Flat $0.25 API expense on a ledger row — restaurant pays, never diner. */
+export function apiExpenseFromSplit(split: {
+  apiExpenseUsd?: number;
+}): number {
+  return money(split.apiExpenseUsd ?? HOMETOWN_API_EXPENSE_USD);
+}
+
+/** Restaurant payout: GMV − 10% − ~2.9% processor − $0.25 API. */
 export function restaurantNetFromSplit(split: DeliveryLedgerSplit): number {
+  const api = apiExpenseFromSplit(split);
+  if (typeof split.restaurantNetUsd === "number") {
+    if (typeof split.apiExpenseUsd === "number") {
+      return money(split.restaurantNetUsd);
+    }
+    return money(split.restaurantNetUsd - api);
+  }
   return money(
-    split.restaurantNetUsd ??
-      split.gmvUsd - split.restaurantCommissionUsd - split.processorFeeUsd,
+    split.gmvUsd - split.restaurantCommissionUsd - split.processorFeeUsd - api,
   );
 }
 
@@ -2808,6 +2831,7 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
   deliveryFeeUsd: number;
   tipUsd: number;
   processorFeeUsd: number;
+  apiExpenseUsd: number;
   platformNetUsd: number;
 } {
   return ops.ledger.reduce(
@@ -2831,6 +2855,7 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
       deliveryFeeUsd: money(sum.deliveryFeeUsd + row.deliveryFeeUsd),
       tipUsd: money(sum.tipUsd + row.tipUsd),
       processorFeeUsd: money(sum.processorFeeUsd + row.processorFeeUsd),
+      apiExpenseUsd: money(sum.apiExpenseUsd + apiExpenseFromSplit(row)),
       platformNetUsd: 0,
     }),
     {
@@ -2844,6 +2869,7 @@ export function summarizeDeliveryLedger(ops: DeliveryOps): {
       deliveryFeeUsd: 0,
       tipUsd: 0,
       processorFeeUsd: 0,
+      apiExpenseUsd: 0,
       platformNetUsd: 0,
     },
   );
