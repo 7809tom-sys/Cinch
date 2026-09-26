@@ -132,8 +132,9 @@ export function HometownRestaurantPortal({
               so it does not sell. New orders, accept or decline, mark
               ready, hand to a Hometown driver. Stripe three-party: you,
               the scout, and the driver each have a Stripe account. You
-              collect the food net and pay ~2.9% processing. Hometown
-              keeps $0 on the order. The 5% residual goes to the scout’s
+              collect the food net and pay ~2.9% processing plus $0.25
+              per order for API expenses. Hometown keeps $0 food share
+              on the order. The 5% residual goes to the scout’s
               account; fee, tip, and the 5% driver share go to the driver.
               You cannot keep the 5% on your own kitchen — sign another
               restaurant after one delivery if you want to scout. Drivers
@@ -196,7 +197,7 @@ export function HometownRestaurantPortal({
           </div>
           <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
             <dt className="text-xs font-bold tracking-wide text-muted uppercase">
-              You keep (after 10% + 2.9%)
+              You keep (after 10% + 2.9% + $0.25 API)
             </dt>
             <dd className="mt-1 text-xl font-extrabold text-brand-deep">
               ${liveRestaurantNet.toFixed(2)}
@@ -643,7 +644,8 @@ function OrderLane({
                 <p className="mt-2 text-sm font-bold text-brand-deep">
                   Ticket ${ticket.gmvUsd.toFixed(2)} · you keep $
                   {ticketRestaurantNet(ops, ticket).toFixed(2)} · Hometown 10% $
-                  {(ticket.gmvUsd * 0.1).toFixed(2)} · proc ~2.9%
+                  {(ticket.gmvUsd * 0.1).toFixed(2)} · proc ~2.9% · API
+                  $0.25
                 </p>
                 {ticket.status !== "declined" ? (
                   <DriverPhotoIdCard

@@ -5,6 +5,8 @@ import type { DeliveryDriver, DeliveryOps } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
   DRIVER_SOFTWARE_FREE_DAYS,
+  HOMETOWN_API_EXPENSE_USD,
+  apiExpenseFromSplit,
   deliveryDriverDisplayName,
   driverAttributedPayoutUsd,
   driverInFreeTrial,
@@ -65,10 +67,12 @@ export function SeedDeliveryLedger({
         .seed-run-party-card p { margin: 0.1rem 0 0; }
       `}</style>
       <p className="seed-eyebrow">Ledger</p>
-      <h2>GMV, 10% → 5% scout / 5% driver, fee, tip, processor</h2>
+      <h2>GMV, 10% → 5% scout / 5% driver, fee, tip, processor, $0.25 API</h2>
       <p className="seed-admin-support">
         Restaurant 10% is fully distributed — 5% scout, 5% driver. Platform
-        keeps $0 on the order (subscriptions only). Drivers keep fee + tip +
+        food share stays $0 on the order (subscriptions only). Hometown
+        charges $0.25 per order for API expenses — that comes out of the
+        restaurant, not the diner, driver, or scout. Drivers keep fee + tip +
         the 5% share via Stripe Connect (direct to the driver). Processing
         (~2.9%) comes out of the restaurant. Trip is $4.50 + $1.50/mile so
         drivers clear the $0.76 federal mileage rate. Payouts fire at a $25
@@ -139,6 +143,10 @@ export function SeedDeliveryLedger({
           <dd>${totals.processorFeeUsd.toFixed(2)}</dd>
         </div>
         <div>
+          <dt>API expense</dt>
+          <dd>${totals.apiExpenseUsd.toFixed(2)}</dd>
+        </div>
+        <div>
           <dt>Platform net</dt>
           <dd>${totals.platformNetUsd.toFixed(2)}</dd>
         </div>
@@ -160,12 +168,13 @@ export function SeedDeliveryLedger({
               <th>Fee</th>
               <th>Tip</th>
               <th>Proc</th>
+              <th>API</th>
             </tr>
           </thead>
           <tbody>
             {ops.ledger.length === 0 ? (
               <tr>
-                <td colSpan={12}>No orders on the ledger yet.</td>
+                <td colSpan={13}>No orders on the ledger yet.</td>
               </tr>
             ) : (
               ops.ledger.map((row) => (
@@ -243,6 +252,7 @@ export function SeedDeliveryLedger({
                   <td>${row.deliveryFeeUsd.toFixed(2)}</td>
                   <td>${row.tipUsd.toFixed(2)}</td>
                   <td>${row.processorFeeUsd.toFixed(2)}</td>
+                  <td>${apiExpenseFromSplit(row).toFixed(2)}</td>
                 </tr>
               ))
             )}
@@ -252,7 +262,9 @@ export function SeedDeliveryLedger({
 
       <h3 className="seed-run-subhead">Stripe three-party</h3>
       <p className="seed-run-note">
-        Each order pays three Connect accounts. Platform keeps $0.
+        Each order pays three Connect accounts. Platform food share stays
+        $0. Restaurant net is after 10%, ~2.9% processor, and $
+        {HOMETOWN_API_EXPENSE_USD.toFixed(2)} API expense.
       </p>
       {ops.ledger.length === 0 ? (
         <p className="seed-run-empty">No Stripe destinations until an order posts.</p>

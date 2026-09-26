@@ -231,7 +231,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive|86'?d|\beighty-?sixed?\b|\bocr\b|vision parser|vision model|red card|deliverect|\botter\b|modifier tree|pos certification|square pos|toast \/ square/i.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive|86'?d|\beighty-?sixed?\b|\bocr\b|vision parser|vision model|red card|deliverect|\botter\b|modifier tree|pos certification|square pos|toast \/ square|api expense|\$0\.25 per order|\$0\.25 api|charges \$0\.25|\$0\.25/i.test(
     blob,
   );
 }
@@ -4230,7 +4230,7 @@ export function seedCommerceAdminBoard(
         ? "Holds, drives, and dealer delivery"
         : "Shop operations",
     support: delivery
-      ? "Customer orders from nearby kitchens. Restaurant and driver portals run the ticket. Ledger is 10% → 5% scout / 5% driver, $0 platform. Do not stamp kitchen-ticket dining-room chrome on a delivery platform."
+      ? "Customer orders from nearby kitchens. Restaurant and driver portals run the ticket. Ledger is 10% → 5% scout / 5% driver, $0 platform food share, plus $0.25 API expense from the restaurant. Do not stamp kitchen-ticket dining-room chrome on a delivery platform."
       : restaurant
       ? "Priced menu items, pickup vs delivery, sales tax, and every ticket total live here — so the restaurant knows what money each order is. Edit prices and stock in inventory; guests order from the Seed shop."
       : lot
@@ -4408,7 +4408,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-ledger",
               title: "Write the ledger on every order",
-              body: "GMV, 10% commission split 5% scout / 5% driver, $0 platform on the order, delivery fee, tip, processor. Residuals are 5% × GMV — show $500 / $800 / $1,000 / $2,000 weekly GMV as inputs, never a $2,000/week default promise.",
+              body: "GMV, 10% commission split 5% scout / 5% driver, $0 platform food share on the order, delivery fee, tip, processor, and $0.25 API expense from the restaurant. Residuals are 5% × GMV — show $500 / $800 / $1,000 / $2,000 weekly GMV as inputs, never a $2,000/week default promise.",
             },
             {
               id: "tip-scout",
@@ -4428,7 +4428,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip on Connect",
-              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order. Subscriptions and payouts use Stripe Connect ACH — not card — so we avoid card surcharges.",
+              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) and the $0.25 API expense come out of the restaurant. Hometown charges $0.25 per order for API expenses. Platform keeps $0 food share on the order. Subscriptions and payouts use Stripe Connect ACH — not card — so we avoid card surcharges.",
             },
             {
               id: "tip-trip",
@@ -4585,7 +4585,7 @@ export function customerFacingAdminCopy(
         : "Business admin",
     support: wantsShop
       ? key === "delivery"
-        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 on the order. Processor fees come out of the restaurant. Everybody gets 60 days free from the first successful drive. Do not hide them."
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 food share on the order. Processor fees and the $0.25 API expense come out of the restaurant. Hometown charges $0.25 per order for API expenses. Everybody gets 60 days free from the first successful drive. Do not hide them."
         : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."

@@ -747,8 +747,12 @@ assert(
   deliveryLandingLooksLikeOpsEconomics(
     "86'd the plate. OCR vision parser. Red Card. Toast / Square. Deliverect. POS certification.",
   ) &&
-    !deliveryLandingLooksLikeOpsEconomics(hometownDinerBlob),
-  "diner leak catches OCR / 86 / POS internals without flagging Hometown guest copy",
+    deliveryLandingLooksLikeOpsEconomics(
+      "Hometown charges $0.25 per order for API expenses.",
+    ) &&
+    !deliveryLandingLooksLikeOpsEconomics(hometownDinerBlob) &&
+    !/\$0\.25|API expense/i.test(hometownDinerBlob),
+  "diner leak catches OCR / 86 / POS / $0.25 API internals without flagging Hometown guest copy",
 );
 assert(
   seedLandingCopyMismatchesIndustry("Home Town Runnner", hometownBrief, {
