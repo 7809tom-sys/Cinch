@@ -1279,30 +1279,29 @@ export function asVisionMenuItemJson(item: ParsedMenuItem): VisionMenuItemJson {
 }
 
 export function normalizeParsedMenuJson(raw: unknown): ParsedMenuJson {
-  return {
-    items: rawParsedMenuRows(raw)
-      .map((row) => {
-        const item = row as Partial<ParsedMenuItem> & {
-          modifiers?: unknown;
-        };
-        const name = String(item.item_name ?? "").trim();
-        const price = money(Math.max(0, Number(item.price) || 0));
-        if (!name) return null;
-        const modifiers = Array.isArray(item.modifiers)
-          ? item.modifiers
-              .map((group, index) => normalizeModifierGroup(group, index))
-              .filter((group): group is MenuModifierGroup => Boolean(group))
-          : undefined;
-        return {
-          category: String(item.category ?? "Plates").trim() || "Plates",
-          item_name: name,
-          price,
-          description: String(item.description ?? "").trim() || undefined,
-          modifiers,
-        } satisfies ParsedMenuItem;
-      })
-      .filter((item): item is ParsedMenuItem => Boolean(item)),
-  };
+  const items: ParsedMenuItem[] = [];
+  for (const row of rawParsedMenuRows(raw)) {
+    const item = row as Partial<ParsedMenuItem> & {
+      modifiers?: unknown;
+    };
+    const name = String(item.item_name ?? "").trim();
+    const price = money(Math.max(0, Number(item.price) || 0));
+    if (!name) continue;
+    const description = String(item.description ?? "").trim();
+    const modifiers = Array.isArray(item.modifiers)
+      ? item.modifiers
+          .map((group, index) => normalizeModifierGroup(group, index))
+          .filter((group): group is MenuModifierGroup => Boolean(group))
+      : undefined;
+    items.push({
+      category: String(item.category ?? "Plates").trim() || "Plates",
+      item_name: name,
+      price,
+      ...(description ? { description } : {}),
+      ...(modifiers && modifiers.length > 0 ? { modifiers } : {}),
+    });
+  }
+  return { items };
 }
 
 /**

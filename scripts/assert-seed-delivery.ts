@@ -836,10 +836,12 @@ assert(
 );
 const parsedPaper = parseMenuFromUpload({ useFixture: true });
 assert(
-  parsedPaper.items.length === SEED_PAPER_MENU_PARSE_FIXTURE.items.length &&
-    parsedPaper.items[0]?.item_name === "Chicken parm hero" &&
-    parsedPaper.items[0]?.modifiers?.some((group) => group.required) &&
-    parsedPaper.items[0]?.modifiers?.some((group) => !group.required),
+  Boolean(
+    parsedPaper.items.length === SEED_PAPER_MENU_PARSE_FIXTURE.items.length &&
+      parsedPaper.items[0]?.item_name === "Chicken parm hero" &&
+      parsedPaper.items[0]?.modifiers?.some((group) => group.required) &&
+      parsedPaper.items[0]?.modifiers?.some((group) => !group.required),
+  ),
   "parse fixture returns structured paper-menu JSON with required and optional modifiers",
 );
 const parsedVision = parseMenuFromUpload({
@@ -847,30 +849,32 @@ const parsedVision = parseMenuFromUpload({
 });
 const visionWire = asVisionMenuItemJson(parsedVision.items[0]!);
 assert(
-  parsedVision.items[0]?.item_name === "Classic Cheeseburger" &&
-    parsedVision.items[0]?.price === 10.99 &&
-    parsedVision.items[0]?.category === "Sandwiches" &&
-    parsedVision.items[0]?.modifiers?.some(
-      (group) =>
-        group.name === "Cheese" &&
-        group.required &&
-        group.choices.some((choice) => choice.name === "Cheddar"),
-    ) &&
-    parsedVision.items[0]?.modifiers?.some(
-      (group) =>
-        group.name === "Add-ons" &&
-        !group.required &&
-        group.choices.some(
-          (choice) => choice.name === "Bacon" && choice.priceUsd === 1.5,
-        ),
-    ) &&
-    visionWire.modifiers?.[0]?.group === "Cheese" &&
-    visionWire.modifiers?.[1]?.options.some(
-      (option) =>
-        typeof option === "object" &&
-        option.name === "Bacon" &&
-        option.price === 1.5,
-    ),
+  Boolean(
+    parsedVision.items[0]?.item_name === "Classic Cheeseburger" &&
+      parsedVision.items[0]?.price === 10.99 &&
+      parsedVision.items[0]?.category === "Sandwiches" &&
+      parsedVision.items[0]?.modifiers?.some(
+        (group) =>
+          group.name === "Cheese" &&
+          group.required &&
+          group.choices.some((choice) => choice.name === "Cheddar"),
+      ) &&
+      parsedVision.items[0]?.modifiers?.some(
+        (group) =>
+          group.name === "Add-ons" &&
+          !group.required &&
+          group.choices.some(
+            (choice) => choice.name === "Bacon" && choice.priceUsd === 1.5,
+          ),
+      ) &&
+      visionWire.modifiers?.[0]?.group === "Cheese" &&
+      visionWire.modifiers?.[1]?.options.some(
+        (option) =>
+          typeof option === "object" &&
+          option.name === "Bacon" &&
+          option.price === 1.5,
+      ),
+  ),
   "vision wire JSON (group / options) parses into a draft with required and optional modifiers",
 );
 const ingestedPaper = ingestMenuPhotos(ops, "rest-tacos", {
