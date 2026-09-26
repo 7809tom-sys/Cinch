@@ -308,7 +308,7 @@ export function HometownDriverPortal({
           Current dash
         </p>
         <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-          Arrive, pickup, then dropoff
+          Arrive, pick up, then drop off
         </h2>
         <p className="mt-2 text-sm text-muted">
           Fixed {MERCHANT_DELIVERY_RADIUS_MILES}-mile merchant radius. Kitchen
@@ -662,7 +662,7 @@ function ScoutPaperMenuDesk({
       </h3>
       <p className="mt-1 text-sm text-muted">
         Seed parse writes a fixture draft until a vision key is wired. Glance
-        the prices and modifiers, then Approve — five-minute sign-off. The
+        at the prices and modifiers, then Approve — five-minute sign-off. The
         kitchen 86s plates on the merchant tablet during service.
       </p>
       <form
