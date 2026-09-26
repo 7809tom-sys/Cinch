@@ -75,9 +75,10 @@ export default function SentiDeskPage() {
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             This pack is Hometown Runner, a delivery platform — not a dining
             room. Senti has to think through customer order, restaurant
-            portal, driver portal, and the ledger. Do not copy another
-            restaurant format. Your real instruction pack is filled chapter
-            by chapter on{" "}
+            portal (photo/PDF paper-menu draft, five-minute sign-off, 86
+            during service — no POS certification), driver portal, and the
+            ledger. Do not copy another restaurant format. Your real
+            instruction pack is filled chapter by chapter on{" "}
             <Link href="/admin" className="font-semibold underline">
               Seed admin
             </Link>{" "}

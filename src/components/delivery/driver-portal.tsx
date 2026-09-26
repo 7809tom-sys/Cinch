@@ -486,7 +486,9 @@ export function HometownDriverPortal({
           already signed a restaurant). A restaurateur can sign another kitchen
           after one delivery — they cannot keep the 5% on their own kitchen.
           scout_id stays put. Each of restaurant, scout, and driver is paid
-          on their own Stripe account.
+          on their own Stripe account. Scouts can snap 2–3 photos of the
+          paper takeout menu so the kitchen reviews a draft in about five
+          minutes instead of typing every plate.
         </p>
         <p className="mt-3 text-sm font-semibold text-brand-deep">
           {scoutEligible

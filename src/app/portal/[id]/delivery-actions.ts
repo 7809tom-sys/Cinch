@@ -5,13 +5,17 @@ import {
   acceptDriverRun,
   advanceDriverArrived,
   advanceDriverRun,
+  approveMenuDraft,
   assignRestaurantScout,
   confirmRestaurantMenuPrice,
+  ingestMenuPhotos,
+  setMenuItemEightySixed,
   uploadRestaurantMenuItem,
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
   type GeoPoint,
+  type MenuUploadInput,
   type MerchantTicketStatus,
 } from "@/lib/seed-delivery";
 import {
@@ -85,6 +89,62 @@ export async function confirmRestaurantMenuPriceAction(
     projectId,
     confirmRestaurantMenuPrice(loaded.ops, restaurantId, itemId, priceUsd),
     "Merchant confirmed a crawled menu price",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function ingestMenuPhotosAction(
+  projectId: string,
+  restaurantId: string,
+  input: MenuUploadInput = {},
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    ingestMenuPhotos(loaded.ops, restaurantId, {
+      ...input,
+      useFixture: true,
+    }),
+    "Scout or merchant ingested a paper-menu draft",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function approveMenuDraftAction(
+  projectId: string,
+  restaurantId: string,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    approveMenuDraft(loaded.ops, restaurantId),
+    "Scout or owner approved the menu draft",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function setMenuItemEightySixedAction(
+  projectId: string,
+  restaurantId: string,
+  itemId: string,
+  eightySixed: boolean,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    setMenuItemEightySixed(loaded.ops, restaurantId, itemId, eightySixed),
+    eightySixed
+      ? "Merchant 86'd a plate during service"
+      : "Merchant restored a plate",
   );
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);

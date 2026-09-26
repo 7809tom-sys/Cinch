@@ -54,9 +54,14 @@ import {
   deliveryDriverDisplayName,
   deliveryOpsJson,
   driverAttributedPayoutUsd,
+  approveMenuDraft,
   confirmRestaurantMenuPrice,
   crawlRestaurantMenuDraft,
   findSellableMenuItems,
+  ingestMenuPhotos,
+  parseMenuFromUpload,
+  SEED_PAPER_MENU_PARSE_FIXTURE,
+  setMenuItemEightySixed,
   threePartyStripeSplit,
   uploadRestaurantMenuItem,
   hometownDeliveryFeeUsd,
@@ -827,6 +832,68 @@ assert(
     ?.confirmedPriceUsd === 13,
   "merchant confirm writes the selling price",
 );
+const parsedPaper = parseMenuFromUpload({ useFixture: true });
+assert(
+  parsedPaper.items.length === SEED_PAPER_MENU_PARSE_FIXTURE.items.length &&
+    parsedPaper.items[0]?.item_name === "Chicken parm hero" &&
+    parsedPaper.items[0]?.modifiers?.some((group) => group.required) &&
+    parsedPaper.items[0]?.modifiers?.some((group) => !group.required),
+  "parse fixture returns structured paper-menu JSON with required and optional modifiers",
+);
+const ingestedPaper = ingestMenuPhotos(ops, "rest-tacos", {
+  kind: "photo",
+  fileNames: ["takeout-1.jpg", "takeout-2.jpg"],
+  useFixture: true,
+});
+const tacoAfterParse = ingestedPaper.restaurants.find(
+  (row) => row.id === "rest-tacos",
+);
+assert(
+  Boolean(
+    tacoAfterParse?.menu?.items.find(
+      (item) =>
+        item.id === "menu-parse-chicken-parm-hero" &&
+        item.source === "photo_parse" &&
+        item.confirmedPriceUsd == null,
+    ),
+  ) &&
+    !sellableRestaurantMenu(tacoAfterParse ?? { menu: undefined }).some(
+      (item) => item.title === "Chicken parm hero",
+    ),
+  "parse fixture → draft items — photo ingest is not live until Approve",
+);
+const approvedPaper = approveMenuDraft(ingestedPaper, "rest-tacos");
+const tacoLive = approvedPaper.restaurants.find((row) => row.id === "rest-tacos");
+assert(
+  Boolean(tacoLive?.menu?.approvedAt) &&
+    sellableRestaurantMenu(tacoLive ?? { menu: undefined }).some(
+      (item) => item.title === "Chicken parm hero" && item.priceUsd === 15,
+    ) &&
+    findSellableMenuItems(approvedPaper, "parm hero").some(
+      (item) => item.title === "Chicken parm hero",
+    ),
+  "approve makes parsed plates sellable on diner find",
+);
+const eightySixed = setMenuItemEightySixed(
+  approvedPaper,
+  "rest-tacos",
+  "menu-parse-chicken-parm-hero",
+  true,
+);
+assert(
+  !sellableRestaurantMenu(
+    eightySixed.restaurants.find((row) => row.id === "rest-tacos") ?? {
+      menu: undefined,
+    },
+  ).some((item) => item.title === "Chicken parm hero") &&
+    !findSellableMenuItems(eightySixed, "parm hero").some(
+      (item) => item.title === "Chicken parm hero",
+    ) &&
+    findSellableMenuItems(eightySixed, "ziti").some(
+      (item) => item.title === "Baked ziti",
+    ),
+  "86 hides the plate from sellableRestaurantMenu and diner find",
+);
 assert(
   maya?.taxFormsSelfManaged === true &&
     Boolean(maya?.connectAccountId) &&
@@ -1184,8 +1251,17 @@ assert(
   deliveryLandingLooksLikeOpsEconomics(
     "Everybody gets 60 days free starting the first successful drive. Software free until the first delivered run. After the free trial, $39/month.",
   ) &&
-    !deliveryLandingLooksLikeOpsEconomics(dinerBlob),
+    !deliveryLandingLooksLikeOpsEconomics(dinerBlob) &&
+    deliveryLandingLooksLikeOpsEconomics(
+      "86'd this plate. OCR vision parser. Red Card. Toast / Square. Deliverect. POS certification. modifier tree.",
+    ),
   "diner-leak patterns catch 60 days free / first successful drive without flagging guest copy",
+);
+assert(
+  !/86'?d|\bOCR\b|vision parser|Red Card|Deliverect|POS certification|modifier tree/i.test(
+    dinerBlob,
+  ),
+  "diner copy stays clean of OCR / vision / 86 / POS internals",
 );
 assert(
   /customerFacingSupport\(project\.brief\)/.test(landing) &&
@@ -1205,7 +1281,12 @@ assert(
     /keeps\s+\$0/.test(restaurantDesk) &&
     /manage their own tax forms/.test(restaurantDesk) &&
     /pay ~2\.9% processing/.test(restaurantDesk) &&
-    /Upload like DoorDash/.test(restaurantDesk) &&
+    /five-minute sign-off/.test(restaurantDesk) &&
+    /Parse paper menu/.test(restaurantDesk) &&
+    /Approve draft/.test(restaurantDesk) &&
+    /ingestMenuPhotosAction/.test(restaurantDesk) &&
+    /approveMenuDraftAction/.test(restaurantDesk) &&
+    /setMenuItemEightySixedAction/.test(restaurantDesk) &&
     /uploadRestaurantMenuItemAction/.test(restaurantDesk) &&
     /confirmRestaurantMenuPriceAction/.test(restaurantDesk) &&
     !/You issue the 1099/.test(restaurantDesk) &&
@@ -1295,7 +1376,8 @@ assert(
     /STUDENT_SCOUT_TALKING_POINTS/.test(driverDesk) &&
     /KITCHEN_ARRIVAL_GEOFENCE_METERS/.test(driverDesk) &&
     /Complete Delivery/.test(driverDesk) &&
-    /existingPlatformActive/.test(driverDesk),
+    /existingPlatformActive/.test(driverDesk) &&
+    /snap 2–3 photos of the\s+paper takeout menu/.test(driverDesk),
   "driver portal shows Connect payouts, trip math, tax forms, Riley, no own-kitchen 5%, 60 days free, geofence, IC, and ACH",
 );
 assert(
@@ -1318,7 +1400,9 @@ assert(
     /300 meter/.test(ledgerUi) &&
     /existingPlatformActive/.test(ledgerUi) &&
     /tip-geofence/.test(siteCopy) &&
-    /tip-ic/.test(siteCopy),
+    /tip-ic/.test(siteCopy) &&
+    /tip-menu-ocr/.test(siteCopy) &&
+    /No POS certification/.test(siteCopy),
   "ledger and playbook tips carry research, Riley, three-party Stripe, no own-kitchen 5%, and 60 days free from first successful drive",
 );
 assert(
