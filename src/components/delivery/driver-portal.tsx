@@ -1,19 +1,31 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import type { DeliveryOps, DriverRun } from "@/lib/seed-delivery";
+import type { DeliveryOps, DriverRun, GeoPoint } from "@/lib/seed-delivery";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
+  DRIVER_IC_AGREEMENT,
   DRIVER_PAYOUT_MIN_BALANCE_USD,
   DRIVER_SOFTWARE_FREE_DAYS,
+  DROPOFF_VERIFY_FEET,
+  DROPOFF_WRONG_LOCATION_COPY,
+  EXISTING_PLATFORM_NAMES,
   FEDERAL_MILEAGE_USD,
+  KITCHEN_ARRIVAL_GEOFENCE_METERS,
+  MERCHANT_DELIVERY_RADIUS_MILES,
+  STARTER_TOWN_CENTER,
+  STRIPE_CONNECT_RAIL,
+  STUDENT_SCOUT_TALKING_POINTS,
   TRIP_BASE_USD,
   TRIP_PER_MILE_USD,
   driverCanDispatch,
   driverInFreeTrial,
+  driverOnboardingComplete,
   driverSoftwareFeeUsd,
   driverSoftwareFreeUntil,
   firstSuccessfulDriveAt,
+  restaurantGeo,
+  runDropoffGeo,
   scoutEligibleToBePaid,
   scoutPayoutDriverId,
   scoutResidualForWeeklyGmv,
@@ -24,6 +36,7 @@ import {
 } from "@/lib/seed-delivery";
 import {
   acceptDriverRunAction,
+  advanceDriverArrivedAction,
   advanceDriverRunAction,
   assignRestaurantScoutAction,
   setDriverOnlineAction,
@@ -56,10 +69,13 @@ export function HometownDriverPortal({
     (row) => scoutPayoutDriverId(ops, row.id) === driverId,
   );
   const offered = ops.runs.filter((row) => row.status === "offered");
+  const onboarded = driver ? driverOnboardingComplete(driver) : false;
   const active = ops.runs.filter(
     (row) =>
       row.driverId === driverId &&
-      (row.status === "accepted" || row.status === "picked_up"),
+      (row.status === "accepted" ||
+        row.status === "driver_arrived" ||
+        row.status === "picked_up"),
   );
   const delivered = ops.runs.filter(
     (row) => row.driverId === driverId && row.status === "delivered",
@@ -137,7 +153,9 @@ export function HometownDriverPortal({
           Same idea as DoorDash Dasher: go online, take an offer, pick up,
           drop off. You keep 100% of the delivery fee, tip, and a 5%
           commission share — Stripe Connect pays you directly, not through
-          the restaurant. Trip is ${TRIP_BASE_USD.toFixed(2)} plus $
+          the restaurant. Subscriptions and payouts use Stripe Connect{" "}
+          {STRIPE_CONNECT_RAIL.toUpperCase()} — not card, so we avoid card
+          surcharges. Trip is ${TRIP_BASE_USD.toFixed(2)} plus $
           {TRIP_PER_MILE_USD.toFixed(2)} a mile (clears the $
           {FEDERAL_MILEAGE_USD.toFixed(2)} federal mileage rate). Everybody
           gets {DRIVER_SOFTWARE_FREE_DAYS} days free starting the day of
@@ -180,7 +198,10 @@ export function HometownDriverPortal({
           </button>
           <p className="text-sm text-mist">
             License {driver?.licenseOk ? "ok" : "missing"} · insurance{" "}
-            {driver?.insuranceOk ? "ok" : "expired"}
+            {driver?.insuranceOk ? "ok" : "expired"} ·{" "}
+            {EXISTING_PLATFORM_NAMES.join(" / ")}{" "}
+            {driver?.existingPlatformActive ? "active" : "missing"}
+            {onboarded ? "" : " · dispatch gated"}
           </p>
         </div>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -280,13 +301,36 @@ export function HometownDriverPortal({
           Current dash
         </p>
         <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-          Pickup, then dropoff
+          Arrive, pickup, then dropoff
         </h2>
+        <p className="mt-2 text-sm text-muted">
+          Fixed {MERCHANT_DELIVERY_RADIUS_MILES}-mile merchant radius. Kitchen
+          arrival geofence is {KITCHEN_ARRIVAL_GEOFENCE_METERS} meters — enter
+          it to flip the ticket to Driver Arrived so the kitchen stages the
+          bag. Complete Delivery only works within {DROPOFF_VERIFY_FEET} feet
+          of the pin. {DROPOFF_WRONG_LOCATION_COPY}
+        </p>
         {active.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No active dash yet.</p>
         ) : (
           <ul className="mt-4 space-y-3">
-            {active.map((run) => (
+            {active.map((run) => {
+              const restaurant = ops.restaurants.find(
+                (row) => row.id === run.restaurantId,
+              );
+              const kitchen = restaurant
+                ? restaurantGeo(restaurant)
+                : STARTER_TOWN_CENTER;
+              const dropoff = runDropoffGeo(run, restaurant);
+              const awayFromKitchen: GeoPoint = {
+                lat: kitchen.lat + 0.01,
+                lng: kitchen.lng,
+              };
+              const awayFromDropoff: GeoPoint = {
+                lat: dropoff.lat + 0.01,
+                lng: dropoff.lng,
+              };
+              return (
               <li
                 key={run.id}
                 className="rounded-lg border border-brand/10 bg-white px-4 py-4"
@@ -294,11 +338,12 @@ export function HometownDriverPortal({
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
                   {run.status === "accepted"
                     ? "1 · Head to restaurant"
-                    : "2 · Head to customer"}
+                    : run.status === "driver_arrived"
+                      ? "Driver Arrived · stage the bag"
+                      : "2 · Head to customer"}
                 </p>
                 <h3 className="mt-1 font-bold text-brand-deep">
-                  {ops.restaurants.find((row) => row.id === run.restaurantId)
-                    ?.name ?? "Restaurant"}{" "}
+                  {restaurant?.name ?? "Restaurant"}{" "}
                   → {run.customerName}
                 </h3>
                 <p className="mt-1 text-sm text-muted">
@@ -311,45 +356,107 @@ export function HometownDriverPortal({
                     ? ` + $${run.driverCommissionUsd.toFixed(2)} of the 10%`
                     : ""}
                 </p>
-                {run.status === "accepted" ? (
-                  <button
-                    type="button"
-                    className="mt-3 inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
-                    disabled={pending}
-                    onClick={() =>
-                      runAction(() =>
-                        advanceDriverRunAction(
-                          projectId,
-                          run.id,
-                          driverId,
-                          "picked_up",
-                        ),
-                      )
-                    }
-                  >
-                    Confirm pickup
-                  </button>
+                {run.status === "accepted" || run.status === "driver_arrived" ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {run.status === "accepted" ? (
+                      <>
+                        <button
+                          type="button"
+                          className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                          disabled={pending}
+                          onClick={() =>
+                            runAction(() =>
+                              advanceDriverArrivedAction(
+                                projectId,
+                                run.id,
+                                driverId,
+                                kitchen,
+                              ),
+                            )
+                          }
+                        >
+                          Arrive at kitchen
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex min-h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+                          disabled={pending}
+                          onClick={() =>
+                            runAction(() =>
+                              advanceDriverArrivedAction(
+                                projectId,
+                                run.id,
+                                driverId,
+                                awayFromKitchen,
+                              ),
+                            )
+                          }
+                        >
+                          Arrive from far away
+                        </button>
+                      </>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                      disabled={pending}
+                      onClick={() =>
+                        runAction(() =>
+                          advanceDriverRunAction(
+                            projectId,
+                            run.id,
+                            driverId,
+                            "picked_up",
+                          ),
+                        )
+                      }
+                    >
+                      Confirm pickup
+                    </button>
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    className="mt-3 inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
-                    disabled={pending}
-                    onClick={() =>
-                      runAction(() =>
-                        advanceDriverRunAction(
-                          projectId,
-                          run.id,
-                          driverId,
-                          "delivered",
-                        ),
-                      )
-                    }
-                  >
-                    Complete dropoff
-                  </button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                      disabled={pending}
+                      onClick={() =>
+                        runAction(() =>
+                          advanceDriverRunAction(
+                            projectId,
+                            run.id,
+                            driverId,
+                            "delivered",
+                            dropoff,
+                          ),
+                        )
+                      }
+                    >
+                      Complete Delivery
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+                      disabled={pending}
+                      onClick={() =>
+                        runAction(() =>
+                          advanceDriverRunAction(
+                            projectId,
+                            run.id,
+                            driverId,
+                            "delivered",
+                            awayFromDropoff,
+                          ),
+                        )
+                      }
+                    >
+                      Complete from far away
+                    </button>
+                  </div>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
         {error ? (
@@ -467,6 +574,30 @@ export function HometownDriverPortal({
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="rounded-xl border border-brand/15 bg-foam p-5">
+        <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+          Student scout talking points
+        </p>
+        <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+          First town — restaurants and drivers
+        </h2>
+        <p className="mt-2 whitespace-pre-line text-sm text-muted">
+          {STUDENT_SCOUT_TALKING_POINTS}
+        </p>
+      </section>
+
+      <section className="rounded-xl border border-brand/15 bg-foam p-5">
+        <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
+          Independent contractor agreement
+        </p>
+        <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+          One page — not legal advice
+        </h2>
+        <p className="mt-2 whitespace-pre-line text-sm text-muted">
+          {DRIVER_IC_AGREEMENT}
+        </p>
       </section>
     </div>
   );

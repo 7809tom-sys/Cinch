@@ -90,8 +90,16 @@ export function SeedDeliveryLedger({
         and pay rolls to the next most-active signed scout at that kitchen.
         A restaurateur can sign another kitchen after one delivery — they
         cannot keep the 5% on their own kitchen. Stripe three-party: restaurant,
-        scout, and driver each have a Stripe account. Menu is DoorDash-style
-        upload so diners can find the right plate.
+        scout, and driver each have a Stripe account. Subscriptions and
+        payouts use Stripe Connect ACH — not card. Menu is DoorDash-style
+        upload so diners can find the right plate. Dispatch is a fixed
+        2-mile merchant radius, a 300 meter kitchen arrival geofence
+        (Driver Arrived), and a 100 feet drop-off check. Onboarding is
+        license, insurance, and existingPlatformActive — no expensive
+        background check. Drivers sign a one-page independent contractor
+        agreement (liability, vehicle, indemnification). Student scout
+        talking points stay on ops: Riley dine-in first, one delivery a
+        month, no own-kitchen 5%, 60 days free from first successful drive.
       </p>
       <dl className="seed-run-stats">
         <div>

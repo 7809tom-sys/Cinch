@@ -9,10 +9,22 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   DEFAULT_WEEKLY_GMV_EXAMPLE,
+  DRIVER_IC_AGREEMENT,
   DRIVER_SOFTWARE,
   DRIVER_SOFTWARE_FREE_DAYS,
+  DROPOFF_VERIFY_FEET,
+  DROPOFF_VERIFY_METERS,
+  DROPOFF_WRONG_LOCATION_COPY,
+  KITCHEN_ARRIVAL_GEOFENCE_METERS,
+  MERCHANT_DELIVERY_RADIUS_MAX_MILES,
+  MERCHANT_DELIVERY_RADIUS_MILES,
+  MERCHANT_DELIVERY_RADIUS_MIN_MILES,
+  STARTER_KITCHEN_COORDS,
+  STRIPE_CONNECT_RAIL,
+  STUDENT_SCOUT_TALKING_POINTS,
   WEEKLY_GMV_EXAMPLES,
   acceptDriverRun,
+  advanceDriverArrived,
   advanceDriverRun,
   applyDriverSubscriptionPolicies,
   approveDeliveryDriver,
@@ -20,13 +32,19 @@ import {
   classifyDriverHours,
   driverInFreeTrial,
   driverCanDispatch,
+  driverInsideDropoffGeofence,
+  driverInsideKitchenGeofence,
+  driverOnboardingComplete,
   driverPhotoId,
   driverSoftwareAnnualUsd,
   driverSoftwareFeeUsd,
   driverSoftwareFreeUntil,
+  dropoffWithinMerchantRadius,
   firstSuccessfulDriveAt,
   freezeDeliveryDriver,
   recordDeliveryOrder,
+  restaurantGeo,
+  runDropoffGeo,
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
@@ -44,6 +62,7 @@ import {
   hometownDeliveryFeeUsd,
   sellableRestaurantMenu,
   shouldTriggerDriverPayout,
+  ticketDriverArrived,
   tripChargeUsd,
   tripClearsFederalMileage,
   TRIP_BASE_USD,
@@ -234,8 +253,48 @@ assert(
     ) &&
     /status === "delivered"/.test(
       withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
+    /FIXED/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /300 meters/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /100 feet/.test(withDeliveryDriverPolicyBrief("Hometown delivery")) &&
+    /Stripe Connect ACH/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
+    /Independent contractor agreement/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
+    /Student scout talking points/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
+    ) &&
+    /existingPlatformActive/.test(
+      withDeliveryDriverPolicyBrief("Hometown delivery"),
     ),
-  "delivery brief appends $0 platform, three-party Stripe, research, scout-pay, and 60 days free from first delivered run",
+  "delivery brief appends $0 platform, three-party Stripe, research, scout-pay, 60 days free, geofence, ACH, IC, and scout talking points",
+);
+
+assert(
+  MERCHANT_DELIVERY_RADIUS_MIN_MILES === 1.5 &&
+    MERCHANT_DELIVERY_RADIUS_MILES === 2 &&
+    MERCHANT_DELIVERY_RADIUS_MAX_MILES === 2.5,
+  "merchant delivery radius is a fixed 1.5–2.5 mile range defaulting to 2",
+);
+assert(
+  KITCHEN_ARRIVAL_GEOFENCE_METERS === 300 &&
+    driverInsideKitchenGeofence(0) &&
+    driverInsideKitchenGeofence(300) &&
+    !driverInsideKitchenGeofence(301),
+  "kitchen arrival geofence is 300 meters",
+);
+assert(
+  DROPOFF_VERIFY_FEET === 100 &&
+    driverInsideDropoffGeofence(DROPOFF_VERIFY_METERS) &&
+    !driverInsideDropoffGeofence(DROPOFF_VERIFY_METERS + 1),
+  "drop-off verification is 100 feet",
+);
+assert(
+  STRIPE_CONNECT_RAIL === "ach" &&
+    /Stripe Connect ACH/.test(DRIVER_IC_AGREEMENT) === false,
+  "ACH is the Connect rail (IC agreement is separate product text)",
 );
 
 const ops = starterDeliveryOps("Hometown Runner");
@@ -243,6 +302,86 @@ const riley = ops.drivers.find((row) => row.id === "drv-riley");
 const maya = ops.drivers.find((row) => row.id === "drv-maya");
 const jordan = ops.drivers.find((row) => row.id === "drv-jordan");
 const casey = ops.drivers.find((row) => row.id === "drv-casey");
+const pilotKitchen = ops.restaurants.find((row) => row.id === "rest-pilot");
+assert(
+  Boolean(pilotKitchen?.lat && pilotKitchen.lng) &&
+    restaurantGeo(pilotKitchen ?? { id: "rest-pilot" }).lat ===
+      STARTER_KITCHEN_COORDS["rest-pilot"]?.lat,
+  "starter kitchens encode one-town lat/lng",
+);
+assert(
+  maya?.existingPlatformActive === true &&
+    jordan?.existingPlatformActive === true &&
+    casey?.existingPlatformActive === false &&
+    driverOnboardingComplete(maya as NonNullable<typeof maya>) &&
+    !driverOnboardingComplete({
+      licenseOk: true,
+      insuranceOk: true,
+      existingPlatformActive: false,
+    }),
+  "onboarding requires license, insurance, and existingPlatformActive",
+);
+const noPlatform = {
+  ...ops,
+  drivers: ops.drivers.map((row) =>
+    row.id === "drv-jordan"
+      ? { ...row, existingPlatformActive: false }
+      : row,
+  ),
+};
+assert(
+  !driverCanDispatch(
+    noPlatform.drivers.find((row) => row.id === "drv-jordan") ??
+      (jordan as NonNullable<typeof jordan>),
+  ) && !acceptDriverRun(noPlatform, "run-sample-pilot", "drv-jordan").ok,
+  "existing-platform gate blocks dispatch",
+);
+const nearPilot = runDropoffGeo(
+  ops.runs.find((row) => row.id === "run-sample-pilot") ?? {
+    orderId: "ord-sample-pilot",
+    restaurantId: "rest-pilot",
+    dropoffZip: "10001",
+  },
+  pilotKitchen,
+);
+const farTown = { lat: 40.2, lng: -83.5 };
+assert(
+  dropoffWithinMerchantRadius(
+    restaurantGeo(pilotKitchen ?? { id: "rest-pilot" }),
+    nearPilot,
+  ) &&
+    !dropoffWithinMerchantRadius(
+      restaurantGeo(pilotKitchen ?? { id: "rest-pilot" }),
+      farTown,
+    ),
+  "order routing stays inside the fixed 2-mile merchant radius",
+);
+const farOrder = recordDeliveryOrder(ops, {
+  ledgerId: "led-far",
+  ticketId: "tkt-far",
+  runId: "run-far",
+  orderId: "ord-far",
+  customerName: "Far Away",
+  dropoffZip: "43085",
+  dropoffLat: farTown.lat,
+  dropoffLng: farTown.lng,
+  items: [
+    {
+      productId: "run-pilot-bowl",
+      title: "Pilot Kitchen · Warm grain bowl",
+      qty: 1,
+      priceUsd: 14,
+    },
+  ],
+  gmvUsd: 14,
+  deliveryFeeUsd: 5,
+  tipUsd: 2,
+  taxUsd: 1,
+});
+assert(
+  !farOrder.ledger.some((row) => row.id === "led-far"),
+  "orders outside the fixed radius are not routed",
+);
 const deli = ops.restaurants.find((row) => row.id === "rest-deli");
 const deliLedger = ops.ledger.find((row) => row.orderId === "ord-sample-deli");
 assert(Boolean(riley && riley.status === "frozen"), "Riley starts frozen");
@@ -773,19 +912,80 @@ if (taken.ok) {
       ?.firstDeliveredAt,
     "accepting an offer does not start the 60-day software clock",
   );
-  const picked = advanceDriverRun(
+  const kitchenPin = restaurantGeo(
+    taken.ops.restaurants.find((row) => row.id === "rest-pilot") ?? {
+      id: "rest-pilot",
+    },
+  );
+  const farKitchen = { lat: kitchenPin.lat + 0.01, lng: kitchenPin.lng };
+  const missedArrival = advanceDriverArrived(
     taken.ops,
+    "run-sample-pilot",
+    "drv-jordan",
+    farKitchen,
+  );
+  assert(!missedArrival.ok, "arrival outside 300 meters is blocked");
+  const arrived = advanceDriverArrived(
+    taken.ops,
+    "run-sample-pilot",
+    "drv-jordan",
+    kitchenPin,
+  );
+  assert(arrived.ok, "Jordan entering 300m flips Driver Arrived");
+  if (arrived.ok) {
+    assert(
+      arrived.ops.runs.find((row) => row.id === "run-sample-pilot")
+        ?.status === "driver_arrived" &&
+        ticketDriverArrived(
+          arrived.ops,
+          arrived.ops.tickets.find((row) => row.orderId === "ord-sample-pilot") ??
+            { orderId: "ord-sample-pilot" },
+        ),
+      "run and ticket flip to Driver Arrived so the kitchen stages the bag",
+    );
+  }
+  const picked = advanceDriverRun(
+    arrived.ok ? arrived.ops : taken.ops,
     "run-sample-pilot",
     "drv-jordan",
     "picked_up",
   );
   assert(picked.ok, "Jordan can mark pickup");
   if (picked.ok) {
+    const dropPin = runDropoffGeo(
+      picked.ops.runs.find((row) => row.id === "run-sample-pilot") ?? {
+        orderId: "ord-sample-pilot",
+        restaurantId: "rest-pilot",
+        dropoffZip: "10001",
+      },
+      picked.ops.restaurants.find((row) => row.id === "rest-pilot"),
+    );
+    const blockedDrop = advanceDriverRun(
+      picked.ops,
+      "run-sample-pilot",
+      "drv-jordan",
+      "delivered",
+      { lat: dropPin.lat + 0.01, lng: dropPin.lng },
+    );
+    const missingPin = advanceDriverRun(
+      picked.ops,
+      "run-sample-pilot",
+      "drv-jordan",
+      "delivered",
+    );
+    assert(
+      !blockedDrop.ok &&
+        blockedDrop.error === DROPOFF_WRONG_LOCATION_COPY &&
+        !missingPin.ok &&
+        missingPin.error === DROPOFF_WRONG_LOCATION_COPY,
+      "100ft drop-off block refuses Complete Delivery outside the pin",
+    );
     const dropped = advanceDriverRun(
       picked.ops,
       "run-sample-pilot",
       "drv-jordan",
       "delivered",
+      dropPin,
     );
     assert(dropped.ok, "Jordan can complete dropoff");
     if (dropped.ok) {
@@ -966,8 +1166,19 @@ const dinerBlob = [
 assert(
   !deliveryLandingLooksLikeOpsEconomics(dinerBlob) &&
     !/Flat 10% on delivery GMV/.test(landing) &&
-    !/Flat 10% on delivery GMV/.test(siteCopy),
+    !/Flat 10% on delivery GMV/.test(siteCopy) &&
+    !/geofence/i.test(dinerBlob) &&
+    !/independent contractor/i.test(dinerBlob) &&
+    !/\bach\b/i.test(dinerBlob) &&
+    !/background check/i.test(dinerBlob),
   "diner landing and shop stay guest-facing — no 1099 / $39 / GMV / research leak",
+);
+assert(
+  deliveryLandingLooksLikeOpsEconomics("kitchen arrival geofence 300 meters") &&
+    deliveryLandingLooksLikeOpsEconomics("one-page IC agreement") &&
+    deliveryLandingLooksLikeOpsEconomics("Stripe Connect ACH") &&
+    deliveryLandingLooksLikeOpsEconomics("expensive background check"),
+  "diner leak includes geofence / IC / ACH / background check phrases",
 );
 assert(
   deliveryLandingLooksLikeOpsEconomics(
@@ -1007,7 +1218,10 @@ assert(
   /Drivers available/.test(restaurantDesk) &&
     /Photo ID/.test(restaurantDesk) &&
     /ticketAssignedDriver/.test(restaurantDesk) &&
-    /availableDispatchDrivers/.test(restaurantDesk),
+    /availableDispatchDrivers/.test(restaurantDesk) &&
+    /ticketDriverArrived/.test(restaurantDesk) &&
+    /Driver Arrived/.test(restaurantDesk) &&
+    /MERCHANT_DELIVERY_RADIUS_MILES/.test(restaurantDesk),
   "restaurant portal shows available drivers and accepted-driver photo ID",
 );
 assert(
@@ -1075,8 +1289,14 @@ assert(
     /softwareFeeUsd/.test(driverDesk) &&
     /firstSuccessfulDriveAt/.test(driverDesk) &&
     /assignRestaurantScoutAction/.test(driverDesk) &&
-    /Sign as scout/.test(driverDesk),
-  "driver portal shows Connect payouts, trip math, tax forms, Riley, no own-kitchen 5%, and 60 days free from first successful drive",
+    /Sign as scout/.test(driverDesk) &&
+    /STRIPE_CONNECT_RAIL/.test(driverDesk) &&
+    /DRIVER_IC_AGREEMENT/.test(driverDesk) &&
+    /STUDENT_SCOUT_TALKING_POINTS/.test(driverDesk) &&
+    /KITCHEN_ARRIVAL_GEOFENCE_METERS/.test(driverDesk) &&
+    /Complete Delivery/.test(driverDesk) &&
+    /existingPlatformActive/.test(driverDesk),
+  "driver portal shows Connect payouts, trip math, tax forms, Riley, no own-kitchen 5%, 60 days free, geofence, IC, and ACH",
 );
 assert(
   /\$37\.28/.test(ledgerUi) &&
@@ -1092,8 +1312,21 @@ assert(
     /first successful drive/.test(ledgerUi) &&
     /first successful drive/.test(siteCopy) &&
     /threePartyStripeSplit/.test(ledgerUi) &&
-    /Stripe three-party/.test(ledgerUi),
+    /Stripe three-party/.test(ledgerUi) &&
+    /Stripe Connect ACH/.test(ledgerUi) &&
+    /independent contractor agreement/.test(ledgerUi) &&
+    /300 meter/.test(ledgerUi) &&
+    /existingPlatformActive/.test(ledgerUi) &&
+    /tip-geofence/.test(siteCopy) &&
+    /tip-ic/.test(siteCopy),
   "ledger and playbook tips carry research, Riley, three-party Stripe, no own-kitchen 5%, and 60 days free from first successful drive",
+);
+assert(
+  /Independent contractor agreement/.test(deliveryLib) &&
+    /DRIVER_IC_AGREEMENT/.test(driverDesk) &&
+    /Student scout talking points/.test(deliveryLib) &&
+    /STRIPE_CONNECT_RAIL/.test(deliveryLib),
+  "IC agreement, ACH rail, and scout talking points are present on ops",
 );
 const deliveryActions = readFileSync(
   join(process.cwd(), "src/app/portal/[id]/delivery-actions.ts"),

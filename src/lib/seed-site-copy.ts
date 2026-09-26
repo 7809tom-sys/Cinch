@@ -52,7 +52,8 @@ function firstSentences(brief: string, count = 2): string[] {
  *   concrete numbers, and profit-maximizing operator help (lawn, garage,
  *   pizza, salon — same bar as AI kitchen design beating 2020 software).
  * - Delivery diner landing + shop stay guest benefits (nearby food, tip,
- *   track the bag). Ledger / tax / $39 / 1099 / Connect / trip math live
+ *   track the bag). Ledger / tax / $39 / 1099 / Connect / trip math /
+ *   geofence meters / IC agreement / ACH / background check live
  *   on restaurant, driver, admin, playbook, and Edit Seed — never on the
  *   public diner page.
  */
@@ -230,7 +231,7 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen/.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive/.test(
     blob,
   );
 }
@@ -4427,7 +4428,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip on Connect",
-              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order.",
+              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) comes out of the restaurant. Platform keeps $0 on the order. Subscriptions and payouts use Stripe Connect ACH — not card — so we avoid card surcharges.",
             },
             {
               id: "tip-trip",
@@ -4452,7 +4453,17 @@ export function customerFacingAdminCopy(
             {
               id: "tip-compliance",
               title: "Block dispatch when papers expire",
-              body: "ID, license, and insurance are product gates. A freeze stops dispatch only — it does not reassign scout residuals.",
+              body: "License, insurance, and existingPlatformActive (DoorDash / Uber Eats) are product gates. No expensive background check. A freeze stops dispatch only — it does not reassign scout residuals.",
+            },
+            {
+              id: "tip-geofence",
+              title: "Fixed radius, kitchen arrival, drop-off pin",
+              body: "Merchant delivery radius is FIXED at 2 miles (1.5–2.5 allowed). Kitchen arrival geofence is 300 meters — flip the run/ticket to Driver Arrived so the kitchen stages the bag. Complete Delivery is blocked unless the driver is within 100 feet of the drop-off pin. If outside: Are you at the right location?",
+            },
+            {
+              id: "tip-ic",
+              title: "One-page independent contractor agreement",
+              body: "Ops copy, not legal advice: liability disclaimer, vehicle maintenance on the driver, indemnification. Show it on the driver portal. Diner never sees the IC agreement, ACH rail, geofence meters, or background check language.",
             },
           ]
       : briefIsPizza(projectName, brief) || key === "food"

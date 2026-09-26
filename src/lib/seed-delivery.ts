@@ -3,9 +3,17 @@
  *
  * HARD RULES:
  * - Three role-based logins: customer, merchant, driver.
- * - Menu: DoorDash-style. AI crawls a draft; the merchant can also
- *   upload items (name, category, price, photo, find-words) so customers
- *   search and hit the right plate. Only confirmed / uploaded items sell.
+ * - Menu: photo/PDF first. Scout or merchant snaps 2–3 photos of the
+ *   paper takeout menu or uploads a PDF. A vision model (Gemini Flash /
+ *   Claude Vision) outputs structured JSON (category, item_name, price,
+ *   description, modifiers). parseMenuFromUpload / ingestMenuPhotos
+ *   write a draft store profile. Website crawl is the fallback — not
+ *   Red Card or non-consented scraping. Five-minute sign-off: review
+ *   prices/modifiers, tap Approve (approveMenuDraft), merchant goes
+ *   live. Not a data-entry team. confirmRestaurantMenuPrice still
+ *   works one plate at a time. 86: setMenuItemEightySixed hides an
+ *   item from sellableRestaurantMenu / diner find during service.
+ *   Do NOT build Toast / Square / Otter APIs, 15% markup rules, or POS.
  * - Platform keeps $0 from restaurant orders. Revenue is driver
  *   subscriptions only ($39/month part-time, $79/month full-time).
  * - Restaurant pays 10% of delivery GMV. That 10% is fully distributed:
@@ -32,6 +40,23 @@
  * - 60 days without opening the app → account auto-suspended.
  * - Residual examples use $500 / $800 / $1,000 / $2,000 weekly GMV as
  *   inputs — never a $2,000/week default promise.
+ * - Core dispatch + order routing only. Tight FIXED merchant delivery
+ *   radius: 1.5–2.5 miles (default 2, or a 5–7 minute drive). NO dynamic
+ *   expand/contract. NO Premier / 15% vs 30% visibility tiers.
+ * - Kitchen arrival geofence: 300 meters. Entering flips the run/ticket
+ *   to Driver Arrived so the kitchen stages the bag.
+ * - Drop-off: driver must be within 100 feet of drop-off coordinates
+ *   before Complete Delivery / delivered. Outside: "Are you at the
+ *   right location?"
+ * - Onboarding gates: valid license, active auto insurance, AND active
+ *   status on DoorDash / Uber Eats (existingPlatformActive). No expensive
+ *   background check.
+ * - Stripe Connect ACH is the subscription / payout rail (not card).
+ * - One-page IC agreement: liability, vehicle maintenance on the driver,
+ *   indemnification. Product text, not legal advice.
+ * - Student scout talking points are ops-only. Diner stays guest-only.
+ * - AVOID: 8–10 mile expansion, weather/supply algorithms, KDS fry-fire,
+ *   idle-time unassign without penalty (ops note only).
  * - Market: DoorDash does not publish a US AOV. Rakuten (via Business of
  *   Apps) ~$37.28, ~20% of orders over $50. Q4 2025 implied ~$33 global
  *   ($29.7B GOV / 903M orders, includes tax/tip/fees). AOV rose in Q2
@@ -125,18 +150,49 @@ export const LIMITED_SERVICE_PRETAX_MARGIN = 0.04;
 export const SCOUT_DINE_IN_EXAMPLE_COUPLES = 7;
 /** One Hometown delivery in the calendar month keeps scout pay. */
 export const SCOUT_MIN_DELIVERIES_PER_MONTH = 1;
+/** Tight FIXED merchant radius — 1.5–2.5 miles, default 2. Never expands. */
+export const MERCHANT_DELIVERY_RADIUS_MIN_MILES = 1.5;
+export const MERCHANT_DELIVERY_RADIUS_MAX_MILES = 2.5;
+export const MERCHANT_DELIVERY_RADIUS_MILES = 2;
+/** Kitchen arrival geofence — stage the bag when the driver enters. */
+export const KITCHEN_ARRIVAL_GEOFENCE_METERS = 300;
+/** Drop-off verification — Complete Delivery is blocked outside this. */
+export const DROPOFF_VERIFY_FEET = 100;
+export const METERS_PER_MILE = 1609.344;
+export const FEET_PER_METER = 3.280839895;
+export const DROPOFF_VERIFY_METERS = DROPOFF_VERIFY_FEET / FEET_PER_METER;
+export const DROPOFF_WRONG_LOCATION_COPY = "Are you at the right location?";
+/** Stripe Connect ACH — subscription debit + payouts, not card. */
+export const STRIPE_CONNECT_RAIL = "ach";
+export const EXISTING_PLATFORM_NAMES = ["DoorDash", "Uber Eats"] as const;
+
+export type GeoPoint = { lat: number; lng: number };
+
+/** Starter kitchens sit in one town — Market Street cluster. */
+export const STARTER_TOWN_CENTER: GeoPoint = { lat: 40.0812, lng: -83.1428 };
+export const STARTER_KITCHEN_COORDS: Record<string, GeoPoint> = {
+  "rest-pilot": { lat: 40.0812, lng: -83.1428 },
+  "rest-tacos": { lat: 40.083, lng: -83.1405 },
+  "rest-deli": { lat: 40.079, lng: -83.1455 },
+  "rest-bakery": { lat: 40.0842, lng: -83.1388 },
+};
+export const STARTER_DROPOFF_COORDS: Record<string, GeoPoint> = {
+  "ord-sample-pilot": { lat: 40.0755, lng: -83.13 },
+  "ord-sample-deli": { lat: 40.072, lng: -83.152 },
+};
 
 export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
 - Platform revenue: Hometown Runner keeps $0 from restaurant orders. Revenue is driver subscriptions only ($39/month part-time, $79/month full-time).
 - Order commission: the 10% on delivery GMV is fully distributed — 5% scout residual, 5% driver. Not a platform cut.
 - Payment flow: Stripe three-party Connect. Restaurant, scout, and driver each have their own Stripe account. Food net (GMV − 10% − ~2.9% processor) lands on the restaurant account. The 5% residual lands on the scout account. Fee, tip, and the 5% driver share land on the driver account. Platform $0 on the order.
-- Payouts: automatic when the driver hits a $25 minimum balance, or on the weekly schedule.
+- ACH rail: subscription deductions ($39 / $79 after the free window) and payouts use Stripe Connect ACH — not card, so we avoid card surcharges.
+- Payouts: automatic when the driver hits a $25 minimum balance, or on the weekly schedule. ACH deposit to the driver’s bank.
 - Tax forms: drivers manage their own tax forms on Stripe Connect. The restaurant does not issue 1099s.
 - Trip: $4.50 base plus $1.50 per mile so drivers clear the $0.76 federal mileage rate.`;
 
 export const HOMETOWN_PLATFORM_BRIEF_BLOCK = `Hometown platform:
 - Role logins: three distinct sign-ins — customer (order), merchant (kitchen + menu confirm), and driver (dash + Connect payouts).
-- Menu: DoorDash-style — AI crawls a draft; the merchant uploads or confirms items so customers can find the right plate (name, category, find-words).
+- Menu: DoorDash-style — AI crawls a draft; the merchant uploads or confirms items so customers can find the right plate (name, category, find-words). Photo/PDF of the paper takeout menu is the primary onboard; website crawl is the fallback.
 - Stripe three-party: restaurant, scout, and driver each have a Stripe account.`;
 
 export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Home Town Runner: market research
@@ -149,9 +205,48 @@ export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Home Town Runner: market re
 
 export const DRIVER_POLICY_BRIEF_BLOCK = `Driver subscriptions & policies:
 - Everybody gets 60 days free. The free period starts the day of the first successful drive (a run with status === "delivered"). Do not start the clock on signup, first login, or first offer.
-- After day 60 from that first delivered run, fees are weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly). No restaurant software fee.
+- After day 60 from that first delivered run, fees are weekly installments $9.99 part-time or $19.99 full-time ($39 / $79 monthly). No restaurant software fee. Bill on Stripe Connect ACH, not card.
 - Full-time: app open more than 30 hours a week, or more than 120 hours in 4 weeks. Below that is part-time.
-- If a driver does not open the app for 60 days, the account is automatically suspended.`;
+- If a driver does not open the app for 60 days, the account is automatically suspended.
+- Onboarding: valid license, active auto insurance, AND existingPlatformActive on DoorDash or Uber Eats. No expensive background check.`;
+
+export const MENU_VISION_MODELS = ["gemini-flash", "claude-vision"] as const;
+export const MENU_ONBOARD_PRIMARY = "photo_pdf";
+export const MENU_ONBOARD_FALLBACK = "ai_crawl";
+export const MENU_SIGN_OFF_MINUTES = 5;
+/** v1 does not certify POS / middleware. Photo + five-minute sign-off + 86. */
+export const HOMETOWN_MENU_POS_INTEGRATIONS = [
+  "Toast",
+  "Square",
+  "Otter",
+  "Deliverect",
+] as const;
+
+export const HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK = `Hometown menu onboard (not POS):
+- Primary path: Scout or merchant snaps 2–3 photos of the paper takeout menu, or uploads a PDF. A vision model (Gemini Flash / Claude Vision) outputs structured JSON: category, item_name, price, description, modifiers (required vs optional groups). parseMenuFromUpload / ingestMenuPhotos turn that into a draft store profile. Website crawl stays as a fallback.
+- Five-minute sign-off: the parser creates a draft. Scout or restaurant owner reviews prices and modifiers, taps Approve, and the merchant goes live. Not a data-entry team. approveMenuDraft confirms every parsed item (confirmRestaurantMenuPrice still works one-by-one).
+- 86: one tap to 86 / restore an item during service so it does not sell. setMenuItemEightySixed hides 86'd items from sellableRestaurantMenu and diner find.
+- Do not build Toast / Square / Otter APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
+
+export const HOMETOWN_DISPATCH_BRIEF_BLOCK = `Hometown dispatch & geofence:
+- Core dispatch + order routing only. No weather/supply algorithms, no KDS fry-fire, no Premier / 15% vs 30% visibility tiers.
+- Merchant delivery radius is FIXED at 2 miles (allowed 1.5–2.5 miles, or a 5–7 minute drive). No dynamic expand/contract.
+- Kitchen arrival geofence: 300 meters around the merchant. When the driver enters, flip the run/ticket to Driver Arrived so the kitchen stages the bag.
+- Drop-off: driver must be within 100 feet of drop-off coordinates before Complete Delivery / delivered. If outside: "Are you at the right location?"
+- Ops note: idle-time unassign without penalty is not in v1 — a driver who sits on an offer keeps it until they cancel or the kitchen declines.`;
+
+export const DRIVER_IC_AGREEMENT = `Independent contractor agreement (one page — product text, not legal advice):
+You dash as an independent contractor, not an employee of Hometown Runner.
+Liability: you are responsible for incidents, tickets, and claims that arise while you drive or handle a bag.
+Vehicle: you maintain your own vehicle, license, and insurance. Hometown does not provide or service a car.
+Indemnification: you indemnify Hometown Runner and the restaurant for claims arising from your driving, delivery, or failure to keep papers current.
+Background check: Hometown does not run an expensive background check. You must keep a valid license, active auto insurance, and existingPlatformActive on DoorDash or Uber Eats.`;
+
+export const STUDENT_SCOUT_TALKING_POINTS = `Student scout talking points (first town — ops only, never diner):
+1. Riley dine-in first: send the kitchen customers (seven couples in a week). Delivery is only ~5% of full-service traffic; dine-in is ~70%.
+2. One delivery a month keeps the 5%. Miss a month and pay cascades to the next most-active signed scout at that kitchen.
+3. A restaurateur can scout another kitchen after one delivery — they cannot keep the 5% on their own kitchen.
+4. Everybody who would pay software gets 60 days free from the first successful drive.`;
 
 export type DeliveryDriverStatus =
   | "pending"
@@ -172,7 +267,7 @@ export function hometownRoleCopy(role: HometownRole): {
     return {
       title: "Merchant login",
       support:
-        "Kitchen desk: upload the menu like DoorDash or confirm the AI draft, take tickets, hand bags to a Hometown driver.",
+        "Kitchen desk: snap the paper takeout menu or upload a PDF, five-minute sign-off, then 86 a plate during service. Take tickets and hand bags to a Hometown driver.",
       cta: "Sign in as merchant",
     };
   }
@@ -190,7 +285,44 @@ export function hometownRoleCopy(role: HometownRole): {
     cta: "Sign in as customer",
   };
 }
-export type RestaurantMenuItemSource = "ai_crawl" | "merchant" | "merchant_upload";
+export type RestaurantMenuItemSource =
+  | "ai_crawl"
+  | "merchant"
+  | "merchant_upload"
+  | "photo_parse"
+  | "pdf_parse";
+export type MenuModifierChoice = {
+  id: string;
+  name: string;
+  priceUsd?: number;
+};
+export type MenuModifierGroup = {
+  id: string;
+  name: string;
+  /** Required group vs optional add-ons. */
+  required: boolean;
+  choices: MenuModifierChoice[];
+};
+/** Vision-model JSON — Gemini Flash / Claude Vision output shape. */
+export type ParsedMenuItem = {
+  category: string;
+  item_name: string;
+  price: number;
+  description?: string;
+  modifiers?: MenuModifierGroup[];
+};
+export type ParsedMenuJson = {
+  items: ParsedMenuItem[];
+};
+export type MenuUploadKind = "photo" | "pdf" | "fixture";
+export type MenuUploadInput = {
+  kind?: MenuUploadKind;
+  fileNames?: string[];
+  /** Seed / tests: skip a live vision call and use the paper-menu fixture. */
+  useFixture?: boolean;
+  rawJson?: string;
+  parsed?: ParsedMenuJson;
+};
 export type RestaurantMenuItem = {
   id: string;
   title: string;
@@ -202,11 +334,16 @@ export type RestaurantMenuItem = {
   aliases?: string[];
   description?: string;
   photoUrl?: string;
+  modifiers?: MenuModifierGroup[];
+  /** Hidden from diner find / sellable while 86'd during service. */
+  eightySixed?: boolean;
 };
 export type RestaurantMenuDraft = {
   sourceUrl: string;
   crawledAt: string;
   items: RestaurantMenuItem[];
+  ingestSource?: MenuUploadKind | "ai_crawl";
+  approvedAt?: string | null;
 };
 export type FoundMenuItem = {
   restaurantId: string;
@@ -229,6 +366,7 @@ export type MerchantTicketStatus =
 export type DriverRunStatus =
   | "offered"
   | "accepted"
+  | "driver_arrived"
   | "picked_up"
   | "delivered"
   | "cancelled";
@@ -250,6 +388,9 @@ export type DeliveryRestaurant = {
   websiteUrl?: string;
   /** Hybrid menu: AI draft, then merchant confirms prices. */
   menu?: RestaurantMenuDraft;
+  /** Kitchen pin — starter kitchens share one town. */
+  lat?: number;
+  lng?: number;
 };
 
 export type DeliveryDriver = {
@@ -258,6 +399,11 @@ export type DeliveryDriver = {
   status: DeliveryDriverStatus;
   licenseOk: boolean;
   insuranceOk: boolean;
+  /**
+   * Active on DoorDash or Uber Eats — the third onboarding gate.
+   * No expensive background check.
+   */
+  existingPlatformActive: boolean;
   classification: DriverClassification;
   softwareCadence: DriverSoftwareCadence;
   hoursOpenThisWeek: number;
@@ -323,6 +469,8 @@ export type MerchantTicket = {
   gmvUsd: number;
   status: MerchantTicketStatus;
   createdAt: string;
+  /** Set when the driver enters the 300m kitchen geofence. */
+  driverArrivedAt?: string | null;
 };
 
 export type DriverRun = {
@@ -332,6 +480,8 @@ export type DriverRun = {
   driverId: string | null;
   customerName: string;
   dropoffZip: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   deliveryFeeUsd: number;
   tipUsd: number;
   driverCommissionUsd: number;
@@ -380,6 +530,24 @@ export function briefHasHometownMarketResearch(brief: string): boolean {
   );
 }
 
+export function briefHasDispatchGeofence(brief: string): boolean {
+  return /FIXED|2 miles|300 meters|100 feet|existingPlatformActive|Driver Arrived|Are you at the right location/i.test(
+    brief,
+  );
+}
+
+export function briefHasAchRail(brief: string): boolean {
+  return /Stripe Connect ACH|ACH rail|not card/i.test(brief);
+}
+
+export function briefHasIcAgreement(brief: string): boolean {
+  return /Independent contractor agreement|indemnif/i.test(brief);
+}
+
+export function briefHasStudentScoutTalkingPoints(brief: string): boolean {
+  return /Student scout talking points|Riley dine-in first/i.test(brief);
+}
+
 /** Append payment + subscription rules when a delivery brief is missing them. */
 export function withDeliveryDriverPolicyBrief(brief: string): string {
   const parts: string[] = [];
@@ -398,6 +566,20 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
     parts.push(DRIVER_POLICY_BRIEF_BLOCK);
   } else if (!briefHasSoftwareFreeTrial(trimmed)) {
     parts.push(DRIVER_POLICY_BRIEF_BLOCK);
+  }
+  if (!briefHasDispatchGeofence(trimmed)) {
+    parts.push(HOMETOWN_DISPATCH_BRIEF_BLOCK);
+  }
+  if (!briefHasAchRail(trimmed)) {
+    parts.push(
+      "Stripe Connect ACH: subscription deductions and payouts use ACH, not card, so we avoid card surcharges.",
+    );
+  }
+  if (!briefHasIcAgreement(trimmed)) {
+    parts.push(DRIVER_IC_AGREEMENT);
+  }
+  if (!briefHasStudentScoutTalkingPoints(trimmed)) {
+    parts.push(STUDENT_SCOUT_TALKING_POINTS);
   }
   return parts.join("\n\n");
 }
@@ -447,6 +629,107 @@ export function tripClearsFederalMileage(miles = 1): boolean {
   return (
     TRIP_PER_MILE_USD > FEDERAL_MILEAGE_USD &&
     tripChargeUsd(miles) > money(FEDERAL_MILEAGE_USD * Math.max(0, miles))
+  );
+}
+
+export function haversineMeters(a: GeoPoint, b: GeoPoint): number {
+  const earthMeters = 6_371_000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * earthMeters * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export function metersToMiles(meters: number): number {
+  return meters / METERS_PER_MILE;
+}
+
+export function metersToFeet(meters: number): number {
+  return meters * FEET_PER_METER;
+}
+
+export function restaurantGeo(
+  restaurant: Pick<DeliveryRestaurant, "id" | "lat" | "lng">,
+): GeoPoint {
+  const seeded = STARTER_KITCHEN_COORDS[restaurant.id] ?? STARTER_TOWN_CENTER;
+  return {
+    lat: restaurant.lat ?? seeded.lat,
+    lng: restaurant.lng ?? seeded.lng,
+  };
+}
+
+export function runDropoffGeo(
+  run: Pick<DriverRun, "orderId" | "restaurantId" | "dropoffZip" | "dropoffLat" | "dropoffLng">,
+  restaurant?: Pick<DeliveryRestaurant, "id" | "lat" | "lng">,
+): GeoPoint {
+  const seeded = STARTER_DROPOFF_COORDS[run.orderId];
+  if (
+    typeof run.dropoffLat === "number" &&
+    typeof run.dropoffLng === "number"
+  ) {
+    return { lat: run.dropoffLat, lng: run.dropoffLng };
+  }
+  if (seeded) return seeded;
+  return defaultDropoffNearRestaurant(
+    restaurant ?? { id: run.restaurantId },
+    run.dropoffZip,
+  );
+}
+
+export function defaultDropoffNearRestaurant(
+  restaurant: Pick<DeliveryRestaurant, "id" | "lat" | "lng">,
+  zip = "",
+): GeoPoint {
+  const kitchen = restaurantGeo(restaurant);
+  const digits = zip.replace(/\D/g, "");
+  const nudge = digits.length >= 2 ? (Number(digits.slice(-2)) % 8) * 0.001 : 0.008;
+  return { lat: kitchen.lat - 0.006, lng: kitchen.lng + 0.012 + nudge };
+}
+
+/** FIXED 2-mile (1.5–2.5 allowed) merchant radius. Never expands. */
+export function dropoffWithinMerchantRadius(
+  merchant: GeoPoint,
+  dropoff: GeoPoint,
+  radiusMiles = MERCHANT_DELIVERY_RADIUS_MILES,
+): boolean {
+  const radius = Math.min(
+    MERCHANT_DELIVERY_RADIUS_MAX_MILES,
+    Math.max(MERCHANT_DELIVERY_RADIUS_MIN_MILES, radiusMiles),
+  );
+  return metersToMiles(haversineMeters(merchant, dropoff)) <= radius;
+}
+
+export function driverInsideKitchenGeofence(distanceMeters: number): boolean {
+  return (
+    Number.isFinite(distanceMeters) &&
+    distanceMeters >= 0 &&
+    distanceMeters <= KITCHEN_ARRIVAL_GEOFENCE_METERS
+  );
+}
+
+export function driverInsideDropoffGeofence(distanceMeters: number): boolean {
+  return (
+    Number.isFinite(distanceMeters) &&
+    distanceMeters >= 0 &&
+    metersToFeet(distanceMeters) <= DROPOFF_VERIFY_FEET
+  );
+}
+
+export function driverOnboardingComplete(
+  driver: Pick<
+    DeliveryDriver,
+    "licenseOk" | "insuranceOk" | "existingPlatformActive"
+  >,
+): boolean {
+  return (
+    driver.licenseOk &&
+    driver.insuranceOk &&
+    driver.existingPlatformActive
   );
 }
 
@@ -801,6 +1084,7 @@ export function normalizeDeliveryRestaurant(
       row.connectAccountId?.trim() || defaultRestaurantConnectAccountId(row.id),
     websiteUrl,
     menu,
+    ...restaurantGeo(row),
   };
 }
 
@@ -1025,6 +1309,10 @@ export function normalizeDeliveryDriver(
     lastPayoutAt: row.lastPayoutAt ?? null,
     taxFormsSelfManaged: true,
     firstDeliveredAt: row.firstDeliveredAt ?? null,
+    existingPlatformActive:
+      typeof row.existingPlatformActive === "boolean"
+        ? row.existingPlatformActive
+        : Boolean(row.licenseOk && row.insuranceOk),
     ...driverPhotoId(row),
   };
 }
@@ -1325,8 +1613,7 @@ export function assignRestaurantScout(
 export function driverCanDispatch(driver: DeliveryDriver): boolean {
   return (
     driver.status === "approved" &&
-    driver.licenseOk &&
-    driver.insuranceOk &&
+    driverOnboardingComplete(driver) &&
     driver.online
   );
 }
@@ -1403,6 +1690,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
           restaurantName: "Pilot Kitchen",
           websiteUrl: defaultRestaurantWebsiteUrl("Pilot Kitchen"),
         }),
+        ...STARTER_KITCHEN_COORDS["rest-pilot"],
       },
       {
         id: "rest-tacos",
@@ -1417,6 +1705,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
           restaurantName: "Second Street Tacos",
           websiteUrl: defaultRestaurantWebsiteUrl("Second Street Tacos"),
         }),
+        ...STARTER_KITCHEN_COORDS["rest-tacos"],
       },
       {
         id: "rest-deli",
@@ -1431,6 +1720,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
           restaurantName: "River Market Deli",
           websiteUrl: defaultRestaurantWebsiteUrl("River Market Deli"),
         }),
+        ...STARTER_KITCHEN_COORDS["rest-deli"],
       },
       {
         id: "rest-bakery",
@@ -1456,6 +1746,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
             },
           ],
         },
+        ...STARTER_KITCHEN_COORDS["rest-bakery"],
       },
     ],
     drivers: [
@@ -1465,6 +1756,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "approved",
         licenseOk: true,
         insuranceOk: true,
+        existingPlatformActive: true,
         classification: "full_time",
         softwareCadence: "monthly",
         hoursOpenThisWeek: 36,
@@ -1487,6 +1779,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "approved",
         licenseOk: true,
         insuranceOk: true,
+        existingPlatformActive: true,
         classification: "part_time",
         softwareCadence: "weekly",
         hoursOpenThisWeek: 12,
@@ -1507,6 +1800,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "frozen",
         licenseOk: true,
         insuranceOk: false,
+        existingPlatformActive: true,
         classification: "part_time",
         softwareCadence: "monthly",
         hoursOpenThisWeek: 8,
@@ -1527,6 +1821,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         status: "suspended",
         licenseOk: true,
         insuranceOk: true,
+        existingPlatformActive: false,
         classification: "part_time",
         softwareCadence: "monthly",
         hoursOpenThisWeek: 0,
@@ -1602,6 +1897,8 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         driverId: null,
         customerName: "Alex Rivera",
         dropoffZip: "10001",
+        dropoffLat: STARTER_DROPOFF_COORDS["ord-sample-pilot"].lat,
+        dropoffLng: STARTER_DROPOFF_COORDS["ord-sample-pilot"].lng,
         deliveryFeeUsd: split.deliveryFeeUsd,
         tipUsd: split.tipUsd,
         driverCommissionUsd: split.driverCommissionUsd,
@@ -1615,6 +1912,8 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         driverId: "drv-maya",
         customerName: "Sam Ortiz",
         dropoffZip: "10003",
+        dropoffLat: STARTER_DROPOFF_COORDS["ord-sample-deli"].lat,
+        dropoffLng: STARTER_DROPOFF_COORDS["ord-sample-deli"].lng,
         deliveryFeeUsd: deliveredSplit.deliveryFeeUsd,
         tipUsd: deliveredSplit.tipUsd,
         driverCommissionUsd: deliveredSplit.driverCommissionUsd,
@@ -1711,8 +2010,14 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
     });
     const runs = parsed.runs.map((row) => {
       const led = ledger.find((item) => item.orderId === row.orderId);
+      const restaurant = parsed.restaurants.find(
+        (item) => item.id === row.restaurantId,
+      );
+      const dropoff = runDropoffGeo(row, restaurant);
       return {
         ...row,
+        dropoffLat: dropoff.lat,
+        dropoffLng: dropoff.lng,
         deliveryFeeUsd: remintTripFee(
           row.orderId,
           row.dropoffZip,
@@ -1806,6 +2111,7 @@ export function approveDeliveryDriver(
             status: "approved" as const,
             licenseOk: true,
             insuranceOk: true,
+            existingPlatformActive: true,
             lastAppOpenAt: new Date().toISOString(),
           }
         : driver,
@@ -1826,6 +2132,8 @@ export function recordDeliveryOrder(
     orderId: string;
     customerName: string;
     dropoffZip: string;
+    dropoffLat?: number;
+    dropoffLng?: number;
     items: Array<{
       productId?: string;
       title: string;
@@ -1840,6 +2148,14 @@ export function recordDeliveryOrder(
   },
 ): DeliveryOps {
   const restaurant = restaurantForShopItems(ops, input.items);
+  const kitchen = restaurantGeo(restaurant);
+  const dropoff =
+    typeof input.dropoffLat === "number" && typeof input.dropoffLng === "number"
+      ? { lat: input.dropoffLat, lng: input.dropoffLng }
+      : defaultDropoffNearRestaurant(restaurant, input.dropoffZip);
+  if (!dropoffWithinMerchantRadius(kitchen, dropoff)) {
+    return ops;
+  }
   const split = splitDeliveryLedger({
     gmvUsd: input.gmvUsd,
     deliveryFeeUsd: input.deliveryFeeUsd,
@@ -1883,6 +2199,8 @@ export function recordDeliveryOrder(
     driverId: null,
     customerName: input.customerName,
     dropoffZip: input.dropoffZip,
+    dropoffLat: dropoff.lat,
+    dropoffLng: dropoff.lng,
     deliveryFeeUsd: split.deliveryFeeUsd,
     tipUsd: split.tipUsd,
     driverCommissionUsd: split.driverCommissionUsd,
@@ -1965,7 +2283,7 @@ export function acceptDriverRun(
     return {
       ok: false,
       error:
-        "Dispatch is blocked. License and insurance must be current — a freeze does not move scout residuals.",
+        "Dispatch is blocked. License, insurance, and an active DoorDash / Uber Eats status are required — a freeze does not move scout residuals.",
     };
   }
   const run = ops.runs.find((row) => row.id === runId);
@@ -1988,21 +2306,92 @@ export function acceptDriverRun(
   };
 }
 
-export function advanceDriverRun(
+export function ticketDriverArrived(
+  ops: DeliveryOps,
+  ticket: Pick<MerchantTicket, "orderId" | "driverArrivedAt">,
+): boolean {
+  if (ticket.driverArrivedAt) return true;
+  return ops.runs.some(
+    (row) =>
+      row.orderId === ticket.orderId && row.status === "driver_arrived",
+  );
+}
+
+export function advanceDriverArrived(
   ops: DeliveryOps,
   runId: string,
   driverId: string,
-  next: Extract<DriverRunStatus, "picked_up" | "delivered">,
+  location: GeoPoint,
 ): { ok: true; ops: DeliveryOps } | { ok: false; error: string } {
   const run = ops.runs.find((row) => row.id === runId);
   if (!run || run.driverId !== driverId) {
     return { ok: false, error: "This run is not assigned to you." };
   }
-  if (next === "picked_up" && run.status !== "accepted") {
+  if (run.status !== "accepted") {
+    return { ok: false, error: "Accept the run before you arrive." };
+  }
+  const restaurant = ops.restaurants.find((row) => row.id === run.restaurantId);
+  if (!restaurant) return { ok: false, error: "Kitchen pin is missing." };
+  const distanceMeters = haversineMeters(location, restaurantGeo(restaurant));
+  if (!driverInsideKitchenGeofence(distanceMeters)) {
+    return {
+      ok: false,
+      error:
+        "Drive into the 300 meter kitchen geofence so the bag can be staged.",
+    };
+  }
+  const arrivedAt = new Date().toISOString();
+  return {
+    ok: true,
+    ops: {
+      ...ops,
+      runs: ops.runs.map((row) =>
+        row.id === runId
+          ? { ...row, status: "driver_arrived" as const }
+          : row,
+      ),
+      tickets: ops.tickets.map((row) =>
+        row.orderId === run.orderId
+          ? { ...row, driverArrivedAt: arrivedAt }
+          : row,
+      ),
+    },
+  };
+}
+
+export function advanceDriverRun(
+  ops: DeliveryOps,
+  runId: string,
+  driverId: string,
+  next: Extract<DriverRunStatus, "picked_up" | "delivered">,
+  location?: GeoPoint | null,
+): { ok: true; ops: DeliveryOps } | { ok: false; error: string } {
+  const run = ops.runs.find((row) => row.id === runId);
+  if (!run || run.driverId !== driverId) {
+    return { ok: false, error: "This run is not assigned to you." };
+  }
+  if (
+    next === "picked_up" &&
+    run.status !== "accepted" &&
+    run.status !== "driver_arrived"
+  ) {
     return { ok: false, error: "Accept the run before pickup." };
   }
   if (next === "delivered" && run.status !== "picked_up") {
     return { ok: false, error: "Mark pickup before you deliver." };
+  }
+  if (next === "delivered") {
+    const restaurant = ops.restaurants.find(
+      (row) => row.id === run.restaurantId,
+    );
+    const dropoff = runDropoffGeo(run, restaurant);
+    if (!location) {
+      return { ok: false, error: DROPOFF_WRONG_LOCATION_COPY };
+    }
+    const distanceMeters = haversineMeters(location, dropoff);
+    if (!driverInsideDropoffGeofence(distanceMeters)) {
+      return { ok: false, error: DROPOFF_WRONG_LOCATION_COPY };
+    }
   }
   const deliveredAt = new Date().toISOString();
   return {
