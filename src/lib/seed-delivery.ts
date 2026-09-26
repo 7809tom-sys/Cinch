@@ -27,9 +27,9 @@
  *   Stripe three-party Connect: restaurant, scout, and driver each have
  *   their own Stripe account. Food net → restaurant. 5% residual →
  *   scout. Fee + tip + 5% → driver. Platform food share $0 on the order.
- * - Restaurant collects the food total. Processing (~2.9%) and the
- *   $0.25 API expense come out of the restaurant. The other 5% of GMV
- *   routes to the scout.
+ * - Restaurant collects the food total. Processing (~2.9%)
+ *   comes out of the restaurant. The $0.25 API expense also comes
+ *   out of the restaurant. The other 5% of GMV routes to the scout.
  * - Payouts fire automatically at a $25 minimum balance or on the
  *   weekly schedule. Drivers manage their own tax forms on Connect.
  * - Trip charge is $4.50 base + $1.50 per mile so drivers clear the

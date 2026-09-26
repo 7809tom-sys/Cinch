@@ -4428,7 +4428,7 @@ export function customerFacingAdminCopy(
             {
               id: "tip-fees",
               title: "Drivers keep fee and tip on Connect",
-              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) and the $0.25 API expense come out of the restaurant. Hometown charges $0.25 per order for API expenses. Platform keeps $0 food share on the order. Subscriptions and payouts use Stripe Connect ACH — not card — so we avoid card surcharges.",
+              body: "Stripe three-party Connect: restaurant, scout, and driver each have a Stripe account. Food net to the restaurant. 5% residual to the scout. Fee, tip, and the 5% driver share to the driver. Card processing (~2.9%) comes out of the restaurant. Hometown charges $0.25 per order for API expenses — that also comes out of the restaurant. Platform keeps $0 food share on the order. Subscriptions and payouts use Stripe Connect ACH — not card — so we avoid card surcharges.",
             },
             {
               id: "tip-trip",
@@ -4585,7 +4585,7 @@ export function customerFacingAdminCopy(
         : "Business admin",
     support: wantsShop
       ? key === "delivery"
-        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 food share on the order. Processor fees and the $0.25 API expense come out of the restaurant. Hometown charges $0.25 per order for API expenses. Everybody gets 60 days free from the first successful drive. Do not hide them."
+        ? "Approve drivers, lock scout attribution, restaurant GMV, and payouts. Platform keeps $0 food share on the order. Processor fees come out of the restaurant. Hometown charges $0.25 per order for API expenses — that also comes out of the restaurant. Everybody gets 60 days free from the first successful drive. Do not hide them."
         : pizzaOrFood
         ? "Friendly ops cover: tickets, customers, menu stock, sales tax, and follow-up — grown into this Seed, not a separate product."
         : "Schedule plus inventory, UPS/LTL shipping, sales tax, and customer follow-up — part of your Seed website."
