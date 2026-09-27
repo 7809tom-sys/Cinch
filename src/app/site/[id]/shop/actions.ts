@@ -116,13 +116,26 @@ export async function placeSeedShopOrderAction(
   const hometownDelivery =
     briefIsDeliveryPlatform(project.name, project.brief) &&
     /delivery/i.test(`${mode.id} ${mode.label}`);
+  const hometownPickup =
+    briefIsDeliveryPlatform(project.name, project.brief) &&
+    /pickup/i.test(`${mode.id} ${mode.label}`);
   const shippingUsd = hometownDelivery
     ? (await import("@/lib/seed-delivery")).hometownDeliveryFeeUsd(shipToZip)
-    : mode.baseRateUsd;
-  const tipUsd = Math.max(
-    0,
-    Math.round(Number(formData.get("tipUsd") ?? 0) * 100) / 100,
-  );
+    : hometownPickup
+      ? 0
+      : mode.baseRateUsd;
+  const tipUsd = hometownPickup
+    ? 0
+    : Math.max(
+        0,
+        Math.round(Number(formData.get("tipUsd") ?? 0) * 100) / 100,
+      );
+  const scheduledWindow = String(formData.get("scheduledWindow") ?? "ASAP").trim();
+  const dropoffInstruction =
+    String(formData.get("dropoffInstruction") ?? "hand_to_customer") ===
+    "leave_at_door"
+      ? ("leave_at_door" as const)
+      : ("hand_to_customer" as const);
   const totalUsd =
     Math.round((subtotalUsd + taxUsd + shippingUsd + tipUsd) * 100) / 100;
 
@@ -171,7 +184,9 @@ export async function placeSeedShopOrderAction(
 
   if (briefIsDeliveryPlatform(project.name, project.brief)) {
     const { randomUUID } = await import("crypto");
-    const { recordDeliveryOrder } = await import("@/lib/seed-delivery");
+    const { fulfillmentFromShippingMode, recordDeliveryOrder } = await import(
+      "@/lib/seed-delivery"
+    );
     const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
       "@/lib/seed-delivery-io"
     );
@@ -192,6 +207,11 @@ export async function placeSeedShopOrderAction(
           deliveryFeeUsd: shippingUsd,
           tipUsd,
           taxUsd,
+          fulfillment: hometownPickup ? "pickup" : "delivery",
+          scheduledWindow: scheduledWindow || "ASAP",
+          dropoffInstruction: hometownPickup
+            ? undefined
+            : dropoffInstruction,
         }),
         "Wrote Hometown Runner ledger from a customer order",
       );
@@ -208,5 +228,6 @@ export async function placeSeedShopOrderAction(
     taxUsd,
     shippingUsd,
     tipUsd,
+    orderId: shop.orders[0]?.id,
   };
 }

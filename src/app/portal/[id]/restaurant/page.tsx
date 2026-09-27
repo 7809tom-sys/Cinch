@@ -73,8 +73,10 @@ export default async function PortalRestaurantPage({
         <p className="mt-2 max-w-2xl text-base text-muted">
           Snap the paper takeout menu or upload a PDF, five-minute
           sign-off, then 86 a plate during service. Open or pause the
-          store, take incoming orders, and hand bags to a Hometown driver.
-          Fee and tip go to the driver on Stripe Connect.
+          store, take incoming orders, cook, mark food ready, and hand
+          bags to a Hometown driver or hold a pickup at the counter. We
+          follow DoorDash-class diner flow without DashPass or a 15–30%
+          diner markup. Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">
           <HometownRestaurantPortal projectId={project.id} ops={ops} />

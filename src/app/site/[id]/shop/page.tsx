@@ -8,7 +8,11 @@ import {
   seedShopUsesLotFulfillment,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
-import { findSellableMenuItems } from "@/lib/seed-delivery";
+import {
+  dinerOrderTrack,
+  findSellableMenuItems,
+  isFavoriteKitchen,
+} from "@/lib/seed-delivery";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 import { SeedShopBoard } from "./shop-board";
@@ -44,6 +48,13 @@ export default async function SeedShopPage({
   const deliveryPlatform =
     seedIndustryKey(project.name, project.brief) === "delivery";
   let products = shop.products;
+  let dinerTracks: NonNullable<ReturnType<typeof dinerOrderTrack>>[] = [];
+  let kitchens: Array<{
+    id: string;
+    name: string;
+    neighborhood: string;
+    favorite: boolean;
+  }> = [];
   if (deliveryPlatform) {
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
@@ -61,6 +72,19 @@ export default async function SeedShopPage({
         shipClass: "parcel" as const,
         imageUrl: item.photoUrl ?? "",
       }));
+      dinerTracks = [
+        ...new Set(ops.tickets.map((row) => row.orderId)),
+      ]
+        .map((orderId) => dinerOrderTrack(ops, orderId))
+        .filter((row): row is NonNullable<typeof row> => Boolean(row));
+      kitchens = ops.restaurants
+        .filter((row) => row.active)
+        .map((row) => ({
+          id: row.id,
+          name: row.name,
+          neighborhood: row.neighborhood,
+          favorite: isFavoriteKitchen(ops, row.id),
+        }));
     }
   }
 
@@ -98,6 +122,8 @@ export default async function SeedShopPage({
           restaurantOrdering={restaurantOrdering}
           lotHold={lotHold}
           deliveryPlatform={deliveryPlatform}
+          dinerTracks={dinerTracks}
+          kitchens={kitchens}
         />
       </main>
     </>

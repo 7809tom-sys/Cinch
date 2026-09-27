@@ -1,8 +1,16 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { HometownDinerOrderDesk } from "@/components/delivery/diner-order-desk";
 import { placeSeedShopOrderAction } from "./actions";
-import { hometownDeliveryFeeUsd } from "@/lib/seed-delivery";
+import {
+  DINER_SCHEDULE_WINDOWS,
+  SCHEDULED_WINDOW_EXTRA_USD,
+  hometownDeliveryFeeUsd,
+  lastBagCartLines,
+  type DinerOrderTrack,
+} from "@/lib/seed-delivery";
+import { toggleFavoriteKitchenAction } from "@/app/portal/[id]/delivery-actions";
 import {
   formatSeedMoney,
   type SeedSalesTaxSettings,
@@ -21,6 +29,8 @@ export function SeedShopBoard({
   restaurantOrdering = false,
   lotHold = false,
   deliveryPlatform = false,
+  dinerTracks = [],
+  kitchens = [],
 }: {
   projectId: string;
   products: SeedShopProduct[];
@@ -33,6 +43,13 @@ export function SeedShopBoard({
   lotHold?: boolean;
   /** Hometown Runner: customer app — tip goes 100% to the driver. */
   deliveryPlatform?: boolean;
+  dinerTracks?: DinerOrderTrack[];
+  kitchens?: Array<{
+    id: string;
+    name: string;
+    neighborhood: string;
+    favorite: boolean;
+  }>;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [shippingModeId, setShippingModeId] = useState(
@@ -52,6 +69,12 @@ export function SeedShopBoard({
   const [tipUsd, setTipUsd] = useState(deliveryPlatform ? 4 : 0);
   const [dropoffZip, setDropoffZip] = useState("10001");
   const [findQuery, setFindQuery] = useState("");
+  const [scheduledWindow, setScheduledWindow] = useState<string>(
+    DINER_SCHEDULE_WINDOWS[0],
+  );
+  const [dropoffInstruction, setDropoffInstruction] = useState<
+    "hand_to_customer" | "leave_at_door"
+  >("hand_to_customer");
 
   const lines = useMemo(
     () =>
@@ -83,6 +106,7 @@ export function SeedShopBoard({
     deliveryPlatform && isDelivery
       ? hometownDeliveryFeeUsd(dropoffZip)
       : (mode?.baseRateUsd ?? 0);
+  const checkoutTipUsd = deliveryPlatform && isDelivery ? tipUsd : 0;
   const taxApplies =
     salesTax.enabled &&
     !salesTax.taxInclusive &&
@@ -91,27 +115,47 @@ export function SeedShopBoard({
     ? Math.round(subtotal * (salesTax.ratePct / 100) * 100) / 100
     : 0;
   const total =
-    Math.round((subtotal + taxUsd + shippingUsd + tipUsd) * 100) / 100;
+    Math.round((subtotal + taxUsd + shippingUsd + checkoutTipUsd) * 100) / 100;
 
-  function add(productId: string) {
+  function addQty(productId: string, qty: number) {
     const product = products.find((item) => item.id === productId);
     if (!product || product.stockQty < 1) return;
     setDone(null);
     setError(null);
     setCart((prev) => {
       const existing = prev.find((line) => line.productId === productId);
+      const nextQty = Math.min(
+        product.stockQty,
+        Math.min(20, (existing?.qty ?? 0) + qty),
+      );
       if (existing) {
         return prev.map((line) =>
-          line.productId === productId
-            ? {
-                ...line,
-                qty: Math.min(product.stockQty, Math.min(20, line.qty + 1)),
-              }
-            : line,
+          line.productId === productId ? { ...line, qty: nextQty } : line,
         );
       }
-      return [...prev, { productId, qty: 1 }];
+      return [...prev, { productId, qty: nextQty }];
     });
+  }
+
+  function add(productId: string) {
+    addQty(productId, 1);
+  }
+
+  function reorderBag(track: DinerOrderTrack) {
+    setDone(null);
+    setError(null);
+    for (const line of lastBagCartLines(track, products)) {
+      addQty(line.productId, line.qty);
+    }
+    setShippingModeId(
+      track.fulfillment === "pickup"
+        ? shippingModes.find((mode) => /pickup/i.test(`${mode.id} ${mode.label}`))
+            ?.id ?? shippingModeId
+        : shippingModes.find((mode) =>
+            /delivery/i.test(`${mode.id} ${mode.label}`),
+          )?.id ?? shippingModeId,
+    );
+    setDone("Prior bag is back in your bag — checkout when you are ready.");
   }
 
   function onCheckout(formData: FormData) {
@@ -120,7 +164,9 @@ export function SeedShopBoard({
     formData.set("cartJson", JSON.stringify(cart));
     formData.set("shippingModeId", mode?.id ?? shippingModeId);
     formData.set("shipToState", shipToState);
-    formData.set("tipUsd", String(deliveryPlatform ? tipUsd : 0));
+    formData.set("tipUsd", String(checkoutTipUsd));
+    formData.set("scheduledWindow", scheduledWindow);
+    formData.set("dropoffInstruction", dropoffInstruction);
     startTransition(async () => {
       const result = await placeSeedShopOrderAction(projectId, formData);
       if (!result.ok) {
@@ -130,7 +176,9 @@ export function SeedShopBoard({
       setCart([]);
       setDone(
         deliveryPlatform
-          ? `Order placed — $${result.totalUsd.toFixed(2)}. Driver keeps 100% of the $${result.shippingUsd.toFixed(2)} fee and $${(result.tipUsd ?? 0).toFixed(2)} tip. Tracking is live on Drive.`
+          ? isDelivery
+            ? `Order placed — $${result.totalUsd.toFixed(2)}. The kitchen is on it. Watch for food is ready, then your courier is on the way.`
+            : `Pickup placed — $${result.totalUsd.toFixed(2)}. The kitchen is cooking — we will say when the food is ready.`
           : restaurantOrdering
           ? `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}${
               result.shippingUsd > 0
@@ -172,6 +220,70 @@ export function SeedShopBoard({
             style={{ display: "block", marginTop: "0.35rem", maxWidth: "22rem" }}
           />
         </label>
+      ) : null}
+      {deliveryPlatform ? (
+        <div className="seed-shop-support" style={{ marginBottom: "1rem" }}>
+          <p style={{ fontWeight: 700, marginBottom: "0.4rem" }}>
+            Pickup or delivery
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            {shippingModes.map((item) => {
+              const pickup = /pickup|counter/i.test(`${item.id} ${item.label}`);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="cta"
+                  aria-pressed={shippingModeId === item.id}
+                  onClick={() => setShippingModeId(item.id)}
+                  style={
+                    shippingModeId === item.id
+                      ? undefined
+                      : { background: "transparent", color: "inherit", border: "1px solid currentColor" }
+                  }
+                >
+                  {pickup ? "Pickup" : "Delivery"}
+                  {pickup ? " · $0 trip" : ""}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+      {deliveryPlatform && kitchens.length > 0 ? (
+        <section className="seed-shop-support" style={{ marginBottom: "1.25rem" }}>
+          <p style={{ fontWeight: 700 }}>Favorite kitchens</p>
+          <ul style={{ listStyle: "none", padding: 0, margin: "0.4rem 0 0" }}>
+            {kitchens.map((kitchen) => (
+              <li
+                key={kitchen.id}
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.5rem",
+                  alignItems: "center",
+                  marginBottom: "0.35rem",
+                }}
+              >
+                <span>
+                  {kitchen.name} · {kitchen.neighborhood}
+                  {kitchen.favorite ? " · Favorite" : ""}
+                </span>
+                <button
+                  type="button"
+                  className="cta"
+                  onClick={() =>
+                    startTransition(async () => {
+                      await toggleFavoriteKitchenAction(projectId, kitchen.id);
+                    })
+                  }
+                >
+                  {kitchen.favorite ? "Unfavorite" : "Favorite this kitchen"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
       {deliveryPlatform && visibleProducts.length === 0 ? (
         <p className="seed-shop-support">No plates match that search. Try another word.</p>
@@ -290,7 +402,9 @@ export function SeedShopBoard({
                 {mode
                   ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
                   : ""}
-                {deliveryPlatform ? ` · Tip $${tipUsd.toFixed(2)}` : ""}{" "}
+                {deliveryPlatform && isDelivery
+                  ? ` · Tip $${checkoutTipUsd.toFixed(2)}`
+                  : ""}{" "}
                 · Total ${total.toFixed(2)}
               </p>
             )}
@@ -400,7 +514,45 @@ export function SeedShopBoard({
               </label>
               {deliveryPlatform ? (
                 <label>
-                  Tip (100% to the driver)
+                  When
+                  <select
+                    name="scheduledWindow"
+                    value={scheduledWindow}
+                    onChange={(event) => setScheduledWindow(event.target.value)}
+                  >
+                    {DINER_SCHEDULE_WINDOWS.map((window) => (
+                      <option key={window} value={window}>
+                        {window}
+                        {SCHEDULED_WINDOW_EXTRA_USD === 0
+                          ? " · no extra charge"
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {deliveryPlatform && isDelivery ? (
+                <label>
+                  At the door
+                  <select
+                    name="dropoffInstruction"
+                    value={dropoffInstruction}
+                    onChange={(event) =>
+                      setDropoffInstruction(
+                        event.target.value === "leave_at_door"
+                          ? "leave_at_door"
+                          : "hand_to_customer",
+                      )
+                    }
+                  >
+                    <option value="hand_to_customer">Hand it to me</option>
+                    <option value="leave_at_door">Leave at the door</option>
+                  </select>
+                </label>
+              ) : null}
+              {deliveryPlatform && isDelivery ? (
+                <label>
+                  Tip for the driver
                   <input
                     name="tipUsd"
                     type="number"
@@ -440,6 +592,13 @@ export function SeedShopBoard({
         ) : null}
         {done ? <p className="seed-shop-support">{done}</p> : null}
       </section>
+      {deliveryPlatform ? (
+        <HometownDinerOrderDesk
+          projectId={projectId}
+          tracks={dinerTracks}
+          onReorder={reorderBag}
+        />
+      ) : null}
     </>
   );
 }

@@ -6,12 +6,14 @@ import type {
   DeliveryOps,
   DeliveryRestaurant,
   MerchantTicket,
-  MerchantTicketStatus,
 } from "@/lib/seed-delivery";
 import {
   MERCHANT_DELIVERY_RADIUS_MILES,
   availableDispatchDrivers,
   driverPhotoId,
+  kitchenFoodScoreAvg,
+  kitchenTicketNextLabel,
+  nextKitchenTicketStatus,
   restaurantNetFromSplit,
   splitDeliveryLedger,
   ticketAssignedDriver,
@@ -26,18 +28,6 @@ import {
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
-
-const NEXT: Partial<Record<MerchantTicketStatus, MerchantTicketStatus>> = {
-  incoming: "accepted",
-  accepted: "ready",
-  ready: "completed",
-};
-
-const NEXT_LABEL: Partial<Record<MerchantTicketStatus, string>> = {
-  incoming: "Accept order",
-  accepted: "Ready for pickup",
-  ready: "Hand to driver",
-};
 
 function ticketRestaurantNet(ops: DeliveryOps, ticket: MerchantTicket) {
   const row = ops.ledger.find((item) => item.orderId === ticket.orderId);
@@ -72,7 +62,10 @@ export function HometownRestaurantPortal({
   );
   const incoming = tickets.filter((row) => row.status === "incoming");
   const inKitchen = tickets.filter(
-    (row) => row.status === "accepted" || row.status === "ready",
+    (row) =>
+      row.status === "accepted" ||
+      row.status === "cooking" ||
+      row.status === "ready",
   );
   const done = tickets.filter(
     (row) => row.status === "completed" || row.status === "declined",
@@ -84,6 +77,9 @@ export function HometownRestaurantPortal({
     0,
   );
   const availableDrivers = availableDispatchDrivers(ops);
+  const foodScore = restaurant
+    ? kitchenFoodScoreAvg(ops, restaurant.id)
+    : null;
 
   function run(
     fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
@@ -96,7 +92,7 @@ export function HometownRestaurantPortal({
   }
 
   function advance(ticket: MerchantTicket) {
-    const next = NEXT[ticket.status];
+    const next = nextKitchenTicketStatus(ticket.status);
     if (!next) return;
     run(() => setMerchantTicketStatusAction(projectId, ticket.id, next));
   }
@@ -129,8 +125,14 @@ export function HometownRestaurantPortal({
               data-entry team. Website crawl stays as a fallback. Hometown
               does not certify Toast, Square, Otter, or Deliverect, and
               does not run a Red Card crawler. During service, 86 a plate
-              so it does not sell. New orders, accept or decline, mark
-              ready, hand to a Hometown driver. Stripe three-party: you,
+              so it does not sell. New orders, accept or decline, start
+              cooking, mark food ready, then hand to a Hometown driver or
+              hold a pickup ticket at the counter.               Best-of loop: DoorDash track / 86 / leave-at-door / Driver
+              Arrived; Uber Eats pickup vs delivery, food is ready,
+              favorite kitchens, courier-on-the-way; Grubhub reorder,
+              cheap window, missing-item flag, accepted / cooking / ready.
+              No DashPass, Uber One, or 15–30% diner markup. Stripe
+              three-party: you,
               the scout, and the driver each have a Stripe account. You
               collect the food net and pay ~2.9% processing plus $0.25
               per order for API expenses. Hometown keeps $0 food share
@@ -177,6 +179,18 @@ export function HometownRestaurantPortal({
             </dd>
             <p className="mt-1 text-xs text-muted">
               Online and cleared to dispatch in this town.
+              {foodScore != null ? ` Food score ${foodScore.toFixed(1)}/5.` : ""}
+            </p>
+          </div>
+          <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
+            <dt className="text-xs font-bold tracking-wide text-muted uppercase">
+              Food score
+            </dt>
+            <dd className="mt-1 text-xl font-extrabold text-brand-deep">
+              {foodScore == null ? "—" : `${foodScore.toFixed(1)} / 5`}
+            </dd>
+            <p className="mt-1 text-xs text-muted">
+              Diner food ratings on this kitchen — ops only.
             </p>
           </div>
           <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
@@ -270,7 +284,7 @@ export function HometownRestaurantPortal({
       <OrderLane
         ops={ops}
         eyebrow="New orders"
-        title="Accept like DoorDash"
+        title="Accept the ticket"
         empty="No new customer orders. They land here the moment someone checks out."
         tickets={incoming}
         pending={pending}
@@ -284,7 +298,7 @@ export function HometownRestaurantPortal({
       <OrderLane
         ops={ops}
         eyebrow="In the kitchen"
-        title="Prep, then hand to the driver"
+        title="Accepted, cooking, or food is ready"
         empty="Nothing cooking right now."
         tickets={inKitchen}
         pending={pending}
@@ -631,7 +645,14 @@ function OrderLane({
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
                   {ticketDriverArrived(ops, ticket)
                     ? "Driver Arrived · stage the bag"
-                    : ticket.status}
+                    : ticket.status === "cooking"
+                      ? "Cooking"
+                      : ticket.status === "ready"
+                        ? "Food is ready"
+                        : ticket.status}
+                  {" · "}
+                  {ticket.fulfillment === "pickup" ? "Pickup" : "Delivery"}
+                  {ticket.scheduledWindow ? ` · ${ticket.scheduledWindow}` : ""}
                 </p>
                 <h3 className="mt-1 font-bold text-brand-deep">
                   {ticket.customerName}
@@ -641,27 +662,49 @@ function OrderLane({
                     .map((item) => `${item.title} × ${item.qty}`)
                     .join(" · ")}
                 </p>
+                {ticket.dinerIssue ? (
+                  <p className="mt-2 text-sm font-semibold text-amber-900">
+                    Issue flag · missing {ticket.dinerIssue.itemTitle}
+                    {ticket.dinerIssue.note ? ` — ${ticket.dinerIssue.note}` : ""}
+                  </p>
+                ) : null}
+                {ticket.dinerRating ? (
+                  <p className="mt-1 text-sm text-muted">
+                    Diner rated food {ticket.dinerRating.foodStars}/5
+                    {ticket.fulfillment === "delivery"
+                      ? ` · drop ${ticket.dinerRating.dropStars}/5`
+                      : ""}
+                  </p>
+                ) : null}
                 <p className="mt-2 text-sm font-bold text-brand-deep">
                   Ticket ${ticket.gmvUsd.toFixed(2)} · you keep $
                   {ticketRestaurantNet(ops, ticket).toFixed(2)} · Hometown 10% $
                   {(ticket.gmvUsd * 0.1).toFixed(2)} · proc ~2.9% · API
                   $0.25
                 </p>
-                {ticket.status !== "declined" ? (
+                {ticket.status !== "declined" &&
+                ticket.fulfillment !== "pickup" ? (
                   <DriverPhotoIdCard
                     driver={ticketAssignedDriver(ops, ticket)}
                   />
+                ) : ticket.fulfillment === "pickup" ? (
+                  <p className="mt-3 text-sm text-muted">
+                    Guest pickup — no courier on this ticket.
+                  </p>
                 ) : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                {NEXT[ticket.status] ? (
+                {nextKitchenTicketStatus(ticket.status) ? (
                   <button
                     type="button"
                     className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
                     disabled={pending}
                     onClick={() => onAdvance(ticket)}
                   >
-                    {NEXT_LABEL[ticket.status]}
+                    {kitchenTicketNextLabel(
+                      ticket.status,
+                      ticket.fulfillment === "pickup" ? "pickup" : "delivery",
+                    )}
                   </button>
                 ) : null}
                 {onDecline && ticket.status === "incoming" ? (
