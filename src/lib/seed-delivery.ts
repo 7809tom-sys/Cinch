@@ -60,8 +60,18 @@
  * - One-page IC agreement: liability, vehicle maintenance on the driver,
  *   indemnification. Product text, not legal advice.
  * - Student scout talking points are ops-only. Diner stays guest-only.
- * - AVOID: 8–10 mile expansion, weather/supply algorithms, KDS fry-fire,
- *   idle-time unassign without penalty (ops note only).
+ * - Best-of diner loop (thin Seed, source-tagged on ops — never diner):
+ *   DoorDash: status tracking, 86, leave-at-door, Driver Arrived, ~2mi
+ *   radius. Uber Eats: pickup vs delivery first-class; kitchen prep /
+ *   food is ready; favorite kitchens; courier-on-the-way copy (no Uber
+ *   One). Grubhub / Postmates / Deliveroo / Skip: reorder last bag;
+ *   scheduled window if cheap ($0 extra); missing-item / issue flag;
+ *   kitchen tickets accepted / cooking / ready. Stack: one current run
+ *   plus at most one next offer. No Peak Pay / hotspots.
+ * - AVOID: DashPass, Uber One, 15–30% commissions, Peak Pay, grocery,
+ *   alcohol, Red Card, POS, live GPS, promo engines, credits, expanding
+ *   radius, Premier, weather/supply algorithms, KDS fry-fire, idle-time
+ *   unassign without penalty (ops note only).
  * - Market: DoorDash does not publish a US AOV. Rakuten (via Business of
  *   Apps) ~$37.28, ~20% of orders over $50. Q4 2025 implied ~$33 global
  *   ($29.7B GOV / 903M orders, includes tax/tip/fees). AOV rose in Q2
@@ -170,6 +180,35 @@ export const METERS_PER_MILE = 1609.344;
 export const FEET_PER_METER = 3.280839895;
 export const DROPOFF_VERIFY_METERS = DROPOFF_VERIFY_FEET / FEET_PER_METER;
 export const DROPOFF_WRONG_LOCATION_COPY = "Are you at the right location?";
+/** One active dash plus at most one queued next offer. No Peak Pay. */
+export const DRIVER_MAX_ACTIVE_RUNS = 1;
+export const DRIVER_MAX_NEXT_OFFERS = 1;
+export const DINER_SCHEDULE_WINDOWS = [
+  "ASAP",
+  "Tonight 6–7pm",
+  "Tonight 7–8pm",
+] as const;
+export const DINER_TRACK_ETA_DELIVERY = "Usually 25–35 minutes to your door.";
+export const DINER_TRACK_ETA_ON_THE_WAY = "Usually 10–15 minutes from here.";
+export const DINER_TRACK_ETA_KITCHEN = "Usually ready in 15–20 minutes.";
+export const DINER_TRACK_DRIVER_AT_KITCHEN = "Your driver is at the kitchen.";
+/** Uber Eats-class diner line — no membership, no “we copied”. */
+export const DINER_TRACK_ON_THE_WAY = "Your courier is on the way";
+export const DINER_TRACK_FOOD_READY = "The kitchen says the food is ready";
+export const DINER_TRACK_FOOD_READY_DETAIL =
+  "The bag is packed. A courier will grab it, or come pick it up.";
+/** Cheap windows stay $0 extra — no Peak Pay / surge. */
+export const SCHEDULED_WINDOW_EXTRA_USD = 0;
+export const LEAVE_AT_DOOR_DEFAULT_NOTE = "Left at the door.";
+/** Grubhub-class kitchen ticket lane — accepted / cooking / ready. */
+export const KITCHEN_TICKET_STATUSES = [
+  "incoming",
+  "accepted",
+  "cooking",
+  "ready",
+  "completed",
+  "declined",
+] as const;
 /** Stripe Connect ACH — subscription debit + payouts, not card. */
 export const STRIPE_CONNECT_RAIL = "ach";
 export const EXISTING_PLATFORM_NAMES = ["DoorDash", "Uber Eats"] as const;
@@ -242,6 +281,13 @@ export const HOMETOWN_DISPATCH_BRIEF_BLOCK = `Hometown dispatch & geofence:
 - Kitchen arrival geofence: 300 meters around the merchant. When the driver enters, flip the run/ticket to Driver Arrived so the kitchen stages the bag.
 - Drop-off: driver must be within 100 feet of drop-off coordinates before Complete Delivery / delivered. If outside: "Are you at the right location?"
 - Ops note: idle-time unassign without penalty is not in v1 — a driver who sits on an offer keeps it until they cancel or the kitchen declines.`;
+
+export const HOMETOWN_DINER_FLOW_BRIEF_BLOCK = `Hometown diner flow (DoorDash-class diner flow; best-of Uber Eats / DoorDash / Grubhub, thin Seed — ops only, never diner):
+- DoorDash: status tracking (placed → kitchen → driver assigned → at the kitchen → courier on the way → delivered). 86 during service. Leave-at-door + photo note. Driver Arrived at 300m. Fixed ~2 mile radius. No live map.
+- Uber Eats: pickup vs delivery is first-class (pickup: no trip fee, no driver). Kitchen prep / food is ready. Favorite kitchens. Clear courier-on-the-way copy. No Uber One / membership.
+- Grubhub / Postmates / Deliveroo / Skip: reorder last bag. Scheduled window if cheap ($0 extra — ASAP or tonight). Missing-item / issue flag. Kitchen ticket statuses accepted / cooking / ready.
+- Stack: one current run plus at most one next offer. No Peak Pay / hotspots.
+- Do not encode DashPass, Uber One, 15–30% commissions, Peak Pay, grocery, alcohol, Red Card, POS, live GPS, promo engines. Hometown money stays locked. Diner never sees “we copied Uber Eats”.`;
 
 export const DRIVER_IC_AGREEMENT = `Independent contractor agreement (one page — product text, not legal advice):
 You dash as an independent contractor, not an employee of Hometown Runner.
@@ -407,6 +453,7 @@ export type FoundMenuItem = {
 export type MerchantTicketStatus =
   | "incoming"
   | "accepted"
+  | "cooking"
   | "ready"
   | "completed"
   | "declined";
@@ -417,6 +464,46 @@ export type DriverRunStatus =
   | "picked_up"
   | "delivered"
   | "cancelled";
+export type HometownFulfillment = "delivery" | "pickup";
+export type DropoffInstruction = "hand_to_customer" | "leave_at_door";
+export type DinerTrackStep =
+  | "placed"
+  | "kitchen"
+  | "food_ready"
+  | "driver_assigned"
+  | "driver_at_kitchen"
+  | "on_the_way"
+  | "ready_for_pickup"
+  | "delivered"
+  | "picked_up";
+export type DinerOrderRating = {
+  foodStars: number;
+  dropStars: number;
+  note?: string;
+  createdAt: string;
+};
+export type DinerOrderIssue = {
+  kind: "missing_item" | "wrong_item" | "other";
+  itemTitle: string;
+  note?: string;
+  createdAt: string;
+};
+export type DinerOrderTrack = {
+  orderId: string;
+  customerName: string;
+  restaurantName: string;
+  fulfillment: HometownFulfillment;
+  step: DinerTrackStep;
+  headline: string;
+  detail: string;
+  items: Array<{ title: string; qty: number; priceUsd: number }>;
+  scheduledWindow: string | null;
+  dropoffInstruction: DropoffInstruction | null;
+  dropoffPhotoNote: string | null;
+  rating: DinerOrderRating | null;
+  issue: DinerOrderIssue | null;
+  steps: Array<{ id: DinerTrackStep; label: string; done: boolean }>;
+};
 
 export type DeliveryRestaurant = {
   id: string;
@@ -520,6 +607,12 @@ export type MerchantTicket = {
   createdAt: string;
   /** Set when the driver enters the 300m kitchen geofence. */
   driverArrivedAt?: string | null;
+  fulfillment?: HometownFulfillment;
+  scheduledWindow?: string | null;
+  dinerIssue?: DinerOrderIssue | null;
+  dinerRating?: DinerOrderRating | null;
+  /** Uber Eats-class — kitchen marked the bag packed. */
+  foodReadyAt?: string | null;
 };
 
 export type DriverRun = {
@@ -536,6 +629,9 @@ export type DriverRun = {
   driverCommissionUsd: number;
   status: DriverRunStatus;
   createdAt: string;
+  fulfillment?: HometownFulfillment;
+  dropoffInstruction?: DropoffInstruction;
+  dropoffPhotoNote?: string | null;
 };
 
 export type DeliveryOps = {
@@ -545,6 +641,8 @@ export type DeliveryOps = {
   ledger: DeliveryLedgerRow[];
   tickets: MerchantTicket[];
   runs: DriverRun[];
+  /** Uber Eats-class diner favorites — ops demo, one guest session. */
+  favoriteRestaurantIds?: string[];
 };
 
 export function money(value: number): number {
@@ -603,6 +701,12 @@ export function briefHasHometownMenuOnboard(brief: string): boolean {
   );
 }
 
+export function briefHasHometownDinerFlow(brief: string): boolean {
+  return /leave-at-door|prior bag|missing plate|next offer|favorite kitchens|food is ready|courier-on-the-way|accepted \/ cooking \/ ready|best-of Uber Eats/i.test(
+    brief,
+  );
+}
+
 /** Append payment + subscription rules when a delivery brief is missing them. */
 export function withDeliveryDriverPolicyBrief(brief: string): string {
   const parts: string[] = [];
@@ -638,6 +742,9 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
   }
   if (!briefHasHometownMenuOnboard(trimmed)) {
     parts.push(HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK);
+  }
+  if (!briefHasHometownDinerFlow(trimmed)) {
+    parts.push(HOMETOWN_DINER_FLOW_BRIEF_BLOCK);
   }
   return parts.join("\n\n");
 }
@@ -2082,6 +2189,7 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
   const deliveredAt = "2026-09-23T19:10:00.000Z";
   return {
     city: `${brand} · one town`,
+    favoriteRestaurantIds: ["rest-pilot"],
     restaurants: [
       {
         id: "rest-pilot",
@@ -2278,6 +2386,8 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         gmvUsd: split.gmvUsd,
         status: "incoming",
         createdAt,
+        fulfillment: "delivery",
+        scheduledWindow: "ASAP",
       },
       {
         id: "tkt-sample-deli",
@@ -2294,6 +2404,38 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         gmvUsd: deliveredSplit.gmvUsd,
         status: "completed",
         createdAt: deliveredAt,
+        fulfillment: "delivery",
+        scheduledWindow: "ASAP",
+        dinerRating: {
+          foodStars: 5,
+          dropStars: 5,
+          note: "Hot at the door.",
+          createdAt: deliveredAt,
+        },
+        dinerIssue: {
+          kind: "missing_item",
+          itemTitle: "House cookie",
+          note: "Soup landed. Cookie did not.",
+          createdAt: deliveredAt,
+        },
+      },
+      {
+        id: "tkt-sample-pickup",
+        orderId: "ord-sample-pickup",
+        restaurantId: "rest-pilot",
+        customerName: "Pat Nguyen",
+        items: [
+          {
+            title: "Pilot Kitchen · House drink",
+            qty: 1,
+            priceUsd: 3,
+          },
+        ],
+        gmvUsd: 3,
+        status: "cooking",
+        createdAt,
+        fulfillment: "pickup",
+        scheduledWindow: "Tonight 6–7pm",
       },
     ],
     runs: [
@@ -2311,6 +2453,8 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         driverCommissionUsd: split.driverCommissionUsd,
         status: "offered",
         createdAt,
+        fulfillment: "delivery",
+        dropoffInstruction: "hand_to_customer",
       },
       {
         id: "run-sample-deli",
@@ -2326,6 +2470,9 @@ export function starterDeliveryOps(projectName: string): DeliveryOps {
         driverCommissionUsd: deliveredSplit.driverCommissionUsd,
         status: "delivered",
         createdAt: deliveredAt,
+        fulfillment: "delivery",
+        dropoffInstruction: "leave_at_door",
+        dropoffPhotoNote: "Brown bag at the door, photo on file.",
       },
     ],
   };
@@ -2343,16 +2490,56 @@ export function remintHometownScoutPaySamples(ops: DeliveryOps): DeliveryOps {
     const bakery = starter.restaurants.find((row) => row.id === "rest-bakery");
     if (bakery) restaurants.push(bakery);
   }
+  const pickup = starter.tickets.find(
+    (row) => row.orderId === "ord-sample-pickup",
+  );
+  const starterDeliTicket = starter.tickets.find(
+    (row) => row.orderId === "ord-sample-deli",
+  );
+  const starterDeliRun = starter.runs.find(
+    (row) => row.orderId === "ord-sample-deli",
+  );
+  const tickets = [
+    ...ops.tickets.map((row) =>
+      row.orderId === "ord-sample-deli" &&
+      !row.dinerRating &&
+      starterDeliTicket
+        ? {
+            ...row,
+            fulfillment: starterDeliTicket.fulfillment,
+            scheduledWindow: row.scheduledWindow ?? starterDeliTicket.scheduledWindow,
+            dinerRating: starterDeliTicket.dinerRating,
+            dinerIssue: row.dinerIssue ?? starterDeliTicket.dinerIssue,
+          }
+        : row,
+    ),
+    ...(pickup && !ops.tickets.some((row) => row.orderId === pickup.orderId)
+      ? [pickup]
+      : []),
+  ];
+  const runs = ops.runs.map((row) =>
+    row.orderId === "ord-sample-deli" &&
+    !row.dropoffInstruction &&
+    starterDeliRun
+      ? {
+          ...row,
+          fulfillment: starterDeliRun.fulfillment,
+          dropoffInstruction: starterDeliRun.dropoffInstruction,
+          dropoffPhotoNote: starterDeliRun.dropoffPhotoNote,
+        }
+      : row,
+  );
   const hasDeli = restaurants.some((row) => row.id === "rest-deli");
   const hasDeliDelivered = ops.runs.some(
     (row) => row.restaurantId === "rest-deli" && row.status === "delivered",
   );
   if (!hasDeli || hasDeliDelivered) {
-    return { ...ops, restaurants };
+    return { ...ops, restaurants, tickets, runs };
   }
   const missing = (orderId: string) =>
     !ops.ledger.some((row) => row.orderId === orderId) &&
-    !ops.runs.some((row) => row.orderId === orderId);
+    !ops.runs.some((row) => row.orderId === orderId) &&
+    !ops.tickets.some((row) => row.orderId === orderId);
   return {
     ...ops,
     restaurants,
@@ -2363,7 +2550,7 @@ export function remintHometownScoutPaySamples(ops: DeliveryOps): DeliveryOps {
       ),
     ],
     tickets: [
-      ...ops.tickets,
+      ...tickets,
       ...starter.tickets.filter(
         (row) => row.orderId === "ord-sample-deli" && missing(row.orderId),
       ),
@@ -2451,8 +2638,11 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
         }),
       ),
       ledger,
-      tickets: parsed.tickets,
-      runs,
+      tickets: parsed.tickets.map((row) => normalizeMerchantTicket(row)),
+      runs: runs.map((row) => normalizeDriverRun(row)),
+      favoriteRestaurantIds: Array.isArray(parsed.favoriteRestaurantIds)
+        ? parsed.favoriteRestaurantIds.filter((id) => typeof id === "string")
+        : ["rest-pilot"],
     });
     return {
       ...ops,
@@ -2530,6 +2720,436 @@ export function approveDeliveryDriver(
   };
 }
 
+export function isHometownPickup(
+  fulfillment?: HometownFulfillment | string | null,
+): boolean {
+  return fulfillment === "pickup";
+}
+
+export function fulfillmentFromShippingMode(
+  id = "",
+  label = "",
+): HometownFulfillment {
+  return /pickup|counter/i.test(`${id} ${label}`) ? "pickup" : "delivery";
+}
+
+/** Cheap Grubhub-class windows — $0 extra, no Peak Pay. */
+export function cheapScheduledWindows(): readonly string[] {
+  return DINER_SCHEDULE_WINDOWS;
+}
+
+export function scheduledWindowExtraUsd(_window?: string | null): number {
+  return SCHEDULED_WINDOW_EXTRA_USD;
+}
+
+export function nextKitchenTicketStatus(
+  status: MerchantTicketStatus,
+): MerchantTicketStatus | null {
+  if (status === "incoming") return "accepted";
+  if (status === "accepted") return "cooking";
+  if (status === "cooking") return "ready";
+  if (status === "ready") return "completed";
+  return null;
+}
+
+export function kitchenTicketNextLabel(
+  status: MerchantTicketStatus,
+  fulfillment: HometownFulfillment = "delivery",
+): string | null {
+  if (status === "incoming") return "Accept order";
+  if (status === "accepted") return "Start cooking";
+  if (status === "cooking") return "Food is ready";
+  if (status === "ready") {
+    return fulfillment === "pickup" ? "Guest picked up" : "Hand to driver";
+  }
+  return null;
+}
+
+export function toggleFavoriteKitchen(
+  ops: DeliveryOps,
+  restaurantId: string,
+): DeliveryOps {
+  const id = restaurantId.trim();
+  if (!id) return ops;
+  const current = ops.favoriteRestaurantIds ?? [];
+  const next = current.includes(id)
+    ? current.filter((item) => item !== id)
+    : [...current, id];
+  return { ...ops, favoriteRestaurantIds: next };
+}
+
+export function isFavoriteKitchen(
+  ops: Pick<DeliveryOps, "favoriteRestaurantIds">,
+  restaurantId: string,
+): boolean {
+  return (ops.favoriteRestaurantIds ?? []).includes(restaurantId);
+}
+
+export function lastBagForCustomer(
+  ops: Pick<DeliveryOps, "tickets" | "runs" | "restaurants">,
+  customerName: string,
+): DinerOrderTrack | null {
+  const tracks = lookupDinerOrders(ops, customerName);
+  return tracks[0] ?? null;
+}
+
+export function lastBagCartLines(
+  bag: Pick<DinerOrderTrack, "items" | "restaurantName">,
+  products: Array<{ id: string; title: string }>,
+): Array<{ productId: string; qty: number }> {
+  return bag.items
+    .map((item) => {
+      const hit = products.find((product) => {
+        const hay = `${product.title} ${product.id}`.toLowerCase();
+        const needle = item.title.toLowerCase();
+        return hay.includes(needle) || needle.includes(product.title.toLowerCase());
+      });
+      return hit ? { productId: hit.id, qty: item.qty } : null;
+    })
+    .filter((row): row is { productId: string; qty: number } => Boolean(row));
+}
+
+export function normalizeMerchantTicket(row: MerchantTicket): MerchantTicket {
+  const status: MerchantTicketStatus =
+    row.status === "cooking" ? "cooking" : row.status;
+  return {
+    ...row,
+    status,
+    fulfillment: row.fulfillment === "pickup" ? "pickup" : "delivery",
+    scheduledWindow: row.scheduledWindow ?? null,
+    dinerIssue: row.dinerIssue ?? null,
+    dinerRating: row.dinerRating ?? null,
+    foodReadyAt: row.foodReadyAt ?? null,
+  };
+}
+
+export function normalizeDriverRun(row: DriverRun): DriverRun {
+  return {
+    ...row,
+    fulfillment: row.fulfillment === "pickup" ? "pickup" : "delivery",
+    dropoffInstruction:
+      row.dropoffInstruction === "leave_at_door"
+        ? "leave_at_door"
+        : row.dropoffInstruction === "hand_to_customer"
+          ? "hand_to_customer"
+          : undefined,
+    dropoffPhotoNote: row.dropoffPhotoNote ?? null,
+  };
+}
+
+export function driverOpenRuns(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+): DriverRun[] {
+  return ops.runs.filter(
+    (row) =>
+      row.driverId === driverId &&
+      (row.status === "accepted" ||
+        row.status === "driver_arrived" ||
+        row.status === "picked_up"),
+  );
+}
+
+export function offeredRunsForDriver(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+): DriverRun[] {
+  const offered = ops.runs.filter(
+    (row) => row.status === "offered" && row.fulfillment !== "pickup",
+  );
+  const open = driverOpenRuns(ops, driverId);
+  if (open.length >= DRIVER_MAX_ACTIVE_RUNS) {
+    return offered.slice(0, DRIVER_MAX_NEXT_OFFERS);
+  }
+  return offered;
+}
+
+export function driverCanAcceptAnotherOffer(
+  ops: Pick<DeliveryOps, "runs">,
+  driverId: string,
+): boolean {
+  return (
+    driverOpenRuns(ops, driverId).length <
+    DRIVER_MAX_ACTIVE_RUNS + DRIVER_MAX_NEXT_OFFERS
+  );
+}
+
+const DELIVERY_TRACK_STEPS: Array<{ id: DinerTrackStep; label: string }> = [
+  { id: "placed", label: "Placed" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "food_ready", label: "Food is ready" },
+  { id: "driver_assigned", label: "Driver assigned" },
+  { id: "driver_at_kitchen", label: "At the kitchen" },
+  { id: "on_the_way", label: "Courier on the way" },
+  { id: "delivered", label: "Delivered" },
+];
+
+const PICKUP_TRACK_STEPS: Array<{ id: DinerTrackStep; label: string }> = [
+  { id: "placed", label: "Placed" },
+  { id: "kitchen", label: "Kitchen" },
+  { id: "ready_for_pickup", label: "Food is ready" },
+  { id: "picked_up", label: "Picked up" },
+];
+
+function dinerTrackCopy(
+  fulfillment: HometownFulfillment,
+  step: DinerTrackStep,
+): { headline: string; detail: string } {
+  if (fulfillment === "pickup") {
+    if (step === "picked_up") {
+      return {
+        headline: "Picked up",
+        detail: "Enjoy — rate the food if you like.",
+      };
+    }
+    if (step === "ready_for_pickup" || step === "food_ready") {
+      return {
+        headline: DINER_TRACK_FOOD_READY,
+        detail: "Come pick up your bag.",
+      };
+    }
+    if (step === "kitchen") {
+      return {
+        headline: "The kitchen is making it",
+        detail: DINER_TRACK_ETA_KITCHEN,
+      };
+    }
+    return {
+      headline: "Order placed",
+      detail: "The kitchen has your ticket.",
+    };
+  }
+  if (step === "delivered") {
+    return {
+      headline: "Delivered",
+      detail: "Enjoy — rate this run if you like.",
+    };
+  }
+  if (step === "on_the_way") {
+    return {
+      headline: DINER_TRACK_ON_THE_WAY,
+      detail: DINER_TRACK_ETA_ON_THE_WAY,
+    };
+  }
+  if (step === "driver_at_kitchen") {
+    return {
+      headline: DINER_TRACK_DRIVER_AT_KITCHEN,
+      detail: "The bag is being handed off.",
+    };
+  }
+  if (step === "driver_assigned") {
+    return {
+      headline: "A courier is heading to the kitchen",
+      detail: DINER_TRACK_ETA_DELIVERY,
+    };
+  }
+  if (step === "food_ready") {
+    return {
+      headline: DINER_TRACK_FOOD_READY,
+      detail: DINER_TRACK_FOOD_READY_DETAIL,
+    };
+  }
+  if (step === "kitchen") {
+    return {
+      headline: "The kitchen is making it",
+      detail: DINER_TRACK_ETA_KITCHEN,
+    };
+  }
+  return {
+    headline: "Order placed",
+    detail: "The kitchen has your ticket.",
+  };
+}
+
+function dinerTrackStepFromOps(
+  ticket: MerchantTicket | undefined,
+  run: DriverRun | undefined,
+  fulfillment: HometownFulfillment,
+): DinerTrackStep {
+  if (fulfillment === "pickup") {
+    if (ticket?.status === "completed") return "picked_up";
+    if (ticket?.status === "ready") return "ready_for_pickup";
+    if (ticket?.status === "accepted" || ticket?.status === "cooking") {
+      return "kitchen";
+    }
+    return "placed";
+  }
+  if (run?.status === "delivered") return "delivered";
+  if (run?.status === "picked_up") return "on_the_way";
+  if (run?.status === "driver_arrived") return "driver_at_kitchen";
+  if (run?.status === "accepted") return "driver_assigned";
+  if (ticket?.status === "ready") return "food_ready";
+  if (ticket?.status === "accepted" || ticket?.status === "cooking") {
+    return "kitchen";
+  }
+  return "placed";
+}
+
+export function dinerOrderTrack(
+  ops: Pick<DeliveryOps, "tickets" | "runs" | "restaurants">,
+  orderId: string,
+): DinerOrderTrack | null {
+  const ticket = ops.tickets.find((row) => row.orderId === orderId);
+  const run = ops.runs.find((row) => row.orderId === orderId);
+  if (!ticket && !run) return null;
+  const fulfillment: HometownFulfillment =
+    ticket?.fulfillment === "pickup" || run?.fulfillment === "pickup"
+      ? "pickup"
+      : "delivery";
+  const step = dinerTrackStepFromOps(ticket, run, fulfillment);
+  const copy = dinerTrackCopy(fulfillment, step);
+  const sequence =
+    fulfillment === "pickup" ? PICKUP_TRACK_STEPS : DELIVERY_TRACK_STEPS;
+  const currentIndex = sequence.findIndex((item) => item.id === step);
+  const restaurant = ops.restaurants.find(
+    (row) => row.id === (ticket?.restaurantId ?? run?.restaurantId),
+  );
+  return {
+    orderId,
+    customerName: ticket?.customerName ?? run?.customerName ?? "Guest",
+    restaurantName: restaurant?.name ?? "Kitchen",
+    fulfillment,
+    step,
+    headline: copy.headline,
+    detail: copy.detail,
+    items: ticket?.items ?? [],
+    scheduledWindow: ticket?.scheduledWindow ?? null,
+    dropoffInstruction: run?.dropoffInstruction ?? null,
+    dropoffPhotoNote: run?.dropoffPhotoNote ?? null,
+    rating: ticket?.dinerRating ?? null,
+    issue: ticket?.dinerIssue ?? null,
+    steps: sequence.map((item, index) => ({
+      ...item,
+      done: currentIndex >= 0 && index <= currentIndex,
+    })),
+  };
+}
+
+export function lookupDinerOrders(
+  ops: Pick<DeliveryOps, "tickets" | "runs" | "restaurants">,
+  customerName: string,
+): DinerOrderTrack[] {
+  const needle = customerName.trim().toLowerCase();
+  if (!needle) return [];
+  const orderIds = [
+    ...new Set(
+      [
+        ...ops.tickets
+          .filter((row) => row.customerName.toLowerCase().includes(needle))
+          .map((row) => row.orderId),
+        ...ops.runs
+          .filter((row) => row.customerName.toLowerCase().includes(needle))
+          .map((row) => row.orderId),
+      ].filter(Boolean),
+    ),
+  ];
+  return orderIds
+    .map((orderId) => dinerOrderTrack(ops, orderId))
+    .filter((row): row is DinerOrderTrack => Boolean(row))
+    .sort((a, b) => {
+      const aAt = ops.tickets.find((row) => row.orderId === a.orderId)?.createdAt ?? "";
+      const bAt = ops.tickets.find((row) => row.orderId === b.orderId)?.createdAt ?? "";
+      return new Date(bAt).getTime() - new Date(aAt).getTime();
+    });
+}
+
+export function kitchenFoodScoreAvg(
+  ops: Pick<DeliveryOps, "tickets">,
+  restaurantId: string,
+): number | null {
+  const scores = ops.tickets
+    .filter(
+      (row) =>
+        row.restaurantId === restaurantId &&
+        typeof row.dinerRating?.foodStars === "number",
+    )
+    .map((row) => row.dinerRating!.foodStars);
+  if (scores.length === 0) return null;
+  return money(scores.reduce((sum, value) => sum + value, 0) / scores.length);
+}
+
+export function driverDropScoreAvg(
+  ops: Pick<DeliveryOps, "tickets" | "runs">,
+  driverId: string,
+): number | null {
+  const orderIds = new Set(
+    ops.runs
+      .filter((row) => row.driverId === driverId)
+      .map((row) => row.orderId),
+  );
+  const scores = ops.tickets
+    .filter(
+      (row) =>
+        orderIds.has(row.orderId) &&
+        typeof row.dinerRating?.dropStars === "number",
+    )
+    .map((row) => row.dinerRating!.dropStars);
+  if (scores.length === 0) return null;
+  return money(scores.reduce((sum, value) => sum + value, 0) / scores.length);
+}
+
+export function clampDinerStars(value: number): number {
+  if (!Number.isFinite(value)) return 5;
+  return Math.max(1, Math.min(5, Math.round(value)));
+}
+
+export function rateDinerOrder(
+  ops: DeliveryOps,
+  orderId: string,
+  input: { foodStars: number; dropStars?: number; note?: string },
+): { ok: true; ops: DeliveryOps } | { ok: false; error: string } {
+  const ticket = ops.tickets.find((row) => row.orderId === orderId);
+  if (!ticket) return { ok: false, error: "Order not found." };
+  const track = dinerOrderTrack(ops, orderId);
+  if (track?.step !== "delivered" && track?.step !== "picked_up") {
+    return { ok: false, error: "Rate after the bag arrives." };
+  }
+  const rating: DinerOrderRating = {
+    foodStars: clampDinerStars(input.foodStars),
+    dropStars:
+      track.fulfillment === "pickup"
+        ? 0
+        : clampDinerStars(input.dropStars ?? input.foodStars),
+    note: input.note?.trim() || undefined,
+    createdAt: new Date().toISOString(),
+  };
+  return {
+    ok: true,
+    ops: {
+      ...ops,
+      tickets: ops.tickets.map((row) =>
+        row.orderId === orderId ? { ...row, dinerRating: rating } : row,
+      ),
+    },
+  };
+}
+
+export function flagDinerIssue(
+  ops: DeliveryOps,
+  orderId: string,
+  input: { itemTitle: string; note?: string },
+): { ok: true; ops: DeliveryOps } | { ok: false; error: string } {
+  const ticket = ops.tickets.find((row) => row.orderId === orderId);
+  if (!ticket) return { ok: false, error: "Order not found." };
+  const itemTitle = input.itemTitle.trim();
+  if (!itemTitle) return { ok: false, error: "Name the missing plate." };
+  const issue: DinerOrderIssue = {
+    kind: "missing_item",
+    itemTitle,
+    note: input.note?.trim() || undefined,
+    createdAt: new Date().toISOString(),
+  };
+  return {
+    ok: true,
+    ops: {
+      ...ops,
+      tickets: ops.tickets.map((row) =>
+        row.orderId === orderId ? { ...row, dinerIssue: issue } : row,
+      ),
+    },
+  };
+}
+
 export function recordDeliveryOrder(
   ops: DeliveryOps,
   input: {
@@ -2552,21 +3172,29 @@ export function recordDeliveryOrder(
     tipUsd: number;
     taxUsd: number;
     createdAt?: string;
+    fulfillment?: HometownFulfillment;
+    scheduledWindow?: string | null;
+    dropoffInstruction?: DropoffInstruction;
   },
 ): DeliveryOps {
+  const fulfillment: HometownFulfillment =
+    input.fulfillment === "pickup" ? "pickup" : "delivery";
   const restaurant = restaurantForShopItems(ops, input.items);
   const kitchen = restaurantGeo(restaurant);
   const dropoff =
     typeof input.dropoffLat === "number" && typeof input.dropoffLng === "number"
       ? { lat: input.dropoffLat, lng: input.dropoffLng }
       : defaultDropoffNearRestaurant(restaurant, input.dropoffZip);
-  if (!dropoffWithinMerchantRadius(kitchen, dropoff)) {
+  if (
+    fulfillment === "delivery" &&
+    !dropoffWithinMerchantRadius(kitchen, dropoff)
+  ) {
     return ops;
   }
   const split = splitDeliveryLedger({
     gmvUsd: input.gmvUsd,
-    deliveryFeeUsd: input.deliveryFeeUsd,
-    tipUsd: input.tipUsd,
+    deliveryFeeUsd: fulfillment === "pickup" ? 0 : input.deliveryFeeUsd,
+    tipUsd: fulfillment === "pickup" ? 0 : input.tipUsd,
     taxUsd: input.taxUsd,
   });
   const createdAt = input.createdAt ?? new Date().toISOString();
@@ -2598,6 +3226,8 @@ export function recordDeliveryOrder(
     gmvUsd: split.gmvUsd,
     status: "incoming",
     createdAt,
+    fulfillment,
+    scheduledWindow: input.scheduledWindow ?? "ASAP",
   };
   const run: DriverRun = {
     id: input.runId,
@@ -2613,12 +3243,20 @@ export function recordDeliveryOrder(
     driverCommissionUsd: split.driverCommissionUsd,
     status: "offered",
     createdAt,
+    fulfillment,
+    dropoffInstruction:
+      fulfillment === "delivery"
+        ? (input.dropoffInstruction ?? "hand_to_customer")
+        : undefined,
   };
   return {
     ...ops,
     ledger: [row, ...ops.ledger].slice(0, 200),
     tickets: [ticket, ...ops.tickets].slice(0, 200),
-    runs: [run, ...ops.runs].slice(0, 200),
+    runs:
+      fulfillment === "pickup"
+        ? ops.runs
+        : [run, ...ops.runs].slice(0, 200),
   };
 }
 
@@ -2666,7 +3304,16 @@ export function setMerchantTicketStatus(
   return {
     ...ops,
     tickets: ops.tickets.map((row) =>
-      row.id === ticketId ? { ...row, status } : row,
+      row.id === ticketId
+        ? {
+            ...row,
+            status,
+            foodReadyAt:
+              status === "ready"
+                ? row.foodReadyAt ?? new Date().toISOString()
+                : row.foodReadyAt,
+          }
+        : row,
     ),
     runs:
       status === "declined" && ticket
@@ -2696,6 +3343,13 @@ export function acceptDriverRun(
   const run = ops.runs.find((row) => row.id === runId);
   if (!run || run.status !== "offered") {
     return { ok: false, error: "That run is no longer offered." };
+  }
+  if (!driverCanAcceptAnotherOffer(ops, driverId)) {
+    return {
+      ok: false,
+      error:
+        "Finish this dash or keep one next offer. Hometown stacks one extra run — not a hotspot board.",
+    };
   }
   return {
     ok: true,
@@ -2772,6 +3426,10 @@ export function advanceDriverRun(
   driverId: string,
   next: Extract<DriverRunStatus, "picked_up" | "delivered">,
   location?: GeoPoint | null,
+  dropoff?: {
+    instruction?: DropoffInstruction;
+    photoNote?: string | null;
+  } | null,
 ): { ok: true; ops: DeliveryOps } | { ok: false; error: string } {
   const run = ops.runs.find((row) => row.id === runId);
   if (!run || run.driverId !== driverId) {
@@ -2791,22 +3449,39 @@ export function advanceDriverRun(
     const restaurant = ops.restaurants.find(
       (row) => row.id === run.restaurantId,
     );
-    const dropoff = runDropoffGeo(run, restaurant);
+    const pin = runDropoffGeo(run, restaurant);
     if (!location) {
       return { ok: false, error: DROPOFF_WRONG_LOCATION_COPY };
     }
-    const distanceMeters = haversineMeters(location, dropoff);
+    const distanceMeters = haversineMeters(location, pin);
     if (!driverInsideDropoffGeofence(distanceMeters)) {
       return { ok: false, error: DROPOFF_WRONG_LOCATION_COPY };
     }
   }
   const deliveredAt = new Date().toISOString();
+  const instruction: DropoffInstruction =
+    dropoff?.instruction ?? run.dropoffInstruction ?? "hand_to_customer";
+  const photoNote =
+    next === "delivered" && instruction === "leave_at_door"
+      ? dropoff?.photoNote?.trim() ||
+        run.dropoffPhotoNote ||
+        LEAVE_AT_DOOR_DEFAULT_NOTE
+      : (dropoff?.photoNote?.trim() || run.dropoffPhotoNote || null);
   return {
     ok: true,
     ops: {
       ...ops,
       runs: ops.runs.map((row) =>
-        row.id === runId ? { ...row, status: next } : row,
+        row.id === runId
+          ? {
+              ...row,
+              status: next,
+              dropoffInstruction:
+                next === "delivered" ? instruction : row.dropoffInstruction,
+              dropoffPhotoNote:
+                next === "delivered" ? photoNote : row.dropoffPhotoNote,
+            }
+          : row,
       ),
       drivers:
         next === "delivered"

@@ -243,7 +243,7 @@ function mergeStoredCopy(
     ) {
       next.brand = copy.brand.trim();
     }
-    if (
+    const storedServicesLookGrown =
       Array.isArray(copy.services) &&
       copy.services.length >= 2 &&
       copy.services.every(
@@ -252,11 +252,22 @@ function mergeStoredCopy(
           service?.detail?.trim() &&
           !looksLikeAgentTaskCopy(service.title) &&
           !looksLikeAgentTaskCopy(service.detail),
-      )
+      );
+    const storedServiceBlob = (copy.services ?? [])
+      .flatMap((service) => [service?.title, service?.detail])
+      .join(" ");
+    const deliveryServicesMissGuestLoop =
+      briefIsDeliveryPlatform(projectName, brief) &&
+      (!/pickup/i.test(storedServiceBlob) ||
+        !/favorite/i.test(storedServiceBlob));
+    if (
+      storedServicesLookGrown &&
+      !deliveryServicesMissGuestLoop &&
+      copy.services
     ) {
       next.services = copy.services.map((service) => ({
-        title: service.title.trim(),
-        detail: service.detail.trim(),
+        title: (service.title ?? "").trim(),
+        detail: (service.detail ?? "").trim(),
       }));
     }
     for (const key of [
@@ -380,6 +391,13 @@ export async function repairCustomerLandingIfNeeded(
             (!Array.isArray(copy.menuItems) || copy.menuItems.length < 4)) ||
           (briefIsDeliveryPlatform(project.name, project.brief) &&
             (!Array.isArray(copy.menuItems) || copy.menuItems.length < 3)) ||
+          (briefIsDeliveryPlatform(project.name, project.brief) &&
+            (() => {
+              const serviceBlob = (copy.services ?? [])
+                .flatMap((item) => [item.title, item.detail])
+                .join(" ");
+              return !/pickup/i.test(serviceBlob) || !/favorite/i.test(serviceBlob);
+            })()) ||
           seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
       );
     } catch {

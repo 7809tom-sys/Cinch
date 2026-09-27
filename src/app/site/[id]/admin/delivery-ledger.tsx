@@ -104,6 +104,13 @@ export function SeedDeliveryLedger({
         agreement (liability, vehicle, indemnification). Student scout
         talking points stay on ops: Riley dine-in first, one delivery a
         month, no own-kitchen 5%, 60 days free from first successful drive.
+        Best-of diner loop (ops only): DoorDash status tracking, 86,
+        leave-at-door, Driver Arrived, ~2 mile radius. Uber Eats pickup vs
+        delivery, food is ready, favorite kitchens, courier-on-the-way — no
+        Uber One. Grubhub / others: reorder last bag, cheap scheduled
+        window, missing-item flag, kitchen tickets accepted / cooking /
+        ready. Left out: DashPass, 15–30% commissions, Peak Pay, grocery,
+        alcohol, Red Card, POS, live GPS, promo engines.
       </p>
       <dl className="seed-run-stats">
         <div>

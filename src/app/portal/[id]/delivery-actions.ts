@@ -8,12 +8,16 @@ import {
   approveMenuDraft,
   assignRestaurantScout,
   confirmRestaurantMenuPrice,
+  flagDinerIssue,
   ingestMenuPhotos,
+  rateDinerOrder,
   setMenuItemEightySixed,
+  toggleFavoriteKitchen,
   uploadRestaurantMenuItem,
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
+  type DropoffInstruction,
   type GeoPoint,
   type MenuUploadInput,
   type MerchantTicketStatus,
@@ -31,6 +35,7 @@ function revalidateDelivery(projectId: string) {
   revalidatePath(`/site/${projectId}/merchant`);
   revalidatePath(`/site/${projectId}/drive`);
   revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/shop`);
 }
 
 async function loadOps(projectId: string) {
@@ -252,12 +257,62 @@ export async function advanceDriverArrivedAction(
   return { ok: true as const };
 }
 
+export async function toggleFavoriteKitchenAction(
+  projectId: string,
+  restaurantId: string,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    toggleFavoriteKitchen(loaded.ops, restaurantId),
+    "Diner toggled a favorite kitchen",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function flagDinerIssueAction(
+  projectId: string,
+  orderId: string,
+  input: { itemTitle: string; note?: string },
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const result = flagDinerIssue(loaded.ops, orderId, input);
+  if (!result.ok) return result;
+  await saveDeliveryOps(projectId, result.ops, "Diner flagged a missing item");
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function rateDinerOrderAction(
+  projectId: string,
+  orderId: string,
+  input: { foodStars: number; dropStars?: number; note?: string },
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const result = rateDinerOrder(loaded.ops, orderId, input);
+  if (!result.ok) return result;
+  await saveDeliveryOps(projectId, result.ops, "Diner rated a bag");
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
 export async function advanceDriverRunAction(
   projectId: string,
   runId: string,
   driverId: string,
   next: "picked_up" | "delivered",
   location?: GeoPoint | null,
+  dropoff?: {
+    instruction?: DropoffInstruction;
+    photoNote?: string | null;
+  } | null,
 ) {
   const loaded = await loadOps(projectId);
   if (!loaded.ok) return loaded;
@@ -267,6 +322,7 @@ export async function advanceDriverRunAction(
     driverId,
     next,
     location,
+    dropoff,
   );
   if (!result.ok) return result;
   await saveDeliveryOps(

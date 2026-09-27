@@ -231,9 +231,9 @@ export function seedLandingLooksUnsellable(copy: {
 
 /** Diner landing / shop should not leak ledger / tax / subscription internals. */
 export function deliveryLandingLooksLikeOpsEconomics(blob: string): boolean {
-  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive|86'?d|\beighty-?sixed?\b|\bocr\b|vision parser|vision model|red card|deliverect|\botter\b|modifier tree|pos certification|square pos|toast \/ square|api expense|\$0\.25 per order|\$0\.25 api|charges \$0\.25|\$0\.25/i.test(
+  return /1099|\$39\s*\/\s*month|\$79\s*\/\s*month|\bgmv\b|via ach|\bach\b|\bstripe\b|stripe connect|connect payout|tax forms|\$4\.50|\$1\.50 per mile|federal mileage|minimum balance|scout residual|processor|platform keeps \$0|\$0 from restaurant|driver subscriptions|weekly installments|60 days off the app|60 days free|first successful drive|first delivered run|software free until|free trial|software is \$|5%\s*\/\s*5%|5%\s*scout|flat 10%|posts? to the ledger|\bledger\b|keeps 100%|originating scout|scout_id|card processing|\$37\.28|8 million|9 million|BizMetricsHQ|\$850K|2\.8%|Circana|Rakuten|seven couples|one delivery a month|three-party|cannot keep their own|own kitchen|geofence|300 meters|100 feet|ic agreement|independent contractor|background check|existingPlatformActive|86'?d|\beighty-?sixed?\b|\bocr\b|vision parser|vision model|red card|deliverect|\botter\b|modifier tree|pos certification|square pos|toast \/ square|api expense|\$0\.25 per order|\$0\.25 api|charges \$0\.25|\$0\.25|dashpass|15\s*[–-]\s*30%|peak pay|hotspot|premier tier|live gps|next offer/i.test(
     blob,
-  );
+  ) || /we copied|uber one|uber eats|doordash|grubhub|postmates|deliveroo/i.test(blob);
 }
 
 export function seedLandingCopyMismatchesIndustry(
@@ -1114,14 +1114,14 @@ function withBusinessSiteDepth(
               "Open tonight’s board — real restaurants in this town, not a national grid.",
           },
           {
-            title: "Checkout and tip",
+            title: "Favorite and reorder",
             detail:
-              "Pay for the food and add a tip for the person bringing the bag.",
+              "Save a kitchen. Tap last bag when you want the same plates again.",
           },
           {
-            title: "Watch the run",
+            title: "Watch the bag",
             detail:
-              "The kitchen packs it, a driver picks up, you track the bag to the door.",
+              "The kitchen cooks, says the food is ready, then your courier is on the way.",
           },
         ],
         aboutImage:
@@ -1422,19 +1422,19 @@ export function customerFacingSiteCopy(
         servicesHeadline: "Order from kitchens on these streets",
         services: [
           {
-            title: "Order nearby",
+            title: "Pickup or delivery",
             detail:
-              "Browse restaurants in one town, add to bag, checkout, and tip the driver.",
+              "Grab it at the kitchen, or a courier from this town brings the bag.",
           },
           {
-            title: "Tonight’s kitchens",
+            title: "Favorite kitchens",
             detail:
-              "More than one kitchen on the board — bowls, tacos, and the deli, packed to go.",
+              "Save a kitchen you like. Reorder last bag when you want the same plates.",
           },
           {
-            title: "Tip and track",
+            title: "Watch the bag",
             detail:
-              "Add a tip for the person on the run and watch the bag to your door.",
+              "The kitchen cooks, says the food is ready, then your courier is on the way. Leave it at the door if you like.",
           },
         ],
         aboutEyebrow: "This town",
@@ -1499,11 +1499,16 @@ export function customerFacingSiteCopy(
             title: "Tip the person at the door",
             detail: "Add a tip at checkout. It goes to the driver on your run.",
           },
+          {
+            title: "Order last night’s bag again",
+            detail:
+              "Tap a prior bag, rate the food, and flag a missing plate if something did not land.",
+          },
         ],
         bookEyebrow: "Order tonight",
         bookHeadline: "Hungry? Order nearby.",
         bookBody:
-          "Pick a kitchen on these streets, add a tip, track the bag. This is a live order — not a contact form.",
+          "Pick a kitchen on these streets, choose pickup or delivery, add a tip, track the bag. This is a live order — not a contact form.",
         bookNote: "One town. Tonight’s board. Food from kitchens you already know.",
         footerNote: `${brand} · Local delivery · Order nearby`,
       },
@@ -4470,6 +4475,11 @@ export function customerFacingAdminCopy(
               title: "One-page independent contractor agreement",
               body: "Ops copy, not legal advice: liability disclaimer, vehicle maintenance on the driver, indemnification. Show it on the driver portal. Diner never sees the IC agreement, ACH rail, geofence meters, or background check language.",
             },
+            {
+              id: "tip-diner-flow",
+              title: "Best-of diner loop, Hometown money",
+              body: "Source-tagged, ops only. DoorDash: status tracking, 86, leave-at-door, Driver Arrived, ~2 mile radius. Uber Eats: pickup vs delivery first-class, kitchen prep / food is ready, favorite kitchens, courier-on-the-way copy — no Uber One. Grubhub / Postmates / Deliveroo / Skip: reorder last bag, scheduled window if cheap ($0 extra), missing-item flag, kitchen tickets accepted / cooking / ready. One current run plus one next offer. No DashPass, 15–30% commissions, Peak Pay, grocery, alcohol, Red Card, POS, live GPS, promo engines. Trip stays $4.50 + $1.50/mi; pickup trip is $0.",
+            },
           ]
       : briefIsPizza(projectName, brief) || key === "food"
         ? [
@@ -5518,7 +5528,7 @@ export function customerFacingShopCopy(
     support: ownerStocks
       ? "Your catalog starts empty. Scan a barcode or add items in admin, then set price and inventory."
       : delivery
-        ? "Order from a live restaurant in this town. A driver from these streets brings the bag. Tip them at checkout."
+        ? "Pickup or delivery first. Favorite a kitchen. Reorder last bag. Watch the kitchen cook, then your courier on the way."
         : restaurant
           ? "Order from the menu — priced items go to the kitchen ticket with tax and pickup or delivery so the restaurant sees the money."
           : dealership

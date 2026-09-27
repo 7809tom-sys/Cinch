@@ -23,12 +23,15 @@ import {
   STUDENT_SCOUT_TALKING_POINTS,
   TRIP_BASE_USD,
   TRIP_PER_MILE_USD,
+  DINER_TRACK_ON_THE_WAY,
   driverCanDispatch,
+  driverDropScoreAvg,
   driverInFreeTrial,
   driverOnboardingComplete,
   driverSoftwareFeeUsd,
   driverSoftwareFreeUntil,
   firstSuccessfulDriveAt,
+  offeredRunsForDriver,
   restaurantGeo,
   runDropoffGeo,
   scoutEligibleToBePaid,
@@ -64,6 +67,8 @@ export function HometownDriverPortal({
   const [weeklyGmv, setWeeklyGmv] = useState(DEFAULT_WEEKLY_GMV_EXAMPLE);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [leaveAtDoor, setLeaveAtDoor] = useState(true);
+  const [photoNote, setPhotoNote] = useState("Brown bag at the door, photo on file.");
 
   const driver = ops.drivers.find((row) => row.id === driverId);
   const online = Boolean(driver?.online);
@@ -75,7 +80,8 @@ export function HometownDriverPortal({
   const paidThisMonth = ops.restaurants.filter(
     (row) => scoutPayoutDriverId(ops, row.id) === driverId,
   );
-  const offered = ops.runs.filter((row) => row.status === "offered");
+  const offered = offeredRunsForDriver(ops, driverId);
+  const dropScore = driverDropScoreAvg(ops, driverId);
   const onboarded = driver ? driverOnboardingComplete(driver) : false;
   const active = ops.runs.filter(
     (row) =>
@@ -158,7 +164,9 @@ export function HometownDriverPortal({
         </label>
         <p className="mt-3 text-sm text-mist">
           Same idea as DoorDash Dasher: go online, take an offer, pick up,
-          drop off. You keep 100% of the delivery fee, tip, and a 5%
+          drop off. One current dash plus at most one next offer — no Peak
+          Pay board. Leave at the door with a photo note when the diner
+          asked. You keep 100% of the delivery fee, tip, and a 5%
           commission share — Stripe Connect pays you directly, not through
           the restaurant. Subscriptions and payouts use Stripe Connect{" "}
           {STRIPE_CONNECT_RAIL.toUpperCase()} — not card, so we avoid card
@@ -245,6 +253,19 @@ export function HometownDriverPortal({
               Completed
             </dt>
             <dd className="mt-1 text-xl font-extrabold">{delivered.length}</dd>
+            {driver && driverDropScoreAvg(ops, driver.id) != null ? (
+              <p className="mt-1 text-xs text-mist">
+                Drop score {driverDropScoreAvg(ops, driver.id)?.toFixed(1)}/5
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-lg bg-white/10 px-3 py-3">
+            <dt className="text-xs font-bold tracking-wide text-mist uppercase">
+              Drop score
+            </dt>
+            <dd className="mt-1 text-xl font-extrabold">
+              {dropScore == null ? "—" : `${dropScore.toFixed(1)} / 5`}
+            </dd>
           </div>
           <div className="rounded-lg bg-white/10 px-3 py-3">
             <dt className="text-xs font-bold tracking-wide text-mist uppercase">
@@ -271,6 +292,10 @@ export function HometownDriverPortal({
         <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
           Accept a dash
         </h2>
+        <p className="mt-2 text-sm text-muted">
+          One current run plus one next offer max. Pickup tickets stay on
+          the kitchen desk — they never become a dash.
+        </p>
         {!online ? (
           <p className="mt-3 text-sm text-muted">
             Go online to see offers — same as Dash Now. Frozen or expired papers
@@ -347,7 +372,7 @@ export function HometownDriverPortal({
                     ? "1 · Head to restaurant"
                     : run.status === "driver_arrived"
                       ? "Driver Arrived · stage the bag"
-                      : "2 · Head to customer"}
+                      : DINER_TRACK_ON_THE_WAY}
                 </p>
                 <h3 className="mt-1 font-bold text-brand-deep">
                   {restaurant?.name ?? "Restaurant"}{" "}
@@ -355,6 +380,9 @@ export function HometownDriverPortal({
                 </h3>
                 <p className="mt-1 text-sm text-muted">
                   Drop-off ZIP {run.dropoffZip}
+                  {run.dropoffInstruction === "leave_at_door"
+                    ? " · Leave at the door"
+                    : ""}
                 </p>
                 <p className="mt-2 text-sm font-bold text-brand-deep">
                   You keep ${run.deliveryFeeUsd.toFixed(2)} fee + $
@@ -423,6 +451,28 @@ export function HometownDriverPortal({
                   </div>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <label className="text-sm font-semibold text-brand-deep">
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={
+                          leaveAtDoor ||
+                          run.dropoffInstruction === "leave_at_door"
+                        }
+                        onChange={(event) =>
+                          setLeaveAtDoor(event.target.checked)
+                        }
+                      />
+                      Leave at the door
+                    </label>
+                    <label className="text-sm font-semibold text-brand-deep">
+                      Photo note
+                      <input
+                        className="mt-1 block min-h-11 w-full min-w-56 rounded-md border border-brand/20 px-3"
+                        value={photoNote}
+                        onChange={(event) => setPhotoNote(event.target.value)}
+                      />
+                    </label>
                     <button
                       type="button"
                       className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
@@ -435,6 +485,14 @@ export function HometownDriverPortal({
                             driverId,
                             "delivered",
                             dropoff,
+                            {
+                              instruction:
+                                leaveAtDoor ||
+                                run.dropoffInstruction === "leave_at_door"
+                                  ? "leave_at_door"
+                                  : "hand_to_customer",
+                              photoNote,
+                            },
                           ),
                         )
                       }
