@@ -14,7 +14,11 @@ import {
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
-import { customerFacingSupport, seedIndustryKey } from "@/lib/seed-site-copy";
+import {
+  customerFacingBrandName,
+  customerFacingSupport,
+  seedIndustryKey,
+} from "@/lib/seed-site-copy";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
 
@@ -31,7 +35,7 @@ export async function generateMetadata({
   const project = await getProject(id);
   if (!project) return { title: "Seed site" };
   return {
-    title: project.name,
+    title: customerFacingBrandName(project.name),
     description: customerFacingSupport(project.brief).slice(0, 160),
     robots: project.sitePublishedAt ? "index,follow" : "noindex",
   };

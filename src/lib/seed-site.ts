@@ -13,8 +13,11 @@ import {
   briefIsDeliveryPlatform,
   seedOffersCustomerShop,
   customerFacingAdminCopy,
+  customerFacingBrandName,
   customerFacingShopCopy,
   customerFacingSiteCopy,
+  HOMETOWN_RUNNER_BRAND,
+  looksLikeHometownRunnerBrand,
   looksLikeAgentTaskCopy,
   seedAdminCopyJson,
   seedAdminPageSource,
@@ -196,7 +199,7 @@ function fileContent(
 }
 
 function brandFromProject(project: SeedProject): string {
-  return project.name.replace(/\s+Seed$/i, "").trim() || project.name;
+  return customerFacingBrandName(project.name);
 }
 
 function customerCopyFromProject(project: SeedProject): SeedSiteCopy {
@@ -241,7 +244,10 @@ function mergeStoredCopy(
       !looksLikeAgentTaskCopy(copy.brand) &&
       copy.brand.trim().toLowerCase() !== "cinch"
     ) {
-      next.brand = copy.brand.trim();
+      next.brand = customerFacingBrandName(copy.brand.trim());
+    }
+    if (looksLikeHometownRunnerBrand(next.brand)) {
+      next.brand = HOMETOWN_RUNNER_BRAND;
     }
     const storedServicesLookGrown =
       Array.isArray(copy.services) &&
@@ -398,7 +404,9 @@ export async function repairCustomerLandingIfNeeded(
                 .join(" ");
               return !/pickup/i.test(serviceBlob) || !/favorite/i.test(serviceBlob);
             })()) ||
-          seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
+          seedLandingCopyMismatchesIndustry(project.name, project.brief, copy) ||
+          (looksLikeHometownRunnerBrand(copy.brand ?? "") &&
+            (copy.brand ?? "").trim() !== HOMETOWN_RUNNER_BRAND),
       );
     } catch {
       copyLooksBad = true;
@@ -409,6 +417,7 @@ export async function repairCustomerLandingIfNeeded(
     !page ||
     looksLikeAgentTaskCopy(page) ||
     /className="brand">\s*Cinch\s*</i.test(page) ||
+    /Runnner|Home Town Runner/i.test(page) ||
     !page.includes("seed-hero") ||
     !page.includes('id="services"') ||
     !page.includes('id="book"') ||
@@ -794,7 +803,7 @@ function normalizeShopCopy(
   );
 
   return {
-    brand: raw.brand || fresh.brand,
+    brand: customerFacingBrandName(raw.brand || fresh.brand),
     title: raw.title || fresh.title,
     support: raw.support || fresh.support,
     cta: raw.cta || fresh.cta,

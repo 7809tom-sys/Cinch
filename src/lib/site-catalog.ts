@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { getCustomerByEmail } from "./customers";
 import { publicWebsiteUrl } from "./domain";
+import { customerFacingBrandName } from "./seed-site-copy";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
   MODULE_CREATOR_CREDIT_RATE,
@@ -234,7 +235,7 @@ export async function publishDevelopedSeedToMarketplace(
 
   const site: CatalogSite = {
     id: `seed-${project.id.slice(0, 8)}`,
-    title: project.name.replace(/\s+Seed$/i, "").trim() || project.name,
+    title: customerFacingBrandName(project.name),
     summary,
     previewUrl,
     priceUsd: SEED_SITE_PRICE_USD,
@@ -278,8 +279,7 @@ export async function refreshDevelopedSeedPreview(
   );
   if (!existing) return null;
   existing.previewUrl = publicWebsiteUrl(project);
-  existing.title =
-    project.name.replace(/\s+Seed$/i, "").trim() || project.name;
+  existing.title = customerFacingBrandName(project.name);
   existing.summary =
     project.brief.trim().slice(0, 220) ||
     existing.summary ||
