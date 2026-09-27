@@ -1325,6 +1325,16 @@ assert(
   "diner landing and shop stay guest-facing — no 1099 / $39 / GMV / API expense leak",
 );
 assert(
+  dinerLanding.services.some((item) => /pickup/i.test(item.title)) &&
+    dinerLanding.services.some((item) => /favorite/i.test(item.title)) &&
+    dinerLanding.process.some((item) =>
+      /food is ready|courier/i.test(item.detail),
+    ) &&
+    /pickup or delivery/i.test(dinerShop.support) &&
+    /favorite/i.test(dinerShop.support),
+  "diner landing and shop encode pickup, favorite kitchens, and courier copy",
+);
+assert(
   deliveryLandingLooksLikeOpsEconomics("kitchen arrival geofence 300 meters") &&
     deliveryLandingLooksLikeOpsEconomics("one-page IC agreement") &&
     deliveryLandingLooksLikeOpsEconomics("Stripe Connect ACH") &&
