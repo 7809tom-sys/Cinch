@@ -75,7 +75,9 @@ export default async function PortalRestaurantPage({
           sign-off, then 86 a plate during service. Open or pause the
           store, take incoming orders, cook, mark food ready, and hand
           bags to a Hometown driver or hold a pickup at the counter. We
-          follow DoorDash-class diner flow without DashPass or a 15–30%
+          follow DoorDash-class diner flow — best-of Uber Eats pickup /
+          food is ready, DoorDash track / 86 / leave-at-door, Grubhub
+          accepted / cooking / ready — without DashPass or a 15–30%
           diner markup. Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">

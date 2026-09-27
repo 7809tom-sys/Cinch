@@ -23,6 +23,7 @@ import {
   STUDENT_SCOUT_TALKING_POINTS,
   TRIP_BASE_USD,
   TRIP_PER_MILE_USD,
+  DINER_TRACK_ON_THE_WAY,
   driverCanDispatch,
   driverDropScoreAvg,
   driverInFreeTrial,

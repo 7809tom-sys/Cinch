@@ -282,7 +282,7 @@ export const HOMETOWN_DISPATCH_BRIEF_BLOCK = `Hometown dispatch & geofence:
 - Drop-off: driver must be within 100 feet of drop-off coordinates before Complete Delivery / delivered. If outside: "Are you at the right location?"
 - Ops note: idle-time unassign without penalty is not in v1 — a driver who sits on an offer keeps it until they cancel or the kitchen declines.`;
 
-export const HOMETOWN_DINER_FLOW_BRIEF_BLOCK = `Hometown diner flow (best-of Uber Eats / DoorDash / Grubhub, thin Seed — ops only, never diner):
+export const HOMETOWN_DINER_FLOW_BRIEF_BLOCK = `Hometown diner flow (DoorDash-class diner flow; best-of Uber Eats / DoorDash / Grubhub, thin Seed — ops only, never diner):
 - DoorDash: status tracking (placed → kitchen → driver assigned → at the kitchen → courier on the way → delivered). 86 during service. Leave-at-door + photo note. Driver Arrived at 300m. Fixed ~2 mile radius. No live map.
 - Uber Eats: pickup vs delivery is first-class (pickup: no trip fee, no driver). Kitchen prep / food is ready. Favorite kitchens. Clear courier-on-the-way copy. No Uber One / membership.
 - Grubhub / Postmates / Deliveroo / Skip: reorder last bag. Scheduled window if cheap ($0 extra — ASAP or tonight). Missing-item / issue flag. Kitchen ticket statuses accepted / cooking / ready.

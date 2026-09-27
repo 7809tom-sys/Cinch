@@ -53,7 +53,8 @@ export function HometownDinerOrderDesk({
       <p className="seed-shop-support">
         Look up a name from tonight — try Alex Rivera, Sam Ortiz, or Pat
         Nguyen. Watch the kitchen cook, then food is ready, then your
-        courier is on the way. Pickup bags skip the courier.
+        courier is on the way. Reorder last bag when you want the same
+        plates. Pickup bags skip the courier.
       </p>
       <label className="seed-shop-support" style={{ display: "block" }}>
         Your name on the ticket
@@ -121,6 +122,7 @@ export function HometownDinerOrderDesk({
                 <button
                   type="button"
                   className="cta"
+                  aria-label="Order this bag again"
                   onClick={() => onReorder(track)}
                 >
                   Reorder last bag

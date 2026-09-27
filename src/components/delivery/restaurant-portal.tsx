@@ -127,11 +127,12 @@ export function HometownRestaurantPortal({
               does not run a Red Card crawler. During service, 86 a plate
               so it does not sell. New orders, accept or decline, start
               cooking, mark food ready, then hand to a Hometown driver or
-              hold a pickup ticket at the counter.               Best-of loop: DoorDash track / 86 / leave-at-door / Driver
-              Arrived; Uber Eats pickup vs delivery, food is ready,
-              favorite kitchens, courier-on-the-way; Grubhub reorder,
-              cheap window, missing-item flag, accepted / cooking / ready.
-              No DashPass, Uber One, or 15–30% diner markup. Stripe
+              hold a pickup ticket at the counter. We follow DoorDash-class diner flow — track the bag, pickup or delivery, leave-at-door, reorder, rate, flag a missing plate — without DashPass or a
+              15–30% diner markup. Best-of loop: DoorDash track / 86 /
+              leave-at-door / Driver Arrived; Uber Eats pickup vs delivery,
+              food is ready, favorite kitchens, courier-on-the-way; Grubhub
+              reorder, cheap window, missing-item flag, accepted / cooking /
+              ready. Stripe
               three-party: you,
               the scout, and the driver each have a Stripe account. You
               collect the food net and pay ~2.9% processing plus $0.25

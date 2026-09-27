@@ -112,15 +112,25 @@ import {
   weeklyScoutResidualExamples,
   withDeliveryDriverPolicyBrief,
   DINER_TRACK_DRIVER_AT_KITCHEN,
+  DINER_TRACK_FOOD_READY,
   DINER_TRACK_ON_THE_WAY,
+  SCHEDULED_WINDOW_EXTRA_USD,
+  cheapScheduledWindows,
   dinerOrderTrack,
   driverCanAcceptAnotherOffer,
   driverDropScoreAvg,
   flagDinerIssue,
+  isFavoriteKitchen,
   kitchenFoodScoreAvg,
+  kitchenTicketNextLabel,
+  lastBagCartLines,
+  lastBagForCustomer,
   lookupDinerOrders,
+  nextKitchenTicketStatus,
   offeredRunsForDriver,
   rateDinerOrder,
+  scheduledWindowExtraUsd,
+  toggleFavoriteKitchen,
 } from "../src/lib/seed-delivery";
 import {
   customerFacingShopCopy,
@@ -1299,6 +1309,8 @@ const dinerBlob = [
   ...dinerLanding.profitPlays.flatMap((item) => [item.title, item.detail]),
   dinerShop.support,
   ...dinerShop.products.map((item) => item.detail),
+  ...(dinerLanding.services ?? []).flatMap((item) => [item.title, item.detail]),
+  ...(dinerLanding.process ?? []).flatMap((item) => [item.title, item.detail]),
 ].join(" ");
 assert(
   !deliveryLandingLooksLikeOpsEconomics(dinerBlob) &&
@@ -1332,8 +1344,13 @@ assert(
     ) &&
     deliveryLandingLooksLikeOpsEconomics(
       "DashPass 15–30% Peak Pay hotspot Premier tier live GPS next offer",
+    ) &&
+    deliveryLandingLooksLikeOpsEconomics("we copied Uber Eats") &&
+    deliveryLandingLooksLikeOpsEconomics("Uber One membership on DoorDash") &&
+    !deliveryLandingLooksLikeOpsEconomics(
+      "Your courier is on the way. Favorite kitchens. The kitchen says the food is ready. Reorder last bag.",
     ),
-  "diner-leak patterns catch 60 days free / first successful drive / $0.25 API / DashPass without flagging guest copy",
+  "diner-leak patterns catch 60 days free / first successful drive / $0.25 API / DashPass / we-copied without flagging guest copy",
 );
 assert(
   !/86'?d|\bOCR\b|vision parser|Red Card|Deliverect|POS certification|modifier tree/i.test(
@@ -1688,49 +1705,106 @@ assert(
   "diner can flag a missing plate and the kitchen sees it",
 );
 assert(
-  DINER_TRACK_DRIVER_AT_KITCHEN === "Your driver is at the kitchen" &&
+  /at the kitchen/i.test(DINER_TRACK_DRIVER_AT_KITCHEN) &&
     /on the way/i.test(DINER_TRACK_ON_THE_WAY) &&
-    !/geofence|300|100 feet/i.test(DINER_TRACK_ON_THE_WAY),
+    !/geofence|300 meters|100 feet/i.test(
+      `${DINER_TRACK_DRIVER_AT_KITCHEN} ${DINER_TRACK_ON_THE_WAY}`,
+    ),
   "diner-safe arrived / on-the-way copy has no geofence words",
 );
 
+const dinerDesk = readFileSync(
+  join(process.cwd(), "src/components/delivery/diner-order-desk.tsx"),
+  "utf8",
+);
 assert(
   /HometownDinerOrderDesk/.test(shopBoard) &&
-    /Order this bag again/.test(shopBoard) &&
+    /Order this bag again/.test(dinerDesk) &&
+    /Reorder last bag/.test(dinerDesk) &&
+    /Favorite kitchens/.test(shopBoard) &&
+    /no extra charge/.test(shopBoard) &&
+    /toggleFavoriteKitchenAction/.test(shopBoard) &&
     /leave_at_door/.test(shopBoard) &&
     /scheduledWindow/.test(shopBoard) &&
     /Pickup or delivery/.test(shopBoard) &&
-    /dinerOrderTrack/.test(shopPage),
-  "diner shop tracks, reorders, picks pickup vs delivery, and leave-at-door",
+    /dinerOrderTrack/.test(shopPage) &&
+    /isFavoriteKitchen/.test(shopPage),
+  "diner shop tracks, reorders, favorites, cheap windows, pickup vs delivery, and leave-at-door",
 );
 assert(
   /DoorDash-class diner flow/.test(restaurantDesk) &&
+    /Best-of loop/.test(restaurantDesk) &&
     /15–30%/.test(restaurantDesk) &&
     /kitchenFoodScoreAvg/.test(restaurantDesk) &&
     /dinerIssue/.test(restaurantDesk) &&
     /Pickup/.test(restaurantDesk) &&
-    /nextKitchenTicketStatus/.test(restaurantDesk),
-  "kitchen desk shows pickup tickets, scores, issues, and DoorDash-class diner flow without diner markup",
+    /nextKitchenTicketStatus/.test(restaurantDesk) &&
+    /kitchenTicketNextLabel/.test(restaurantDesk) &&
+    /Start cooking/.test(restaurantDesk) &&
+    /Food is ready/.test(restaurantDesk),
+  "kitchen desk shows pickup tickets, scores, issues, cooking/ready, and best-of diner flow without diner markup",
 );
 assert(
   /offeredRunsForDriver/.test(driverDesk) &&
     /Leave at the door/.test(driverDesk) &&
     /one next offer/.test(driverDesk) &&
     /driverDropScoreAvg/.test(driverDesk) &&
-    /photoNote/.test(driverDesk),
+    /photoNote/.test(driverDesk) &&
+    /DINER_TRACK_ON_THE_WAY/.test(driverDesk),
   "driver desk stacks one next offer and marks leave-at-door with a photo note",
 );
 assert(
   /rateDinerOrderAction/.test(deliveryActions) &&
     /flagDinerIssueAction/.test(deliveryActions) &&
+    /toggleFavoriteKitchenAction/.test(deliveryActions) &&
     /dropoff/.test(deliveryActions),
-  "delivery actions expose rate, missing-plate, and leave-at-door",
+  "delivery actions expose rate, missing-plate, favorites, and leave-at-door",
 );
 assert(
   /tip-diner-flow/.test(siteCopy) &&
     /DoorDash-class diner flow/.test(deliveryLib) &&
-    /HOMETOWN_DINER_FLOW_BRIEF_BLOCK/.test(deliveryLib),
-  "ops brief and playbook tip encode DoorDash-class diner flow",
+    /best-of Uber Eats/.test(deliveryLib) &&
+    /HOMETOWN_DINER_FLOW_BRIEF_BLOCK/.test(deliveryLib) &&
+    /favoriteRestaurantIds/.test(deliveryLib) &&
+    /DINER_TRACK_FOOD_READY/.test(deliveryLib),
+  "ops brief and playbook tip encode best-of diner flow",
+);
+assert(
+  SCHEDULED_WINDOW_EXTRA_USD === 0 &&
+    scheduledWindowExtraUsd("Tonight 6–7pm") === 0 &&
+    cheapScheduledWindows().includes("ASAP") &&
+    nextKitchenTicketStatus("accepted") === "cooking" &&
+    nextKitchenTicketStatus("cooking") === "ready" &&
+    kitchenTicketNextLabel("cooking") === "Food is ready" &&
+    kitchenTicketNextLabel("ready", "pickup") === "Guest picked up" &&
+    DINER_TRACK_ON_THE_WAY === "Your courier is on the way" &&
+    DINER_TRACK_FOOD_READY === "The kitchen says the food is ready",
+  "cheap windows stay $0, kitchen tickets accepted/cooking/ready, courier/food-ready copy is diner-safe",
+);
+assert(
+  isFavoriteKitchen(ops, "rest-pilot") &&
+    !isFavoriteKitchen(toggleFavoriteKitchen(ops, "rest-pilot"), "rest-pilot") &&
+    isFavoriteKitchen(toggleFavoriteKitchen(ops, "rest-tacos"), "rest-tacos"),
+  "diner can favorite and unfavorite a kitchen",
+);
+const foodReadyOps = setMerchantTicketStatus(ops, "tkt-sample-pickup", "ready");
+const foodReadyTrack = dinerOrderTrack(foodReadyOps, "ord-sample-pickup");
+assert(
+  foodReadyTrack?.step === "ready_for_pickup" &&
+    foodReadyTrack.headline === DINER_TRACK_FOOD_READY &&
+    Boolean(
+      foodReadyOps.tickets.find((row) => row.id === "tkt-sample-pickup")
+        ?.foodReadyAt,
+    ),
+  "kitchen ready flips pickup track to food is ready",
+);
+const samBag = lastBagForCustomer(ops, "Sam Ortiz");
+assert(
+  samBag?.orderId === "ord-sample-deli" &&
+    lastBagCartLines(samBag, [
+      { id: "rest-deli:soup", title: "River Market Deli · Soup and half" },
+    ]).some((line) => line.productId === "rest-deli:soup"),
+  "reorder last bag maps Sam’s prior plates onto shop lines",
 );
 
 if (process.exitCode) {

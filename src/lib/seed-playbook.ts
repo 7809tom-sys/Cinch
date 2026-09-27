@@ -240,7 +240,7 @@ function deliveryChapters(input: {
       n: 3,
       agent: "Pixel",
       title: "Website vs logged-in product",
-      script: `Public job on ${host}: find nearby kitchens and order. Pickup or delivery, track the bag, reorder, rate, flag a missing plate — DoorDash-class diner flow without DashPass or 15–30% markup. Three role-based logins: customer, merchant, driver. Behind login: restaurant portal (photo/PDF paper-menu draft, five-minute sign-off, 86 during service; website crawl is fallback) and driver portal (DoorDash-style desk + Stripe Connect payouts; scouts can snap the paper menu), plus ops admin. Soft gates: email for a customer order; merchant and driver accounts for the portals. Do not certify Toast / Square / Otter. Do not draw a plated-menu dining room on the public landing.`,
+      script: `Public job on ${host}: find nearby kitchens and order. Pickup or delivery, track the bag, favorite a kitchen, reorder last bag, rate, flag a missing plate — DoorDash-class diner flow (best-of Uber Eats / DoorDash / Grubhub) without DashPass, Uber One, or 15–30% markup. Three role-based logins: customer, merchant, driver. Behind login: restaurant portal (photo/PDF paper-menu draft, five-minute sign-off, 86 during service, kitchen tickets accepted / cooking / ready; website crawl is fallback) and driver portal (DoorDash-style desk + Stripe Connect payouts; scouts can snap the paper menu), plus ops admin. Soft gates: email for a customer order; merchant and driver accounts for the portals. Do not certify Toast / Square / Otter. Do not draw a plated-menu dining room on the public landing.`,
       status: "proposed",
     },
     {
