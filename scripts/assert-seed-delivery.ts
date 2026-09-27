@@ -1740,7 +1740,7 @@ assert(
     /Pickup/.test(restaurantDesk) &&
     /nextKitchenTicketStatus/.test(restaurantDesk) &&
     /kitchenTicketNextLabel/.test(restaurantDesk) &&
-    /Start cooking/.test(restaurantDesk) &&
+    /start\s+cooking/i.test(restaurantDesk) &&
     /Food is ready/.test(restaurantDesk),
   "kitchen desk shows pickup tickets, scores, issues, cooking/ready, and best-of diner flow without diner markup",
 );

@@ -299,7 +299,7 @@ export function HometownRestaurantPortal({
       <OrderLane
         ops={ops}
         eyebrow="In the kitchen"
-        title="Accepted, cooking, or food is ready"
+        title="Start cooking, then food is ready"
         empty="Nothing cooking right now."
         tickets={inKitchen}
         pending={pending}
