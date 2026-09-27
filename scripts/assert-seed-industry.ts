@@ -16,8 +16,10 @@ import {
   briefIsPizza,
   customerFacingAdminCopy,
   seedCommerceAdminBoard,
+  customerFacingBrandName,
   customerFacingShopCopy,
   customerFacingSiteCopy,
+  HOMETOWN_RUNNER_BRAND,
   deliveryLandingLooksLikeOpsEconomics,
   seedGrowthBoardLooksThin,
   seedIndustryKey,
@@ -576,6 +578,24 @@ assert(
 );
 
 const hometown = customerFacingSiteCopy(hometownName, hometownBrief);
+assert(
+  hometown.brand === HOMETOWN_RUNNER_BRAND,
+  "Hometown landing brand is spelled Runner",
+);
+assert(
+  customerFacingSiteCopy("Home Town Runnner", hometownBrief).brand ===
+    HOMETOWN_RUNNER_BRAND,
+  "Home Town Runnner front page prints Hometown Runner",
+);
+assert(
+  customerFacingBrandName("Home Town Runnner Seed") === HOMETOWN_RUNNER_BRAND,
+  "guest brand drops Seed and the extra n",
+);
+assert(
+  customerFacingShopCopy("Home Town Runnner", hometownBrief).brand ===
+    HOMETOWN_RUNNER_BRAND,
+  "diner shop h1 is spelled Hometown Runner",
+);
 assert(hometown.cta === "Order nearby", `delivery CTA is Order nearby (got ${hometown.cta})`);
 assert(
   !/subject:|v1 product brief/i.test(hometown.support),

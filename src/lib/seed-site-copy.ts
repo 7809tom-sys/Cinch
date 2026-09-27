@@ -157,6 +157,22 @@ function industryKey(brief: string, name = ""): string {
   return "generic";
 }
 
+/** Guest-facing spelling. Never print Runnner / Home Town Runner on the diner front. */
+export const HOMETOWN_RUNNER_BRAND = "Hometown Runner";
+
+const HOMETOWN_RUNNER_NAME_RE = /home[\s-]*town[\s-]*runn+ers?/i;
+
+export function looksLikeHometownRunnerBrand(name: string): boolean {
+  return HOMETOWN_RUNNER_NAME_RE.test(name);
+}
+
+/** Strip “Seed” and lock Hometown Runner’s public spelling. */
+export function customerFacingBrandName(projectName: string): string {
+  const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  if (looksLikeHometownRunnerBrand(brand)) return HOMETOWN_RUNNER_BRAND;
+  return brand;
+}
+
 /**
  * Hyper-local food *delivery platform* (Hometown Runner): merchant +
  * driver/scout + customer + admin. Not a single restaurant.
@@ -167,7 +183,7 @@ export function briefIsDeliveryPlatform(
 ): boolean {
   const lower = `${projectName} ${brief}`.toLowerCase();
   // “Hometown Runner”, “Home Town Runnner”, hometownrunner — not a restaurant.
-  if (/home[\s-]*town[\s-]*runn+ers?/.test(lower)) return true;
+  if (HOMETOWN_RUNNER_NAME_RE.test(lower)) return true;
   if (/\bhometown\s+runner\b/.test(lower)) return true;
   if (
     /\b(hyper-?local food delivery|delivery platform|merchant terminal|driver\s*\/\s*scout|scout residual|delivery gmv)\b/.test(
@@ -423,7 +439,7 @@ export function customerFacingHeadline(
   if (key === "retail") return "Find what fits — without the noise.";
   if (key === "trade") return "Fixed right. On your time.";
 
-  const name = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const name = customerFacingBrandName(projectName);
   return `Welcome to ${name}.`;
 }
 
@@ -1197,7 +1213,7 @@ export function customerFacingSiteCopy(
   projectName: string,
   brief: string,
 ): SeedSiteCopy {
-  const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const brand = customerFacingBrandName(projectName);
   const key = industryKey(brief, projectName);
   const support = customerFacingSupport(brief);
   const headline = customerFacingHeadline(projectName, brief);
@@ -4309,7 +4325,7 @@ export function customerFacingAdminCopy(
   projectName: string,
   brief: string,
 ): SeedAdminCopy {
-  const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const brand = customerFacingBrandName(projectName);
   const key = industryKey(brief, projectName);
   const landing = customerFacingSiteCopy(projectName, brief);
   const services = landing.services.map((service) => service.title);
@@ -5489,7 +5505,7 @@ export function customerFacingShopCopy(
   projectName: string,
   brief: string,
 ): SeedShopCopy {
-  const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
+  const brand = customerFacingBrandName(projectName);
   const delivery = industryKey(brief, projectName) === "delivery";
   const restaurant =
     seedShopUsesRestaurantFulfillment(projectName, brief) && !delivery;
