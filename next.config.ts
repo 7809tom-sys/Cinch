@@ -4,6 +4,12 @@ import { cinchHostedCloneRedirects } from "./src/lib/hosted-site";
 const nextConfig: NextConfig = {
   // Playwright / local agents often hit 127.0.0.1; allow HMR + static chunks.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  experimental: {
+    // 2–3 compressed menu photos or one PDF on the kitchen parse action.
+    serverActions: {
+      bodySizeLimit: "8mb",
+    },
+  },
   async redirects() {
     return cinchHostedCloneRedirects();
   },

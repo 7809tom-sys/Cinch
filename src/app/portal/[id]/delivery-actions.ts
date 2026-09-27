@@ -9,19 +9,25 @@ import {
   assignRestaurantScout,
   confirmRestaurantMenuPrice,
   flagDinerIssue,
+  inferredMenuUploadKind,
   ingestMenuPhotos,
+  menuUploadFileNames,
   rateDinerOrder,
+  reviewRestaurantMenuItem,
   setMenuItemEightySixed,
   toggleFavoriteKitchen,
   uploadRestaurantMenuItem,
+  validatePaperMenuUpload,
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
   type DropoffInstruction,
   type GeoPoint,
+  type MenuModifierGroup,
   type MenuUploadInput,
   type MerchantTicketStatus,
 } from "@/lib/seed-delivery";
+import { parsePaperMenuWithVision } from "@/lib/menu-vision";
 import {
   ensureDeliveryOpsInSeed,
   saveDeliveryOps,
@@ -57,6 +63,8 @@ export async function uploadRestaurantMenuItemAction(
     priceUsd: number;
     description?: string;
     aliases?: string;
+    modifierText?: string;
+    modifiers?: MenuModifierGroup[];
   },
 ) {
   const loaded = await loadOps(projectId);
@@ -74,6 +82,8 @@ export async function uploadRestaurantMenuItemAction(
         .split(",")
         .map((word) => word.trim())
         .filter(Boolean),
+      modifierText: input.modifierText,
+      modifiers: input.modifiers,
     }),
     "Merchant uploaded a menu item",
   );
@@ -87,12 +97,20 @@ export async function confirmRestaurantMenuPriceAction(
   restaurantId: string,
   itemId: string,
   priceUsd: number,
+  review?: { modifierText?: string },
 ) {
   const loaded = await loadOps(projectId);
   if (!loaded.ok) return loaded;
+  const reviewed =
+    review?.modifierText !== undefined
+      ? reviewRestaurantMenuItem(loaded.ops, restaurantId, itemId, {
+          draftPriceUsd: priceUsd,
+          modifierText: review.modifierText,
+        })
+      : loaded.ops;
   await saveDeliveryOps(
     projectId,
-    confirmRestaurantMenuPrice(loaded.ops, restaurantId, itemId, priceUsd),
+    confirmRestaurantMenuPrice(reviewed, restaurantId, itemId, priceUsd),
     "Merchant confirmed a crawled menu price",
   );
   revalidateDelivery(projectId);
@@ -107,13 +125,79 @@ export async function ingestMenuPhotosAction(
 ) {
   const loaded = await loadOps(projectId);
   if (!loaded.ok) return loaded;
+  const checked = validatePaperMenuUpload(input);
+  if (!checked.ok) return checked;
+
+  const fileNames = menuUploadFileNames(input);
+  let nextInput: MenuUploadInput = {
+    ...input,
+    fileNames,
+    kind: inferredMenuUploadKind(input),
+  };
+  const canVision =
+    !nextInput.useFixture &&
+    !nextInput.parsed &&
+    !nextInput.rawJson?.trim() &&
+    (nextInput.attachments ?? []).some((file) => file.dataBase64?.trim());
+
+  if (canVision) {
+    const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
+    if (vision.ok) {
+      nextInput = {
+        ...nextInput,
+        parsed: vision.parsed,
+        parseNote: `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Review prices and modifiers, then Approve.`,
+      };
+    } else {
+      nextInput = {
+        ...nextInput,
+        useFixture: true,
+        parseNote: `${vision.error} Wrote the Seed paper-menu fixture so you can still review prices and modifiers. Add a Gemini or Claude key to parse your photos.`,
+      };
+    }
+  } else if (
+    nextInput.useFixture ||
+    (!nextInput.parsed && !nextInput.rawJson?.trim())
+  ) {
+    nextInput = {
+      ...nextInput,
+      useFixture: true,
+      parseNote:
+        nextInput.parseNote?.trim() ||
+        (fileNames.length
+          ? `Saved ${fileNames.join(", ")}. Seed parse writes a paper-menu fixture until a vision API key is wired. Review prices and modifiers, then Approve.`
+          : "Seed paper-menu fixture ready for review."),
+    };
+  }
+
   await saveDeliveryOps(
     projectId,
-    ingestMenuPhotos(loaded.ops, restaurantId, {
-      ...input,
-      useFixture: true,
-    }),
+    ingestMenuPhotos(loaded.ops, restaurantId, nextInput),
     "Scout or merchant ingested a paper-menu draft",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function reviewRestaurantMenuItemAction(
+  projectId: string,
+  restaurantId: string,
+  itemId: string,
+  patch: {
+    title?: string;
+    description?: string;
+    draftPriceUsd?: number;
+    modifierText?: string;
+    modifiers?: MenuModifierGroup[];
+  },
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  await saveDeliveryOps(
+    projectId,
+    reviewRestaurantMenuItem(loaded.ops, restaurantId, itemId, patch),
+    "Merchant reviewed a draft price or modifiers",
   );
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);

@@ -408,13 +408,22 @@ export const HOMETOWN_VISION_MENU_ITEM_EXAMPLE: VisionMenuItemJson = {
   ],
 };
 export type MenuUploadKind = "photo" | "pdf" | "fixture";
+/** Photo or PDF bytes the kitchen / scout actually uploaded. */
+export type MenuUploadAttachment = {
+  name: string;
+  type?: string;
+  dataBase64?: string;
+};
 export type MenuUploadInput = {
   kind?: MenuUploadKind;
   fileNames?: string[];
+  attachments?: MenuUploadAttachment[];
   /** Seed / tests: skip a live vision call and use the paper-menu fixture. */
   useFixture?: boolean;
   rawJson?: string;
   parsed?: ParsedMenuJson | VisionMenuItemJson | VisionMenuItemJson[];
+  /** Shown on the kitchen desk after parse (fixture vs vision). */
+  parseNote?: string;
 };
 export type RestaurantMenuItem = {
   id: string;
@@ -437,6 +446,9 @@ export type RestaurantMenuDraft = {
   items: RestaurantMenuItem[];
   ingestSource?: MenuUploadKind | "ai_crawl";
   approvedAt?: string | null;
+  /** File names received with the last paper-menu parse. */
+  uploadedFiles?: string[];
+  parseNote?: string;
 };
 export type FoundMenuItem = {
   restaurantId: string;
@@ -1147,6 +1159,8 @@ export function uploadRestaurantMenuItem(
     photoUrl?: string;
     aliases?: string[];
     id?: string;
+    modifiers?: MenuModifierGroup[];
+    modifierText?: string;
   },
 ): DeliveryOps {
   const title = input.title.trim();
@@ -1158,6 +1172,11 @@ export function uploadRestaurantMenuItem(
   const aliases = (input.aliases ?? [])
     .map((word) => word.trim())
     .filter(Boolean);
+  const modifiers =
+    input.modifiers ??
+    (typeof input.modifierText === "string"
+      ? parseModifierLines(input.modifierText)
+      : undefined);
   const uploaded: RestaurantMenuItem = {
     id,
     title,
@@ -1168,6 +1187,7 @@ export function uploadRestaurantMenuItem(
     aliases,
     description: input.description?.trim() || undefined,
     photoUrl: input.photoUrl?.trim() || undefined,
+    ...(modifiers && modifiers.length > 0 ? { modifiers } : {}),
   };
   return {
     ...ops,
@@ -1281,14 +1301,112 @@ export const SEED_PAPER_MENU_PARSE_FIXTURE: ParsedMenuJson = {
   ],
 };
 
+export function menuUploadFileNames(input: MenuUploadInput = {}): string[] {
+  const named = [
+    ...(input.fileNames ?? []),
+    ...(input.attachments ?? []).map((file) => file.name),
+  ]
+    .map((name) => name.trim())
+    .filter(Boolean);
+  return [...new Set(named)];
+}
+
 export function inferredMenuUploadKind(
   input: MenuUploadInput = {},
 ): MenuUploadKind {
   if (input.kind) return input.kind;
-  const names = input.fileNames ?? [];
-  if (names.some((name) => /\.pdf$/i.test(name))) return "pdf";
+  const names = menuUploadFileNames(input);
+  const types = (input.attachments ?? []).map((file) => file.type ?? "");
+  if (
+    names.some((name) => /\.pdf$/i.test(name)) ||
+    types.some((type) => /pdf/i.test(type))
+  ) {
+    return "pdf";
+  }
   if (names.length > 0) return "photo";
   return "fixture";
+}
+
+/** Kitchen / scout must attach photos or a PDF unless tests pass a fixture. */
+export function validatePaperMenuUpload(
+  input: MenuUploadInput = {},
+): { ok: true } | { ok: false; error: string } {
+  if (input.useFixture || input.parsed || input.rawJson?.trim()) {
+    return { ok: true };
+  }
+  const names = menuUploadFileNames(input);
+  if (names.length === 0) {
+    return {
+      ok: false,
+      error: "Upload 2–3 photos of the paper takeout menu or a PDF.",
+    };
+  }
+  if (names.length > 3) {
+    return {
+      ok: false,
+      error: "Upload 2–3 photos, or one PDF — not a whole camera roll.",
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Merchant review text: "Size (required): Regular, Large +3"
+ * and "Add-ons: Bacon +1.50, Extra cheese +1".
+ */
+export function parseModifierLines(text: string): MenuModifierGroup[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const colon = line.indexOf(":");
+      const head = (colon >= 0 ? line.slice(0, colon) : line).trim();
+      const rawOptions = colon >= 0 ? line.slice(colon + 1).trim() : "";
+      if (!head) return null;
+      const required = /\(\s*required\s*\)/i.test(head);
+      const name = head.replace(/\(\s*required\s*\)/i, "").trim();
+      if (!name) return null;
+      const options = rawOptions
+        ? rawOptions
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .map((option) => {
+              const priced = option.match(
+                /^(.*?)(?:\s+\+?\s*\$?\s*(\d+(?:\.\d+)?))\s*$/,
+              );
+              if (priced?.[1]?.trim()) {
+                return { name: priced[1].trim(), price: Number(priced[2]) };
+              }
+              return option;
+            })
+        : [];
+      return normalizeModifierGroup(
+        { group: name, required, options },
+        index,
+      );
+    })
+    .filter((group): group is MenuModifierGroup => Boolean(group));
+}
+
+export function formatModifierLines(
+  groups?: MenuModifierGroup[] | null,
+): string {
+  if (!groups?.length) return "";
+  return groups
+    .map((group) => {
+      const head = group.required ? `${group.name} (required)` : group.name;
+      const options = group.choices
+        .map((choice) =>
+          typeof choice.priceUsd === "number"
+            ? `${choice.name} +${choice.priceUsd}`
+            : choice.name,
+        )
+        .join(", ");
+      return options ? `${head}: ${options}` : head;
+    })
+    .join("\n");
 }
 
 export function parsedMenuItemId(itemName: string): string {
@@ -1463,6 +1581,7 @@ export function ingestMenuPhotos(
 ): DeliveryOps {
   const parsed = parseMenuFromUpload(input);
   const kind = inferredMenuUploadKind(input);
+  const uploadedFiles = menuUploadFileNames(input);
   const source: Extract<RestaurantMenuItemSource, "photo_parse" | "pdf_parse"> =
     kind === "pdf" ? "pdf_parse" : "photo_parse";
   const drafts = parsed.items.map((item) => parsedItemToDraft(item, source));
@@ -1487,7 +1606,59 @@ export function ingestMenuPhotos(
           ingestSource: kind,
           crawledAt: ingestedAt,
           approvedAt: null,
+          uploadedFiles: uploadedFiles.length ? uploadedFiles : menu.uploadedFiles,
+          parseNote: input.parseNote?.trim() || menu.parseNote,
           items: [...kept, ...drafts],
+        },
+      };
+    }),
+  };
+}
+
+/** Five-minute review — fix a draft price or modifier tree before Approve. */
+export function reviewRestaurantMenuItem(
+  ops: DeliveryOps,
+  restaurantId: string,
+  itemId: string,
+  patch: {
+    title?: string;
+    description?: string;
+    draftPriceUsd?: number;
+    modifiers?: MenuModifierGroup[];
+    modifierText?: string;
+  },
+): DeliveryOps {
+  const modifiers =
+    patch.modifiers ??
+    (typeof patch.modifierText === "string"
+      ? parseModifierLines(patch.modifierText)
+      : undefined);
+  return {
+    ...ops,
+    restaurants: ops.restaurants.map((row) => {
+      if (row.id !== restaurantId) return row;
+      const menu = row.menu;
+      if (!menu) return row;
+      return {
+        ...row,
+        menu: {
+          ...menu,
+          items: menu.items.map((item) => {
+            if (item.id !== itemId) return item;
+            return {
+              ...item,
+              title: patch.title?.trim() || item.title,
+              description:
+                patch.description !== undefined
+                  ? patch.description.trim() || undefined
+                  : item.description,
+              draftPriceUsd:
+                typeof patch.draftPriceUsd === "number"
+                  ? money(Math.max(0, patch.draftPriceUsd))
+                  : item.draftPriceUsd,
+              ...(modifiers !== undefined ? { modifiers } : {}),
+            };
+          }),
         },
       };
     }),
@@ -1570,6 +1741,16 @@ export function normalizeDeliveryRestaurant(
               ? item.modifiers
               : undefined,
           })),
+          uploadedFiles: Array.isArray(row.menu.uploadedFiles)
+            ? row.menu.uploadedFiles.filter(
+                (name): name is string =>
+                  typeof name === "string" && Boolean(name.trim()),
+              )
+            : undefined,
+          parseNote:
+            typeof row.menu.parseNote === "string" && row.menu.parseNote.trim()
+              ? row.menu.parseNote.trim()
+              : undefined,
         }
       : crawlRestaurantMenuDraft({
           restaurantName: row.name,
