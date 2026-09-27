@@ -260,10 +260,14 @@ function mergeStoredCopy(
       briefIsDeliveryPlatform(projectName, brief) &&
       (!/pickup/i.test(storedServiceBlob) ||
         !/favorite/i.test(storedServiceBlob));
-    if (storedServicesLookGrown && !deliveryServicesMissGuestLoop) {
+    if (
+      storedServicesLookGrown &&
+      !deliveryServicesMissGuestLoop &&
+      copy.services
+    ) {
       next.services = copy.services.map((service) => ({
-        title: service.title.trim(),
-        detail: service.detail.trim(),
+        title: (service.title ?? "").trim(),
+        detail: (service.detail ?? "").trim(),
       }));
     }
     for (const key of [
@@ -388,11 +392,12 @@ export async function repairCustomerLandingIfNeeded(
           (briefIsDeliveryPlatform(project.name, project.brief) &&
             (!Array.isArray(copy.menuItems) || copy.menuItems.length < 3)) ||
           (briefIsDeliveryPlatform(project.name, project.brief) &&
-            !/pickup/i.test(
-              (copy.services ?? [])
+            (() => {
+              const serviceBlob = (copy.services ?? [])
                 .flatMap((item) => [item.title, item.detail])
-                .join(" "),
-            )) ||
+                .join(" ");
+              return !/pickup/i.test(serviceBlob) || !/favorite/i.test(serviceBlob);
+            })()) ||
           seedLandingCopyMismatchesIndustry(project.name, project.brief, copy),
       );
     } catch {
