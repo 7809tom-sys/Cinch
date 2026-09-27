@@ -1001,14 +1001,16 @@ const reviewedParm = reviewedDraft.restaurants
   .find((row) => row.id === "rest-tacos")
   ?.menu?.items.find((item) => item.id === "menu-parse-chicken-parm-hero");
 assert(
-  reviewedParm?.draftPriceUsd === 16.5 &&
-    reviewedParm.confirmedPriceUsd == null &&
-    reviewedParm.modifiers?.some(
-      (group) =>
-        group.name === "Size" &&
-        group.required &&
-        group.choices.some((choice) => choice.priceUsd === 4),
-    ),
+  Boolean(
+    reviewedParm?.draftPriceUsd === 16.5 &&
+      reviewedParm.confirmedPriceUsd == null &&
+      reviewedParm.modifiers?.some(
+        (group) =>
+          group.name === "Size" &&
+          group.required &&
+          group.choices.some((choice) => choice.priceUsd === 4),
+      ),
+  ),
   "reviewRestaurantMenuItem writes draft price and modifiers without going live",
 );
 const uploadedWithMods = uploadRestaurantMenuItem(ops, "rest-pilot", {
@@ -1019,15 +1021,17 @@ const uploadedWithMods = uploadRestaurantMenuItem(ops, "rest-pilot", {
   modifierText: "Dressing (required): Lemon, Ranch\nAdd-ons: Avocado +2",
 });
 assert(
-  uploadedWithMods.restaurants
-    .find((row) => row.id === "rest-pilot")
-    ?.menu?.items.find((item) => item.title === "Citrus greens")
-    ?.modifiers?.some(
-      (group) =>
-        group.name === "Dressing" &&
-        group.required &&
-        group.choices.some((choice) => choice.name === "Ranch"),
-    ),
+  Boolean(
+    uploadedWithMods.restaurants
+      .find((row) => row.id === "rest-pilot")
+      ?.menu?.items.find((item) => item.title === "Citrus greens")
+      ?.modifiers?.some(
+        (group) =>
+          group.name === "Dressing" &&
+          group.required &&
+          group.choices.some((choice) => choice.name === "Ranch"),
+      ),
+  ),
   "upload item accepts modifier review text",
 );
 const ingestedNamed = ingestMenuPhotos(ops, "rest-tacos", {
