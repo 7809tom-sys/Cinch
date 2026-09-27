@@ -23,11 +23,17 @@ import {
   approveMenuDraftAction,
   confirmRestaurantMenuPriceAction,
   ingestMenuPhotosAction,
+  reviewRestaurantMenuItemAction,
   setMenuItemEightySixedAction,
   uploadRestaurantMenuItemAction,
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
+import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
+import {
+  formatModifierLines,
+  type MenuUploadInput,
+} from "@/lib/seed-delivery";
 
 function ticketRestaurantNet(ops: DeliveryOps, ticket: MerchantTicket) {
   const row = ops.ledger.find((item) => item.orderId === ticket.orderId);
@@ -251,6 +257,16 @@ export function HometownRestaurantPortal({
               ingestMenuPhotosAction(projectId, restaurant.id, input),
             )
           }
+          onReview={(itemId, patch) =>
+            run(() =>
+              reviewRestaurantMenuItemAction(
+                projectId,
+                restaurant.id,
+                itemId,
+                patch,
+              ),
+            )
+          }
           onApprove={() =>
             run(() => approveMenuDraftAction(projectId, restaurant.id))
           }
@@ -264,13 +280,14 @@ export function HometownRestaurantPortal({
               ),
             )
           }
-          onConfirm={(itemId, priceUsd) =>
+          onConfirm={(itemId, priceUsd, review) =>
             run(() =>
               confirmRestaurantMenuPriceAction(
                 projectId,
                 restaurant.id,
                 itemId,
                 priceUsd,
+                review,
               ),
             )
           }
@@ -327,6 +344,7 @@ function MenuConfirmBoard({
   restaurant,
   pending,
   onIngest,
+  onReview,
   onApprove,
   onEightySix,
   onConfirm,
@@ -334,24 +352,32 @@ function MenuConfirmBoard({
 }: {
   restaurant: DeliveryRestaurant;
   pending: boolean;
-  onIngest: (input: {
-    kind?: "photo" | "pdf" | "fixture";
-    fileNames?: string[];
-    useFixture?: boolean;
-  }) => void;
+  onIngest: (input: MenuUploadInput) => void;
+  onReview: (
+    itemId: string,
+    patch: { draftPriceUsd?: number; modifierText?: string },
+  ) => void;
   onApprove: () => void;
   onEightySix: (itemId: string, eightySixed: boolean) => void;
-  onConfirm: (itemId: string, priceUsd: number) => void;
+  onConfirm: (
+    itemId: string,
+    priceUsd: number,
+    review?: { modifierText?: string },
+  ) => void;
   onUpload: (input: {
     title: string;
     category?: string;
     priceUsd: number;
     description?: string;
     aliases?: string;
+    modifierText?: string;
   }) => void;
 }) {
   const items = restaurant.menu?.items ?? [];
   const drafts = items.filter((item) => item.confirmedPriceUsd == null);
+  const [pickedNames, setPickedNames] = useState<string[]>([]);
+  const [uploadHint, setUploadHint] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
   return (
     <section className="rounded-xl border border-brand/15 bg-foam p-5">
       <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
@@ -371,8 +397,17 @@ function MenuConfirmBoard({
         web view so diners cannot buy it. {drafts.length} item
         {drafts.length === 1 ? "" : "s"} still need sign-off.
       </p>
+      {restaurant.menu?.uploadedFiles?.length ? (
+        <p className="mt-3 text-sm font-semibold text-brand-deep">
+          Received {restaurant.menu.uploadedFiles.join(", ")}
+        </p>
+      ) : null}
+      {restaurant.menu?.parseNote ? (
+        <p className="mt-2 text-sm text-muted">{restaurant.menu.parseNote}</p>
+      ) : null}
       <form
         className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
+        encType="multipart/form-data"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -380,17 +415,22 @@ function MenuConfirmBoard({
             (form.elements.namedItem("menuFiles") as HTMLInputElement | null)
               ?.files ?? [],
           );
-          const fileNames = files.map((file) => file.name);
-          onIngest({
-            kind: fileNames.some((name) => /\.pdf$/i.test(name))
-              ? "pdf"
-              : files.length
-                ? "photo"
-                : "fixture",
-            fileNames,
-            useFixture: true,
-          });
-          form.reset();
+          setUploadHint(null);
+          setReading(true);
+          void collectPaperMenuUpload(files)
+            .then((input) => {
+              onIngest(input);
+              form.reset();
+              setPickedNames([]);
+            })
+            .catch((error: unknown) => {
+              setUploadHint(
+                error instanceof Error
+                  ? error.message
+                  : "Could not read those files.",
+              );
+            })
+            .finally(() => setReading(false));
         }}
       >
         <label className="text-sm font-semibold text-brand-deep">
@@ -398,17 +438,33 @@ function MenuConfirmBoard({
           <input
             name="menuFiles"
             type="file"
-            accept="image/*,.pdf"
+            accept="image/*,.pdf,application/pdf"
             multiple
+            required
             className="mt-1 block w-full text-sm"
+            onChange={(event) =>
+              setPickedNames(
+                Array.from(event.target.files ?? []).map((file) => file.name),
+              )
+            }
           />
         </label>
+        {pickedNames.length ? (
+          <p className="basis-full text-sm text-muted">
+            Ready to parse: {pickedNames.join(", ")}
+          </p>
+        ) : null}
+        {uploadHint ? (
+          <p className="basis-full text-sm font-semibold text-red-700" role="alert">
+            {uploadHint}
+          </p>
+        ) : null}
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || reading}
           className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
         >
-          Parse paper menu
+          {reading ? "Reading files…" : "Parse paper menu"}
         </button>
         {drafts.length > 0 ? (
           <button
@@ -435,6 +491,7 @@ function MenuConfirmBoard({
             priceUsd: Math.round(price * 100) / 100,
             description: String(form.get("description") ?? ""),
             aliases: String(form.get("aliases") ?? ""),
+            modifierText: String(form.get("modifierText") ?? ""),
           });
           event.currentTarget.reset();
         }}
@@ -481,6 +538,17 @@ function MenuConfirmBoard({
             name="description"
             placeholder="What the diner should see"
             className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <label className="text-sm font-semibold text-brand-deep sm:col-span-2">
+          Modifiers
+          <textarea
+            name="modifierText"
+            rows={3}
+            placeholder={
+              "Size (required): Regular, Large +3\nExtra cheese: Add extra cheese +1.50"
+            }
+            className="mt-1 block w-full rounded-md border border-brand/20 px-3 py-2 text-sm"
           />
         </label>
         <button
@@ -561,7 +629,9 @@ function MenuConfirmBoard({
                   const form = new FormData(event.currentTarget);
                   const price = Number(form.get("priceUsd"));
                   if (!Number.isFinite(price) || price < 0) return;
-                  onConfirm(item.id, Math.round(price * 100) / 100);
+                  onConfirm(item.id, Math.round(price * 100) / 100, {
+                    modifierText: String(form.get("modifierText") ?? ""),
+                  });
                 }}
               >
                 <label className="text-sm font-semibold text-brand-deep">
@@ -577,6 +647,37 @@ function MenuConfirmBoard({
                     className="mt-1 block min-h-11 w-28 rounded-md border border-brand/20 px-3"
                   />
                 </label>
+                <label className="min-w-[16rem] flex-1 text-sm font-semibold text-brand-deep">
+                  Review modifiers
+                  <textarea
+                    name="modifierText"
+                    rows={3}
+                    defaultValue={formatModifierLines(item.modifiers)}
+                    placeholder={
+                      "Size (required): Regular, Large +3\nAdd-ons: Bacon +1.50"
+                    }
+                    className="mt-1 block w-full min-w-56 rounded-md border border-brand/20 px-3 py-2 text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={(event) => {
+                    const form = event.currentTarget.form;
+                    if (!form) return;
+                    const data = new FormData(form);
+                    const price = Number(data.get("priceUsd"));
+                    onReview(item.id, {
+                      draftPriceUsd: Number.isFinite(price)
+                        ? Math.round(price * 100) / 100
+                        : undefined,
+                      modifierText: String(data.get("modifierText") ?? ""),
+                    });
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+                >
+                  Save review
+                </button>
                 <button
                   type="submit"
                   disabled={pending}

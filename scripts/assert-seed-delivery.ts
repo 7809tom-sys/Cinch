@@ -62,7 +62,13 @@ import {
   findSellableMenuItems,
   HOMETOWN_VISION_MENU_ITEM_EXAMPLE,
   ingestMenuPhotos,
+  inferredMenuUploadKind,
+  menuUploadFileNames,
   parseMenuFromUpload,
+  parseModifierLines,
+  formatModifierLines,
+  reviewRestaurantMenuItem,
+  validatePaperMenuUpload,
   SEED_PAPER_MENU_PARSE_FIXTURE,
   setMenuItemEightySixed,
   threePartyStripeSplit,
@@ -949,6 +955,101 @@ assert(
     ),
   "approve makes parsed plates sellable on diner find",
 );
+assert(
+  inferredMenuUploadKind({
+    attachments: [{ name: "takeout.pdf", type: "application/pdf" }],
+  }) === "pdf" &&
+    menuUploadFileNames({
+      attachments: [{ name: "takeout-1.jpg" }, { name: "takeout-2.jpg" }],
+    }).join(",") === "takeout-1.jpg,takeout-2.jpg" &&
+    !validatePaperMenuUpload({}).ok &&
+    validatePaperMenuUpload({
+      attachments: [{ name: "takeout-1.jpg" }, { name: "takeout-2.jpg" }],
+    }).ok,
+  "paper-menu upload requires real photos or a PDF and infers pdf vs photo",
+);
+const reviewedMods = parseModifierLines(
+  "Size (required): Regular, Large +3\nAdd-ons: Bacon +1.50",
+);
+assert(
+  Boolean(
+    reviewedMods[0]?.required &&
+      reviewedMods[0]?.name === "Size" &&
+      reviewedMods[0]?.choices.some(
+        (choice) => choice.name === "Large" && choice.priceUsd === 3,
+      ) &&
+      !reviewedMods[1]?.required &&
+      reviewedMods[1]?.choices.some(
+        (choice) => choice.name === "Bacon" && choice.priceUsd === 1.5,
+      ) &&
+      /Size \(required\): Regular, Large \+3/.test(
+        formatModifierLines(reviewedMods),
+      ),
+  ),
+  "merchant modifier review text parses required groups and add-on prices",
+);
+const reviewedDraft = reviewRestaurantMenuItem(
+  ingestedPaper,
+  "rest-tacos",
+  "menu-parse-chicken-parm-hero",
+  {
+    draftPriceUsd: 16.5,
+    modifierText: "Size (required): Regular, Large +4\nExtra cheese: Add extra cheese +2",
+  },
+);
+const reviewedParm = reviewedDraft.restaurants
+  .find((row) => row.id === "rest-tacos")
+  ?.menu?.items.find((item) => item.id === "menu-parse-chicken-parm-hero");
+assert(
+  Boolean(
+    reviewedParm?.draftPriceUsd === 16.5 &&
+      reviewedParm.confirmedPriceUsd == null &&
+      reviewedParm.modifiers?.some(
+        (group) =>
+          group.name === "Size" &&
+          group.required &&
+          group.choices.some((choice) => choice.priceUsd === 4),
+      ),
+  ),
+  "reviewRestaurantMenuItem writes draft price and modifiers without going live",
+);
+const uploadedWithMods = uploadRestaurantMenuItem(ops, "rest-pilot", {
+  title: "Citrus greens",
+  category: "Plates",
+  priceUsd: 13,
+  aliases: ["salad", "greens"],
+  modifierText: "Dressing (required): Lemon, Ranch\nAdd-ons: Avocado +2",
+});
+assert(
+  Boolean(
+    uploadedWithMods.restaurants
+      .find((row) => row.id === "rest-pilot")
+      ?.menu?.items.find((item) => item.title === "Citrus greens")
+      ?.modifiers?.some(
+        (group) =>
+          group.name === "Dressing" &&
+          group.required &&
+          group.choices.some((choice) => choice.name === "Ranch"),
+      ),
+  ),
+  "upload item accepts modifier review text",
+);
+const ingestedNamed = ingestMenuPhotos(ops, "rest-tacos", {
+  kind: "photo",
+  attachments: [{ name: "counter-1.jpg" }, { name: "counter-2.jpg" }],
+  useFixture: true,
+  parseNote: "Saved counter-1.jpg, counter-2.jpg.",
+});
+assert(
+  ingestedNamed.restaurants
+    .find((row) => row.id === "rest-tacos")
+    ?.menu?.uploadedFiles?.join(",") === "counter-1.jpg,counter-2.jpg" &&
+    /counter-1/.test(
+      ingestedNamed.restaurants.find((row) => row.id === "rest-tacos")?.menu
+        ?.parseNote ?? "",
+    ),
+  "ingest records the uploaded photo names so the kitchen sees the snap landed",
+);
 const eightySixed = setMenuItemEightySixed(
   approvedPaper,
   "rest-tacos",
@@ -1399,6 +1500,12 @@ assert(
     /does not certify Toast/.test(restaurantDesk) &&
     /Red Card crawler/.test(restaurantDesk) &&
     /paper-menu fixture/.test(restaurantDesk) &&
+    /collectPaperMenuUpload/.test(restaurantDesk) &&
+    /reviewRestaurantMenuItemAction/.test(restaurantDesk) &&
+    /Save review/.test(restaurantDesk) &&
+    /Review modifiers/.test(restaurantDesk) &&
+    /modifierText/.test(restaurantDesk) &&
+    !/useFixture:\s*true/.test(restaurantDesk) &&
     /eightySixed/.test(restaurantDesk) &&
     /line-through/.test(restaurantDesk) &&
     !/You issue the 1099/.test(restaurantDesk) &&
@@ -1497,6 +1604,8 @@ assert(
     /ingestMenuPhotosAction/.test(driverDesk) &&
     /approveMenuDraftAction/.test(driverDesk) &&
     /Scout paper-menu parse/.test(driverDesk) &&
+    /collectPaperMenuUpload/.test(driverDesk) &&
+    !/useFixture:\s*true/.test(driverDesk) &&
     /Red Card crawler/.test(driverDesk),
   "driver portal shows Connect payouts, trip math, tax forms, Riley, no own-kitchen 5%, 60 days free, geofence, IC, and ACH",
 );
@@ -1540,8 +1649,29 @@ const deliveryActions = readFileSync(
 );
 assert(
   /assignRestaurantScoutAction/.test(deliveryActions) &&
-    /revalidatePath\(`\/site\/\$\{projectId\}\/shop`\)/.test(deliveryActions),
-  "merchant confirm and upload refresh diner shop; restaurateurs can sign an unsigned kitchen",
+    /revalidatePath\(`\/site\/\$\{projectId\}\/shop`\)/.test(deliveryActions) &&
+    /parsePaperMenuWithVision/.test(deliveryActions) &&
+    /reviewRestaurantMenuItemAction/.test(deliveryActions) &&
+    /validatePaperMenuUpload/.test(deliveryActions) &&
+    !/\.\.\.input,\s*useFixture:\s*true/.test(deliveryActions),
+  "merchant confirm and upload refresh diner shop; paper-menu ingest sends file bytes to vision instead of forcing the fixture",
+);
+const menuVision = readFileSync(
+  join(process.cwd(), "src/lib/menu-vision.ts"),
+  "utf8",
+);
+const menuUploadFiles = readFileSync(
+  join(process.cwd(), "src/lib/menu-upload-files.ts"),
+  "utf8",
+);
+assert(
+  /parsePaperMenuWithVision/.test(menuVision) &&
+    /gemini-1.5-flash/.test(menuVision) &&
+    /claude-3-5-sonnet/.test(menuVision) &&
+    /collectPaperMenuUpload/.test(menuUploadFiles) &&
+    /dataBase64/.test(menuUploadFiles) &&
+    /compressProductPhoto/.test(menuUploadFiles),
+  "vision parse and client file reader send photo/PDF bytes instead of names only",
 );
 
 const alexTrack = dinerOrderTrack(ops, "ord-sample-pilot");

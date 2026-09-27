@@ -51,6 +51,8 @@ import {
   ingestMenuPhotosAction,
   setDriverOnlineAction,
 } from "@/app/portal/[id]/delivery-actions";
+import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
+import type { MenuUploadInput } from "@/lib/seed-delivery";
 
 export function HometownDriverPortal({
   projectId,
@@ -691,14 +693,7 @@ function ScoutPaperMenuDesk({
 }: {
   restaurants: DeliveryRestaurant[];
   pending: boolean;
-  onIngest: (
-    restaurantId: string,
-    input: {
-      kind?: "photo" | "pdf" | "fixture";
-      fileNames?: string[];
-      useFixture?: boolean;
-    },
-  ) => void;
+  onIngest: (restaurantId: string, input: MenuUploadInput) => void;
   onApprove: (restaurantId: string) => void;
 }) {
   const [restaurantId, setRestaurantId] = useState(
@@ -709,6 +704,9 @@ function ScoutPaperMenuDesk({
   const drafts =
     restaurant?.menu?.items.filter((item) => item.confirmedPriceUsd == null) ??
     [];
+  const [pickedNames, setPickedNames] = useState<string[]>([]);
+  const [uploadHint, setUploadHint] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
   if (!restaurant) return null;
   return (
     <div className="mt-4 rounded-lg border border-brand/10 bg-white px-4 py-3">
@@ -719,12 +717,22 @@ function ScoutPaperMenuDesk({
         Snap 2–3 photos or upload a PDF
       </h3>
       <p className="mt-1 text-sm text-muted">
-        Seed parse writes a fixture draft until a vision key is wired. Glance
-        at the prices and modifiers, then Approve — five-minute sign-off. The
+        Upload 2–3 photos or a PDF. Vision parse runs when a Gemini or Claude
+        key is wired; Seed parse writes a fixture draft if not. Glance at
+        the prices and modifiers, then Approve — five-minute sign-off. The
         kitchen 86s plates on the merchant tablet during service.
       </p>
+      {restaurant.menu?.uploadedFiles?.length ? (
+        <p className="mt-2 text-sm font-semibold text-brand-deep">
+          Received {restaurant.menu.uploadedFiles.join(", ")}
+        </p>
+      ) : null}
+      {restaurant.menu?.parseNote ? (
+        <p className="mt-1 text-sm text-muted">{restaurant.menu.parseNote}</p>
+      ) : null}
       <form
         className="mt-3 flex flex-wrap items-end gap-3"
+        encType="multipart/form-data"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -732,17 +740,22 @@ function ScoutPaperMenuDesk({
             (form.elements.namedItem("menuFiles") as HTMLInputElement | null)
               ?.files ?? [],
           );
-          const fileNames = files.map((file) => file.name);
-          onIngest(restaurant.id, {
-            kind: fileNames.some((name) => /\.pdf$/i.test(name))
-              ? "pdf"
-              : files.length
-                ? "photo"
-                : "fixture",
-            fileNames,
-            useFixture: true,
-          });
-          form.reset();
+          setUploadHint(null);
+          setReading(true);
+          void collectPaperMenuUpload(files)
+            .then((input) => {
+              onIngest(restaurant.id, input);
+              form.reset();
+              setPickedNames([]);
+            })
+            .catch((error: unknown) => {
+              setUploadHint(
+                error instanceof Error
+                  ? error.message
+                  : "Could not read those files.",
+              );
+            })
+            .finally(() => setReading(false));
         }}
       >
         <label className="text-sm font-semibold text-brand-deep">
@@ -764,17 +777,33 @@ function ScoutPaperMenuDesk({
           <input
             name="menuFiles"
             type="file"
-            accept="image/*,.pdf"
+            accept="image/*,.pdf,application/pdf"
             multiple
+            required
             className="mt-1 block w-full text-sm"
+            onChange={(event) =>
+              setPickedNames(
+                Array.from(event.target.files ?? []).map((file) => file.name),
+              )
+            }
           />
         </label>
+        {pickedNames.length ? (
+          <p className="basis-full text-sm text-muted">
+            Ready to parse: {pickedNames.join(", ")}
+          </p>
+        ) : null}
+        {uploadHint ? (
+          <p className="basis-full text-sm font-semibold text-red-700" role="alert">
+            {uploadHint}
+          </p>
+        ) : null}
         <button
           type="submit"
-          disabled={pending}
+          disabled={pending || reading}
           className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
         >
-          Parse paper menu
+          {reading ? "Reading files…" : "Parse paper menu"}
         </button>
         {drafts.length > 0 ? (
           <button
