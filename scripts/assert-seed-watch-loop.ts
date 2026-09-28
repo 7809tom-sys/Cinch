@@ -159,6 +159,21 @@ assert(
     ).includes("Watch ping from"),
   "Cinch Seed desk and script board show the page watch.js pinged from",
 );
+assert(
+  /make a\s+store logo/.test(
+    readFileSync(
+      join(process.cwd(), "src/components/watch-ping-line.tsx"),
+      "utf8",
+    ),
+  ) &&
+    /make a store logo/.test(
+      readFileSync(
+        join(process.cwd(), "src/app/portal/[id]/connect-panel.tsx"),
+        "utf8",
+      ),
+    ),
+  "Cinch Seed tells operators watch.js can make a logo on the affiliate page",
+);
 
 if (process.exitCode) {
   console.error("seed-watch-loop assertions failed");

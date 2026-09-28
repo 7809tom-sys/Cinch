@@ -9,7 +9,13 @@ import {
   liveWebsiteUrl,
   seedEmbedSnippet,
 } from "../src/lib/domain";
+import {
+  affiliateLogoName,
+  buildAffiliateLogoSvg,
+  isAffiliateWatchPage,
+} from "../src/lib/affiliate-logo";
 import { GET as healthGet } from "../src/app/v1/health/route";
+import { GET as logoGet } from "../src/app/v1/logo/route";
 import { PLATFORM_ADAPTERS } from "../src/lib/platforms";
 import { buildWatchClientJs } from "../src/lib/watch-client";
 import {
@@ -131,6 +137,36 @@ assert(
 assert(
   mayDeliverLiveImprovements({ liveUrl: "https://example.com" }) === true,
   "unrelated hosts can still receive watch.js patches",
+);
+const cabinetPlan = planInPlaceImprovements({
+  name: "Cabinet Dealz",
+  brief: "Affiliate storefronts and a kitchen designer",
+  liveUrl: "https://www.cabinetdealz.com/affiliate",
+});
+assert(
+  cabinetPlan.improvements.some((item) => /store logo on the affiliate page/i.test(item.title)),
+  "generic live hosts get an affiliate-page logo improvement",
+);
+assert(
+  isAffiliateWatchPage("/store/kathmandu", "") &&
+    isAffiliateWatchPage("/affiliate", "") &&
+    isAffiliateWatchPage("/", "?viewAs=kathmandu") &&
+    !isAffiliateWatchPage("/", ""),
+  "affiliate logo only targets affiliate and storefront pages",
+);
+assert(
+  affiliateLogoName({ pathname: "/store/kathmandu" }) === "Kathmandu" &&
+    affiliateLogoName({
+      pathname: "/affiliate",
+      title: "CabinetDealz | Cabinets, Countertops & More",
+    }) === "Store" &&
+    /Kathmandu/.test(buildAffiliateLogoSvg("Kathmandu")),
+  "affiliate wordmark uses the store name",
+);
+assert(
+  buildAffiliateLogoSvg("Kathmandu").includes(">K<") &&
+    buildAffiliateLogoSvg("<script>").includes("&lt;script&gt;"),
+  "affiliate wordmark escapes store names and shows a monogram",
 );
 assert(
   datingPlan.improvements.every((item) =>
@@ -568,8 +604,16 @@ assert(
   "portal Connect panel does not pull a Just Putz It live key",
 );
 
-function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?: string }) {
-  const created: Array<{ id?: string; text?: string }> = [];
+function runWatch(scriptEl: {
+  src?: string;
+  attrs: Record<string, string>;
+  host?: string;
+  path?: string;
+  search?: string;
+  title?: string;
+  hasLogoImg?: boolean;
+}) {
+  const created: Array<{ id?: string; text?: string; innerHTML?: string }> = [];
   const fetches: string[] = [];
   const fakeScript = {
     src: scriptEl.src || "https://www.cinchseed.com/v1/watch.js",
@@ -577,23 +621,60 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?
       return scriptEl.attrs[name] || "";
     },
   };
+  const logoImg = {
+    tag: "img",
+    src: "/manus-storage/logo.png",
+    alt: "Store logo",
+    getAttribute(name: string) {
+      if (name === "src") return "/manus-storage/logo.png";
+      if (name === "alt") return "Store logo";
+      return "";
+    },
+  };
   const body = {
     appendChild(node: { id?: string }) {
       created.push(node);
       return node;
     },
+    insertBefore(node: { id?: string }) {
+      created.push(node);
+      return node;
+    },
+  };
+  const header = {
+    firstChild: null,
+    insertBefore(node: { id?: string }) {
+      created.push(node);
+      return node;
+    },
   };
   const store: Record<string, string> = {};
+  const path = scriptEl.path ?? "/";
+  const search = scriptEl.search ?? "";
+  const host = scriptEl.host ?? "justputzit.com";
   const context = createContext({
     window: { __CINCH_SEED_BOOT__: undefined } as Record<string, unknown>,
     document: {
       currentScript: null,
       body,
-      querySelectorAll() {
-        return [fakeScript];
+      title: scriptEl.title ?? "",
+      querySelectorAll(sel: string) {
+        if (String(sel).includes("watch.js") || String(sel).includes("script")) {
+          return [fakeScript];
+        }
+        if (String(sel).includes("img") && scriptEl.hasLogoImg) {
+          return [logoImg];
+        }
+        return [];
       },
-      querySelector() {
-        return fakeScript;
+      querySelector(sel: string) {
+        const needle = String(sel);
+        if (needle === "header" || needle === "nav") return header;
+        if (needle.includes("watch.js") || needle.includes("data-seed") || needle.includes("script")) {
+          return fakeScript;
+        }
+        if (needle.includes("img") && scriptEl.hasLogoImg) return logoImg;
+        return null;
       },
       getElementById() {
         return null;
@@ -603,6 +684,7 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?
           tag,
           style: { cssText: "" },
           textContent: "",
+          innerHTML: "",
           setAttribute() {},
           addEventListener() {},
           appendChild() {},
@@ -612,7 +694,12 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?
       },
       addEventListener() {},
     },
-    location: { href: `https://${scriptEl.host ?? "justputzit.com"}/`, hostname: scriptEl.host ?? "justputzit.com" },
+    location: {
+      href: `https://${host}${path}${search}`,
+      hostname: host,
+      pathname: path,
+      search,
+    },
     navigator: { userAgent: "assert" },
     console,
     sessionStorage: {
@@ -634,6 +721,7 @@ function runWatch(scriptEl: { src?: string; attrs: Record<string, string>; host?
       return 0;
     },
     encodeURIComponent,
+    decodeURIComponent,
     JSON,
     URLSearchParams,
     String,
@@ -674,6 +762,47 @@ assert(
   missingKey.created.some((node) => node.id === "cinch-seed-community"),
   "Community card still shows when Manus omitted data-key",
 );
+assert(
+  watchJs.includes("paintAffiliateLogo") &&
+    watchJs.includes("cinch-seed-affiliate-logo") &&
+    watchJs.includes("affiliate-logo"),
+  "watch.js can make a store logo on an affiliate page",
+);
+
+const affiliatePaint = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/store/kathmandu",
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+assert(
+  affiliatePaint.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
+  "watch.js paints a store logo on the affiliate storefront",
+);
+assert(
+  affiliatePaint.created.some((node) => node.id === "cinch-seed-community"),
+  "Community card still mounts on the affiliate storefront",
+);
+
+const alreadyHasLogo = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/affiliate",
+  hasLogoImg: true,
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+assert(
+  !alreadyHasLogo.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
+  "watch.js does not replace an uploaded affiliate logo",
+);
+
+const homeNoLogo = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/",
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+assert(
+  !homeNoLogo.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
+  "watch.js does not invent a logo on the marketing homepage",
+);
 
 assert(
   /after owner approval/i.test(PLACE_WIDGET_TITLE),
@@ -694,6 +823,17 @@ Promise.all([
       body.service === "cinch-seed-connect",
       "GET /v1/health names the Connect API",
     );
+  }),
+  logoGet(
+    new Request("https://www.cinchseed.com/v1/logo?name=Kathmandu"),
+  ).then(async (response) => {
+    const body = await response.text();
+    assert(response.ok, "GET /v1/logo is allowed");
+    assert(
+      response.headers.get("content-type")?.includes("image/svg+xml") === true,
+      "GET /v1/logo serves an SVG wordmark",
+    );
+    assert(/Kathmandu/.test(body), "GET /v1/logo uses the store name");
   }),
   lookAtJustPutzitLive(async () => {
     return new Response(

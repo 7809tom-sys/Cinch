@@ -36,10 +36,11 @@ export function ConnectPanel({
         Connect an existing website
       </h2>
       <p className="mt-2 text-sm text-muted">
-        Queue this snippet on a live host Cinch can actually update. Just
-        Putz It is not a Cinch Seed. Both <code>data-seed</code> and{" "}
-        <code>data-key</code> are required. No final update without owner
-        approval.
+        Queue this snippet on a live host Cinch can actually update. On an
+        affiliate page, watch.js can make a store logo when the store has no
+        image yet. Just Putz It is not a Cinch Seed. Both{" "}
+        <code>data-seed</code> and <code>data-key</code> are required. No
+        final update without owner approval.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
