@@ -27,6 +27,7 @@ import {
   type MenuUploadInput,
   type MerchantTicketStatus,
 } from "@/lib/seed-delivery";
+import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
 import {
   ensureDeliveryOpsInSeed,
@@ -152,7 +153,7 @@ export async function ingestMenuPhotosAction(
       nextInput = {
         ...nextInput,
         useFixture: true,
-        parseNote: `${vision.error} Wrote the Seed paper-menu fixture so you can still review prices and modifiers. Add a Gemini or Claude key to parse your photos.`,
+        parseNote: kitchenFacingVisionError(vision.error),
       };
     }
   } else if (

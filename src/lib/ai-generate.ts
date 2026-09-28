@@ -29,7 +29,7 @@ const CHEAP_FIRST: AiProviderId[] = [
 
 const DEFAULT_MODELS: Record<AiProviderId, string> = {
   deepseek: process.env.DEEPSEEK_MODEL?.trim() || "deepseek-chat",
-  google: process.env.GOOGLE_AI_MODEL?.trim() || "gemini-1.5-flash",
+  google: process.env.GOOGLE_AI_MODEL?.trim() || "gemini-2.5-flash",
   anthropic: process.env.ANTHROPIC_MODEL?.trim() || "claude-3-5-sonnet-20241022",
   openai: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
 };

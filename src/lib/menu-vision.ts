@@ -1,4 +1,5 @@
 import { extractJsonText } from "./ai-generate";
+import { geminiMenuVisionModels } from "./menu-vision-copy";
 import {
   loadStoredProviderKeys,
   resolveProviderApiKey,
@@ -32,11 +33,11 @@ function visionParts(attachments: MenuUploadAttachment[]) {
     });
 }
 
-async function parseWithGemini(
+async function parseWithGeminiModel(
   apiKey: string,
   parts: ReturnType<typeof visionParts>,
+  model: string,
 ): Promise<ParsedMenuJson> {
-  const model = process.env.GOOGLE_AI_MODEL?.trim() || "gemini-1.5-flash";
   const url = new URL(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
   );
@@ -76,6 +77,27 @@ async function parseWithGemini(
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error("Gemini returned an empty menu parse.");
   return parsedMenuFromVisionText(text);
+}
+
+async function parseWithGemini(
+  apiKey: string,
+  parts: ReturnType<typeof visionParts>,
+): Promise<ParsedMenuJson> {
+  const models = geminiMenuVisionModels(process.env.GOOGLE_AI_MODEL);
+  const errors: string[] = [];
+  for (const model of models) {
+    try {
+      return await parseWithGeminiModel(apiKey, parts, model);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Gemini failed.";
+      errors.push(message);
+      if (!/404|not found for API version|is not found/i.test(message)) {
+        throw error;
+      }
+    }
+  }
+  throw new Error(errors[0] || "Gemini vision failed.");
 }
 
 async function parseWithClaude(

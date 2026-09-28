@@ -139,6 +139,10 @@ import {
   toggleFavoriteKitchen,
 } from "../src/lib/seed-delivery";
 import {
+  geminiMenuVisionModels,
+  kitchenFacingVisionError,
+} from "../src/lib/menu-vision-copy";
+import {
   customerFacingShopCopy,
   customerFacingSiteCopy,
   deliveryLandingLooksLikeOpsEconomics,
@@ -1050,6 +1054,22 @@ assert(
     ),
   "ingest records the uploaded photo names so the kitchen sees the snap landed",
 );
+assert(
+  geminiMenuVisionModels("gemini-1.5-flash")[0] === "gemini-2.5-flash" &&
+    geminiMenuVisionModels("gemini-2.0-flash")[0] === "gemini-2.0-flash" &&
+    !kitchenFacingVisionError(
+      'Gemini 404: {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta"}}',
+    ).includes("gemini-1.5") &&
+    !kitchenFacingVisionError(
+      'Gemini 404: {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta"}}',
+    ).includes("Add a Gemini") &&
+    /outdated/.test(
+      kitchenFacingVisionError(
+        'Gemini 404: {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta"}}',
+      ),
+    ),
+  "retired Gemini 1.5 is skipped and the kitchen never sees the raw 404 JSON",
+);
 const eightySixed = setMenuItemEightySixed(
   approvedPaper,
   "rest-tacos",
@@ -1666,8 +1686,9 @@ const menuUploadFiles = readFileSync(
 );
 assert(
   /parsePaperMenuWithVision/.test(menuVision) &&
-    /gemini-1.5-flash/.test(menuVision) &&
+    /geminiMenuVisionModels/.test(menuVision) &&
     /claude-3-5-sonnet/.test(menuVision) &&
+    /kitchenFacingVisionError/.test(deliveryActions) &&
     /collectPaperMenuUpload/.test(menuUploadFiles) &&
     /dataBase64/.test(menuUploadFiles) &&
     /compressProductPhoto/.test(menuUploadFiles),
