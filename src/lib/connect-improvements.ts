@@ -97,6 +97,14 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
 
 const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
   {
+    id: "aff-logo",
+    growthAxis: "functionality",
+    title: "Make a store logo on the affiliate page",
+    why: "Affiliate storefronts look unfinished when they only show a letter. A wordmark belongs on the live affiliate page — not on Cinch’s copy of the site.",
+    liveChange:
+      "Paint a store wordmark on /affiliate and /store/:slug when no logo image is uploaded. Do not replace an existing logo or rewrite copy.",
+  },
+  {
     id: "gen-tools",
     growthAxis: "functionality",
     title: "Watch the site’s critical tools",

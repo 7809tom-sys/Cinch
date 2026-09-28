@@ -89,6 +89,135 @@ export function buildWatchClientJs(input?: {
     var improveUrl = origin + "/v1/improve?seed=" + encodeURIComponent(seed) + "&key=" + encodeURIComponent(key);
     var defaultTools = ${JSON.stringify(defaultTools)};
     var ui = null;
+    var pagePath = "";
+    var pageSearch = "";
+    var pageTitle = "";
+    try {
+      pagePath = (location && location.pathname) || "";
+      pageSearch = (location && location.search) || "";
+    } catch (e) {}
+    try {
+      pageTitle = (document && document.title) || "";
+    } catch (e) {}
+
+    function isAffiliatePage() {
+      var path = String(pagePath || "").split("?")[0].toLowerCase();
+      if (
+        path === "/affiliate" ||
+        path.indexOf("/affiliate/") === 0 ||
+        path.indexOf("/store/") === 0 ||
+        path.indexOf("/store-preview/") === 0
+      ) {
+        return true;
+      }
+      return /(?:^|[?&])viewAs=/.test(pageSearch || "");
+    }
+
+    function titleFromSlug(slug) {
+      return String(slug || "")
+        .split(/[-_]+/)
+        .filter(Boolean)
+        .map(function (part) {
+          return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        })
+        .join(" ")
+        .trim();
+    }
+
+    function affiliateName() {
+      var store = String(pagePath || "").match(/^\\/(?:store|store-preview)\\/([^/]+)/i);
+      if (store && store[1]) {
+        var fromSlug = titleFromSlug(decodeURIComponent(store[1]));
+        if (fromSlug) return fromSlug;
+      }
+      try {
+        var viewAs = new URLSearchParams(String(pageSearch || "").replace(/^\\?/, "")).get("viewAs");
+        if (viewAs && viewAs.trim()) {
+          var fromView = titleFromSlug(viewAs.trim());
+          if (fromView) return fromView;
+        }
+      } catch (e) {}
+      var title = String(pageTitle || "").trim();
+      if (title) {
+        var cleaned = title.split(/\\s+[—–|-]\\s+/)[0].replace(/\\s*\\|\\s*CabinetDealz.*$/i, "").trim();
+        if (cleaned && !/^cabinet\\s*dealz$/i.test(cleaned) && !/sign in|loading/i.test(cleaned)) {
+          return cleaned.slice(0, 32);
+        }
+      }
+      return "Store";
+    }
+
+    function escSvg(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function affiliateLogoSvg(name) {
+      var label = (name || "Store").slice(0, 32);
+      var safe = escSvg(label);
+      var initial = escSvg((label.replace(/[^A-Za-z0-9]/g, "").charAt(0) || "S").toUpperCase());
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40" role="img" aria-label="' +
+        safe +
+        ' logo"><rect width="40" height="40" rx="8" fill="#1a2b4a"/><text x="20" y="27" text-anchor="middle" fill="#c9a227" font-size="18" font-family="Georgia,Times New Roman,serif" font-weight="700">' +
+        initial +
+        '</text><text x="52" y="26" fill="#1a2b4a" font-size="16" font-family="Georgia,Times New Roman,serif" font-weight="700">' +
+        safe +
+        "</text></svg>";
+    }
+
+    function hasUploadedLogo() {
+      try {
+        if (document.getElementById("cinch-seed-affiliate-logo")) return true;
+        var imgs = document.querySelectorAll("img");
+        var i;
+        var img;
+        var src;
+        var alt;
+        for (i = 0; i < imgs.length; i++) {
+          img = imgs[i];
+          src = ((img.getAttribute && img.getAttribute("src")) || img.src || "").toLowerCase();
+          alt = ((img.getAttribute && img.getAttribute("alt")) || img.alt || "").toLowerCase();
+          if (!src) continue;
+          if (/logo|wordmark/.test(alt) || /logo|affiliates\\/|manus-storage/.test(src)) return true;
+        }
+      } catch (e) {}
+      return false;
+    }
+
+    function paintAffiliateLogo() {
+      if (!isAffiliatePage()) return;
+      if (document.getElementById("cinch-seed-affiliate-logo")) return;
+      if (hasUploadedLogo()) return;
+      var name = affiliateName();
+      var root = document.createElement("aside");
+      root.id = "cinch-seed-affiliate-logo";
+      root.setAttribute("data-cinch-logo", "made");
+      root.setAttribute("aria-label", name + " logo");
+      root.style.cssText = [
+        "position:fixed",
+        "z-index:2147483645",
+        "left:16px",
+        "top:16px",
+        "display:flex",
+        "align-items:center",
+        "pointer-events:none"
+      ].join(";");
+      root.innerHTML = affiliateLogoSvg(name);
+      var host =
+        document.querySelector("header") ||
+        document.querySelector("nav") ||
+        document.body;
+      if (host && host.insertBefore && host !== document.body) {
+        root.style.position = "static";
+        root.style.zIndex = "1";
+        host.insertBefore(root, host.firstChild);
+      } else {
+        document.body.appendChild(root);
+      }
+    }
 
     function setStatus(text, tone) {
       if (!ui || !ui.status) return;
@@ -170,13 +299,28 @@ export function buildWatchClientJs(input?: {
 
     function parseTools() {
       var raw = attr(script, "data-tools") || boot.tools;
-      if (!raw) return defaultTools.slice();
-      try {
-        var parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-        return Array.isArray(parsed) && parsed.length ? parsed : defaultTools.slice();
-      } catch (e) {
-        return defaultTools.slice();
+      var tools;
+      if (!raw) {
+        tools = defaultTools.slice();
+      } else {
+        try {
+          var parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+          tools = Array.isArray(parsed) && parsed.length ? parsed : defaultTools.slice();
+        } catch (e) {
+          tools = defaultTools.slice();
+        }
       }
+      if (isAffiliatePage()) {
+        tools = tools.concat([
+          {
+            id: "affiliate-logo",
+            label: "Affiliate store logo",
+            selector: "#cinch-seed-affiliate-logo, img[alt*='logo' i]",
+            growthAxis: "functionality"
+          }
+        ]);
+      }
+      return tools;
     }
 
     function probeTool(tool) {
@@ -318,6 +462,7 @@ export function buildWatchClientJs(input?: {
     } catch (e) {}
 
     function start() {
+      paintAffiliateLogo();
       paintCommunity();
       if (!key) {
         setStatus("Script is on the page, but data-key is missing. Copy the Connect Key from Cinch Admin or Portal.", "warn");
