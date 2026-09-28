@@ -16,6 +16,7 @@ import { getCustomerByEmail } from "@/lib/customers";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
 import { liveWebsiteUrl, seedEmbedSnippet } from "@/lib/domain";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
+import { WatchPingLine } from "@/components/watch-ping-line";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
 
 export const dynamic = "force-dynamic";
@@ -387,12 +388,14 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               Status from the live embed — critical tools plus pending
               adaptations across the three growth axes.
             </p>
-            <p className="mt-3 text-sm font-semibold break-words text-brand-deep">
-              {watch?.isLive ? "Live signal received" : "Waiting for watch script"}
-              {watch?.heartbeat
-                ? ` · last ${new Date(watch.heartbeat.receivedAt).toLocaleString()}`
-                : ""}
-            </p>
+            <div className="mt-3">
+              <WatchPingLine
+                isLive={Boolean(watch?.isLive)}
+                href={watch?.heartbeat?.href}
+                receivedAt={watch?.heartbeat?.receivedAt}
+                hosts={watch?.hosts}
+              />
+            </div>
             {watch?.failingTools && watch.failingTools.length > 0 ? (
               <ul className="mt-3 space-y-2">
                 {watch.failingTools.map((tool) => (

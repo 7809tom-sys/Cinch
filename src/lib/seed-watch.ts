@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import type { GrowthAxis } from "./seed-growth";
+import { uniqueWatchHrefs } from "./watch-ping";
 
 export type WatchHeartbeat = {
   id: string;
@@ -193,19 +194,27 @@ export async function listImprovementsForSeed(
 }
 
 export async function getSeedWatchSnapshot(seedId: string) {
-  const [heartbeat, improvements] = await Promise.all([
-    latestHeartbeat(seedId),
-    listImprovementsForSeed(seedId),
-  ]);
+  const store = await ensureWatch();
+  const heartbeat =
+    store.heartbeats.find((beat) => beat.seedId === seedId) ?? null;
+  const improvements = store.improvements.filter(
+    (item) => item.seedId === seedId,
+  );
   const pending = improvements.filter((item) => item.status === "pending");
   const applied = improvements.filter((item) => item.status === "applied");
   const failingTools = (heartbeat?.tools ?? []).filter((tool) => !tool.ok);
+  const hosts = uniqueWatchHrefs(
+    store.heartbeats
+      .filter((beat) => beat.seedId === seedId)
+      .map((beat) => beat.href),
+  );
   return {
     heartbeat,
     improvements,
     pending,
     applied,
     failingTools,
+    hosts,
     isLive: Boolean(
       heartbeat &&
         Date.now() - new Date(heartbeat.receivedAt).getTime() < 30 * 60 * 1000,
