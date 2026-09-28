@@ -103,6 +103,25 @@ export function ScriptManagementBoard({
               {inventory.adminUrl}
             </span>
           </p>
+          {inventory.heartbeatHref ? (
+            <p className="mt-2 text-sm break-all text-muted">
+              Watch ping from{" "}
+              <a
+                href={inventory.heartbeatHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand-deep underline"
+              >
+                {inventory.heartbeatHref}
+              </a>
+              {inventory.heartbeatLive ? " · live" : ""}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-muted">
+              No watch ping yet from an affiliate or live page. Cinch Seed’s
+              own /site page will not show that script.
+            </p>
+          )}
 
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[36rem] text-left text-sm">

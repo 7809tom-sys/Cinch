@@ -20,6 +20,7 @@ import {
   portalSwitchAgentAction,
 } from "../actions";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
+import { WatchPingLine } from "@/components/watch-ping-line";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
 import { PortalWatchTicker } from "./watch-ticker";
@@ -463,11 +464,14 @@ export default async function PortalProjectPage({ params }: PageProps) {
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
               Seed signal
             </h2>
-            <p className="mt-2 text-sm text-muted">
-              {watch?.isLive
-                ? "Live watch heartbeat received"
-                : "Waiting for the watch script on the live site"}
-            </p>
+            <div className="mt-2">
+              <WatchPingLine
+                isLive={Boolean(watch?.isLive)}
+                href={watch?.heartbeat?.href}
+                receivedAt={watch?.heartbeat?.receivedAt}
+                hosts={watch?.hosts}
+              />
+            </div>
             <p className="mt-2 text-xs text-muted">
               {doneCount}/{project.tasks.length || 0} tasks complete ·{" "}
               {project.modules.length} modulars saved

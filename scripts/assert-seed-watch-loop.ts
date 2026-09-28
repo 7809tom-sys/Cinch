@@ -14,6 +14,11 @@ import {
   projectHasOpenWork,
   projectWorkComplete,
 } from "../src/lib/project-manager";
+import {
+  uniqueWatchHrefs,
+  watchPingHeadline,
+  watchPingHref,
+} from "../src/lib/watch-ping";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -126,6 +131,33 @@ const portal = readFileSync(
 assert(
   portal.includes("will not keep looking for an AI"),
   "empty Seed desk does not say Conductor is still staffing",
+);
+assert(
+  watchPingHref("https://affiliate.example/kathmandu") ===
+    "https://affiliate.example/kathmandu" &&
+    watchPingHref("javascript:alert(1)") === null &&
+    watchPingHeadline({
+      isLive: true,
+      href: "https://affiliate.example/kathmandu",
+    }) === "Live signal from this page" &&
+    uniqueWatchHrefs([
+      "https://affiliate.example/kathmandu",
+      "https://affiliate.example/kathmandu",
+      "not-a-url",
+    ]).length === 1,
+  "watch ping copy keeps the affiliate page URL and drops junk hrefs",
+);
+assert(
+  portal.includes("WatchPingLine") &&
+    readFileSync(
+      join(process.cwd(), "src/app/admin/(gated)/projects/[id]/page.tsx"),
+      "utf8",
+    ).includes("WatchPingLine") &&
+    readFileSync(
+      join(process.cwd(), "src/components/script-management-board.tsx"),
+      "utf8",
+    ).includes("Watch ping from"),
+  "Cinch Seed desk and script board show the page watch.js pinged from",
 );
 
 if (process.exitCode) {
