@@ -38,8 +38,10 @@ export function ConnectPanel({
       <p className="mt-2 text-sm text-muted">
         Queue this snippet on a live host Cinch can actually update. On an
         affiliate page, watch.js can make a store logo when the store has no
-        image yet. Just Putz It is not a Cinch Seed. Both{" "}
-        <code>data-seed</code> and <code>data-key</code> are required. No
+        image yet. Add{" "}
+        <code>data-store-name=&quot;Spartan Cabinets&quot;</code> so the
+        wordmark uses that affiliate name. Just Putz It is not a Cinch Seed.
+        Both <code>data-seed</code> and <code>data-key</code> are required. No
         final update without owner approval.
       </p>
 

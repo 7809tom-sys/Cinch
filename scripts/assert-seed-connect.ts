@@ -155,16 +155,22 @@ assert(
   "affiliate logo only targets affiliate and storefront pages",
 );
 assert(
-  affiliateLogoName({ pathname: "/store/kathmandu" }) === "Kathmandu" &&
+  affiliateLogoName({ pathname: "/store/spartan-cabinets" }) ===
+    "Spartan Cabinets" &&
+    affiliateLogoName({
+      pathname: "/affiliate",
+      storeName: "Spartan Cabinets",
+      title: "CabinetDealz | Cabinets, Countertops & More",
+    }) === "Spartan Cabinets" &&
     affiliateLogoName({
       pathname: "/affiliate",
       title: "CabinetDealz | Cabinets, Countertops & More",
     }) === "Store" &&
-    /Kathmandu/.test(buildAffiliateLogoSvg("Kathmandu")),
-  "affiliate wordmark uses the store name",
+    /Spartan Cabinets/.test(buildAffiliateLogoSvg("Spartan Cabinets")),
+  "affiliate wordmark uses the Spartan Cabinets store name",
 );
 assert(
-  buildAffiliateLogoSvg("Kathmandu").includes(">K<") &&
+  buildAffiliateLogoSvg("Spartan Cabinets").includes(">S<") &&
     buildAffiliateLogoSvg("<script>").includes("&lt;script&gt;"),
   "affiliate wordmark escapes store names and shows a monogram",
 );
@@ -771,8 +777,14 @@ assert(
 
 const affiliatePaint = runWatch({
   host: "www.cabinetdealz.com",
-  path: "/store/kathmandu",
-  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+  path: "/store/spartan-cabinets",
+  title: "Spartan Cabinets",
+  attrs: {
+    "data-seed": "seed-demo",
+    "data-key": "key-demo",
+    "data-mark": "true",
+    "data-store-name": "Spartan Cabinets",
+  },
 });
 assert(
   affiliatePaint.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
@@ -825,7 +837,7 @@ Promise.all([
     );
   }),
   logoGet(
-    new Request("https://www.cinchseed.com/v1/logo?name=Kathmandu"),
+    new Request("https://www.cinchseed.com/v1/logo?name=Spartan%20Cabinets"),
   ).then(async (response) => {
     const body = await response.text();
     assert(response.ok, "GET /v1/logo is allowed");
@@ -833,7 +845,7 @@ Promise.all([
       response.headers.get("content-type")?.includes("image/svg+xml") === true,
       "GET /v1/logo serves an SVG wordmark",
     );
-    assert(/Kathmandu/.test(body), "GET /v1/logo uses the store name");
+    assert(/Spartan Cabinets/.test(body), "GET /v1/logo uses Spartan Cabinets");
   }),
   lookAtJustPutzitLive(async () => {
     return new Response(

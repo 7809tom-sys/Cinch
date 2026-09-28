@@ -166,13 +166,13 @@ assert(
       "utf8",
     ),
   ) &&
-    /make a store logo/.test(
+    /Spartan Cabinets/.test(
       readFileSync(
         join(process.cwd(), "src/app/portal/[id]/connect-panel.tsx"),
         "utf8",
       ),
     ),
-  "Cinch Seed tells operators watch.js can make a logo on the affiliate page",
+  "Cinch Seed tells operators watch.js can make a Spartan Cabinets logo on the affiliate page",
 );
 
 if (process.exitCode) {

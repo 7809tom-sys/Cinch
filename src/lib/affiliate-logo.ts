@@ -24,11 +24,34 @@ export function titleFromStoreSlug(slug: string): string {
     .trim();
 }
 
+function cleanStoreTitle(title?: string | null): string | null {
+  const cleaned = (title ?? "")
+    .trim()
+    .split(/\s+[—–|-]\s+/)[0]
+    .replace(/\s*\|\s*CabinetDealz.*$/i, "")
+    .trim();
+  if (
+    !cleaned ||
+    /^cabinet\s*dealz$/i.test(cleaned) ||
+    /sign in|loading/i.test(cleaned)
+  ) {
+    return null;
+  }
+  return cleaned.slice(0, 32);
+}
+
 export function affiliateLogoName(input: {
   pathname?: string | null;
   search?: string | null;
   title?: string | null;
+  storeName?: string | null;
 }): string {
+  const explicit = input.storeName?.trim();
+  if (explicit) return explicit.slice(0, 32);
+
+  const fromTitle = cleanStoreTitle(input.title);
+  if (fromTitle) return fromTitle;
+
   const path = input.pathname ?? "";
   const store = path.match(/^\/(?:store|store-preview)\/([^/]+)/i);
   if (store?.[1]) {
@@ -46,20 +69,6 @@ export function affiliateLogoName(input: {
     const fromView = titleFromStoreSlug(viewAs.trim());
     if (fromView) return fromView;
   }
-  const title = (input.title ?? "").trim();
-  if (title) {
-    const cleaned = title
-      .split(/\s+[—–|-]\s+/)[0]
-      .replace(/\s*\|\s*CabinetDealz.*$/i, "")
-      .trim();
-    if (
-      cleaned &&
-      !/^cabinet\s*dealz$/i.test(cleaned) &&
-      !/sign in|loading/i.test(cleaned)
-    ) {
-      return cleaned.slice(0, 32);
-    }
-  }
   return "Store";
 }
 
@@ -76,12 +85,17 @@ export function affiliateLogoInitial(name: string): string {
   return (letter || "S").toUpperCase();
 }
 
+export function affiliateLogoSvgWidth(name: string): number {
+  return Math.min(420, Math.max(220, 64 + name.length * 11));
+}
+
 /** Inline SVG wordmark for an affiliate store that has no uploaded logo. */
 export function buildAffiliateLogoSvg(name: string): string {
   const label = (name.trim() || "Store").slice(0, 32);
   const safe = escapeSvgText(label);
   const initial = escapeSvgText(affiliateLogoInitial(label));
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40" role="img" aria-label="${safe} logo"><rect width="40" height="40" rx="8" fill="#1a2b4a"/><text x="20" y="27" text-anchor="middle" fill="#c9a227" font-size="18" font-family="Georgia,Times New Roman,serif" font-weight="700">${initial}</text><text x="52" y="26" fill="#1a2b4a" font-size="16" font-family="Georgia,Times New Roman,serif" font-weight="700">${safe}</text></svg>`;
+  const width = affiliateLogoSvgWidth(label);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="40" viewBox="0 0 ${width} 40" role="img" aria-label="${safe} logo"><rect width="40" height="40" rx="8" fill="#1a2b4a"/><text x="20" y="27" text-anchor="middle" fill="#c9a227" font-size="18" font-family="Georgia,Times New Roman,serif" font-weight="700">${initial}</text><text x="52" y="26" fill="#1a2b4a" font-size="16" font-family="Georgia,Times New Roman,serif" font-weight="700">${safe}</text></svg>`;
 }
 
 export const AFFILIATE_LOGO_MARK_ID = "cinch-seed-affiliate-logo";

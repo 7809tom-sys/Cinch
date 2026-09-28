@@ -8,13 +8,13 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const name = affiliateLogoName({
-    pathname: url.searchParams.get("path"),
-    search: url.search,
-    title: url.searchParams.get("name"),
-  });
   const svg = buildAffiliateLogoSvg(
-    url.searchParams.get("name")?.trim() || name,
+    affiliateLogoName({
+      pathname: url.searchParams.get("path"),
+      search: url.search,
+      title: url.searchParams.get("title"),
+      storeName: url.searchParams.get("name"),
+    }),
   );
 
   return new Response(svg, {

@@ -125,6 +125,15 @@ export function buildWatchClientJs(input?: {
     }
 
     function affiliateName() {
+      var explicit = attr(script, "data-store-name") || boot.storeName || "";
+      if (explicit && String(explicit).trim()) return String(explicit).trim().slice(0, 32);
+      var title = String(pageTitle || "").trim();
+      if (title) {
+        var cleaned = title.split(/\\s+[—–|-]\\s+/)[0].replace(/\\s*\\|\\s*CabinetDealz.*$/i, "").trim();
+        if (cleaned && !/^cabinet\\s*dealz$/i.test(cleaned) && !/sign in|loading/i.test(cleaned)) {
+          return cleaned.slice(0, 32);
+        }
+      }
       var store = String(pagePath || "").match(/^\\/(?:store|store-preview)\\/([^/]+)/i);
       if (store && store[1]) {
         var fromSlug = titleFromSlug(decodeURIComponent(store[1]));
@@ -137,13 +146,6 @@ export function buildWatchClientJs(input?: {
           if (fromView) return fromView;
         }
       } catch (e) {}
-      var title = String(pageTitle || "").trim();
-      if (title) {
-        var cleaned = title.split(/\\s+[—–|-]\\s+/)[0].replace(/\\s*\\|\\s*CabinetDealz.*$/i, "").trim();
-        if (cleaned && !/^cabinet\\s*dealz$/i.test(cleaned) && !/sign in|loading/i.test(cleaned)) {
-          return cleaned.slice(0, 32);
-        }
-      }
       return "Store";
     }
 
@@ -159,7 +161,12 @@ export function buildWatchClientJs(input?: {
       var label = (name || "Store").slice(0, 32);
       var safe = escSvg(label);
       var initial = escSvg((label.replace(/[^A-Za-z0-9]/g, "").charAt(0) || "S").toUpperCase());
-      return '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40" role="img" aria-label="' +
+      var width = Math.min(420, Math.max(220, 64 + label.length * 11));
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+        width +
+        '" height="40" viewBox="0 0 ' +
+        width +
+        ' 40" role="img" aria-label="' +
         safe +
         ' logo"><rect width="40" height="40" rx="8" fill="#1a2b4a"/><text x="20" y="27" text-anchor="middle" fill="#c9a227" font-size="18" font-family="Georgia,Times New Roman,serif" font-weight="700">' +
         initial +
