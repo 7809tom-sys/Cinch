@@ -471,6 +471,32 @@ export function buildWatchClientJs(input?: {
       return match ? Number(match[1]) : 0;
     }
 
+    function moneyCentsFromText(text) {
+      var match = String(text || "").match(/\\$([0-9]+(?:,[0-9]{3})*(?:\\.[0-9]{2})?)/);
+      if (!match) return 0;
+      return Math.round(Number(match[1].replace(/,/g, "")) * 100);
+    }
+
+    function restackPallets(counts) {
+      var list = [];
+      var i;
+      for (i = 0; i < counts.length; i++) {
+        if (counts[i] > 0) list.push(counts[i]);
+      }
+      if (!list.length) return 1;
+      var sum = 0;
+      var largest = 0;
+      for (i = 0; i < list.length; i++) {
+        sum += list[i];
+        if (list[i] > largest) largest = list[i];
+      }
+      if (list.length === 1) return sum;
+      var packed = sum - (list.length - 1);
+      if (packed < 1) packed = 1;
+      if (packed < largest) packed = largest;
+      return packed;
+    }
+
     function placeFromText(text) {
       var match = String(text || "").match(/\\(([^)]+)\\)/);
       return match && match[1] ? String(match[1]).trim() : "";
@@ -484,7 +510,7 @@ export function buildWatchClientJs(input?: {
           var node = nodes[i];
           var raw = (node.textContent || "").replace(/\\s+/g, " ").trim();
           if (raw.indexOf("Each origin is packed and quoted separately") === 0) {
-            node.textContent = "Same origin ships together — one pickup and one quote from that warehouse.";
+            node.textContent = "Same origin ships together — restack one warehouse load so leftover cube shares pallets. Fewer pallets than quoting each finish alone.";
           }
         }
         var headers = document.querySelectorAll("span, div, p, h2, h3");
@@ -504,7 +530,14 @@ export function buildWatchClientJs(input?: {
             var zip = originZipFromText(line);
             if (!zip) continue;
             if (kid.querySelector && kid.querySelector("div, li, p")) continue;
-            rows.push({ el: kid, zip: zip, line: line, pallets: palletCountFromText(line), place: placeFromText(line) });
+            rows.push({
+              el: kid,
+              zip: zip,
+              line: line,
+              pallets: palletCountFromText(line),
+              place: placeFromText(line),
+              cents: moneyCentsFromText(line)
+            });
           }
           var byZip = {};
           for (k = 0; k < rows.length; k++) {
@@ -516,13 +549,31 @@ export function buildWatchClientJs(input?: {
             if (!Object.prototype.hasOwnProperty.call(byZip, zipKey)) continue;
             var group = byZip[zipKey];
             if (group.length < 2) continue;
-            var pallets = 0;
+            var counts = [];
+            var packed = [];
             var place = "";
+            var lineSum = 0;
             for (k = 0; k < group.length; k++) {
-              pallets += group[k].pallets || 0;
+              counts.push(group[k].pallets || 0);
+              packed.push({ palletCount: group[k].pallets || 0, amountCents: group[k].cents || 0 });
+              lineSum += group[k].cents || 0;
               if (!place && group[k].place) place = group[k].place;
             }
-            if (pallets < 1) pallets = group.length;
+            var pallets = restackPallets(counts);
+            if (pallets < 1) pallets = 1;
+            var largest = packed[0];
+            for (k = 1; k < packed.length; k++) {
+              if (
+                packed[k].palletCount > largest.palletCount ||
+                (packed[k].palletCount === largest.palletCount && packed[k].amountCents > largest.amountCents)
+              ) {
+                largest = packed[k];
+              }
+            }
+            var cents = lineSum;
+            var sumPallets = 0;
+            for (k = 0; k < counts.length; k++) sumPallets += counts[k] || 0;
+            if (pallets < sumPallets && pallets <= largest.palletCount) cents = largest.amountCents;
             var keep = group[0].el;
             keep.textContent =
               "Ships together · " +
@@ -531,10 +582,26 @@ export function buildWatchClientJs(input?: {
               zipKey +
               " · " +
               pallets +
-              (pallets === 1 ? " pallet" : " pallets");
+              (pallets === 1 ? " pallet" : " pallets") +
+              (cents ? " · $" + (cents / 100).toFixed(2) : "");
             keep.setAttribute("data-cinch-freight-line", zipKey);
             for (k = 1; k < group.length; k++) {
               if (group[k].el && group[k].el.remove) group[k].el.remove();
+            }
+            var totalNode = null;
+            var totalKids = box.querySelectorAll("span, div");
+            for (k = 0; k < totalKids.length; k++) {
+              if ((totalKids[k].textContent || "").trim() === "Verified shipping total") {
+                totalNode = totalKids[k].parentElement;
+                break;
+              }
+            }
+            if (totalNode) {
+              var shown = moneyCentsFromText(totalNode.textContent || "");
+              var extra = shown > lineSum ? shown - lineSum : 0;
+              var nextTotal = cents + extra;
+              var money = totalNode.querySelector && totalNode.querySelector("span:last-child");
+              if (money && nextTotal > 0) money.textContent = "$" + (nextTotal / 100).toFixed(2);
             }
             box.setAttribute("data-cinch-freight", "together");
           }

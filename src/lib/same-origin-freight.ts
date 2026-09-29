@@ -38,7 +38,47 @@ export function freightShipsTogetherLabel(input: {
 }
 
 export const SAME_ORIGIN_FREIGHT_NOTE =
-  "Same origin ships together — one pickup and one quote from that warehouse.";
+  "Same origin ships together — restack one warehouse load so leftover cube shares pallets. Fewer pallets than quoting each finish alone.";
+
+/** Split quotes waste the last pallet of each finish. Combining fills that leftover. */
+export function restackSameOriginPallets(palletCounts: number[]): number {
+  const counts = palletCounts
+    .map((count) => Math.max(0, Math.floor(count)))
+    .filter((count) => count > 0);
+  if (counts.length === 0) return 1;
+  const sum = counts.reduce((total, count) => total + count, 0);
+  const largest = Math.max(...counts);
+  if (counts.length === 1) return sum;
+  return Math.max(1, largest, sum - (counts.length - 1));
+}
+
+export function restackSameOriginFreightCents(
+  groups: Array<{ palletCount: number; amountCents: number }>,
+  combinedPallets: number,
+): number {
+  if (groups.length === 0) return 0;
+  const sumPallets = groups.reduce(
+    (total, group) => total + Math.max(0, group.palletCount),
+    0,
+  );
+  const sumCents = groups.reduce(
+    (total, group) => total + Math.max(0, group.amountCents),
+    0,
+  );
+  const largest = groups.reduce((best, group) =>
+    group.palletCount > best.palletCount ||
+    (group.palletCount === best.palletCount &&
+      group.amountCents > best.amountCents)
+      ? group
+      : best,
+  );
+  if (combinedPallets >= sumPallets) return sumCents;
+  if (combinedPallets <= largest.palletCount) return largest.amountCents;
+  const extraPallets = combinedPallets - largest.palletCount;
+  const otherPallets = Math.max(1, sumPallets - largest.palletCount);
+  const otherCents = Math.max(0, sumCents - largest.amountCents);
+  return largest.amountCents + Math.round((otherCents * extraPallets) / otherPallets);
+}
 
 export const SPLIT_ORIGIN_FREIGHT_NOTE =
   "Each origin is packed and quoted separately using final pallet dimensions and loaded weight.";
@@ -68,25 +108,28 @@ export function consolidateSameOriginFreight(
       merged.push(list[0]);
       continue;
     }
-    const palletCount = list.reduce((sum, item) => {
-      const count =
+    const packed = list.map((item) => ({
+      palletCount:
         item.palletCount > 0
           ? item.palletCount
-          : palletCountFromFreightLabel(item.label);
-      return sum + Math.max(0, count);
-    }, 0);
-    const amountCents = list.reduce((sum, item) => sum + item.amountCents, 0);
+          : palletCountFromFreightLabel(item.label),
+      amountCents: item.amountCents,
+    }));
+    const palletCount = restackSameOriginPallets(
+      packed.map((item) => item.palletCount),
+    );
+    const amountCents = restackSameOriginFreightCents(packed, palletCount);
     const place =
       list.map((item) => placeFromFreightLabel(item.label)).find(Boolean) ??
       null;
     merged.push({
       ...list[0],
       originZip: zip,
-      palletCount: Math.max(1, palletCount),
+      palletCount,
       amountCents,
       label: freightShipsTogetherLabel({
         originZip: zip,
-        palletCount: Math.max(1, palletCount),
+        palletCount,
         place,
       }),
     });

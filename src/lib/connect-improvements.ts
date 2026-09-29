@@ -110,7 +110,7 @@ const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Ship same-origin cabinets together",
     why: "Two finishes from the same warehouse were quoted as two pickups — extra LTL minimums and lift-gate fees for one dock.",
     liveChange:
-      "Pack and quote one freight load per origin ZIP. Cabinets from the same place ship together. Do not split one warehouse into two carriers.",
+      "Restack one freight load per origin ZIP. Combining finishes fills leftover pallet cube — fewer pallets than quoting each color alone. Do not split one warehouse into two carriers.",
   },
   {
     id: "gen-tools",

@@ -4219,7 +4219,7 @@ export function seedParcelShippingModes(): SeedShippingMode[] {
       label: "LTL freight",
       kind: "ltl",
       carrier: "LTL partner",
-      notes: "Pallet / oversize — one quote per origin ZIP. Same warehouse ships together.",
+      notes: "Pallet / oversize — one restacked quote per origin ZIP. Combining finishes uses leftover cube, so fewer pallets than quoting each color alone.",
       baseRateUsd: 85,
     },
   ];

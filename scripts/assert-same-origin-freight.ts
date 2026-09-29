@@ -11,6 +11,7 @@ import {
   freightShipsTogetherLabel,
   originZipFromFreightLabel,
   palletCountFromFreightLabel,
+  restackSameOriginPallets,
 } from "../src/lib/same-origin-freight";
 import { buildWatchClientJs } from "../src/lib/watch-client";
 import { seedParcelShippingModes } from "../src/lib/seed-site-copy";
@@ -50,22 +51,32 @@ assert(
   "freight labels expose origin ZIP and pallet count",
 );
 
+assert(
+  restackSameOriginPallets([2, 1]) === 2 &&
+    restackSameOriginPallets([1, 1]) === 1 &&
+    restackSameOriginPallets([2, 2]) === 3,
+  "combining fills leftover cube so pallet count drops",
+);
+
 const together = consolidateSameOriginFreight(split);
 assert(together.length === 1, "same origin 60448 becomes one shipment");
 assert(together[0]?.originZip === "60448", "combined load keeps origin 60448");
-assert(together[0]?.palletCount === 3, "2 pallets + 1 pallet ship as 3 pallets");
 assert(
-  together[0]?.amountCents === 74061 + 25943,
-  "combined load keeps the quoted freight cents",
+  together[0]?.palletCount === 2,
+  "2 pallets + 1 pallet restack to 2 pallets, not 3",
+);
+assert(
+  together[0]?.amountCents === 74061,
+  "Cobalt Abyss fits leftover cube on the Aero Blanc load",
 );
 assert(
   together[0]?.label ===
     freightShipsTogetherLabel({
       originZip: "60448",
-      palletCount: 3,
+      palletCount: 2,
       place: "Preston",
     }),
-  "combined label says ships together from Preston",
+  "combined label says ships together from Preston on fewer pallets",
 );
 
 const mixed = consolidateSameOriginFreight([
@@ -79,7 +90,7 @@ const mixed = consolidateSameOriginFreight([
 ]);
 assert(
   mixed.length === 2 &&
-    mixed.some((item) => item.originZip === "60448" && item.palletCount === 3) &&
+    mixed.some((item) => item.originZip === "60448" && item.palletCount === 2) &&
     mixed.some((item) => item.originZip === "90210" && item.palletCount === 1),
   "a different origin stays its own pickup",
 );
@@ -97,7 +108,7 @@ assert(
 
 assert(
   seedParcelShippingModes().some((mode) =>
-    /one quote per origin ZIP|ships together/i.test(mode.notes),
+    /restacked quote per origin ZIP|fewer pallets/i.test(mode.notes),
   ),
   "Seed LTL copy says same warehouse ships together",
 );
@@ -108,7 +119,7 @@ assert(
       join(process.cwd(), "src/lib/connect-improvements.ts"),
       "utf8",
     ),
-  ) && SAME_ORIGIN_FREIGHT_NOTE.includes("one pickup"),
+  ) && SAME_ORIGIN_FREIGHT_NOTE.includes("Fewer pallets"),
   "Connect plan tells Cinch to stop splitting one warehouse",
 );
 
