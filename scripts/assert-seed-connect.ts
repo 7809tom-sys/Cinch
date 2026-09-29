@@ -10,9 +10,18 @@ import {
   seedEmbedSnippet,
 } from "../src/lib/domain";
 import {
+  isHostBrandLogo,
+  isHostBrandText,
+  replaceHostBrandText,
+  shouldHideHostBrandElement,
+  whiteLabelDocumentTitle,
+} from "../src/lib/affiliate-host-brand";
+import {
   affiliateLogoName,
   buildAffiliateLogoSvg,
+  isAffiliateStorefrontPage,
   isAffiliateWatchPage,
+  isWhiteLabelAffiliatePage,
 } from "../src/lib/affiliate-logo";
 import { GET as healthGet } from "../src/app/v1/health/route";
 import { GET as logoGet } from "../src/app/v1/logo/route";
@@ -144,6 +153,10 @@ const cabinetPlan = planInPlaceImprovements({
   liveUrl: "https://www.cabinetdealz.com/affiliate",
 });
 assert(
+  cabinetPlan.improvements.some((item) => /white-label the affiliate site/i.test(item.title)),
+  "generic live hosts white-label affiliate storefronts",
+);
+assert(
   cabinetPlan.improvements.some((item) => /store logo on the affiliate page/i.test(item.title)),
   "generic live hosts get an affiliate-page logo improvement",
 );
@@ -155,8 +168,16 @@ assert(
   isAffiliateWatchPage("/store/kathmandu", "") &&
     isAffiliateWatchPage("/affiliate", "") &&
     isAffiliateWatchPage("/", "?viewAs=kathmandu") &&
-    !isAffiliateWatchPage("/", ""),
-  "affiliate logo only targets affiliate and storefront pages",
+    !isAffiliateWatchPage("/", "") &&
+    isAffiliateStorefrontPage("/store/spartan-cabinets", "") &&
+    !isAffiliateStorefrontPage("/affiliate", "") &&
+    isWhiteLabelAffiliatePage({ pathname: "/store/kathmandu" }) &&
+    !isWhiteLabelAffiliatePage({
+      pathname: "/",
+      hostname: "www.cabinetdealz.com",
+      storeName: "Spartan Cabinets",
+    }),
+  "affiliate logo and white-label only target affiliate and storefront pages",
 );
 assert(
   affiliateLogoName({ pathname: "/store/kathmandu" }) === "Kathmandu" &&
@@ -164,8 +185,35 @@ assert(
       pathname: "/affiliate",
       title: "CabinetDealz | Cabinets, Countertops & More",
     }) === "Store" &&
+    affiliateLogoName({
+      pathname: "/store/kathmandu",
+      storeName: "Spartan Cabinets",
+    }) === "Spartan Cabinets" &&
     /Kathmandu/.test(buildAffiliateLogoSvg("Kathmandu")),
   "affiliate wordmark uses the store name",
+);
+assert(
+  isHostBrandText("CabinetDealz") &&
+    isHostBrandText("Cabinet Dealz") &&
+    !isHostBrandText("Spartan Cabinets"),
+  "host-brand detector only matches the platform name",
+);
+assert(
+  whiteLabelDocumentTitle(
+    "CabinetDealz | Cabinets, Countertops & Kitchen Design",
+    "Spartan Cabinets",
+  ) === "Spartan Cabinets" &&
+    replaceHostBrandText(
+      "Plan your complete kitchen with CabinetDealz",
+      "Spartan Cabinets",
+    ) === "Plan your complete kitchen with Spartan Cabinets" &&
+    shouldHideHostBrandElement("Cabinet Dealz") &&
+    shouldHideHostBrandElement("Powered by Cabinet Dealz") &&
+    isHostBrandLogo(
+      "https://cdn.example.com/cabinet-dealz-og.png",
+      "Cabinet Dealz",
+    ),
+  "affiliate pages rename or hide host-brand copy",
 );
 assert(
   buildAffiliateLogoSvg("Kathmandu").includes(">K<") &&
@@ -608,6 +656,54 @@ assert(
   "portal Connect panel does not pull a Just Putz It live key",
 );
 
+function makeDomNode(input: {
+  tag: string;
+  text?: string;
+  href?: string;
+  src?: string;
+  alt?: string;
+  attrs?: Record<string, string>;
+}) {
+  const attrs: Record<string, string> = { ...(input.attrs ?? {}) };
+  const node: {
+    tag: string;
+    tagName: string;
+    href?: string;
+    src?: string;
+    alt?: string;
+    textContent: string;
+    style: { cssText: string; display?: string };
+    children: unknown[];
+    childNodes: Array<{ nodeType: number; nodeValue: string }>;
+    getAttribute(name: string): string;
+    setAttribute(name: string, value: string): void;
+  } = {
+    tag: input.tag,
+    tagName: input.tag.toUpperCase(),
+    href: input.href,
+    src: input.src,
+    alt: input.alt,
+    textContent: input.text ?? "",
+    style: { cssText: "" },
+    children: [],
+    childNodes: input.text
+      ? [{ nodeType: 3, nodeValue: input.text }]
+      : [],
+    getAttribute(name: string) {
+      if (name === "src") return this.src || attrs.src || "";
+      if (name === "alt") return this.alt || attrs.alt || "";
+      if (name === "href") return this.href || attrs.href || "";
+      return attrs[name] || "";
+    },
+    setAttribute(name: string, value: string) {
+      attrs[name] = value;
+      if (name === "alt") this.alt = value;
+      if (name === "src") this.src = value;
+    },
+  };
+  return node;
+}
+
 function runWatch(scriptEl: {
   src?: string;
   attrs: Record<string, string>;
@@ -616,6 +712,14 @@ function runWatch(scriptEl: {
   search?: string;
   title?: string;
   hasLogoImg?: boolean;
+  hostBrand?: {
+    heading?: string;
+    link?: string;
+    footer?: string;
+    logoSrc?: string;
+    logoAlt?: string;
+    metas?: Array<{ property?: string; name?: string; content: string }>;
+  };
 }) {
   const created: Array<{ id?: string; text?: string; innerHTML?: string }> = [];
   const fetches: string[] = [];
@@ -625,14 +729,55 @@ function runWatch(scriptEl: {
       return scriptEl.attrs[name] || "";
     },
   };
-  const logoImg = {
+  const logoImg = makeDomNode({
     tag: "img",
-    src: "/manus-storage/logo.png",
-    alt: "Store logo",
+    src: scriptEl.hostBrand?.logoSrc || "/manus-storage/logo.png",
+    alt: scriptEl.hostBrand?.logoAlt || (scriptEl.hasLogoImg ? "Store logo" : ""),
+  });
+  const heading = makeDomNode({
+    tag: "h1",
+    text:
+      scriptEl.hostBrand?.heading ??
+      "Plan your complete kitchen with CabinetDealz",
+  });
+  const brandLink = makeDomNode({
+    tag: "a",
+    text: scriptEl.hostBrand?.link ?? "CabinetDealz",
+    href: "/",
+  });
+  const footer = makeDomNode({
+    tag: "p",
+    text: scriptEl.hostBrand?.footer ?? "© 2026 Cabinet Dealz",
+  });
+  const metas = (scriptEl.hostBrand?.metas ?? [
+    { property: "og:site_name", content: "Cabinet Dealz" },
+    {
+      property: "og:title",
+      content: "CabinetDealz | Cabinets, Countertops & Kitchen Design",
+    },
+  ]).map((meta) => {
+    const attrs: Record<string, string> = {
+      content: meta.content,
+      ...(meta.property ? { property: meta.property } : {}),
+      ...(meta.name ? { name: meta.name } : {}),
+    };
+    return {
+      getAttribute(name: string) {
+        return attrs[name] || "";
+      },
+      setAttribute(name: string, value: string) {
+        attrs[name] = value;
+      },
+      attrs,
+    };
+  });
+  const documentElement = {
+    attrs: {} as Record<string, string>,
     getAttribute(name: string) {
-      if (name === "src") return "/manus-storage/logo.png";
-      if (name === "alt") return "Store logo";
-      return "";
+      return this.attrs[name] || "";
+    },
+    setAttribute(name: string, value: string) {
+      this.attrs[name] = value;
     },
   };
   const body = {
@@ -656,18 +801,35 @@ function runWatch(scriptEl: {
   const path = scriptEl.path ?? "/";
   const search = scriptEl.search ?? "";
   const host = scriptEl.host ?? "justputzit.com";
+  const useHostBrand = Boolean(scriptEl.hostBrand) || /\/store\//.test(path);
   const context = createContext({
     window: { __CINCH_SEED_BOOT__: undefined } as Record<string, unknown>,
     document: {
       currentScript: null,
       body,
+      documentElement,
       title: scriptEl.title ?? "",
       querySelectorAll(sel: string) {
-        if (String(sel).includes("watch.js") || String(sel).includes("script")) {
+        const needle = String(sel);
+        if (needle.includes("watch.js") || needle.includes("script[src")) {
           return [fakeScript];
         }
-        if (String(sel).includes("img") && scriptEl.hasLogoImg) {
-          return [logoImg];
+        if (needle.includes('script[type="application/ld+json"]')) {
+          return [];
+        }
+        if (needle.includes("meta")) {
+          return useHostBrand ? metas : [];
+        }
+        if (needle.includes("img")) {
+          if (scriptEl.hasLogoImg || scriptEl.hostBrand?.logoSrc) return [logoImg];
+          return [];
+        }
+        if (
+          needle.includes("h1") ||
+          needle.includes("a,") ||
+          needle.includes("footer")
+        ) {
+          return useHostBrand ? [heading, brandLink, footer] : [];
         }
         return [];
       },
@@ -677,7 +839,14 @@ function runWatch(scriptEl: {
         if (needle.includes("watch.js") || needle.includes("data-seed") || needle.includes("script")) {
           return fakeScript;
         }
-        if (needle.includes("img") && scriptEl.hasLogoImg) return logoImg;
+        if (needle.includes("img") && (scriptEl.hasLogoImg || scriptEl.hostBrand?.logoSrc)) {
+          return logoImg;
+        }
+        if (needle === "[data-cinch-white-label='on']") {
+          return documentElement.getAttribute("data-cinch-white-label") === "on"
+            ? documentElement
+            : null;
+        }
         return null;
       },
       getElementById() {
@@ -734,7 +903,18 @@ function runWatch(scriptEl: {
   (context.window as { location: unknown }).location = context.location;
   (context.window as { navigator: unknown }).navigator = context.navigator;
   runInContext(watchJs, context);
-  return { created, window: context.window as { __CINCH_SEED__?: { seed: string } }, fetches };
+  return {
+    created,
+    window: context.window as { __CINCH_SEED__?: { seed: string } },
+    fetches,
+    title: (context.document as { title?: string }).title ?? "",
+    heading,
+    brandLink,
+    footer,
+    metas,
+    logoImg,
+    documentElement,
+  };
 }
 
 const painted = runWatch({
@@ -769,13 +949,16 @@ assert(
 assert(
   watchJs.includes("paintAffiliateLogo") &&
     watchJs.includes("cinch-seed-affiliate-logo") &&
-    watchJs.includes("affiliate-logo"),
+    watchJs.includes("affiliate-logo") &&
+    watchJs.includes("stripHostBrandOnAffiliate") &&
+    watchJs.includes("data-cinch-white-label"),
   "watch.js can make a store logo on an affiliate page",
 );
 
 const affiliatePaint = runWatch({
   host: "www.cabinetdealz.com",
   path: "/store/kathmandu",
+  title: "CabinetDealz | Cabinets, Countertops & Kitchen Design",
   attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
 });
 assert(
@@ -783,8 +966,48 @@ assert(
   "watch.js paints a store logo on the affiliate storefront",
 );
 assert(
-  affiliatePaint.created.some((node) => node.id === "cinch-seed-community"),
-  "Community card still mounts on the affiliate storefront",
+  !affiliatePaint.created.some((node) => node.id === "cinch-seed-community"),
+  "white-label storefronts do not show the Cinch Community card",
+);
+assert(
+  affiliatePaint.title === "Kathmandu" &&
+    /Kathmandu/.test(affiliatePaint.heading.textContent) &&
+    !isHostBrandText(affiliatePaint.heading.textContent) &&
+    affiliatePaint.brandLink.style.display === "none" &&
+    affiliatePaint.footer.textContent === "© 2026 Kathmandu" &&
+    affiliatePaint.metas[0]?.attrs.content === "Kathmandu" &&
+    !isHostBrandText(affiliatePaint.metas[1]?.attrs.content) &&
+    affiliatePaint.documentElement.attrs["data-cinch-white-label"] === "on",
+  "watch.js white-labels titles, headers, and footers on the storefront",
+);
+
+const spartanPaint = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/store/kathmandu",
+  title: "CabinetDealz | Cabinets, Countertops & Kitchen Design",
+  hostBrand: {
+    heading: "Plan your complete kitchen with CabinetDealz",
+    link: "CabinetDealz",
+    footer: "© 2026 Cabinet Dealz",
+    logoSrc: "https://cdn.example.com/cabinet-dealz-og.png",
+    logoAlt: "Cabinet Dealz",
+  },
+  attrs: {
+    "data-seed": "seed-demo",
+    "data-key": "key-demo",
+    "data-mark": "true",
+    "data-store-name": "Spartan Cabinets",
+  },
+});
+assert(
+  spartanPaint.title === "Spartan Cabinets" &&
+    spartanPaint.heading.textContent ===
+      "Plan your complete kitchen with Spartan Cabinets" &&
+    !isHostBrandText(spartanPaint.heading.textContent) &&
+    !isHostBrandText(spartanPaint.footer.textContent) &&
+    spartanPaint.logoImg.style.display === "none" &&
+    spartanPaint.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
+  "Spartan Cabinets storefronts stay white-label even when the slug differs",
 );
 
 const alreadyHasLogo = runWatch({
@@ -797,6 +1020,10 @@ assert(
   !alreadyHasLogo.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
   "watch.js does not replace an uploaded affiliate logo",
 );
+assert(
+  alreadyHasLogo.created.some((node) => node.id === "cinch-seed-community"),
+  "affiliate dashboard still shows the Connect widget",
+);
 
 const homeNoLogo = runWatch({
   host: "www.cabinetdealz.com",
@@ -806,6 +1033,28 @@ const homeNoLogo = runWatch({
 assert(
   !homeNoLogo.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
   "watch.js does not invent a logo on the marketing homepage",
+);
+
+const homeKeepBrand = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/",
+  title: "CabinetDealz | Cabinets, Countertops & Kitchen Design",
+  hostBrand: {
+    heading: "Plan your complete kitchen with CabinetDealz",
+    link: "CabinetDealz",
+    footer: "© 2026 Cabinet Dealz",
+  },
+  attrs: {
+    "data-seed": "seed-demo",
+    "data-key": "key-demo",
+    "data-mark": "true",
+    "data-store-name": "Spartan Cabinets",
+  },
+});
+assert(
+  homeKeepBrand.title === "CabinetDealz | Cabinets, Countertops & Kitchen Design" &&
+    /CabinetDealz/.test(homeKeepBrand.heading.textContent),
+  "the host marketing homepage keeps its own brand",
 );
 
 assert(

@@ -37,8 +37,10 @@ export function ConnectPanel({
       </h2>
       <p className="mt-2 text-sm text-muted">
         Queue this snippet on a live host Cinch can actually update. On an
-        affiliate page, watch.js can make a store logo when the store has no
-        image yet. Just Putz It is not a Cinch Seed. Both{" "}
+        affiliate page, watch.js keeps the store’s own name — no host brand —
+        and can make a store logo when none is uploaded. Set{" "}
+        <code>data-store-name=&quot;Spartan Cabinets&quot;</code> when the URL
+        slug is not the store name. Just Putz It is not a Cinch Seed. Both{" "}
         <code>data-seed</code> and <code>data-key</code> are required. No
         final update without owner approval.
       </p>

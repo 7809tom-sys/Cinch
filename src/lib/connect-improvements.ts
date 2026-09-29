@@ -97,6 +97,14 @@ const JUST_PUTZIT_IMPROVEMENTS: InPlaceImprovement[] = [
 
 const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
   {
+    id: "aff-white-label",
+    growthAxis: "functionality",
+    title: "White-label the affiliate site",
+    why: "An affiliate site is the store’s brand. Customers should not see the host platform name, logo, or tagline.",
+    liveChange:
+      "On /affiliate, /store/:slug, and store previews, hide or replace the host brand with the store name. Titles, headers, footers, and logos stay the store’s. Leave the marketing homepage alone. Do not invent new sales copy.",
+  },
+  {
     id: "aff-logo",
     growthAxis: "functionality",
     title: "Make a store logo on the affiliate page",

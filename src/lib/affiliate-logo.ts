@@ -1,3 +1,5 @@
+import { isHostBrandText } from "./affiliate-host-brand";
+
 /** Affiliate dashboard and storefront URLs where a store logo belongs. */
 export function isAffiliateWatchPage(
   pathname?: string | null,
@@ -15,6 +17,36 @@ export function isAffiliateWatchPage(
   return /(?:^|[?&])viewAs=/.test(search ?? "");
 }
 
+/** Public storefronts customers see — these stay the store’s brand only. */
+export function isAffiliateStorefrontPage(
+  pathname?: string | null,
+  search?: string | null,
+): boolean {
+  const path = (pathname ?? "").split("?")[0].toLowerCase();
+  if (path.startsWith("/store/") || path.startsWith("/store-preview/")) {
+    return true;
+  }
+  return /(?:^|[?&])viewAs=/.test(search ?? "");
+}
+
+/** Watch.js white-labels these pages. The host marketing homepage stays as-is. */
+export function isWhiteLabelAffiliatePage(input: {
+  pathname?: string | null;
+  search?: string | null;
+  hostname?: string | null;
+  storeName?: string | null;
+}): boolean {
+  if (isAffiliateWatchPage(input.pathname, input.search)) return true;
+  const named = (input.storeName ?? "").trim();
+  if (!named || isHostBrandText(named)) return false;
+  const path = (input.pathname ?? "").split("?")[0];
+  const host = (input.hostname ?? "").toLowerCase();
+  if ((path === "/" || path === "") && /(?:^|\.)cabinetdealz\.com$/.test(host)) {
+    return false;
+  }
+  return true;
+}
+
 export function titleFromStoreSlug(slug: string): string {
   return slug
     .split(/[-_]+/)
@@ -28,7 +60,10 @@ export function affiliateLogoName(input: {
   pathname?: string | null;
   search?: string | null;
   title?: string | null;
+  storeName?: string | null;
 }): string {
+  const named = (input.storeName ?? "").trim();
+  if (named && !isHostBrandText(named)) return named.slice(0, 48);
   const path = input.pathname ?? "";
   const store = path.match(/^\/(?:store|store-preview)\/([^/]+)/i);
   if (store?.[1]) {
@@ -54,7 +89,7 @@ export function affiliateLogoName(input: {
       .trim();
     if (
       cleaned &&
-      !/^cabinet\s*dealz$/i.test(cleaned) &&
+      !isHostBrandText(cleaned) &&
       !/sign in|loading/i.test(cleaned)
     ) {
       return cleaned.slice(0, 32);
