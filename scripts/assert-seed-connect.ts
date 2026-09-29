@@ -148,6 +148,10 @@ assert(
   "generic live hosts get an affiliate-page logo improvement",
 );
 assert(
+  cabinetPlan.improvements.some((item) => /same-origin cabinets together/i.test(item.title)),
+  "cabinet hosts combine freight from the same warehouse",
+);
+assert(
   isAffiliateWatchPage("/store/kathmandu", "") &&
     isAffiliateWatchPage("/affiliate", "") &&
     isAffiliateWatchPage("/", "?viewAs=kathmandu") &&

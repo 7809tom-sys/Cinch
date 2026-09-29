@@ -105,6 +105,14 @@ const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
       "Paint a store wordmark on /affiliate and /store/:slug when no logo image is uploaded. Do not replace an existing logo or rewrite copy.",
   },
   {
+    id: "same-origin-freight",
+    growthAxis: "efficiency",
+    title: "Ship same-origin cabinets together",
+    why: "Two finishes from the same warehouse were quoted as two pickups — extra LTL minimums and lift-gate fees for one dock.",
+    liveChange:
+      "Pack and quote one freight load per origin ZIP. Cabinets from the same place ship together. Do not split one warehouse into two carriers.",
+  },
+  {
     id: "gen-tools",
     growthAxis: "functionality",
     title: "Watch the site’s critical tools",
