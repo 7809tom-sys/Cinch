@@ -1128,32 +1128,94 @@ export function buildWatchClientJs(input?: {
       return Boolean(currentShopStep());
     }
 
+    function isUsableShopAccent(value) {
+      var color = String(value || "").trim();
+      if (!color || color === "transparent" || color === "rgba(0, 0, 0, 0)") return false;
+      if (/rgb\\(\\s*255\\s*,\\s*255\\s*,\\s*255\\s*\\)/.test(color)) return false;
+      var rgb = color.match(/rgba?\\(\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,\\s*(\\d+)/);
+      if (rgb) {
+        var r = Number(rgb[1]);
+        var g = Number(rgb[2]);
+        var b = Number(rgb[3]);
+        var max = Math.max(r, g, b);
+        var min = Math.min(r, g, b);
+        if (max < 90) return false;
+        if (max - min < 28) return false;
+        return true;
+      }
+      var oklch = color.match(/oklch\\(\\s*([0-9.]+%?)\\s*[,\\s]\\s*([0-9.]+)/i);
+      if (oklch) {
+        var light = Number(String(oklch[1]).replace("%", ""));
+        if (/%/.test(oklch[1])) light = light / 100;
+        if (light < 0.38) return false;
+        if (Number(oklch[2]) < 0.08) return false;
+        return true;
+      }
+      var hex = color.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+      if (hex) {
+        var raw = hex[1];
+        if (raw.length === 3) {
+          raw = raw[0] + raw[0] + raw[1] + raw[1] + raw[2] + raw[2];
+        }
+        var hr = parseInt(raw.slice(0, 2), 16);
+        var hg = parseInt(raw.slice(2, 4), 16);
+        var hb = parseInt(raw.slice(4, 6), 16);
+        var hmax = Math.max(hr, hg, hb);
+        var hmin = Math.min(hr, hg, hb);
+        if (hmax < 90) return false;
+        if (hmax - hmin < 28) return false;
+        return true;
+      }
+      return false;
+    }
+
+    function firstUsableShopColor(nodes, prop) {
+      if (!nodes || !window.getComputedStyle) return "";
+      var i;
+      var value;
+      for (i = 0; i < nodes.length; i++) {
+        value = window.getComputedStyle(nodes[i])[prop] || "";
+        if (isUsableShopAccent(value)) return value;
+      }
+      return "";
+    }
+
     function shopPathAccentColor() {
+      var remembered = "";
       try {
-        var computed = window.getComputedStyle && document.documentElement
-          ? window.getComputedStyle(document.documentElement)
-          : null;
-        var names = ["--primary", "--color-primary", "--brand", "--accent"];
-        var i;
-        var value;
-        if (computed) {
-          for (i = 0; i < names.length; i++) {
-            value = (computed.getPropertyValue(names[i]) || "").trim();
-            if (value && value !== "transparent") return value;
+        remembered = sessionStorage.getItem("cinch-shop-accent") || "";
+      } catch (e) {}
+      try {
+        var header = document.querySelector("header");
+        var found =
+          firstUsableShopColor(header ? header.querySelectorAll("a, button") : [], "backgroundColor") ||
+          firstUsableShopColor(header ? header.querySelectorAll("a, span, strong") : [], "color") ||
+          firstUsableShopColor(document.querySelectorAll("button, a[href]"), "backgroundColor");
+        if (!found) {
+          var computed = window.getComputedStyle && document.documentElement
+            ? window.getComputedStyle(document.documentElement)
+            : null;
+          var names = ["--brand", "--accent", "--primary", "--color-primary"];
+          var i;
+          var value;
+          if (computed) {
+            for (i = 0; i < names.length; i++) {
+              value = (computed.getPropertyValue(names[i]) || "").trim();
+              if (isUsableShopAccent(value)) {
+                found = value;
+                break;
+              }
+            }
           }
         }
-        var header = document.querySelector("header");
-        var candidates = header ? header.querySelectorAll("a, button") : [];
-        for (i = 0; i < candidates.length; i++) {
-          var bg = window.getComputedStyle
-            ? window.getComputedStyle(candidates[i]).backgroundColor
-            : "";
-          var rgb = String(bg || "");
-          if (!rgb || rgb === "transparent" || rgb === "rgba(0, 0, 0, 0)") continue;
-          if (/rgb\\(\\s*255\\s*,\\s*255\\s*,\\s*255\\s*\\)/.test(rgb)) continue;
-          return rgb;
+        if (found) {
+          try {
+            sessionStorage.setItem("cinch-shop-accent", found);
+          } catch (e) {}
+          return found;
         }
       } catch (e) {}
+      if (isUsableShopAccent(remembered)) return remembered;
       return "#b5176b";
     }
 
@@ -1167,12 +1229,19 @@ export function buildWatchClientJs(input?: {
       var padRight = "24px";
       try {
         var headerPad = document.querySelector("header");
+        var padSource = headerPad;
         var headerStyle = headerPad && window.getComputedStyle
           ? window.getComputedStyle(headerPad)
           : null;
+        if (headerStyle && (!headerStyle.paddingLeft || headerStyle.paddingLeft === "0px")) {
+          padSource = headerPad && headerPad.firstElementChild;
+          headerStyle = padSource && window.getComputedStyle
+            ? window.getComputedStyle(padSource)
+            : headerStyle;
+        }
         if (headerStyle) {
-          if (headerStyle.paddingLeft) padLeft = headerStyle.paddingLeft;
-          if (headerStyle.paddingRight) padRight = headerStyle.paddingRight;
+          if (headerStyle.paddingLeft && headerStyle.paddingLeft !== "0px") padLeft = headerStyle.paddingLeft;
+          if (headerStyle.paddingRight && headerStyle.paddingRight !== "0px") padRight = headerStyle.paddingRight;
         }
       } catch (e) {}
       var nav = document.createElement("nav");

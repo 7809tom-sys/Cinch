@@ -1019,6 +1019,8 @@ assert(
     watchJs.includes("paintShopPathLinks") &&
     watchJs.includes("cinch-seed-shop-path") &&
     watchJs.includes("shopPathAccentColor") &&
+    watchJs.includes("isUsableShopAccent") &&
+    watchJs.includes("firstUsableShopColor") &&
     watchJs.includes("text-decoration:none"),
   "watch.js can make a store logo on an affiliate page",
 );
