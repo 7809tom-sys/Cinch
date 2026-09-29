@@ -20,13 +20,33 @@ export function isAffiliateWatchPage(
 /** Public storefronts customers see — these stay the store’s brand only. */
 export function isAffiliateStorefrontPage(
   pathname?: string | null,
-  search?: string | null,
+  _search?: string | null,
 ): boolean {
   const path = (pathname ?? "").split("?")[0].toLowerCase();
-  if (path.startsWith("/store/") || path.startsWith("/store-preview/")) {
-    return true;
+  return path.startsWith("/store/") || path.startsWith("/store-preview/");
+}
+
+export function viewAsValue(search?: string | null): string {
+  return (
+    new URLSearchParams((search ?? "").replace(/^\?/, "")).get("viewAs") ?? ""
+  ).trim();
+}
+
+export function isNumericAffiliateId(value?: string | null): boolean {
+  return /^\d{3,}$/.test(String(value ?? "").trim());
+}
+
+/** Numeric viewAs ids are affiliate records, not store names. */
+export function nameFromAffiliateRef(
+  ref: string,
+  storeName?: string | null,
+): string {
+  const named = (storeName ?? "").trim();
+  if (named && !isHostBrandText(named) && !isNumericAffiliateId(named)) {
+    return named.slice(0, 48);
   }
-  return /(?:^|[?&])viewAs=/.test(search ?? "");
+  if (isNumericAffiliateId(ref)) return "Store";
+  return titleFromStoreSlug(ref) || "Store";
 }
 
 /** Watch.js white-labels these pages. The host marketing homepage stays as-is. */
@@ -75,11 +95,10 @@ export function affiliateLogoName(input: {
       if (fromSlug) return fromSlug;
     }
   }
-  const query = (input.search ?? "").replace(/^\?/, "");
-  const viewAs = new URLSearchParams(query).get("viewAs");
-  if (viewAs?.trim()) {
-    const fromView = titleFromStoreSlug(viewAs.trim());
-    if (fromView) return fromView;
+  const viewAs = viewAsValue(input.search);
+  if (viewAs) {
+    const fromView = nameFromAffiliateRef(viewAs, input.storeName);
+    if (fromView && fromView !== "Store") return fromView;
   }
   const title = (input.title ?? "").trim();
   if (title) {

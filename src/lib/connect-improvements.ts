@@ -113,6 +113,14 @@ const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
       "Paint a store wordmark on /affiliate and /store/:slug when no logo image is uploaded. Do not replace an existing logo or rewrite copy.",
   },
   {
+    id: "aff-design-crm",
+    growthAxis: "customer_service",
+    title: "Find affiliate designs in the CRM",
+    why: "A kitchen made on the affiliate storefront should not get lost. The store, customer, and design belong together in the CRM.",
+    liveChange:
+      "Stamp the store name on kitchens saved from /store/:slug, then list those designs on the affiliate CRM page and in Cinch. Search by store, customer, or kitchen. Do not show other customers’ designs on the public storefront.",
+  },
+  {
     id: "same-origin-freight",
     growthAxis: "efficiency",
     title: "Ship same-origin cabinets together",

@@ -19,6 +19,7 @@ import {
   logoutCustomerAction,
   portalSwitchAgentAction,
 } from "../actions";
+import { AffiliateDesignCrm } from "@/components/affiliate-design-crm";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
 import { WatchPingLine } from "@/components/watch-ping-line";
 import { ConnectPanel } from "./connect-panel";
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PortalProjectPage({ params }: PageProps) {
   const { id } = await params;
-  const { customer, project, watch, crew, pmContact } =
+  const { customer, project, watch, designs, crew, pmContact } =
     await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
   if (!project) notFound();
@@ -459,6 +460,8 @@ export default async function PortalProjectPage({ params }: PageProps) {
               githubRepoUrl={project.githubRepoUrl}
             />
           ) : null}
+
+          <AffiliateDesignCrm designs={designs} />
 
           <div className="border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
