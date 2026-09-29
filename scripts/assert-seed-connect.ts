@@ -660,6 +660,12 @@ assert(
     portalControls.includes("Set existing key"),
   "portal Connect panel does not pull a Just Putz It live key",
 );
+assert(
+  portalControls.includes(
+    'href="https://www.cabinetdealz.com/affiliate?viewAs=8250001"',
+  ),
+  "the affiliate desk URL is a hyperlink",
+);
 
 function makeDomNode(input: {
   tag: string;
@@ -978,7 +984,9 @@ assert(
     watchJs.includes("stripHostBrandOnAffiliate") &&
     watchJs.includes("data-cinch-white-label") &&
     watchJs.includes("paintAffiliateDesignCrm") &&
-    watchJs.includes("/v1/design"),
+    watchJs.includes("/v1/design") &&
+    watchJs.includes("https://www.cabinetdealz.com/affiliate?viewAs=") &&
+    watchJs.includes("text-decoration:underline"),
   "watch.js can make a store logo on an affiliate page",
 );
 

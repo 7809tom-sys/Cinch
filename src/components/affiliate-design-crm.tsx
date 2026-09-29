@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  affiliateDeskHref,
   affiliateDesignCrmLine,
   designsByStore,
   findAffiliateDesigns,
@@ -27,7 +28,16 @@ export function AffiliateDesignCrm({
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         Kitchens saved or requested on an affiliate storefront land here, tagged
-        by store, so they are easy to find in the CRM.
+        by store, so they are easy to find in the CRM. Open{" "}
+        <a
+          href={affiliateDeskHref({ storeSlug: "8250001" })}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-brand-deep underline"
+        >
+          https://www.cabinetdealz.com/affiliate?viewAs=8250001
+        </a>
+        .
       </p>
       <label className="mt-4 block text-sm font-semibold text-brand-deep">
         Find a design
@@ -50,30 +60,56 @@ export function AffiliateDesignCrm({
           {groups.map((group) => (
             <section key={group.storeSlug || group.storeName}>
               <h3 className="text-xs font-bold tracking-wide text-accent-deep uppercase">
-                {group.storeName}
+                <a
+                  href={affiliateDeskHref({
+                    storeSlug: group.storeSlug,
+                    href: group.items[0]?.href,
+                    section: "crm",
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {group.storeName}
+                </a>
               </h3>
               <ul className="mt-2 space-y-3">
                 {group.items.map((item) => (
                   <li key={item.id} className="text-sm">
                     <p className="font-semibold text-brand-deep">
-                      {affiliateDesignCrmLine(item)}
+                      <a
+                        href={affiliateDeskHref({
+                          storeSlug: item.storeSlug,
+                          href: item.href,
+                          section: "crm",
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline"
+                      >
+                        {affiliateDesignCrmLine(item)}
+                      </a>
                     </p>
                     <p className="mt-1 text-xs text-muted">
                       {item.kind} · {new Date(item.createdAt).toLocaleString()}
                       {item.contact ? ` · ${item.contact}` : ""}
                     </p>
-                    {item.href ? (
-                      <p className="mt-1 break-all text-xs">
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold text-brand-deep underline"
-                        >
-                          {item.href}
-                        </a>
-                      </p>
-                    ) : null}
+                    <p className="mt-1 break-all text-xs">
+                      <a
+                        href={affiliateDeskHref({
+                          storeSlug: item.storeSlug,
+                          href: item.href,
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-brand-deep underline"
+                      >
+                        {affiliateDeskHref({
+                          storeSlug: item.storeSlug,
+                          href: item.href,
+                        })}
+                      </a>
+                    </p>
                   </li>
                 ))}
               </ul>

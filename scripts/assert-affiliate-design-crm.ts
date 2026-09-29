@@ -3,6 +3,7 @@
  * Run: npx tsx scripts/assert-affiliate-design-crm.ts
  */
 import {
+  affiliateDeskHref,
   affiliateDesignCrmLine,
   affiliateStoreFromPath,
   designsByStore,
@@ -44,7 +45,9 @@ assert(
       storeName: "Spartan Cabinets",
     }) === "Spartan Cabinets" &&
     affiliateStoreFromPath("/affiliate", "?viewAs=8250001").storeSlug ===
-      "8250001",
+      "8250001" &&
+    affiliateDeskHref({ storeSlug: "8250001" }) ===
+      "https://www.cabinetdealz.com/affiliate?viewAs=8250001",
   "viewAs=8250001 is an affiliate id, not a store name",
 );
 assert(

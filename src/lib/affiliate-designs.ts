@@ -40,6 +40,22 @@ export function isAffiliateCrmPage(
   return /\/(crm|leads|designs)\b/.test(path);
 }
 
+export const AFFILIATE_DESK_ORIGIN = "https://www.cabinetdealz.com";
+
+export function affiliateDeskHref(input: {
+  storeSlug?: string | null;
+  href?: string | null;
+  section?: "crm" | null;
+}): string {
+  const fromHref = pathFromHref(input.href ?? "");
+  const viewAs =
+    viewAsValue(fromHref.search) || String(input.storeSlug ?? "").trim();
+  const url = new URL("/affiliate", AFFILIATE_DESK_ORIGIN);
+  if (viewAs) url.searchParams.set("viewAs", viewAs);
+  if (input.section) url.searchParams.set("section", input.section);
+  return url.toString();
+}
+
 export function designsForAffiliate(
   designs: AffiliateDesign[],
   storeRef?: string | null,

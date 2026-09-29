@@ -1006,15 +1006,15 @@ export function buildWatchClientJs(input?: {
       empty.style.cssText = "margin:0;font-size:13px;color:#5c6b63;";
       list.appendChild(empty);
       var crmLink = document.createElement("a");
-      crmLink.textContent = "Open My CRM";
-      crmLink.style.cssText = "display:inline-block;margin:8px 0 0;font-size:12px;font-weight:700;color:#1a2b4a;";
+      crmLink.textContent = "https://www.cabinetdealz.com/affiliate?viewAs=" + (viewAsId() || "8250001");
+      crmLink.setAttribute("data-cinch-crm-link", "desk");
+      crmLink.style.cssText = "display:inline-block;margin:8px 0 0;font-size:12px;font-weight:700;color:#1a2b4a;text-decoration:underline;";
       try {
-        var next = new URL(location.href);
-        next.searchParams.set("section", "crm");
-        if (viewAsId()) next.searchParams.set("viewAs", viewAsId());
-        crmLink.href = next.pathname + next.search;
+        var next = new URL("https://www.cabinetdealz.com/affiliate");
+        next.searchParams.set("viewAs", viewAsId() || "8250001");
+        crmLink.href = next.toString();
       } catch (e) {
-        crmLink.href = "/affiliate?section=crm" + (viewAsId() ? "&viewAs=" + encodeURIComponent(viewAsId()) : "");
+        crmLink.href = "https://www.cabinetdealz.com/affiliate?viewAs=" + encodeURIComponent(viewAsId() || "8250001");
       }
       root.appendChild(title);
       root.appendChild(help);
@@ -1042,15 +1042,18 @@ export function buildWatchClientJs(input?: {
           return;
         }
         for (i = 0; i < shown.length; i++) {
-          var row = document.createElement("p");
           var design = shown[i];
+          var row = document.createElement("a");
           row.textContent =
             (design.storeName || "Store") +
             " · " +
             (design.title || "Kitchen design") +
             " · " +
             (design.customerName || "Customer");
-          row.style.cssText = "margin:0 0 8px;font-size:13px;";
+          row.href = design.href || crmLink.href;
+          row.target = "_blank";
+          row.rel = "noopener noreferrer";
+          row.style.cssText = "display:block;margin:0 0 8px;font-size:13px;font-weight:700;color:#1a2b4a;text-decoration:underline;";
           list.appendChild(row);
         }
       }
