@@ -126,7 +126,7 @@ const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Go back from designer to cart and cabinet styles",
     why: "The kitchen path feels one-way. Shoppers should be able to jump back from the designer to the cart or cabinet styles.",
     liveChange:
-      "Paint hyperlinks among Cabinet styles, Designer, and Shopping cart on those pages. Keep every step clickable so the path is not one direction. Do not rebuild the designer.",
+      "Paint a header-matched path among Cabinet styles, Designer, and Shopping cart. Mark the current step. Keep every step clickable so the path is not one direction. Do not rebuild the designer.",
   },
   {
     id: "same-origin-freight",

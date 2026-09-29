@@ -756,7 +756,12 @@ function runWatch(scriptEl: {
     metas?: Array<{ property?: string; name?: string; content: string }>;
   };
 }) {
-  const created: Array<{ id?: string; text?: string; innerHTML?: string }> = [];
+  const created: Array<{
+    id?: string;
+    text?: string;
+    innerHTML?: string;
+    style?: { cssText?: string };
+  }> = [];
   const fetches: string[] = [];
   const fakeScript = {
     src: scriptEl.src || "https://www.cinchseed.com/v1/watch.js",
@@ -1012,7 +1017,9 @@ assert(
     watchJs.includes("https://www.cabinetdealz.com/affiliate?viewAs=") &&
     watchJs.includes("text-decoration:underline") &&
     watchJs.includes("paintShopPathLinks") &&
-    watchJs.includes("cinch-seed-shop-path"),
+    watchJs.includes("cinch-seed-shop-path") &&
+    watchJs.includes("shopPathAccentColor") &&
+    watchJs.includes("text-decoration:none"),
   "watch.js can make a store logo on an affiliate page",
 );
 
@@ -1154,6 +1161,16 @@ const storeDesignPath = runWatch({
 assert(
   storeDesignPath.created.some((node) => node.id === "cinch-seed-shop-path"),
   "watch.js paints back links on the affiliate designer",
+);
+const shopPathNav = storeDesignPath.created.find(
+  (node) => node.id === "cinch-seed-shop-path",
+);
+assert(
+  Boolean(shopPathNav?.style?.cssText?.includes("background:#fff")) &&
+    !shopPathNav?.style?.cssText?.includes("#f7f4ee") &&
+    watchJs.includes("text-decoration:none") &&
+    !watchJs.includes("color:#1a2b4a;font-weight:700;text-decoration:underline"),
+  "shop-path links match the white header instead of a beige underlined strip",
 );
 
 const homeKeepBrand = runWatch({

@@ -1128,11 +1128,53 @@ export function buildWatchClientJs(input?: {
       return Boolean(currentShopStep());
     }
 
+    function shopPathAccentColor() {
+      try {
+        var computed = window.getComputedStyle && document.documentElement
+          ? window.getComputedStyle(document.documentElement)
+          : null;
+        var names = ["--primary", "--color-primary", "--brand", "--accent"];
+        var i;
+        var value;
+        if (computed) {
+          for (i = 0; i < names.length; i++) {
+            value = (computed.getPropertyValue(names[i]) || "").trim();
+            if (value && value !== "transparent") return value;
+          }
+        }
+        var header = document.querySelector("header");
+        var candidates = header ? header.querySelectorAll("a, button") : [];
+        for (i = 0; i < candidates.length; i++) {
+          var bg = window.getComputedStyle
+            ? window.getComputedStyle(candidates[i]).backgroundColor
+            : "";
+          var rgb = String(bg || "");
+          if (!rgb || rgb === "transparent" || rgb === "rgba(0, 0, 0, 0)") continue;
+          if (/rgb\\(\\s*255\\s*,\\s*255\\s*,\\s*255\\s*\\)/.test(rgb)) continue;
+          return rgb;
+        }
+      } catch (e) {}
+      return "#b5176b";
+    }
+
     function paintShopPathLinks() {
       if (!isShopPathPage()) return;
       if (document.getElementById("cinch-seed-shop-path")) return;
       var steps = shopPathSteps();
       var current = currentShopStep();
+      var accent = shopPathAccentColor();
+      var padLeft = "24px";
+      var padRight = "24px";
+      try {
+        var headerPad = document.querySelector("header");
+        var headerStyle = headerPad && window.getComputedStyle
+          ? window.getComputedStyle(headerPad)
+          : null;
+        if (headerStyle) {
+          if (headerStyle.paddingLeft) padLeft = headerStyle.paddingLeft;
+          if (headerStyle.paddingRight) padRight = headerStyle.paddingRight;
+        }
+      } catch (e) {}
       var nav = document.createElement("nav");
       nav.id = "cinch-seed-shop-path";
       nav.setAttribute("data-cinch-shop-path", "on");
@@ -1140,31 +1182,32 @@ export function buildWatchClientJs(input?: {
       nav.style.cssText = [
         "display:flex",
         "flex-wrap:wrap",
-        "align-items:center",
-        "gap:6px 10px",
-        "padding:8px 16px",
-        "background:#f7f4ee",
-        "border-bottom:1px solid rgba(20,36,28,0.12)",
-        "font:13px/1.4 system-ui,Segoe UI,sans-serif",
-        "color:#14241c"
+        "align-items:stretch",
+        "gap:0",
+        "padding:0 " + padRight + " 0 " + padLeft,
+        "background:#fff",
+        "border-bottom:1px solid rgba(17,24,39,0.08)",
+        "font:500 14px/1.2 system-ui,Segoe UI,sans-serif",
+        "color:#111827"
       ].join(";");
+      var rules = document.createElement("style");
+      rules.textContent = [
+        "#cinch-seed-shop-path a{color:#111827;font-weight:500;text-decoration:none;padding:11px 14px;margin:0;border-bottom:2px solid transparent;display:inline-flex;align-items:center;}",
+        "#cinch-seed-shop-path a:hover{color:" + accent + ";}",
+        "#cinch-seed-shop-path a[aria-current='page']{color:" + accent + ";font-weight:600;border-bottom-color:" + accent + ";}"
+      ].join("");
+      nav.appendChild(rules);
       var i;
       for (i = 0; i < steps.length; i++) {
-        if (i > 0) {
-          var sep = document.createElement("span");
-          sep.textContent = "·";
-          sep.setAttribute("aria-hidden", "true");
-          sep.style.cssText = "color:#5c6b63;";
-          nav.appendChild(sep);
-        }
         var step = steps[i];
         var link = document.createElement("a");
         link.href = step.href;
         link.textContent = step.label;
-        link.style.cssText =
-          "color:#1a2b4a;font-weight:700;text-decoration:underline;";
+        link.style.cssText = "color:#111827;font-weight:500;text-decoration:none;";
         if (step.id === current) {
           link.setAttribute("aria-current", "page");
+          link.style.color = accent;
+          link.style.fontWeight = "600";
         }
         nav.appendChild(link);
       }
