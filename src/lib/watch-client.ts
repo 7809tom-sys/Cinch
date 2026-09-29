@@ -461,9 +461,99 @@ export function buildWatchClientJs(input?: {
       }
     } catch (e) {}
 
+    function originZipFromText(text) {
+      var match = String(text || "").match(/\\borigin\\s+(\\d{5})\\b/i);
+      return match ? match[1] : "";
+    }
+
+    function palletCountFromText(text) {
+      var match = String(text || "").match(/(\\d+)\\s+pallets?\\b/i);
+      return match ? Number(match[1]) : 0;
+    }
+
+    function placeFromText(text) {
+      var match = String(text || "").match(/\\(([^)]+)\\)/);
+      return match && match[1] ? String(match[1]).trim() : "";
+    }
+
+    function paintSameOriginFreight() {
+      try {
+        var nodes = document.querySelectorAll("p, span, div, li");
+        var i;
+        for (i = 0; i < nodes.length; i++) {
+          var node = nodes[i];
+          var raw = (node.textContent || "").replace(/\\s+/g, " ").trim();
+          if (raw.indexOf("Each origin is packed and quoted separately") === 0) {
+            node.textContent = "Same origin ships together — one pickup and one quote from that warehouse.";
+          }
+        }
+        var headers = document.querySelectorAll("span, div, p, h2, h3");
+        for (i = 0; i < headers.length; i++) {
+          if ((headers[i].textContent || "").trim() !== "Verified shipping total") continue;
+          var box = headers[i].parentElement;
+          while (box && box !== document.body && (box.textContent || "").indexOf("origin ") < 0) {
+            box = box.parentElement;
+          }
+          if (!box || box.getAttribute("data-cinch-freight") === "together") continue;
+          var rows = [];
+          var kids = box.querySelectorAll("div, li, p");
+          var k;
+          for (k = 0; k < kids.length; k++) {
+            var kid = kids[k];
+            var line = (kid.textContent || "").replace(/\\s+/g, " ").trim();
+            var zip = originZipFromText(line);
+            if (!zip) continue;
+            if (kid.querySelector && kid.querySelector("div, li, p")) continue;
+            rows.push({ el: kid, zip: zip, line: line, pallets: palletCountFromText(line), place: placeFromText(line) });
+          }
+          var byZip = {};
+          for (k = 0; k < rows.length; k++) {
+            byZip[rows[k].zip] = byZip[rows[k].zip] || [];
+            byZip[rows[k].zip].push(rows[k]);
+          }
+          var zipKey;
+          for (zipKey in byZip) {
+            if (!Object.prototype.hasOwnProperty.call(byZip, zipKey)) continue;
+            var group = byZip[zipKey];
+            if (group.length < 2) continue;
+            var pallets = 0;
+            var place = "";
+            for (k = 0; k < group.length; k++) {
+              pallets += group[k].pallets || 0;
+              if (!place && group[k].place) place = group[k].place;
+            }
+            if (pallets < 1) pallets = group.length;
+            var keep = group[0].el;
+            keep.textContent =
+              "Ships together · " +
+              (place ? place + " · " : "") +
+              "origin " +
+              zipKey +
+              " · " +
+              pallets +
+              (pallets === 1 ? " pallet" : " pallets");
+            keep.setAttribute("data-cinch-freight-line", zipKey);
+            for (k = 1; k < group.length; k++) {
+              if (group[k].el && group[k].el.remove) group[k].el.remove();
+            }
+            box.setAttribute("data-cinch-freight", "together");
+          }
+        }
+      } catch (e) {}
+    }
+
     function start() {
       paintAffiliateLogo();
+      paintSameOriginFreight();
       paintCommunity();
+      if (document.body && document.body.addEventListener) {
+        try {
+          var freightObserver = new MutationObserver(function () {
+            paintSameOriginFreight();
+          });
+          freightObserver.observe(document.body, { childList: true, subtree: true });
+        } catch (e) {}
+      }
       if (!key) {
         setStatus("Script is on the page, but data-key is missing. Copy the Connect Key from Cinch Admin or Portal.", "warn");
       } else {
