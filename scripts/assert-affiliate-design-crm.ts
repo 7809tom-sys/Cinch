@@ -6,6 +6,7 @@ import {
   affiliateDesignCrmLine,
   affiliateStoreFromPath,
   designsByStore,
+  designsForAffiliate,
   findAffiliateDesigns,
   isAffiliateCrmPage,
   isDesignSaveLabel,
@@ -13,6 +14,10 @@ import {
   listAffiliateDesigns,
   recordAffiliateDesign,
 } from "../src/lib/affiliate-designs";
+import {
+  affiliateLogoName,
+  isNumericAffiliateId,
+} from "../src/lib/affiliate-logo";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -25,10 +30,22 @@ function assert(condition: boolean, message: string) {
 
 assert(
   isAffiliateCrmPage("/affiliate", "") &&
-    !isAffiliateCrmPage("/affiliate", "?viewAs=kathmandu") &&
+    isAffiliateCrmPage("/affiliate", "?viewAs=8250001") &&
     !isAffiliateCrmPage("/store/kathmandu", "") &&
     isAffiliateCrmPage("/crm", ""),
-  "CRM paint targets the affiliate desk, not the public storefront",
+  "CRM paint targets the affiliate desk, including view-as",
+);
+assert(
+  isNumericAffiliateId("8250001") &&
+    !isNumericAffiliateId("kathmandu") &&
+    affiliateLogoName({ search: "?viewAs=8250001" }) === "Store" &&
+    affiliateLogoName({
+      search: "?viewAs=8250001",
+      storeName: "Spartan Cabinets",
+    }) === "Spartan Cabinets" &&
+    affiliateStoreFromPath("/affiliate", "?viewAs=8250001").storeSlug ===
+      "8250001",
+  "viewAs=8250001 is an affiliate id, not a store name",
 );
 assert(
   isDesignSaveUrl("/api/designs") &&
@@ -86,9 +103,23 @@ Promise.resolve()
         findAffiliateDesigns(listed, "missing").length === 0,
       "CRM search finds a design by store or kitchen",
     );
+    const fromViewAs = await recordAffiliateDesign({
+      seedId,
+      storeSlug: "8250001",
+      storeName: "Spartan Cabinets",
+      title: "Cobalt kitchen",
+      customerName: "Lee",
+      href: "https://www.cabinetdealz.com/affiliate?viewAs=8250001",
+    });
+    const all = await listAffiliateDesigns(seedId);
     assert(
       designsByStore(listed)[0]?.storeName === "Spartan Cabinets",
       "CRM groups designs under the affiliate store",
+    );
+    assert(
+      designsForAffiliate(all, "8250001").some((item) => item.id === fromViewAs.id) &&
+        designsForAffiliate(all, "8250001").length === 1,
+      "CRM can open just the designs for viewAs=8250001",
     );
   })
   .then(() => {

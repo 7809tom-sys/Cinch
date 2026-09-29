@@ -175,6 +175,7 @@ assert(
     !isAffiliateWatchPage("/", "") &&
     isAffiliateStorefrontPage("/store/spartan-cabinets", "") &&
     !isAffiliateStorefrontPage("/affiliate", "") &&
+    !isAffiliateStorefrontPage("/affiliate", "?viewAs=8250001") &&
     isWhiteLabelAffiliatePage({ pathname: "/store/kathmandu" }) &&
     !isWhiteLabelAffiliatePage({
       pathname: "/",
@@ -1061,6 +1062,30 @@ assert(
 assert(
   alreadyHasLogo.fetches.some((url) => url.includes("/v1/design")),
   "watch.js loads affiliate designs for the CRM",
+);
+
+const viewAsDesk = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/affiliate",
+  search: "?viewAs=8250001",
+  attrs: {
+    "data-seed": "seed-demo",
+    "data-key": "key-demo",
+    "data-mark": "true",
+    "data-store-name": "Spartan Cabinets",
+  },
+});
+assert(
+  viewAsDesk.created.some((node) => node.id === "cinch-seed-design-crm"),
+  "viewAs=8250001 still shows the affiliate design CRM",
+);
+assert(
+  viewAsDesk.fetches.some((url) => url.includes("store=8250001")),
+  "the CRM loads designs for affiliate 8250001",
+);
+assert(
+  viewAsDesk.created.some((node) => node.id === "cinch-seed-community"),
+  "the affiliate desk still shows the Connect widget",
 );
 
 const homeNoLogo = runWatch({

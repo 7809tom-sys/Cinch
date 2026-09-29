@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  designsForAffiliate,
   findAffiliateDesigns,
   listAffiliateDesigns,
   publicAffiliateDesign,
@@ -21,6 +22,8 @@ export async function GET(request: Request) {
   const seed = url.searchParams.get("seed");
   const key = url.searchParams.get("key");
   const query = url.searchParams.get("q") ?? "";
+  const store =
+    url.searchParams.get("store") ?? url.searchParams.get("viewAs") ?? "";
 
   const auth = await verifyConnectRequest(seed, key);
   if (!auth.ok) {
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
   }
 
   const designs = findAffiliateDesigns(
-    await listAffiliateDesigns(auth.project.id),
+    designsForAffiliate(await listAffiliateDesigns(auth.project.id), store),
     query,
   );
   return NextResponse.json(

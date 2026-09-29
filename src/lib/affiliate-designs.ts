@@ -1,5 +1,9 @@
 import { randomUUID } from "crypto";
-import { titleFromStoreSlug } from "./affiliate-logo";
+import {
+  nameFromAffiliateRef,
+  titleFromStoreSlug,
+  viewAsValue,
+} from "./affiliate-logo";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
 export type AffiliateDesignKind = "saved" | "requested" | "quoted";
@@ -31,9 +35,22 @@ export function isAffiliateCrmPage(
 ): boolean {
   const path = (pathname ?? "").split("?")[0].toLowerCase();
   if (path === "/affiliate" || path.startsWith("/affiliate/")) {
-    return !/(?:^|[?&])viewAs=/.test(search ?? "");
+    return true;
   }
   return /\/(crm|leads|designs)\b/.test(path);
+}
+
+export function designsForAffiliate(
+  designs: AffiliateDesign[],
+  storeRef?: string | null,
+): AffiliateDesign[] {
+  const ref = String(storeRef ?? "").trim().toLowerCase();
+  if (!ref) return designs;
+  return designs.filter(
+    (item) =>
+      item.storeSlug.toLowerCase() === ref ||
+      item.storeName.toLowerCase() === ref,
+  );
 }
 
 export function isDesignSaveUrl(url?: string | null): boolean {
@@ -98,12 +115,12 @@ export function affiliateStoreFromPath(pathname?: string | null, search?: string
       return { storeSlug: store[1], storeName: titleFromStoreSlug(store[1]) };
     }
   }
-  const viewAs = new URLSearchParams((query ?? "").replace(/^\?/, "")).get(
-    "viewAs",
-  );
-  if (viewAs?.trim()) {
-    const slug = viewAs.trim();
-    return { storeSlug: slug, storeName: titleFromStoreSlug(slug) };
+  const viewAs = viewAsValue(query);
+  if (viewAs) {
+    return {
+      storeSlug: viewAs,
+      storeName: nameFromAffiliateRef(viewAs),
+    };
   }
   return { storeSlug: "", storeName: "" };
 }

@@ -117,18 +117,37 @@ export function buildWatchClientJs(input?: {
 
     function isAffiliateStorefront() {
       var path = String(pagePath || "").split("?")[0].toLowerCase();
-      if (path.indexOf("/store/") === 0 || path.indexOf("/store-preview/") === 0) {
-        return true;
-      }
-      return /(?:^|[?&])viewAs=/.test(pageSearch || "");
+      return path.indexOf("/store/") === 0 || path.indexOf("/store-preview/") === 0;
     }
 
     function isAffiliateCrmPage() {
       var path = String(pagePath || "").split("?")[0].toLowerCase();
-      if (path === "/affiliate" || path.indexOf("/affiliate/") === 0) {
-        return !/(?:^|[?&])viewAs=/.test(pageSearch || "");
-      }
+      if (path === "/affiliate" || path.indexOf("/affiliate/") === 0) return true;
       return /\\/(crm|leads|designs)\\b/.test(path);
+    }
+
+    function viewAsId() {
+      try {
+        var fromQuery = new URLSearchParams(String(pageSearch || "").replace(/^\\?/, "")).get("viewAs");
+        if (fromQuery && String(fromQuery).trim()) return String(fromQuery).trim();
+      } catch (e) {}
+      try {
+        var remembered = sessionStorage.getItem("cinch-affiliate-id");
+        if (remembered && String(remembered).trim()) return String(remembered).trim();
+      } catch (e) {}
+      return "";
+    }
+
+    function rememberAffiliateView() {
+      var id = viewAsId();
+      if (!id) return;
+      try {
+        sessionStorage.setItem("cinch-affiliate-id", id);
+      } catch (e) {}
+    }
+
+    function isNumericAffiliateId(value) {
+      return /^\\d{3,}$/.test(String(value || "").trim());
     }
 
     function storeNameAttr() {
@@ -223,23 +242,38 @@ export function buildWatchClientJs(input?: {
       } catch (e) {}
       var store = String(pagePath || "").match(/^\\/(?:store|store-preview)\\/([^/]+)/i);
       if (store && store[1]) {
-        var fromSlug = titleFromSlug(decodeURIComponent(store[1]));
-        if (fromSlug) return fromSlug;
+        var slug = decodeURIComponent(store[1]);
+        if (!isNumericAffiliateId(slug)) {
+          var fromSlug = titleFromSlug(slug);
+          if (fromSlug) return fromSlug;
+        }
       }
       try {
-        var viewAs = new URLSearchParams(String(pageSearch || "").replace(/^\\?/, "")).get("viewAs");
-        if (viewAs && viewAs.trim()) {
-          var fromView = titleFromSlug(viewAs.trim());
-          if (fromView) return fromView;
+        var liveTitle = ((document && document.title) || pageTitle || "").trim();
+        if (liveTitle) {
+          var cleaned = liveTitle.split(/\\s+[—–|-]\\s+/)[0].replace(/\\s*\\|\\s*CabinetDealz.*$/i, "").trim();
+          if (
+            cleaned &&
+            !isHostBrandText(cleaned) &&
+            !isNumericAffiliateId(cleaned) &&
+            !/sign in|loading/i.test(cleaned)
+          ) {
+            return cleaned.slice(0, 48);
+          }
         }
       } catch (e) {}
-      var title = String(pageTitle || "").trim();
-      if (title) {
-        var cleaned = title.split(/\\s+[—–|-]\\s+/)[0].replace(/\\s*\\|\\s*CabinetDealz.*$/i, "").trim();
-        if (cleaned && !isHostBrandText(cleaned) && !/sign in|loading/i.test(cleaned)) {
-          return cleaned.slice(0, 48);
+      try {
+        var marked = document.querySelector("[data-store-name]");
+        var markedName = marked && marked.getAttribute && marked.getAttribute("data-store-name");
+        if (markedName && !isHostBrandText(markedName) && !isNumericAffiliateId(markedName)) {
+          return String(markedName).trim().slice(0, 48);
         }
-      }
+        var serif = document.querySelector("header .font-serif, header span.font-bold");
+        var serifName = serif && serif.textContent ? String(serif.textContent).replace(/\\s+/g, " ").trim() : "";
+        if (serifName && !isHostBrandText(serifName) && !isNumericAffiliateId(serifName) && serifName.length < 48) {
+          return serifName;
+        }
+      } catch (e) {}
       return "Store";
     }
 
@@ -774,11 +808,7 @@ export function buildWatchClientJs(input?: {
           return store[1];
         }
       }
-      try {
-        var viewAs = new URLSearchParams(String(pageSearch || "").replace(/^\\?/, "")).get("viewAs");
-        if (viewAs && viewAs.trim()) return viewAs.trim();
-      } catch (e) {}
-      return "";
+      return viewAsId();
     }
 
     function isDesignSaveUrl(url) {
@@ -837,7 +867,8 @@ export function buildWatchClientJs(input?: {
           var fields = [
             ["cinch_store_name", name],
             ["cinch_store_slug", slug],
-            ["affiliate_store", name]
+            ["affiliate_store", name],
+            ["affiliateId", slug]
           ];
           var f;
           for (f = 0; f < fields.length; f++) {
@@ -918,6 +949,7 @@ export function buildWatchClientJs(input?: {
                     data.storeName = data.storeName || affiliateName();
                     data.storeSlug = data.storeSlug || storeSlug();
                     data.affiliateStore = data.affiliateStore || affiliateName();
+                    if (storeSlug()) data.affiliateId = data.affiliateId || Number(storeSlug()) || storeSlug();
                     init.body = JSON.stringify(data);
                   }
                 }
@@ -957,7 +989,9 @@ export function buildWatchClientJs(input?: {
       title.textContent = "Affiliate designs";
       title.style.cssText = "margin:0;font-size:18px;line-height:1.2;";
       var help = document.createElement("p");
-      help.textContent = "Kitchens from the storefront, tagged by store. Search to find one.";
+      help.textContent = viewAsId()
+        ? "Kitchens from this affiliate, ready to find in My CRM."
+        : "Kitchens from the storefront, tagged by store. Search to find one.";
       help.style.cssText = "margin:8px 0 0;font-size:12px;color:#5c6b63;";
       var search = document.createElement("input");
       search.type = "search";
@@ -971,8 +1005,20 @@ export function buildWatchClientJs(input?: {
       empty.textContent = "No affiliate designs yet.";
       empty.style.cssText = "margin:0;font-size:13px;color:#5c6b63;";
       list.appendChild(empty);
+      var crmLink = document.createElement("a");
+      crmLink.textContent = "Open My CRM";
+      crmLink.style.cssText = "display:inline-block;margin:8px 0 0;font-size:12px;font-weight:700;color:#1a2b4a;";
+      try {
+        var next = new URL(location.href);
+        next.searchParams.set("section", "crm");
+        if (viewAsId()) next.searchParams.set("viewAs", viewAsId());
+        crmLink.href = next.pathname + next.search;
+      } catch (e) {
+        crmLink.href = "/affiliate?section=crm" + (viewAsId() ? "&viewAs=" + encodeURIComponent(viewAsId()) : "");
+      }
       root.appendChild(title);
       root.appendChild(help);
+      root.appendChild(crmLink);
       root.appendChild(search);
       root.appendChild(list);
       document.body.appendChild(root);
@@ -1017,7 +1063,9 @@ export function buildWatchClientJs(input?: {
         empty.textContent = "Connect key missing — designs cannot load.";
         return;
       }
-      fetch(designUrl + "?seed=" + encodeURIComponent(seed) + "&key=" + encodeURIComponent(key), {
+      var designQuery = designUrl + "?seed=" + encodeURIComponent(seed) + "&key=" + encodeURIComponent(key);
+      if (storeSlug()) designQuery += "&store=" + encodeURIComponent(storeSlug());
+      fetch(designQuery, {
         method: "GET",
         headers: { "content-type": "application/json" }
       })
@@ -1030,6 +1078,7 @@ export function buildWatchClientJs(input?: {
     }
 
     function start() {
+      rememberAffiliateView();
       stripHostBrandOnAffiliate();
       paintAffiliateLogo();
       paintSameOriginFreight();
