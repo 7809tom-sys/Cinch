@@ -93,7 +93,7 @@ import {
   switchOpenWorkToAgent,
   tickProjectWork,
 } from "@/lib/project-manager";
-import { listAffiliateDesigns } from "@/lib/affiliate-designs";
+import { listAffiliateDesigns } from "@/lib/affiliate-designs-store";
 import {
   getSeedWatchSnapshot,
   queueGrowthCycle,

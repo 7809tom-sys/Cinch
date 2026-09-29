@@ -34,7 +34,7 @@ import {
 import { sendSeedDialogTurn } from "@/lib/seed-dialog";
 import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
-import { listAffiliateDesigns } from "@/lib/affiliate-designs";
+import { listAffiliateDesigns } from "@/lib/affiliate-designs-store";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
 import {

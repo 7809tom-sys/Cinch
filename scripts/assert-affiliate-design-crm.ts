@@ -12,13 +12,17 @@ import {
   isAffiliateCrmPage,
   isDesignSaveLabel,
   isDesignSaveUrl,
+} from "../src/lib/affiliate-designs";
+import {
   listAffiliateDesigns,
   recordAffiliateDesign,
-} from "../src/lib/affiliate-designs";
+} from "../src/lib/affiliate-designs-store";
 import {
   affiliateLogoName,
   isNumericAffiliateId,
 } from "../src/lib/affiliate-logo";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -49,6 +53,20 @@ assert(
     affiliateDeskHref({ storeSlug: "8250001" }) ===
       "https://www.cabinetdealz.com/affiliate?viewAs=8250001",
   "viewAs=8250001 is an affiliate id, not a store name",
+);
+const crmClient = readFileSync(
+  join(process.cwd(), "src/components/affiliate-design-crm.tsx"),
+  "utf8",
+);
+const crmHelpers = readFileSync(
+  join(process.cwd(), "src/lib/affiliate-designs.ts"),
+  "utf8",
+);
+assert(
+  crmClient.includes('from "@/lib/affiliate-designs"') &&
+    !crmHelpers.includes('from "crypto"') &&
+    !crmHelpers.includes("kv-store"),
+  "the CRM list does not pull Node storage into the browser",
 );
 assert(
   isDesignSaveUrl("/api/designs") &&

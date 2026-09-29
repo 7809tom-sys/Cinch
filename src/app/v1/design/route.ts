@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import {
   designsForAffiliate,
   findAffiliateDesigns,
+} from "@/lib/affiliate-designs";
+import {
   listAffiliateDesigns,
   publicAffiliateDesign,
   recordAffiliateDesign,
-} from "@/lib/affiliate-designs";
+} from "@/lib/affiliate-designs-store";
 import { verifyConnectRequest } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
