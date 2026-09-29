@@ -23,6 +23,11 @@ import {
   isAffiliateWatchPage,
   isWhiteLabelAffiliatePage,
 } from "../src/lib/affiliate-logo";
+import {
+  currentShopStep,
+  isShopPathPage,
+  shopPathSteps,
+} from "../src/lib/shop-path-links";
 import { GET as healthGet } from "../src/app/v1/health/route";
 import { GET as logoGet } from "../src/app/v1/logo/route";
 import { PLATFORM_ADAPTERS } from "../src/lib/platforms";
@@ -167,6 +172,25 @@ assert(
 assert(
   cabinetPlan.improvements.some((item) => /find affiliate designs in the crm/i.test(item.title)),
   "affiliate kitchens are listed in the CRM",
+);
+assert(
+  cabinetPlan.improvements.some((item) => /designer to cart and cabinet styles/i.test(item.title)),
+  "shoppers can go back from designer to cart and cabinet styles",
+);
+assert(
+  isShopPathPage("/design") &&
+    isShopPathPage("/cart") &&
+    isShopPathPage("/styles") &&
+    isShopPathPage("/store/kathmandu/design") &&
+    !isShopPathPage("/") &&
+    !isShopPathPage("/affiliate") &&
+    currentShopStep("/design") === "designer" &&
+    shopPathSteps("/design").some((step) => step.href === "/styles") &&
+    shopPathSteps("/design").some((step) => step.href === "/cart") &&
+    shopPathSteps("/store/kathmandu/design").some(
+      (step) => step.href === "/store/kathmandu/cart",
+    ),
+  "designer, cart, and cabinet styles stay linked both ways",
 );
 assert(
   isAffiliateWatchPage("/store/kathmandu", "") &&
@@ -986,7 +1010,9 @@ assert(
     watchJs.includes("paintAffiliateDesignCrm") &&
     watchJs.includes("/v1/design") &&
     watchJs.includes("https://www.cabinetdealz.com/affiliate?viewAs=") &&
-    watchJs.includes("text-decoration:underline"),
+    watchJs.includes("text-decoration:underline") &&
+    watchJs.includes("paintShopPathLinks") &&
+    watchJs.includes("cinch-seed-shop-path"),
   "watch.js can make a store logo on an affiliate page",
 );
 
@@ -1104,6 +1130,30 @@ const homeNoLogo = runWatch({
 assert(
   !homeNoLogo.created.some((node) => node.id === "cinch-seed-affiliate-logo"),
   "watch.js does not invent a logo on the marketing homepage",
+);
+assert(
+  !homeNoLogo.created.some((node) => node.id === "cinch-seed-shop-path"),
+  "watch.js does not put shop-path links on the marketing homepage",
+);
+
+const designPath = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/design",
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+assert(
+  designPath.created.some((node) => node.id === "cinch-seed-shop-path"),
+  "watch.js paints back links on the designer",
+);
+
+const storeDesignPath = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/store/kathmandu/design",
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+assert(
+  storeDesignPath.created.some((node) => node.id === "cinch-seed-shop-path"),
+  "watch.js paints back links on the affiliate designer",
 );
 
 const homeKeepBrand = runWatch({

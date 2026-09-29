@@ -121,6 +121,14 @@ const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
       "Stamp the store name on kitchens saved from /store/:slug, then list those designs on the affiliate CRM page and in Cinch. Search by store, customer, or kitchen. Do not show other customers’ designs on the public storefront.",
   },
   {
+    id: "shop-path-links",
+    growthAxis: "efficiency",
+    title: "Go back from designer to cart and cabinet styles",
+    why: "The kitchen path feels one-way. Shoppers should be able to jump back from the designer to the cart or cabinet styles.",
+    liveChange:
+      "Paint hyperlinks among Cabinet styles, Designer, and Shopping cart on those pages. Keep every step clickable so the path is not one direction. Do not rebuild the designer.",
+  },
+  {
     id: "same-origin-freight",
     growthAxis: "efficiency",
     title: "Ship same-origin cabinets together",

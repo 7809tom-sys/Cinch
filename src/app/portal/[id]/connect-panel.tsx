@@ -58,7 +58,8 @@ export function ConnectPanel({
         >
           My CRM
         </a>
-        . Just Putz It is not a Cinch Seed. Both{" "}
+        . Designer, shopping cart, and cabinet styles stay linked so shoppers
+        can go back. Just Putz It is not a Cinch Seed. Both{" "}
         <code>data-seed</code> and <code>data-key</code> are required. No
         final update without owner approval.
       </p>

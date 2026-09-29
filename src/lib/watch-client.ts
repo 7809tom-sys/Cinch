@@ -577,6 +577,16 @@ export function buildWatchClientJs(input?: {
           }
         ]);
       }
+      if (isShopPathPage()) {
+        tools = tools.concat([
+          {
+            id: "shop-path-links",
+            label: "Back links among styles, designer, and cart",
+            selector: "#cinch-seed-shop-path",
+            growthAxis: "efficiency"
+          }
+        ]);
+      }
       return tools;
     }
 
@@ -1080,10 +1090,99 @@ export function buildWatchClientJs(input?: {
         .catch(function () {});
     }
 
+    function shopPathPrefix() {
+      var store = String(pagePath || "").split("?")[0].match(/^\\/store\\/([^/]+)/i);
+      if (!store || !store[1]) return "";
+      try {
+        return "/store/" + decodeURIComponent(store[1]);
+      } catch (e) {
+        return "/store/" + store[1];
+      }
+    }
+
+    function shopPathSteps() {
+      var prefix = shopPathPrefix();
+      return [
+        { id: "styles", label: "Cabinet styles", href: prefix || "/styles" },
+        { id: "designer", label: "Designer", href: prefix ? prefix + "/design" : "/design" },
+        { id: "cart", label: "Shopping cart", href: prefix ? prefix + "/cart" : "/cart" }
+      ];
+    }
+
+    function currentShopStep() {
+      var path = String(pagePath || "").split("?")[0].toLowerCase();
+      if (/(?:^|\\/)cart\\/?$/.test(path)) return "cart";
+      if (/(?:^|\\/)design(?:\\/|$)/.test(path)) return "designer";
+      if (
+        path === "/styles" ||
+        /(?:^|\\/)kitchens\\/?$/.test(path) ||
+        /(?:^|\\/)catalog\\/?$/.test(path) ||
+        /^\\/store\\/[^/]+\\/?$/.test(path)
+      ) {
+        return "styles";
+      }
+      return "";
+    }
+
+    function isShopPathPage() {
+      return Boolean(currentShopStep());
+    }
+
+    function paintShopPathLinks() {
+      if (!isShopPathPage()) return;
+      if (document.getElementById("cinch-seed-shop-path")) return;
+      var steps = shopPathSteps();
+      var current = currentShopStep();
+      var nav = document.createElement("nav");
+      nav.id = "cinch-seed-shop-path";
+      nav.setAttribute("data-cinch-shop-path", "on");
+      nav.setAttribute("aria-label", "Cabinet styles, designer, and shopping cart");
+      nav.style.cssText = [
+        "display:flex",
+        "flex-wrap:wrap",
+        "align-items:center",
+        "gap:6px 10px",
+        "padding:8px 16px",
+        "background:#f7f4ee",
+        "border-bottom:1px solid rgba(20,36,28,0.12)",
+        "font:13px/1.4 system-ui,Segoe UI,sans-serif",
+        "color:#14241c"
+      ].join(";");
+      var i;
+      for (i = 0; i < steps.length; i++) {
+        if (i > 0) {
+          var sep = document.createElement("span");
+          sep.textContent = "·";
+          sep.setAttribute("aria-hidden", "true");
+          sep.style.cssText = "color:#5c6b63;";
+          nav.appendChild(sep);
+        }
+        var step = steps[i];
+        var link = document.createElement("a");
+        link.href = step.href;
+        link.textContent = step.label;
+        link.style.cssText =
+          "color:#1a2b4a;font-weight:700;text-decoration:underline;";
+        if (step.id === current) {
+          link.setAttribute("aria-current", "page");
+        }
+        nav.appendChild(link);
+      }
+      var host = document.querySelector("header");
+      if (host && host.parentNode && host.nextSibling) {
+        host.parentNode.insertBefore(nav, host.nextSibling);
+      } else if (host && host.parentNode) {
+        host.parentNode.appendChild(nav);
+      } else {
+        document.body.insertBefore(nav, document.body.firstChild);
+      }
+    }
+
     function start() {
       rememberAffiliateView();
       stripHostBrandOnAffiliate();
       paintAffiliateLogo();
+      paintShopPathLinks();
       paintSameOriginFreight();
       watchAffiliateDesigns();
       paintAffiliateDesignCrm();
