@@ -113,6 +113,33 @@ export function buildWatchClientJs(input?: {
       return /(?:^|[?&])viewAs=/.test(pageSearch || "");
     }
 
+    function isAffiliateStorefront() {
+      var path = String(pagePath || "").split("?")[0].toLowerCase();
+      if (path.indexOf("/store/") === 0 || path.indexOf("/store-preview/") === 0) {
+        return true;
+      }
+      return /(?:^|[?&])viewAs=/.test(pageSearch || "");
+    }
+
+    function storeNameAttr() {
+      try {
+        return String(attr(script, "data-store-name") || boot.storeName || "").trim();
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function isWhiteLabelPage() {
+      if (isAffiliatePage()) return true;
+      var named = storeNameAttr();
+      if (!named || isHostBrandText(named)) return false;
+      var path = String(pagePath || "").split("?")[0];
+      if ((path === "/" || path === "") && /(?:^|\\.)cabinetdealz\\.com$/i.test(host)) {
+        return false;
+      }
+      return true;
+    }
+
     function titleFromSlug(slug) {
       return String(slug || "")
         .split(/[-_]+/)
@@ -124,7 +151,66 @@ export function buildWatchClientJs(input?: {
         .trim();
     }
 
+    function isHostBrandText(text) {
+      return /cabinet\\s*-?dealz/i.test(String(text || ""));
+    }
+
+    function replaceHostBrandText(text, storeName) {
+      var name = String(storeName || "").trim() || "Store";
+      return String(text || "")
+        .replace(/cabinet\\s*-?dealz/ig, name)
+        .replace(/[ \\t]{2,}/g, " ")
+        .replace(/\\s*\\|\\s*\\|\\s*/g, " | ")
+        .replace(/^\\s*[|·•]\\s*/g, "")
+        .replace(/\\s*[|·•]\\s*$/g, "")
+        .trim();
+    }
+
+    function isGenericCatalogTagline(text) {
+      return /^(cabinets(?:\\s*,\\s*countertops.*)?|countertops|kitchen design)$/i.test(String(text || "").trim());
+    }
+
+    function whiteLabelDocumentTitle(title, storeName) {
+      var name = String(storeName || "").trim() || "Store";
+      if (!isHostBrandText(title)) return title;
+      var parts = String(title || "").split(/\\s*[|·—–]\\s*/);
+      var rest = [];
+      var i;
+      for (i = 0; i < parts.length; i++) {
+        var part = String(parts[i] || "").trim();
+        if (!part) continue;
+        if (isHostBrandText(part) || isGenericCatalogTagline(part)) continue;
+        rest.push(part);
+      }
+      if (!rest.length) return name;
+      var out = [name];
+      for (i = 0; i < rest.length; i++) {
+        if (rest[i].toLowerCase() !== name.toLowerCase()) out.push(rest[i]);
+      }
+      return out.join(" | ");
+    }
+
+    function shouldHideHostBrandElement(text) {
+      var value = String(text || "").replace(/\\s+/g, " ").trim();
+      return /^cabinet\\s*-?dealz\\.?$/i.test(value) || /^powered\\s+by\\s+cabinet\\s*-?dealz\\.?$/i.test(value);
+    }
+
+    function isHostBrandLogo(src, alt) {
+      var source = String(src || "");
+      var label = String(alt || "");
+      if (shouldHideHostBrandElement(label)) return true;
+      var haystack = source + " " + label;
+      if (!isHostBrandText(haystack)) return false;
+      return /logo|wordmark|brand|\\bog[-_.]/i.test(haystack);
+    }
+
     function affiliateName() {
+      try {
+        var named = storeNameAttr();
+        if (named && !isHostBrandText(named)) {
+          return named.slice(0, 48);
+        }
+      } catch (e) {}
       var store = String(pagePath || "").match(/^\\/(?:store|store-preview)\\/([^/]+)/i);
       if (store && store[1]) {
         var fromSlug = titleFromSlug(decodeURIComponent(store[1]));
@@ -140,8 +226,8 @@ export function buildWatchClientJs(input?: {
       var title = String(pageTitle || "").trim();
       if (title) {
         var cleaned = title.split(/\\s+[—–|-]\\s+/)[0].replace(/\\s*\\|\\s*CabinetDealz.*$/i, "").trim();
-        if (cleaned && !/^cabinet\\s*dealz$/i.test(cleaned) && !/sign in|loading/i.test(cleaned)) {
-          return cleaned.slice(0, 32);
+        if (cleaned && !isHostBrandText(cleaned) && !/sign in|loading/i.test(cleaned)) {
+          return cleaned.slice(0, 48);
         }
       }
       return "Store";
@@ -181,6 +267,8 @@ export function buildWatchClientJs(input?: {
           src = ((img.getAttribute && img.getAttribute("src")) || img.src || "").toLowerCase();
           alt = ((img.getAttribute && img.getAttribute("alt")) || img.alt || "").toLowerCase();
           if (!src) continue;
+          if (img.getAttribute && img.getAttribute("data-cinch-host-brand") === "hidden") continue;
+          if (isHostBrandLogo(src, alt) || isHostBrandText(alt)) continue;
           if (/logo|wordmark/.test(alt) || /logo|affiliates\\/|manus-storage/.test(src)) return true;
         }
       } catch (e) {}
@@ -188,7 +276,7 @@ export function buildWatchClientJs(input?: {
     }
 
     function paintAffiliateLogo() {
-      if (!isAffiliatePage()) return;
+      if (!isWhiteLabelPage()) return;
       if (document.getElementById("cinch-seed-affiliate-logo")) return;
       if (hasUploadedLogo()) return;
       var name = affiliateName();
@@ -219,6 +307,114 @@ export function buildWatchClientJs(input?: {
       }
     }
 
+    function applyBrandToElement(el, storeName) {
+      if (!el) return;
+      try {
+        if (el.id === "cinch-seed-community" || el.id === "cinch-seed-affiliate-logo") return;
+        if (el.closest && el.closest("#cinch-seed-community, #cinch-seed-affiliate-logo")) return;
+        if (el.getAttribute && el.getAttribute("data-cinch-host-brand")) return;
+        if (el.children && el.children.length > 0) return;
+        var text = (el.textContent || "").replace(/\\s+/g, " ").trim();
+        if (!isHostBrandText(text)) return;
+        if (shouldHideHostBrandElement(text)) {
+          if (el.setAttribute) el.setAttribute("data-cinch-host-brand", "hidden");
+          if (el.style) el.style.display = "none";
+          return;
+        }
+        var next = replaceHostBrandText(
+          el.childNodes && el.childNodes[0] && el.childNodes[0].nodeType === 3
+            ? el.childNodes[0].nodeValue
+            : text,
+          storeName
+        );
+        if (el.childNodes && el.childNodes.length === 1 && el.childNodes[0] && el.childNodes[0].nodeType === 3) {
+          el.childNodes[0].nodeValue = next;
+        }
+        el.textContent = next;
+        if (el.setAttribute) el.setAttribute("data-cinch-host-brand", "renamed");
+      } catch (e) {}
+    }
+
+    function stripHostBrandAttrs(el, storeName) {
+      if (!el || !el.getAttribute) return;
+      var names = ["alt", "title", "aria-label", "content"];
+      var i;
+      for (i = 0; i < names.length; i++) {
+        var val = el.getAttribute(names[i]);
+        if (!val || !isHostBrandText(val)) continue;
+        var key = names[i];
+        if (key === "content" && /site_name/i.test(el.getAttribute("property") || el.getAttribute("name") || "")) {
+          el.setAttribute(key, storeName);
+        } else if (key === "content") {
+          el.setAttribute(key, whiteLabelDocumentTitle(val, storeName));
+        } else {
+          el.setAttribute(key, replaceHostBrandText(val, storeName));
+        }
+      }
+    }
+
+    function stripHostBrandOnAffiliate() {
+      if (!isWhiteLabelPage()) return;
+      var name = affiliateName();
+      try {
+        if (isHostBrandText(document.title)) {
+          document.title = whiteLabelDocumentTitle(document.title, name);
+        }
+      } catch (e) {}
+      try {
+        var metas = document.querySelectorAll("meta[property], meta[name]");
+        var m;
+        for (m = 0; m < metas.length; m++) stripHostBrandAttrs(metas[m], name);
+      } catch (e) {}
+      try {
+        var jsonLd = document.querySelectorAll('script[type="application/ld+json"]');
+        var s;
+        for (s = 0; s < jsonLd.length; s++) {
+          var block = jsonLd[s];
+          var raw = block.textContent || "";
+          if (!isHostBrandText(raw)) continue;
+          block.textContent = replaceHostBrandText(raw, name);
+        }
+      } catch (e) {}
+      try {
+        var painted = [];
+        if (document.body && document.createTreeWalker && typeof NodeFilter !== "undefined") {
+          var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+          var node;
+          while ((node = walker.nextNode())) {
+            if (!isHostBrandText(node.nodeValue)) continue;
+            if (node.parentElement) painted.push(node.parentElement);
+          }
+        } else {
+          var nodes = document.querySelectorAll("a, p, span, small, h1, h2, h3, h4, h5, h6, li, button, label, footer, header, nav, figcaption, strong, em, div");
+          var n;
+          for (n = 0; n < nodes.length; n++) painted.push(nodes[n]);
+        }
+        var p;
+        for (p = 0; p < painted.length; p++) applyBrandToElement(painted[p], name);
+      } catch (e) {}
+      try {
+        var imgs = document.querySelectorAll("img");
+        var i;
+        for (i = 0; i < imgs.length; i++) {
+          var img = imgs[i];
+          var src = ((img.getAttribute && img.getAttribute("src")) || img.src || "").toLowerCase();
+          var alt = ((img.getAttribute && img.getAttribute("alt")) || img.alt || "");
+          if (isHostBrandLogo(src, alt) || shouldHideHostBrandElement(alt)) {
+            if (img.setAttribute) img.setAttribute("data-cinch-host-brand", "hidden");
+            if (img.style) img.style.display = "none";
+            continue;
+          }
+          stripHostBrandAttrs(img, name);
+        }
+      } catch (e) {}
+      try {
+        if (document.documentElement && document.documentElement.setAttribute) {
+          document.documentElement.setAttribute("data-cinch-white-label", "on");
+        }
+      } catch (e) {}
+    }
+
     function setStatus(text, tone) {
       if (!ui || !ui.status) return;
       ui.status.textContent = text;
@@ -231,6 +427,7 @@ export function buildWatchClientJs(input?: {
 
     function paintCommunity() {
       if (markOff) return;
+      if (isAffiliateStorefront()) return;
       if (document.getElementById("cinch-seed-community")) {
         ui = {
           root: document.getElementById("cinch-seed-community"),
@@ -310,12 +507,18 @@ export function buildWatchClientJs(input?: {
           tools = defaultTools.slice();
         }
       }
-      if (isAffiliatePage()) {
+      if (isWhiteLabelPage()) {
         tools = tools.concat([
           {
             id: "affiliate-logo",
             label: "Affiliate store logo",
             selector: "#cinch-seed-affiliate-logo, img[alt*='logo' i]",
+            growthAxis: "functionality"
+          },
+          {
+            id: "affiliate-host-brand",
+            label: "Affiliate store has no host brand",
+            selector: "[data-cinch-white-label='on']",
             growthAxis: "functionality"
           }
         ]);
@@ -543,15 +746,17 @@ export function buildWatchClientJs(input?: {
     }
 
     function start() {
+      stripHostBrandOnAffiliate();
       paintAffiliateLogo();
       paintSameOriginFreight();
       paintCommunity();
       if (document.body && document.body.addEventListener) {
         try {
-          var freightObserver = new MutationObserver(function () {
+          var liveObserver = new MutationObserver(function () {
+            stripHostBrandOnAffiliate();
             paintSameOriginFreight();
           });
-          freightObserver.observe(document.body, { childList: true, subtree: true });
+          liveObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
         } catch (e) {}
       }
       if (!key) {
