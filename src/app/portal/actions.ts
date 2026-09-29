@@ -34,6 +34,7 @@ import {
 import { sendSeedDialogTurn } from "@/lib/seed-dialog";
 import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
+import { listAffiliateDesigns } from "@/lib/affiliate-designs";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
 import { getSourceBundle } from "@/lib/seed-source";
 import {
@@ -286,6 +287,7 @@ export async function getPortalProjectSnapshot(projectId: string) {
       customer: null,
       project: null,
       watch: null,
+      designs: [],
       agents: [] as string[],
       crew: [],
       pmContact: null,
@@ -303,6 +305,7 @@ export async function getPortalProjectSnapshot(projectId: string) {
       customer,
       project: null,
       watch: null,
+      designs: [],
       agents: [] as string[],
       crew: [],
       pmContact: null,
@@ -314,10 +317,19 @@ export async function getPortalProjectSnapshot(projectId: string) {
   const refreshed = (await getProject(project.id)) ?? project;
 
   const watch = await getSeedWatchSnapshot(refreshed.id);
+  const designs = await listAffiliateDesigns(refreshed.id);
   const crew = listSwitchableAgents(refreshed);
   const agents = crew.map((agent) => agent.name);
 
-  return { customer, project: refreshed, watch, agents, crew, pmContact };
+  return {
+    customer,
+    project: refreshed,
+    watch,
+    designs,
+    agents,
+    crew,
+    pmContact,
+  };
 }
 
 export async function sendPortalSeedDialogAction(

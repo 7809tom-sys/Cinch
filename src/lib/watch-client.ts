@@ -86,7 +86,9 @@ export function buildWatchClientJs(input?: {
 
     var origin = ${JSON.stringify(origin)};
     var healthUrl = origin + "/v1/health";
+    var designUrl = origin + "/v1/design";
     var improveUrl = origin + "/v1/improve?seed=" + encodeURIComponent(seed) + "&key=" + encodeURIComponent(key);
+    var lastDesignReport = "";
     var defaultTools = ${JSON.stringify(defaultTools)};
     var ui = null;
     var pagePath = "";
@@ -119,6 +121,14 @@ export function buildWatchClientJs(input?: {
         return true;
       }
       return /(?:^|[?&])viewAs=/.test(pageSearch || "");
+    }
+
+    function isAffiliateCrmPage() {
+      var path = String(pagePath || "").split("?")[0].toLowerCase();
+      if (path === "/affiliate" || path.indexOf("/affiliate/") === 0) {
+        return !/(?:^|[?&])viewAs=/.test(pageSearch || "");
+      }
+      return /\\/(crm|leads|designs)\\b/.test(path);
     }
 
     function storeNameAttr() {
@@ -523,6 +533,16 @@ export function buildWatchClientJs(input?: {
           }
         ]);
       }
+      if (isAffiliateCrmPage()) {
+        tools = tools.concat([
+          {
+            id: "affiliate-design-crm",
+            label: "Affiliate designs in the CRM",
+            selector: "#cinch-seed-design-crm",
+            growthAxis: "customer_service"
+          }
+        ]);
+      }
       return tools;
     }
 
@@ -745,16 +765,283 @@ export function buildWatchClientJs(input?: {
       } catch (e) {}
     }
 
+    function storeSlug() {
+      var store = String(pagePath || "").match(/^\\/(?:store|store-preview)\\/([^/]+)/i);
+      if (store && store[1]) {
+        try {
+          return decodeURIComponent(store[1]);
+        } catch (e) {
+          return store[1];
+        }
+      }
+      try {
+        var viewAs = new URLSearchParams(String(pageSearch || "").replace(/^\\?/, "")).get("viewAs");
+        if (viewAs && viewAs.trim()) return viewAs.trim();
+      } catch (e) {}
+      return "";
+    }
+
+    function isDesignSaveUrl(url) {
+      return /\\/(designs?|kitchens?|quotes?|leads?|requests?|proposals?|packages?)(\\/|\\?|$)/i.test(String(url || "")) ||
+        /[?&](design|quote|lead|request)=/i.test(String(url || ""));
+    }
+
+    function isDesignSaveLabel(text) {
+      var value = String(text || "").replace(/\\s+/g, " ").trim();
+      return /\\b(save|submit|send|request)\\b.*\\b(design|kitchen|layout|quote|request)\\b/i.test(value) ||
+        /\\b(design|kitchen|layout|quote)\\b.*\\b(save|submit|send|request)\\b/i.test(value);
+    }
+
+    function readDesignFields(root) {
+      var out = { title: "", customerName: "", contact: "" };
+      try {
+        var nodes = (root || document).querySelectorAll("input, textarea, select");
+        var i;
+        for (i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          var name = ((el.getAttribute && (el.getAttribute("name") || el.getAttribute("id") || el.getAttribute("placeholder"))) || el.name || "").toLowerCase();
+          var type = ((el.getAttribute && el.getAttribute("type")) || el.type || "").toLowerCase();
+          var value = String(el.value || "").trim();
+          if (!value) continue;
+          if (/password|card|cvv|ssn|secret|token/i.test(name + type)) continue;
+          if (!out.contact && (/email|phone|tel|mobile|contact/.test(name) || type === "email" || type === "tel")) {
+            out.contact = value.slice(0, 80);
+          } else if (!out.customerName && /name|customer|first/.test(name)) {
+            out.customerName = value.slice(0, 80);
+          } else if (!out.title && /design|kitchen|layout|title|package/.test(name)) {
+            out.title = value.slice(0, 80);
+          }
+        }
+      } catch (e) {}
+      if (!out.title) {
+        try {
+          var heading = document.querySelector("h1, [data-design-title]");
+          if (heading && heading.textContent) out.title = String(heading.textContent).replace(/\\s+/g, " ").trim().slice(0, 80);
+        } catch (e) {}
+      }
+      return out;
+    }
+
+    function stampAffiliateOnDesigns() {
+      if (!isWhiteLabelPage()) return;
+      try {
+        var forms = document.querySelectorAll("form");
+        var i;
+        for (i = 0; i < forms.length; i++) {
+          var form = forms[i];
+          var text = (form.textContent || "") + " " + ((form.getAttribute && form.getAttribute("action")) || "");
+          if (!isDesignSaveLabel(text) && !isDesignSaveUrl(form.action || "")) continue;
+          if (form.querySelector && form.querySelector("[name='cinch_store_name']")) continue;
+          var name = affiliateName();
+          var slug = storeSlug();
+          var fields = [
+            ["cinch_store_name", name],
+            ["cinch_store_slug", slug],
+            ["affiliate_store", name]
+          ];
+          var f;
+          for (f = 0; f < fields.length; f++) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = fields[f][0];
+            input.value = fields[f][1];
+            if (form.appendChild) form.appendChild(input);
+          }
+        }
+      } catch (e) {}
+    }
+
+    function reportAffiliateDesign(input) {
+      if (!key || !isWhiteLabelPage()) return;
+      var fields = input || readDesignFields(document);
+      var payload = {
+        seed: seed,
+        key: key,
+        storeName: affiliateName(),
+        storeSlug: storeSlug(),
+        title: (fields.title || "Kitchen design").slice(0, 80),
+        customerName: (fields.customerName || "").slice(0, 80),
+        contact: (fields.contact || "").slice(0, 80),
+        kind: fields.kind || "saved",
+        href: ""
+      };
+      try {
+        payload.href = location.href;
+      } catch (e) {}
+      var stamp = payload.storeSlug + "|" + payload.title + "|" + payload.contact;
+      if (stamp === lastDesignReport) return;
+      lastDesignReport = stamp;
+      try {
+        fetch(designUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
+    function watchAffiliateDesigns() {
+      if (!isWhiteLabelPage()) return;
+      stampAffiliateOnDesigns();
+      try {
+        if (document.body && document.body.addEventListener) {
+          document.body.addEventListener("click", function (event) {
+            var target = event && event.target;
+            var text = "";
+            try {
+              text = (target && (target.textContent || target.value || target.getAttribute && target.getAttribute("aria-label"))) || "";
+            } catch (e) {}
+            if (isDesignSaveLabel(text)) {
+              reportAffiliateDesign(readDesignFields(target && target.form ? target.form : document));
+            }
+          }, true);
+        }
+      } catch (e) {}
+      try {
+        if (typeof window.fetch === "function" && !window.__CINCH_DESIGN_FETCH__) {
+          window.__CINCH_DESIGN_FETCH__ = true;
+          var nativeFetch = window.fetch;
+          window.fetch = function (input, init) {
+            var url = "";
+            try {
+              url = typeof input === "string" ? input : (input && input.url) || "";
+            } catch (e) {}
+            if (isDesignSaveUrl(url)) {
+              var extra = readDesignFields(document);
+              extra.kind = /quote|request|lead/i.test(url) ? "requested" : "saved";
+              reportAffiliateDesign(extra);
+              try {
+                if (init && init.body && typeof init.body === "string" && init.body.charAt(0) === "{") {
+                  var data = JSON.parse(init.body);
+                  if (data && typeof data === "object") {
+                    data.storeName = data.storeName || affiliateName();
+                    data.storeSlug = data.storeSlug || storeSlug();
+                    data.affiliateStore = data.affiliateStore || affiliateName();
+                    init.body = JSON.stringify(data);
+                  }
+                }
+              } catch (err) {}
+            }
+            return nativeFetch.apply(this, arguments);
+          };
+        }
+      } catch (e) {}
+    }
+
+    function paintAffiliateDesignCrm() {
+      if (!isAffiliateCrmPage()) return;
+      if (document.getElementById("cinch-seed-design-crm")) return;
+      var root = document.createElement("aside");
+      root.id = "cinch-seed-design-crm";
+      root.setAttribute("data-cinch-design-crm", "on");
+      root.setAttribute("aria-label", "Affiliate designs");
+      root.style.cssText = [
+        "position:fixed",
+        "z-index:2147483644",
+        "left:16px",
+        "bottom:16px",
+        "width:min(380px,calc(100vw - 32px))",
+        "max-height:min(420px,calc(100vh - 32px))",
+        "overflow:auto",
+        "box-sizing:border-box",
+        "padding:16px 16px 14px",
+        "border:1px solid rgba(20,36,28,0.16)",
+        "border-radius:16px",
+        "background:#f7f4ee",
+        "color:#14241c",
+        "font:14px/1.45 system-ui,Segoe UI,sans-serif",
+        "box-shadow:0 12px 32px rgba(20,36,28,0.16)"
+      ].join(";");
+      var title = document.createElement("h2");
+      title.textContent = "Affiliate designs";
+      title.style.cssText = "margin:0;font-size:18px;line-height:1.2;";
+      var help = document.createElement("p");
+      help.textContent = "Kitchens from the storefront, tagged by store. Search to find one.";
+      help.style.cssText = "margin:8px 0 0;font-size:12px;color:#5c6b63;";
+      var search = document.createElement("input");
+      search.type = "search";
+      search.placeholder = "Store, customer, or kitchen";
+      search.setAttribute("aria-label", "Find a design");
+      search.style.cssText = "margin-top:10px;width:100%;box-sizing:border-box;padding:8px;border:1px solid rgba(20,36,28,0.16);border-radius:8px;font:13px/1.4 inherit;";
+      var list = document.createElement("div");
+      list.id = "cinch-seed-design-crm-list";
+      list.style.cssText = "margin-top:10px;";
+      var empty = document.createElement("p");
+      empty.textContent = "No affiliate designs yet.";
+      empty.style.cssText = "margin:0;font-size:13px;color:#5c6b63;";
+      list.appendChild(empty);
+      root.appendChild(title);
+      root.appendChild(help);
+      root.appendChild(search);
+      root.appendChild(list);
+      document.body.appendChild(root);
+
+      function render(designs, query) {
+        var q = String(query || "").trim().toLowerCase();
+        var shown = [];
+        var i;
+        for (i = 0; i < designs.length; i++) {
+          var item = designs[i] || {};
+          var hay = [item.storeName, item.storeSlug, item.title, item.customerName, item.contact].join(" ").toLowerCase();
+          if (q && hay.indexOf(q) === -1) continue;
+          shown.push(item);
+        }
+        list.textContent = "";
+        if (!shown.length) {
+          var none = document.createElement("p");
+          none.textContent = designs.length ? "No designs match that search." : "No affiliate designs yet.";
+          none.style.cssText = "margin:0;font-size:13px;color:#5c6b63;";
+          list.appendChild(none);
+          return;
+        }
+        for (i = 0; i < shown.length; i++) {
+          var row = document.createElement("p");
+          var design = shown[i];
+          row.textContent =
+            (design.storeName || "Store") +
+            " · " +
+            (design.title || "Kitchen design") +
+            " · " +
+            (design.customerName || "Customer");
+          row.style.cssText = "margin:0 0 8px;font-size:13px;";
+          list.appendChild(row);
+        }
+      }
+
+      var loaded = [];
+      search.addEventListener("input", function () {
+        render(loaded, search.value);
+      });
+      if (!key) {
+        empty.textContent = "Connect key missing — designs cannot load.";
+        return;
+      }
+      fetch(designUrl + "?seed=" + encodeURIComponent(seed) + "&key=" + encodeURIComponent(key), {
+        method: "GET",
+        headers: { "content-type": "application/json" }
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (body) {
+          loaded = (body && body.designs) || [];
+          render(loaded, search.value);
+        })
+        .catch(function () {});
+    }
+
     function start() {
       stripHostBrandOnAffiliate();
       paintAffiliateLogo();
       paintSameOriginFreight();
+      watchAffiliateDesigns();
+      paintAffiliateDesignCrm();
       paintCommunity();
       if (document.body && document.body.addEventListener) {
         try {
           var liveObserver = new MutationObserver(function () {
             stripHostBrandOnAffiliate();
             paintSameOriginFreight();
+            stampAffiliateOnDesigns();
           });
           liveObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
         } catch (e) {}

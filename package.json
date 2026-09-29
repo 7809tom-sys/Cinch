@@ -15,6 +15,7 @@
     "assert:agent-status": "npx tsx scripts/assert-agent-status.ts",
     "assert:seed-connect": "npx tsx scripts/assert-seed-connect.ts",
     "assert:same-origin-freight": "npx tsx scripts/assert-same-origin-freight.ts",
+    "assert:affiliate-design-crm": "npx tsx scripts/assert-affiliate-design-crm.ts",
     "assert:script-management": "npx tsx scripts/assert-script-management.ts",
     "assert:seed-dialog": "npx tsx scripts/assert-seed-dialog.ts",
     "assert:seed-suggestions": "npx tsx scripts/assert-seed-suggestions.ts",

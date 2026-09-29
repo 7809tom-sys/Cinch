@@ -40,7 +40,8 @@ export function ConnectPanel({
         affiliate page, watch.js keeps the store’s own name — no host brand —
         and can make a store logo when none is uploaded. Set{" "}
         <code>data-store-name=&quot;Spartan Cabinets&quot;</code> when the URL
-        slug is not the store name. Just Putz It is not a Cinch Seed. Both{" "}
+        slug is not the store name. Kitchens saved on that storefront show up
+        in the CRM, tagged by store. Just Putz It is not a Cinch Seed. Both{" "}
         <code>data-seed</code> and <code>data-key</code> are required. No
         final update without owner approval.
       </p>

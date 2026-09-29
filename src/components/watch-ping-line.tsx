@@ -39,8 +39,9 @@ export function WatchPingLine({
         <p className="mt-2 text-sm text-muted">
           The public Cinch Seed page for this Seed is not the affiliate page.
           Reload the white-label affiliate page that has watch.js — Cinch
-          keeps the store’s name and can make a store logo when none is
-          uploaded. Then look here for that URL.
+          keeps the store’s name, can make a store logo when none is
+          uploaded, and sends kitchens from that store into the CRM. Then
+          look here for that URL.
         </p>
       )}
       {extras.length > 0 ? (

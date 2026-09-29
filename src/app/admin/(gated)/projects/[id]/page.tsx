@@ -15,6 +15,7 @@ import { listSwitchableAgents } from "@/lib/agent-status";
 import { getCustomerByEmail } from "@/lib/customers";
 import { SeedPreviewLinks } from "@/components/seed-preview-links";
 import { liveWebsiteUrl, seedEmbedSnippet } from "@/lib/domain";
+import { AffiliateDesignCrm } from "@/components/affiliate-design-crm";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
 import { WatchPingLine } from "@/components/watch-ping-line";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
@@ -60,7 +61,7 @@ function collapseActivity(
 
 export default async function ProjectAdminPage({ params }: PageProps) {
   const { id } = await params;
-  const { project, agents, watch, platforms } = await getProjectSnapshot(id);
+  const { project, agents, watch, designs, platforms } = await getProjectSnapshot(id);
   if (!project) notFound();
 
   const pm = getAgent(project.projectManagerId);
@@ -379,6 +380,8 @@ export default async function ProjectAdminPage({ params }: PageProps) {
               githubRepoUrl={project.githubRepoUrl}
             />
           ) : null}
+
+          <AffiliateDesignCrm designs={designs} />
 
           <div className="min-w-0 border border-brand/10 bg-foam px-4 py-5 sm:px-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">

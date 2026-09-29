@@ -165,6 +165,10 @@ assert(
   "cabinet hosts combine freight from the same warehouse",
 );
 assert(
+  cabinetPlan.improvements.some((item) => /find affiliate designs in the crm/i.test(item.title)),
+  "affiliate kitchens are listed in the CRM",
+);
+assert(
   isAffiliateWatchPage("/store/kathmandu", "") &&
     isAffiliateWatchPage("/affiliate", "") &&
     isAffiliateWatchPage("/", "?viewAs=kathmandu") &&
@@ -883,8 +887,28 @@ function runWatch(scriptEl: {
         store[key] = value;
       },
     },
-    fetch(url: string) {
+    fetch(url: string, init?: { method?: string }) {
       fetches.push(String(url));
+      if (
+        String(url).includes("/v1/design") &&
+        String(init?.method || "GET").toUpperCase() !== "POST"
+      ) {
+        return Promise.resolve({
+          status: 200,
+          json: async () => ({
+            ok: true,
+            designs: [
+              {
+                storeName: "Spartan Cabinets",
+                storeSlug: "kathmandu",
+                title: "Aero Blanc kitchen",
+                customerName: "Pat",
+                contact: "pat@example.com",
+              },
+            ],
+          }),
+        });
+      }
       return Promise.resolve({
         status: 401,
         json: async () => ({ ok: false, error: "Invalid or missing Connect key." }),
@@ -951,7 +975,9 @@ assert(
     watchJs.includes("cinch-seed-affiliate-logo") &&
     watchJs.includes("affiliate-logo") &&
     watchJs.includes("stripHostBrandOnAffiliate") &&
-    watchJs.includes("data-cinch-white-label"),
+    watchJs.includes("data-cinch-white-label") &&
+    watchJs.includes("paintAffiliateDesignCrm") &&
+    watchJs.includes("/v1/design"),
   "watch.js can make a store logo on an affiliate page",
 );
 
@@ -968,6 +994,10 @@ assert(
 assert(
   !affiliatePaint.created.some((node) => node.id === "cinch-seed-community"),
   "white-label storefronts do not show the Cinch Community card",
+);
+assert(
+  !affiliatePaint.created.some((node) => node.id === "cinch-seed-design-crm"),
+  "public storefronts do not show the affiliate design CRM",
 );
 assert(
   affiliatePaint.title === "Kathmandu" &&
@@ -1023,6 +1053,14 @@ assert(
 assert(
   alreadyHasLogo.created.some((node) => node.id === "cinch-seed-community"),
   "affiliate dashboard still shows the Connect widget",
+);
+assert(
+  alreadyHasLogo.created.some((node) => node.id === "cinch-seed-design-crm"),
+  "affiliate dashboard lists designs in the CRM",
+);
+assert(
+  alreadyHasLogo.fetches.some((url) => url.includes("/v1/design")),
+  "watch.js loads affiliate designs for the CRM",
 );
 
 const homeNoLogo = runWatch({

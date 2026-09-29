@@ -93,6 +93,7 @@ import {
   switchOpenWorkToAgent,
   tickProjectWork,
 } from "@/lib/project-manager";
+import { listAffiliateDesigns } from "@/lib/affiliate-designs";
 import {
   getSeedWatchSnapshot,
   queueGrowthCycle,
@@ -324,6 +325,7 @@ export async function getProjectSnapshot(projectId: string) {
   const storedKeys = await loadStoredProviderKeys();
   const agents = listAgentsWithKeyStatus(storedKeys);
   const watch = project ? await getSeedWatchSnapshot(project.id) : null;
+  const designs = project ? await listAffiliateDesigns(project.id) : [];
   const platforms = PLATFORM_ADAPTERS.map((adapter) => ({
     id: adapter.id,
     name: adapter.name,
@@ -332,7 +334,7 @@ export async function getProjectSnapshot(projectId: string) {
       ? adapter.installSnippet(project.id, project.connectKey)
       : "",
   }));
-  return { project, agents, watch, platforms };
+  return { project, agents, watch, designs, platforms };
 }
 
 export async function adminUpdateSeedAction(
