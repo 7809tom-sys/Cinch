@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
-import { notFound, permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import {
   forbidsCinchHostedSite,
   liveHostInsteadOfCinchClone,
 } from "@/lib/hosted-site";
+import { writerSeedPortalPath } from "@/lib/domain";
+import { isWriterSeedKind } from "@/lib/seed-writer";
 import { getProject, retireCinchHostedClone } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,10 @@ export default async function SeedSiteLayout({
 
   const project = await getProject(id);
   if (!project) notFound();
+
+  if (isWriterSeedKind(project.seedKind)) {
+    redirect(writerSeedPortalPath(project.id));
+  }
 
   if (forbidsCinchHostedSite(project)) {
     await retireCinchHostedClone(project.id);

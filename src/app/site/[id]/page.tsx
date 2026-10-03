@@ -50,9 +50,13 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   const project = await getProject(id);
   if (!project) notFound();
 
-  await proofAndRepairSeedSite(project);
-  if (seedNeedsBusinessAdmin(project.brief)) {
-    await ensureBusinessAdminInSeed(project);
+  try {
+    await proofAndRepairSeedSite(project);
+    if (seedNeedsBusinessAdmin(project.brief)) {
+      await ensureBusinessAdminInSeed(project);
+    }
+  } catch {
+    /* Preview still renders if repair or competitor crawl fails. */
   }
   const preview = await buildSeedSitePreview(project);
   const showShop = seedOffersCustomerShop(project.name, project.brief);

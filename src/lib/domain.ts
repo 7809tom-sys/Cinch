@@ -4,6 +4,11 @@ import {
   resolveConnectTargets,
 } from "./seed-connect";
 
+/** Portal path for a Writer Seed manuscript or lyric sheet — never /site/[id]. */
+export function writerSeedPortalPath(projectId: string): string {
+  return `/portal/${projectId}/writer`;
+}
+
 export const CINCH_SEED_DOMAIN = "cinchseed.com";
 /** Canonical public origin (www — apex redirects here on Vercel). */
 export const CINCH_SEED_ORIGIN = `https://www.${CINCH_SEED_DOMAIN}`;
@@ -73,9 +78,13 @@ export function liveWebsiteUrl(project: {
   name: string;
   customDomain: { hostname: string; status: string } | null;
   seedMode?: "build" | "connect" | null;
+  seedKind?: string | null;
   referenceUrl?: string | null;
   githubRepoUrl?: string | null;
 }): string {
+  if (project.seedKind === "writer") {
+    return writerSeedPortalPath(project.id);
+  }
   const connected = connectedLiveHost(project);
   if (connected) return connected;
   const custom = project.customDomain;
@@ -94,9 +103,13 @@ export function publicWebsiteUrl(project: {
   name: string;
   customDomain: { hostname: string; status: string } | null;
   seedMode?: "build" | "connect" | null;
+  seedKind?: string | null;
   referenceUrl?: string | null;
   githubRepoUrl?: string | null;
 }): string {
+  if (project.seedKind === "writer") {
+    return `${CINCH_SEED_ORIGIN}${writerSeedPortalPath(project.id)}`;
+  }
   const connected = connectedLiveHost(project);
   if (connected) return connected;
   const custom = project.customDomain;
