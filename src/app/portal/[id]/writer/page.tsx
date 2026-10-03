@@ -72,6 +72,12 @@ export default async function PortalWriterPage({ params }: PageProps) {
               initialWorkingOn={active?.title ?? null}
             />
             <Link
+              href={`/portal/${project.id}/references`}
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep"
+            >
+              Drive refs
+            </Link>
+            <Link
               href={`/portal/${project.id}/source?files=1`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep"
             >

@@ -1212,7 +1212,7 @@ ${brief}
   }
 
   if (
-    /lock writer seed brief|compile final (manuscript|lyric sheet)|study comparable (books|songs)|writer polish wave/i.test(
+    /lock writer seed brief|compile final (manuscript|lyric sheet)|study comparable (books|songs)|writer polish wave|read google drive reference/i.test(
       input.taskTitle,
     )
   ) {

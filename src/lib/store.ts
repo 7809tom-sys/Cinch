@@ -859,11 +859,27 @@ export async function planWriterBuild(projectId: string): Promise<SeedProject> {
   project.seedKind = "writer";
   project.writerForm = form;
 
+  const { formatDriveReferencesForBrief, listProjectDriveReferences } =
+    await import("./seed-drive-refs");
+  const driveRefs = await listProjectDriveReferences(projectId);
+  const driveBrief = formatDriveReferencesForBrief(driveRefs);
+  const briefWithRefs = driveBrief
+    ? `${project.brief}\n\n${driveBrief}`
+    : project.brief;
+
   const backlog = planWriterBuildBacklog({
     form,
     projectName: project.name,
-    brief: project.brief,
+    brief: briefWithRefs,
   });
+  if (driveRefs.length > 0) {
+    backlog.unshift({
+      title: "Read Google Drive reference material",
+      detail: `${SEED_WRITER_COLLABORATE_RULE.summary} Read docs/references/ before drafting. Owner attached ${driveRefs.length} Drive reference(s) — follow those facts; do not invent conflicting material.`,
+      requiredSkills: ["research", "copy"],
+      minSkillLevel: 2,
+    });
+  }
 
   project.tasks = backlog.map((item) => ({
     ...item,

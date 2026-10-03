@@ -600,8 +600,8 @@ export function planWriterBuildBacklog(input: {
         : "Study comparable books and take the best",
     detail:
       form === "song"
-        ? `${rule} Note hooks, structures, and emotional turns from strong comparable songs — take the best of each, invent only gaps. Capture notes in docs/writer-research.md.`
-        : `${rule} Note openings, chapter cadence, and voice from strong comparable books — take the best of each, invent only gaps. Capture notes in docs/writer-research.md.`,
+        ? `${rule} Prefer owner Google Drive refs in docs/references/ first. Then note hooks, structures, and emotional turns from strong comparable songs — take the best of each, invent only gaps. Capture notes in docs/writer-research.md.`
+        : `${rule} Prefer owner Google Drive refs in docs/references/ first. Then note openings, chapter cadence, and voice from strong comparable books — take the best of each, invent only gaps. Capture notes in docs/writer-research.md.`,
     requiredSkills: ["copy", "research"] as AgentSkill[],
     minSkillLevel: 3,
   };

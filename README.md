@@ -35,12 +35,15 @@ Installable Progressive Web App (Add to Home Screen / Install app) via
 - `/portal/[id]/source` — real-time source tree while agents build
 - `/browse` — drop a website, get a critique with time/cost estimate, purchase an improved Seed
 - `/writer` — Writer Seed: AI agents collaborate to write a book or a song
+- `/portal/[id]/references` — connect Google Drive and sync reference material into a Seed
 - `/admin` — command center (Google master login required)
 - `/admin/login` — Sign in with Google (allowlisted master emails)
 - `/admin/test` — provider key tests + pre-launch Seed checklist
 - Connect API: `https://www.cinchseed.com/v1/watch.js` — see below
 
-Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_AI_API_KEY`, `MANUS_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`. Provider keys can also be pasted in **Admin → Agents & providers** (Seed settings). Never hardcode secrets. Cursor is **not** a Seed provider.
+Env: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `GOOGLE_AI_API_KEY`, `MANUS_API_KEY`, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GOOGLE_DRIVE_ENABLED`, optional `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `CINCH_MASTER_EMAILS` (or `CINCH_FREE_ADMIN_EMAILS`), optional `CINCH_LAUNCH_MODE=test|live`. Provider keys can also be pasted in **Admin → Agents & providers** (Seed settings). Never hardcode secrets. Cursor is **not** a Seed provider.
+
+**Google Drive references:** on any Seed desk, owners can connect Drive (or paste a share link). Attached files sync into `docs/references/` so Writer and website agents follow the owner’s material.
 
 ### Conductor routing table (cost-down)
 
