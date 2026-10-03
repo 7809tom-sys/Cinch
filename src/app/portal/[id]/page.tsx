@@ -21,6 +21,7 @@ import {
 } from "../actions";
 import { AffiliateDesignCrm } from "@/components/affiliate-design-crm";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
+import { DriveReferencesPanel } from "@/components/drive-references-panel";
 import { WatchPingLine } from "@/components/watch-ping-line";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
@@ -44,8 +45,8 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PortalProjectPage({ params }: PageProps) {
   const { id } = await params;
-  const { customer, project, watch, designs, crew, pmContact } =
-    await getPortalProjectSnapshot(id);
+  const snapshot = await getPortalProjectSnapshot(id);
+  const { customer, project, watch, designs, crew, pmContact } = snapshot;
   if (!customer) redirect("/login");
   if (!project) notFound();
 
@@ -129,6 +130,12 @@ export default async function PortalProjectPage({ params }: PageProps) {
                 Scripts
               </Link>
             ) : null}
+            <Link
+              href={`/portal/${project.id}/references`}
+              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+            >
+              Drive
+            </Link>
             <Link
               href={`/portal/${project.id}/source?files=1`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
@@ -232,11 +239,19 @@ export default async function PortalProjectPage({ params }: PageProps) {
           ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
+            {project.seedKind !== "writer" ? (
+              <Link
+                href={`/portal/${project.id}/playbook`}
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+              >
+                Seed playbook
+              </Link>
+            ) : null}
             <Link
-              href={`/portal/${project.id}/playbook`}
+              href={`/portal/${project.id}/references`}
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
-              Seed playbook
+              Google Drive refs
             </Link>
             <Link
               href={`/portal/${project.id}/dialog`}
@@ -250,6 +265,18 @@ export default async function PortalProjectPage({ params }: PageProps) {
             >
               Edit Seed
             </Link>
+          </div>
+
+          <div className="mt-8">
+            <DriveReferencesPanel
+              projectId={project.id}
+              initialReferences={snapshot.driveReferences}
+              connectedEmail={snapshot.driveConnectionEmail}
+              driveConnectConfigured={snapshot.driveConnectConfigured}
+              googleClientId={snapshot.googleClientId}
+              driveScopes={snapshot.driveScopes}
+              compact
+            />
           </div>
           {project.referenceUrl ? (
             <p className="mt-3 text-sm text-muted">
