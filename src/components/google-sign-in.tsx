@@ -2,27 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type CredentialResponse = { credential?: string };
-
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: {
-            client_id: string;
-            callback: (response: CredentialResponse) => void;
-          }) => void;
-          renderButton: (
-            parent: HTMLElement,
-            options: Record<string, unknown>,
-          ) => void;
-        };
-      };
-    };
-  }
-}
-
 const SCRIPT_ID = "google-gsi-client";
 
 export function GoogleSignInButton({

@@ -55,6 +55,22 @@ import {
   type WriterForm,
 } from "@/lib/seed-writer";
 import {
+  googleDriveClientId,
+  googleDriveScopes,
+  isGoogleDriveConnectConfigured,
+} from "@/lib/google-drive";
+import {
+  attachDriveFileToProject,
+  attachDriveShareLinkToProject,
+  browseConnectedDrive,
+  disconnectDrive,
+  getDriveConnection,
+  listProjectDriveReferences,
+  removeDriveReference,
+  resyncProjectDriveReferences,
+  saveDriveConnection,
+} from "@/lib/seed-drive-refs";
+import {
   critiqueToBrief,
   critiqueWebsite,
   type SiteCritique,
@@ -297,6 +313,11 @@ export async function getPortalProjectSnapshot(projectId: string) {
       agents: [] as string[],
       crew: [],
       pmContact: null,
+      driveReferences: [],
+      driveConnectionEmail: null as string | null,
+      driveConnectConfigured: isGoogleDriveConnectConfigured(),
+      googleClientId: googleDriveClientId(),
+      driveScopes: googleDriveScopes().join(" "),
     };
   }
 
@@ -315,6 +336,11 @@ export async function getPortalProjectSnapshot(projectId: string) {
       agents: [] as string[],
       crew: [],
       pmContact: null,
+      driveReferences: [],
+      driveConnectionEmail: null as string | null,
+      driveConnectConfigured: isGoogleDriveConnectConfigured(),
+      googleClientId: googleDriveClientId(),
+      driveScopes: googleDriveScopes().join(" "),
     };
   }
 
@@ -326,6 +352,10 @@ export async function getPortalProjectSnapshot(projectId: string) {
   const designs = await listAffiliateDesigns(refreshed.id);
   const crew = listSwitchableAgents(refreshed);
   const agents = crew.map((agent) => agent.name);
+  const [driveReferences, driveConnection] = await Promise.all([
+    listProjectDriveReferences(refreshed.id),
+    getDriveConnection(customer.id),
+  ]);
 
   return {
     customer,
@@ -335,6 +365,11 @@ export async function getPortalProjectSnapshot(projectId: string) {
     agents,
     crew,
     pmContact,
+    driveReferences,
+    driveConnectionEmail: driveConnection?.email ?? null,
+    driveConnectConfigured: isGoogleDriveConnectConfigured(),
+    googleClientId: googleDriveClientId(),
+    driveScopes: googleDriveScopes().join(" "),
   };
 }
 
@@ -984,4 +1019,133 @@ export async function portalSavePlaybookChapterAction(
   revalidatePath(`/portal/${projectId}/playbook`);
   revalidatePath(`/admin/projects/${projectId}/playbook`);
   return { ok: true as const };
+}
+
+function revalidateDrivePaths(projectId: string) {
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath(`/portal/${projectId}/references`);
+  revalidatePath(`/portal/${projectId}/writer`);
+  revalidatePath(`/portal/${projectId}/source`);
+}
+
+export async function connectGoogleDriveAction(input: {
+  projectId: string;
+  accessToken: string;
+  expiresIn?: number | null;
+}) {
+  const owned = await requireOwnedProject(input.projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+
+  const expiresAt =
+    typeof input.expiresIn === "number" && input.expiresIn > 0
+      ? new Date(Date.now() + input.expiresIn * 1000).toISOString()
+      : null;
+  const connection = await saveDriveConnection({
+    customerId: customer.id,
+    accessToken: input.accessToken,
+    expiresAt,
+    scopes: googleDriveScopes(),
+  });
+  if ("error" in connection) {
+    return { ok: false as const, error: connection.error };
+  }
+  revalidateDrivePaths(input.projectId);
+  return { ok: true as const, email: connection.email };
+}
+
+export async function disconnectGoogleDriveAction(projectId: string) {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+  await disconnectDrive(customer.id);
+  revalidateDrivePaths(projectId);
+  return { ok: true as const };
+}
+
+export async function listDriveBrowseAction(projectId: string) {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+  return browseConnectedDrive({ customerId: customer.id });
+}
+
+export async function attachDriveFileAction(input: {
+  projectId: string;
+  driveFileId: string;
+}) {
+  const owned = await requireOwnedProject(input.projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+
+  const result = await attachDriveFileToProject({
+    projectId: owned.project.id,
+    projectName: owned.project.name,
+    customerId: customer.id,
+    driveFileId: input.driveFileId,
+  });
+  if (!result.ok) return result;
+  revalidateDrivePaths(input.projectId);
+  return result;
+}
+
+export async function attachDriveShareLinkAction(input: {
+  projectId: string;
+  shareUrl: string;
+  label?: string;
+}) {
+  const owned = await requireOwnedProject(input.projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+
+  const result = await attachDriveShareLinkToProject({
+    projectId: owned.project.id,
+    projectName: owned.project.name,
+    customerId: customer.id,
+    shareUrl: input.shareUrl,
+    label: input.label,
+  });
+  if (!result.ok) return result;
+  revalidateDrivePaths(input.projectId);
+  return result;
+}
+
+export async function removeDriveReferenceAction(input: {
+  projectId: string;
+  referenceId: string;
+}) {
+  const owned = await requireOwnedProject(input.projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+
+  const result = await removeDriveReference({
+    projectId: input.projectId,
+    referenceId: input.referenceId,
+    customerId: customer.id,
+  });
+  if (!result.ok) return result;
+  revalidateDrivePaths(input.projectId);
+  return result;
+}
+
+export async function resyncDriveReferencesAction(projectId: string) {
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+
+  const result = await resyncProjectDriveReferences({
+    projectId: owned.project.id,
+    projectName: owned.project.name,
+    customerId: customer.id,
+  });
+  if (!result.ok) return result;
+  revalidateDrivePaths(projectId);
+  return result;
 }
