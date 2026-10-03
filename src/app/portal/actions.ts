@@ -345,16 +345,18 @@ export async function getPortalProjectSnapshot(projectId: string) {
   }
 
   // Heading into the Seed: PM acknowledges receipt and that work is underway.
-  const pmContact = await ensureProjectManagerSeedContact(project.id);
+  const pmContact = await ensureProjectManagerSeedContact(project.id).catch(
+    () => null,
+  );
   const refreshed = (await getProject(project.id)) ?? project;
 
-  const watch = await getSeedWatchSnapshot(refreshed.id);
-  const designs = await listAffiliateDesigns(refreshed.id);
+  const watch = await getSeedWatchSnapshot(refreshed.id).catch(() => null);
+  const designs = await listAffiliateDesigns(refreshed.id).catch(() => []);
   const crew = listSwitchableAgents(refreshed);
   const agents = crew.map((agent) => agent.name);
   const [driveReferences, driveConnection] = await Promise.all([
-    listProjectDriveReferences(refreshed.id),
-    getDriveConnection(customer.id),
+    listProjectDriveReferences(refreshed.id).catch(() => []),
+    getDriveConnection(customer.id).catch(() => null),
   ]);
 
   return {
@@ -740,8 +742,18 @@ export async function purchaseWriterSeedAction(formData: FormData) {
     projectId: project.id,
   });
 
-  await bootstrapSeedProject(project.id);
-  await establishCustomerSession(customer.id);
+  try {
+    await bootstrapSeedProject(project.id);
+    await establishCustomerSession(customer.id);
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "The Writer Seed was created but the desk failed to open. Reload My Seeds.",
+    };
+  }
 
   revalidatePath("/portal");
   revalidatePath(`/portal/${project.id}`);
@@ -788,20 +800,30 @@ export async function portalWatchTickAction(projectId: string) {
   if (!customerOwnsProject(customer, projectId)) {
     return { ok: false as const, error: "Not your Seed." };
   }
-  const result = await tickProjectWork(projectId);
-  revalidatePath(`/portal/${projectId}`);
-  revalidatePath("/portal");
-  return {
-    ok: true as const,
-    progressed: result.progressed,
-    stuck: result.stuck,
-    complete: result.complete,
-    idle: result.idle,
-    hasOpenWork: result.hasOpenWork,
-    statusLine: result.statusLine,
-    workingOn: result.workingOn,
-    updatedTask: result.updatedTask,
-  };
+  try {
+    const result = await tickProjectWork(projectId);
+    revalidatePath(`/portal/${projectId}`);
+    revalidatePath("/portal");
+    return {
+      ok: true as const,
+      progressed: result.progressed,
+      stuck: result.stuck,
+      complete: result.complete,
+      idle: result.idle,
+      hasOpenWork: result.hasOpenWork,
+      statusLine: result.statusLine,
+      workingOn: result.workingOn,
+      updatedTask: result.updatedTask,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not refresh this Seed. Reload and try again.",
+    };
+  }
 }
 
 /** Explicit “keep growing” when the first build wave is caught up. */
@@ -891,7 +913,17 @@ export async function portalPublishWebsiteAction(projectId: string) {
   if (!access.ok) {
     return { ok: false as const, error: access.error };
   }
-  await publishSeedWebsite(projectId);
+  try {
+    await publishSeedWebsite(projectId);
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "This Seed does not publish a website.",
+    };
+  }
   revalidatePath(`/portal/${projectId}`);
   revalidatePath("/portal");
   revalidatePath(`/site/${projectId}`);
@@ -904,15 +936,25 @@ export async function portalListInLibraryAction(projectId: string) {
   if (!access.ok) {
     return { ok: false as const, error: access.error };
   }
-  const project = await listSeedInLibrary(projectId);
-  revalidatePath(`/portal/${projectId}`);
-  revalidatePath("/portal");
-  revalidatePath("/browse");
-  revalidatePath(`/site/${projectId}`);
-  return {
-    ok: true as const,
-    listingId: project.marketplaceListingId,
-  };
+  try {
+    const project = await listSeedInLibrary(projectId);
+    revalidatePath(`/portal/${projectId}`);
+    revalidatePath("/portal");
+    revalidatePath("/browse");
+    revalidatePath(`/site/${projectId}`);
+    return {
+      ok: true as const,
+      listingId: project.marketplaceListingId,
+    };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "This Seed cannot list in the website library.",
+    };
+  }
 }
 
 /** Edit Seed name and brief — HARD RULE: read the edit, rebuild, react. */

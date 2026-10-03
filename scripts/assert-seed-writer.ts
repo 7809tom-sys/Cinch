@@ -15,6 +15,13 @@ import {
   writerCollabPhaseFromTitle,
   writerPrimaryPath,
 } from "../src/lib/seed-writer";
+import { readFileSync } from "fs";
+import { join } from "path";
+import {
+  liveWebsiteUrl,
+  publicWebsiteUrl,
+  writerSeedPortalPath,
+} from "../src/lib/domain";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -122,6 +129,45 @@ assert(
 
 assert(writerPrimaryPath("book") === "manuscript/BOOK.md", "book primary path");
 assert(writerPrimaryPath("song") === "lyrics/song.md", "song primary path");
+assert(
+  writerSeedPortalPath("seed-writer-1") === "/portal/seed-writer-1/writer",
+  "writer seeds open in the portal, not /site/",
+);
+assert(
+  liveWebsiteUrl({
+    id: "seed-writer-1",
+    name: "Greenhouse Writer Seed",
+    customDomain: null,
+    seedKind: "writer",
+  }) === "/portal/seed-writer-1/writer" &&
+    !liveWebsiteUrl({
+      id: "seed-writer-1",
+      name: "Greenhouse Writer Seed",
+      customDomain: null,
+      seedKind: "writer",
+    }).includes("/site/") &&
+    publicWebsiteUrl({
+      id: "seed-writer-1",
+      name: "Greenhouse Writer Seed",
+      customDomain: null,
+      seedKind: "writer",
+    }).endsWith("/portal/seed-writer-1/writer"),
+  "Visit website for a Writer Seed opens the manuscript desk",
+);
+const siteLayout = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/layout.tsx"),
+  "utf8",
+);
+const domainSrc = readFileSync(
+  join(process.cwd(), "src/lib/domain.ts"),
+  "utf8",
+);
+assert(
+  siteLayout.includes("writerSeedPortalPath") &&
+    siteLayout.includes("isWriterSeedKind") &&
+    !domainSrc.includes('from "./seed-writer"'),
+  "Writer Seeds redirect off /site/[id] without pulling Node crypto into domain.ts",
+);
 
 const brief = composeWriterBrief({
   form: "book",

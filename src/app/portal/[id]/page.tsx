@@ -337,6 +337,15 @@ export default async function PortalProjectPage({ params }: PageProps) {
               complete={buildComplete}
               initialWorkingOn={workingOn}
             />
+            {project.seedKind === "writer" ? (
+              <p className="mt-3 text-sm leading-relaxed text-muted">
+                This Writer Seed is a living{" "}
+                {project.writerForm === "song" ? "lyric sheet" : "manuscript"} —
+                not a website. Open it from Read{" "}
+                {project.writerForm === "song" ? "lyrics" : "manuscript"}.
+                Publish and the website library do not apply.
+              </p>
+            ) : (
             <PortalCompleteLaunch
               projectId={project.id}
               projectName={project.name}
@@ -366,6 +375,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
               }
               editHref={`/portal/${project.id}/edit`}
             />
+            )}
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
                 {project.tasks.length === 0
