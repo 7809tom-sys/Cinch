@@ -10,7 +10,10 @@
  *   modifiers: [{ group, required, options }]). parseMenuFromUpload /
  *   ingestMenuPhotos
  *   write a draft store profile. Website crawl is the fallback — not
- *   Red Card or non-consented scraping. Five-minute sign-off: review
+ *   Red Card or non-consented scraping. After a kitchen connects its
+ *   public menu page, Hometown regularly fetches that page and writes
+ *   price / 86 changes onto the live diner menu (merchant 86 stays
+ *   until the merchant restores). Five-minute sign-off: review
  *   prices/modifiers, tap Approve (approveMenuDraft), merchant goes
  *   live. Not a data-entry team. confirmRestaurantMenuPrice still
  *   works one plate at a time. 86: setMenuItemEightySixed hides an
@@ -239,7 +242,7 @@ export const PAYMENT_ECONOMICS_BRIEF_BLOCK = `Payment & Economics:
 
 export const HOMETOWN_PLATFORM_BRIEF_BLOCK = `Hometown platform:
 - Role logins: three distinct sign-ins — customer (order), merchant (kitchen + menu confirm), and driver (dash + Connect payouts).
-- Menu: DoorDash-style — AI crawls a draft; the merchant uploads or confirms items so customers can find the right plate (name, category, find-words). Photo/PDF of the paper takeout menu is the primary onboard; website crawl is the fallback.
+- Menu: DoorDash-style — AI crawls a draft; the merchant uploads or confirms items so customers can find the right plate (name, category, find-words). Photo/PDF of the paper takeout menu is the primary onboard; website crawl is the fallback. After a kitchen connects its public menu URL, Hometown revisits that page and auto-updates selling price and website 86s.
 - Stripe three-party: restaurant, scout, and driver each have a Stripe account.`;
 
 export const HOMETOWN_MARKET_RESEARCH_BRIEF_BLOCK = `Hometown Runner: market research
@@ -271,6 +274,7 @@ export const HOMETOWN_MENU_POS_INTEGRATIONS = [
 
 export const HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK = `Hometown menu onboard (not POS):
 - Primary path: Scout or merchant snaps 2–3 photos of the paper takeout menu, or uploads a PDF. A vision model (Gemini Flash / Claude Vision when a key is wired; Seed parse is a fixture today) outputs structured JSON: category, item_name, price, description, modifiers [{ group, required, options }]. parseMenuFromUpload / ingestMenuPhotos turn that into a draft store profile. Website crawl stays as a fallback.
+- Connected-site sync: after the kitchen pastes its public menu URL, Hometown visits that page on a 15-minute tick (JSON-LD or $price lines), writes price and availability onto the live diner menu, and 86s website plates that disappear. Merchant 86 stays until the merchant restores. Public pages only.
 - Five-minute sign-off: the parser creates a draft. Scout or restaurant owner reviews prices and modifiers, taps Approve, and the merchant goes live. Not a data-entry team. approveMenuDraft confirms every parsed item (confirmRestaurantMenuPrice still works one-by-one).
 - 86: one tap to 86 / restore an item during service so it does not sell. setMenuItemEightySixed hides 86'd items from sellableRestaurantMenu and diner find.
 - Do not build Toast / Square / Otter / Deliverect APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
@@ -425,6 +429,18 @@ export type MenuUploadInput = {
   /** Shown on the kitchen desk after parse (fixture vs vision). */
   parseNote?: string;
 };
+export type MenuEightySixSource = "merchant" | "website";
+export type MenuCrawlChangeKind =
+  | "price"
+  | "eighty_sixed"
+  | "restored"
+  | "added";
+export type MenuCrawlChange = {
+  kind: MenuCrawlChangeKind;
+  itemTitle: string;
+  fromPriceUsd?: number;
+  toPriceUsd?: number;
+};
 export type RestaurantMenuItem = {
   id: string;
   title: string;
@@ -439,6 +455,8 @@ export type RestaurantMenuItem = {
   modifiers?: MenuModifierGroup[];
   /** Hidden from diner find / sellable while 86'd during service. */
   eightySixed?: boolean;
+  /** Merchant 86 beats a later website restore. */
+  eightySixSource?: MenuEightySixSource;
 };
 export type RestaurantMenuDraft = {
   sourceUrl: string;
@@ -532,6 +550,11 @@ export type DeliveryRestaurant = {
   paused: boolean;
   /** Public site AI crawls for the first menu draft. */
   websiteUrl?: string;
+  /** Kitchen pasted a live public menu URL — Hometown keeps revisiting it. */
+  websiteConnected?: boolean;
+  lastCrawledAt?: string | null;
+  nextCrawlAt?: string | null;
+  crawlChanges?: MenuCrawlChange[];
   /** Hybrid menu: AI draft, then merchant confirms prices. */
   menu?: RestaurantMenuDraft;
   /** Kitchen pin — starter kitchens share one town. */
@@ -1717,7 +1740,13 @@ export function setMenuItemEightySixed(
         menu: {
           ...menu,
           items: menu.items.map((item) =>
-            item.id === itemId ? { ...item, eightySixed } : item,
+            item.id === itemId
+              ? {
+                  ...item,
+                  eightySixed,
+                  eightySixSource: eightySixed ? "merchant" : undefined,
+                }
+              : item,
           ),
         },
       };
@@ -1737,6 +1766,11 @@ export function normalizeDeliveryRestaurant(
           items: row.menu.items.map((item) => ({
             ...item,
             eightySixed: Boolean(item.eightySixed),
+            eightySixSource:
+              item.eightySixSource === "merchant" ||
+              item.eightySixSource === "website"
+                ? item.eightySixSource
+                : undefined,
             modifiers: Array.isArray(item.modifiers)
               ? item.modifiers
               : undefined,
@@ -1763,6 +1797,23 @@ export function normalizeDeliveryRestaurant(
     connectAccountId:
       row.connectAccountId?.trim() || defaultRestaurantConnectAccountId(row.id),
     websiteUrl,
+    websiteConnected: Boolean(row.websiteConnected),
+    lastCrawledAt:
+      typeof row.lastCrawledAt === "string" && row.lastCrawledAt.trim()
+        ? row.lastCrawledAt
+        : null,
+    nextCrawlAt:
+      typeof row.nextCrawlAt === "string" && row.nextCrawlAt.trim()
+        ? row.nextCrawlAt
+        : null,
+    crawlChanges: Array.isArray(row.crawlChanges)
+      ? row.crawlChanges.filter(
+          (change): change is MenuCrawlChange =>
+            Boolean(change) &&
+            typeof change.kind === "string" &&
+            typeof change.itemTitle === "string",
+        )
+      : undefined,
     menu,
     ...restaurantGeo(row),
   };

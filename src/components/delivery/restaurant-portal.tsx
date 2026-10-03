@@ -22,9 +22,11 @@ import {
 import {
   approveMenuDraftAction,
   confirmRestaurantMenuPriceAction,
+  connectRestaurantWebsiteAction,
   ingestMenuPhotosAction,
   reviewRestaurantMenuItemAction,
   setMenuItemEightySixedAction,
+  syncRestaurantMenuFromWebsiteAction,
   uploadRestaurantMenuItemAction,
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
@@ -128,7 +130,10 @@ export function HometownRestaurantPortal({
             <p className="mt-2 text-sm text-muted">
               Snap 2–3 photos of the paper takeout menu or upload a PDF.
               Review the draft and Approve — five-minute sign-off, not a
-              data-entry team. Website crawl stays as a fallback. Hometown
+              data-entry team. Website crawl stays as a fallback. After you
+              connect the kitchen’s public menu page, Hometown revisits it
+              and writes price and 86 changes onto the live diner menu.
+              Hometown
               does not certify Toast, Square, Otter, or Deliverect, and
               does not run a Red Card crawler. During service, 86 a plate
               so it does not sell. New orders, accept or decline, start
@@ -296,6 +301,20 @@ export function HometownRestaurantPortal({
               uploadRestaurantMenuItemAction(projectId, restaurant.id, input),
             )
           }
+          onConnectWebsite={(websiteUrl) =>
+            run(() =>
+              connectRestaurantWebsiteAction(
+                projectId,
+                restaurant.id,
+                websiteUrl,
+              ),
+            )
+          }
+          onSyncWebsite={() =>
+            run(() =>
+              syncRestaurantMenuFromWebsiteAction(projectId, restaurant.id),
+            )
+          }
         />
       ) : null}
 
@@ -349,6 +368,8 @@ function MenuConfirmBoard({
   onEightySix,
   onConfirm,
   onUpload,
+  onConnectWebsite,
+  onSyncWebsite,
 }: {
   restaurant: DeliveryRestaurant;
   pending: boolean;
@@ -364,6 +385,8 @@ function MenuConfirmBoard({
     priceUsd: number,
     review?: { modifierText?: string },
   ) => void;
+  onConnectWebsite: (websiteUrl: string) => void;
+  onSyncWebsite: () => void;
   onUpload: (input: {
     title: string;
     category?: string;
@@ -392,10 +415,11 @@ function MenuConfirmBoard({
         writes a paper-menu fixture until a vision API key is wired — not
         a live Gemini or Claude call. Website crawl from{" "}
         {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl} is the
-        fallback. No Toast / Square / Otter / Deliverect POS, no Red Card
-        crawler. Only approved plates sell. One tap 86 on this tablet /
-        web view so diners cannot buy it. {drafts.length} item
-        {drafts.length === 1 ? "" : "s"} still need sign-off.
+        fallback. Connect a live public menu URL and Hometown keeps
+        prices and 86s current — no Toast / Square / Otter / Deliverect
+        POS, no Red Card crawler. Only approved plates sell. One tap 86
+        on this tablet / web view so diners cannot buy it. {drafts.length}{" "}
+        item{drafts.length === 1 ? "" : "s"} still need sign-off.
       </p>
       {restaurant.menu?.uploadedFiles?.length ? (
         <p className="mt-3 text-sm font-semibold text-brand-deep">
@@ -404,6 +428,75 @@ function MenuConfirmBoard({
       ) : null}
       {restaurant.menu?.parseNote ? (
         <p className="mt-2 text-sm text-muted">{restaurant.menu.parseNote}</p>
+      ) : null}
+      <form
+        className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const websiteUrl = String(
+            (form.elements.namedItem("websiteUrl") as HTMLInputElement | null)
+              ?.value ?? "",
+          ).trim();
+          if (!websiteUrl) return;
+          onConnectWebsite(websiteUrl);
+        }}
+      >
+        <label className="min-w-[16rem] flex-1 text-sm font-semibold text-brand-deep">
+          Public menu URL
+          <input
+            name="websiteUrl"
+            type="url"
+            required
+            defaultValue={
+              restaurant.websiteConnected ? restaurant.websiteUrl ?? "" : ""
+            }
+            placeholder="https://secondstreet.kitchen/menu"
+            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+        >
+          Connect menu site
+        </button>
+        {restaurant.websiteConnected ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onSyncWebsite}
+            className="inline-flex min-h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+          >
+            Sync now
+          </button>
+        ) : null}
+        {restaurant.websiteConnected && restaurant.lastCrawledAt ? (
+          <p className="basis-full text-sm text-muted">
+            Last crawl{" "}
+            {new Date(restaurant.lastCrawledAt).toLocaleString()}
+            {restaurant.nextCrawlAt
+              ? ` · next ${new Date(restaurant.nextCrawlAt).toLocaleString()}`
+              : ""}
+            . Hometown checks connected pages about every 15 minutes.
+          </p>
+        ) : null}
+      </form>
+      {restaurant.crawlChanges?.length ? (
+        <ul className="mt-3 space-y-1 text-sm text-muted">
+          {restaurant.crawlChanges.slice(0, 8).map((change, index) => (
+            <li key={`${change.kind}-${change.itemTitle}-${index}`}>
+              {change.kind === "price"
+                ? `${change.itemTitle} is now $${(change.toPriceUsd ?? 0).toFixed(2)}`
+                : change.kind === "added"
+                  ? `Added ${change.itemTitle} at $${(change.toPriceUsd ?? 0).toFixed(2)}`
+                  : change.kind === "eighty_sixed"
+                    ? `${change.itemTitle} is 86'd on the website`
+                    : `${change.itemTitle} is back on the website`}
+            </li>
+          ))}
+        </ul>
       ) : null}
       <form
         className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
@@ -574,17 +667,24 @@ function MenuConfirmBoard({
             >
               <div>
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
-                  {item.source === "ai_crawl"
-                    ? "AI draft"
-                    : item.source === "merchant_upload"
-                      ? "Uploaded"
-                      : item.source === "photo_parse"
-                        ? "Photo draft"
-                        : item.source === "pdf_parse"
-                          ? "PDF draft"
-                          : "Merchant confirmed"}{" "}
+                  {item.source === "ai_crawl" &&
+                  item.confirmedPriceUsd != null
+                    ? "Website live"
+                    : item.source === "ai_crawl"
+                      ? "AI draft"
+                      : item.source === "merchant_upload"
+                        ? "Uploaded"
+                        : item.source === "photo_parse"
+                          ? "Photo draft"
+                          : item.source === "pdf_parse"
+                            ? "PDF draft"
+                            : "Merchant confirmed"}{" "}
                   · {item.category}
-                  {item.eightySixed ? " · 86'd" : ""}
+                  {item.eightySixed
+                    ? item.eightySixSource === "website"
+                      ? " · 86'd on website"
+                      : " · 86'd"
+                    : ""}
                 </p>
                 <h3
                   className={`mt-1 font-bold ${

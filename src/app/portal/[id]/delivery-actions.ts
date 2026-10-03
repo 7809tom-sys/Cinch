@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  connectRestaurantWebsite,
+  syncRestaurantMenuFromWebsite,
+} from "@/lib/hometown-menu-crawler";
+import {
   acceptDriverRun,
   advanceDriverArrived,
   advanceDriverRun,
@@ -218,6 +222,67 @@ export async function approveMenuDraftAction(
   );
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
+  return { ok: true as const };
+}
+
+export async function connectRestaurantWebsiteAction(
+  projectId: string,
+  restaurantId: string,
+  websiteUrl: string,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const connected = connectRestaurantWebsite(
+    loaded.ops,
+    restaurantId,
+    websiteUrl,
+  );
+  if ("error" in connected) return { ok: false as const, error: connected.error };
+  const synced = await syncRestaurantMenuFromWebsite({
+    ops: connected,
+    restaurantId,
+    force: true,
+  });
+  await saveDeliveryOps(
+    projectId,
+    synced.ops,
+    synced.changed
+      ? "Website crawl wrote live prices from the connected menu page"
+      : "Kitchen connected a public menu page",
+  );
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  if (synced.error && !synced.changed) {
+    return { ok: false as const, error: synced.error };
+  }
+  return { ok: true as const };
+}
+
+export async function syncRestaurantMenuFromWebsiteAction(
+  projectId: string,
+  restaurantId: string,
+) {
+  const loaded = await loadOps(projectId);
+  if (!loaded.ok) return loaded;
+  const synced = await syncRestaurantMenuFromWebsite({
+    ops: loaded.ops,
+    restaurantId,
+    force: true,
+  });
+  if (synced.changed || synced.ops !== loaded.ops) {
+    await saveDeliveryOps(
+      projectId,
+      synced.ops,
+      synced.changed
+        ? "Website crawl updated live menu prices"
+        : "Website crawl checked the connected menu page",
+    );
+  }
+  revalidateDelivery(projectId);
+  revalidatePath(`/site/${projectId}/shop`);
+  if (synced.error && !synced.changed) {
+    return { ok: false as const, error: synced.error };
+  }
   return { ok: true as const };
 }
 
