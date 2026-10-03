@@ -139,6 +139,13 @@ import {
   toggleFavoriteKitchen,
 } from "../src/lib/seed-delivery";
 import {
+  applyWebsiteMenuSync,
+  connectRestaurantWebsite,
+  isPublicRestaurantWebsite,
+  parseRestaurantMenuHtml,
+  restaurantDueForMenuCrawl,
+} from "../src/lib/hometown-menu-crawler";
+import {
   geminiMenuVisionModels,
   kitchenFacingVisionError,
 } from "../src/lib/menu-vision-copy";
@@ -1091,6 +1098,168 @@ assert(
   "86 hides the plate from sellableRestaurantMenu and diner find",
 );
 assert(
+  eightySixed.restaurants
+    .find((row) => row.id === "rest-tacos")
+    ?.menu?.items.find((item) => item.id === "menu-parse-chicken-parm-hero")
+    ?.eightySixSource === "merchant",
+  "merchant 86 is tagged so a later website restore cannot overwrite it",
+);
+
+const jsonLdHtml = `<html><script type="application/ld+json">${JSON.stringify({
+  "@type": "Menu",
+  hasMenuSection: {
+    "@type": "MenuSection",
+    name: "Plates",
+    hasMenuItem: [
+      {
+        "@type": "MenuItem",
+        name: "Street tacos",
+        offers: { price: 14, availability: "https://schema.org/InStock" },
+      },
+      {
+        "@type": "MenuItem",
+        name: "Horchata",
+        offers: { price: 4, availability: "https://schema.org/OutOfStock" },
+      },
+    ],
+  },
+})}</script></html>`;
+const parsedJsonLd = parseRestaurantMenuHtml(jsonLdHtml);
+assert(
+  parsedJsonLd.some(
+    (item) => item.title === "Street tacos" && item.priceUsd === 14 && item.available,
+  ) &&
+    parsedJsonLd.some(
+      (item) => item.title === "Horchata" && item.priceUsd === 4 && !item.available,
+    ),
+  "crawler reads JSON-LD plates, prices, and sold-out flags",
+);
+const parsedPlain = parseRestaurantMenuHtml(
+  "<p>Warm grain bowl $16</p><p>Market sandwich $12 sold out</p>",
+);
+assert(
+  parsedPlain.some(
+    (item) => item.title === "Warm grain bowl" && item.priceUsd === 16,
+  ) &&
+    parsedPlain.some(
+      (item) => item.title === "Market sandwich" && !item.available,
+    ),
+  "crawler reads $price lines and sold-out copy from public HTML",
+);
+assert(
+  !isPublicRestaurantWebsite("https://pilotkitchen.example.com/menu") &&
+    !isPublicRestaurantWebsite("http://localhost:3000/menu") &&
+    isPublicRestaurantWebsite("https://secondstreet.kitchen/menu"),
+  "crawler skips example.com and localhost — public kitchen pages only",
+);
+
+const tacoKitchen = ops.restaurants.find((row) => row.id === "rest-tacos");
+const websiteSync = applyWebsiteMenuSync({
+  restaurant: {
+    ...tacoKitchen!,
+    websiteUrl: "https://secondstreet.kitchen/menu",
+  },
+  sourceUrl: "https://secondstreet.kitchen/menu",
+  crawledAt: "2026-10-03T16:00:00.000Z",
+  crawled: [
+    { title: "Street tacos", category: "Plates", priceUsd: 14, available: true },
+    { title: "Horchata", category: "Drinks", priceUsd: 4, available: true },
+  ],
+});
+const syncedTacos = websiteSync.restaurant.menu?.items.find(
+  (item) => item.id === "menu-taco-street",
+);
+const syncedHorchata = websiteSync.restaurant.menu?.items.find(
+  (item) => /horchata/i.test(item.title),
+);
+assert(
+  syncedTacos?.confirmedPriceUsd === 14 &&
+    syncedHorchata?.confirmedPriceUsd === 4 &&
+    sellableRestaurantMenu(websiteSync.restaurant).some(
+      (item) => item.title === "Street tacos" && item.priceUsd === 14,
+    ) &&
+    sellableRestaurantMenu(websiteSync.restaurant).some(
+      (item) => item.title === "Horchata" && item.priceUsd === 4,
+    ) &&
+    websiteSync.changes.some((change) => change.kind === "price") &&
+    websiteSync.changes.some((change) => change.kind === "added") &&
+    websiteSync.restaurant.websiteConnected === true,
+  "connected-site crawl writes selling prices and new plates live without a second confirm",
+);
+
+const merchantHold = applyWebsiteMenuSync({
+  restaurant: {
+    ...websiteSync.restaurant,
+    menu: {
+      ...websiteSync.restaurant.menu!,
+      items: websiteSync.restaurant.menu!.items.map((item) =>
+        item.id === "menu-taco-street"
+          ? { ...item, eightySixed: true, eightySixSource: "merchant" as const }
+          : item,
+      ),
+    },
+  },
+  sourceUrl: "https://secondstreet.kitchen/menu",
+  crawled: [
+    { title: "Street tacos", category: "Plates", priceUsd: 14, available: true },
+    { title: "Horchata", category: "Drinks", priceUsd: 4, available: false },
+  ],
+});
+assert(
+  merchantHold.restaurant.menu?.items.find((item) => item.id === "menu-taco-street")
+    ?.eightySixed === true &&
+    merchantHold.restaurant.menu?.items.find((item) => /horchata/i.test(item.title))
+      ?.eightySixSource === "website" &&
+    !sellableRestaurantMenu(merchantHold.restaurant).some(
+      (item) => item.title === "Street tacos",
+    ) &&
+    !sellableRestaurantMenu(merchantHold.restaurant).some(
+      (item) => item.title === "Horchata",
+    ),
+  "website 86 hides a plate; merchant 86 stays until the kitchen restores",
+);
+
+const connected = connectRestaurantWebsite(
+  ops,
+  "rest-tacos",
+  "https://secondstreet.kitchen/menu",
+);
+assert(
+  !("error" in connected) &&
+    connected.restaurants.find((row) => row.id === "rest-tacos")
+      ?.websiteConnected === true &&
+    "error" in
+      connectRestaurantWebsite(ops, "rest-tacos", "https://tacos.example.com/menu"),
+  "connect stores a live public menu URL and refuses example.com",
+);
+assert(
+  ops.restaurants.every((row) => !restaurantDueForMenuCrawl(row)),
+  "starter example.com kitchens are not due for a live website crawl",
+);
+const forcedHtml = applyWebsiteMenuSync({
+  restaurant: {
+    ...( "error" in connected
+      ? ops.restaurants.find((row) => row.id === "rest-tacos")!
+      : connected.restaurants.find((row) => row.id === "rest-tacos")!),
+  },
+  sourceUrl: "https://secondstreet.kitchen/menu",
+  crawledAt: "2026-10-03T16:00:00.000Z",
+  crawled: parseRestaurantMenuHtml("<p>Street tacos $15</p><p>Agua fresca $4</p>"),
+});
+assert(
+  forcedHtml.restaurant.menu?.items.find((item) => item.id === "menu-taco-street")
+    ?.confirmedPriceUsd === 15 &&
+    !restaurantDueForMenuCrawl(
+      forcedHtml.restaurant,
+      new Date("2026-10-03T16:05:00.000Z"),
+    ) &&
+    restaurantDueForMenuCrawl(
+      forcedHtml.restaurant,
+      new Date("2026-10-03T16:16:00.000Z"),
+    ),
+  "Sync now writes the new website price and waits for the next 15-minute pass",
+);
+assert(
   maya?.taxFormsSelfManaged === true &&
     Boolean(maya?.connectAccountId) &&
     shouldTriggerDriverPayout({
@@ -1275,6 +1444,7 @@ const afterOrder = recordDeliveryOrder(ops, {
   orderId: "ord-test",
   customerName: "Sam",
   dropoffZip: "10002",
+  createdAt: "2026-09-24T12:00:00.000Z",
   items: [
     {
       productId: "run-pilot-bowl",
@@ -1517,6 +1687,10 @@ assert(
     /setMenuItemEightySixedAction/.test(restaurantDesk) &&
     /uploadRestaurantMenuItemAction/.test(restaurantDesk) &&
     /confirmRestaurantMenuPriceAction/.test(restaurantDesk) &&
+    /connectRestaurantWebsiteAction/.test(restaurantDesk) &&
+    /syncRestaurantMenuFromWebsiteAction/.test(restaurantDesk) &&
+    /Connect menu site/.test(restaurantDesk) &&
+    /Sync now/.test(restaurantDesk) &&
     /does not certify Toast/.test(restaurantDesk) &&
     /Red Card crawler/.test(restaurantDesk) &&
     /paper-menu fixture/.test(restaurantDesk) &&
@@ -1672,9 +1846,32 @@ assert(
     /revalidatePath\(`\/site\/\$\{projectId\}\/shop`\)/.test(deliveryActions) &&
     /parsePaperMenuWithVision/.test(deliveryActions) &&
     /reviewRestaurantMenuItemAction/.test(deliveryActions) &&
+    /connectRestaurantWebsiteAction/.test(deliveryActions) &&
+    /syncRestaurantMenuFromWebsiteAction/.test(deliveryActions) &&
     /validatePaperMenuUpload/.test(deliveryActions) &&
     !/\.\.\.input,\s*useFixture:\s*true/.test(deliveryActions),
   "merchant confirm and upload refresh diner shop; paper-menu ingest sends file bytes to vision instead of forcing the fixture",
+);
+const menuCrawler = readFileSync(
+  join(process.cwd(), "src/lib/hometown-menu-crawler.ts"),
+  "utf8",
+);
+const deliveryIo = readFileSync(
+  join(process.cwd(), "src/lib/seed-delivery-io.ts"),
+  "utf8",
+);
+assert(
+  /parseRestaurantMenuHtml/.test(menuCrawler) &&
+    /hasMenuItem/.test(menuCrawler) &&
+    /HOMETOWN_MENU_CRAWL_INTERVAL_MS/.test(menuCrawler) &&
+    /tickHometownMenuCrawls/.test(menuCrawler) &&
+    /isPublicRestaurantWebsite/.test(menuCrawler) &&
+    /eightySixSource !== "merchant"/.test(menuCrawler) &&
+    /tickHometownMenuCrawls/.test(deliveryIo) &&
+    /Website crawl updated live menu prices/.test(deliveryIo) &&
+    /no Toast/.test(menuCrawler) &&
+    /Red Card/.test(menuCrawler),
+  "Hometown menu crawler parses public pages on a 15-minute tick and never overrides a merchant 86",
 );
 const menuVision = readFileSync(
   join(process.cwd(), "src/lib/menu-vision.ts"),

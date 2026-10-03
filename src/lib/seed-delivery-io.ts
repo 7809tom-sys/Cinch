@@ -1,3 +1,4 @@
+import { tickHometownMenuCrawls } from "./hometown-menu-crawler";
 import {
   DELIVERY_OPS_PATH,
   deliveryOpsJson,
@@ -56,7 +57,23 @@ export async function ensureDeliveryOpsInSeed(
   }
 
   const existing = parseDeliveryOps(raw);
-  if (existing) return applyDriverSubscriptionPolicies(existing);
+  if (existing) {
+    const ops = applyDriverSubscriptionPolicies(existing);
+    try {
+      const ticked = await tickHometownMenuCrawls({ ops });
+      if (ticked.changed) {
+        await saveDeliveryOps(
+          project.id,
+          ticked.ops,
+          "Website crawl updated live menu prices",
+        );
+        return ticked.ops;
+      }
+    } catch {
+      /* A crawl miss must not block the kitchen desk. */
+    }
+    return ops;
+  }
 
   const ops = starterDeliveryOps(project.name);
   await saveDeliveryOps(

@@ -4459,12 +4459,12 @@ export function customerFacingAdminCopy(
             {
               id: "tip-roles",
               title: "Three role-based logins",
-              body: "Customer, merchant, and driver each sign in separately. Menu is photo/PDF first: scout or owner snaps the paper takeout menu, five-minute sign-off, then 86 during service. Website crawl is the fallback. Do not certify Toast / Square / Otter. The merchant confirms every draft price before it sells.",
+              body: "Customer, merchant, and driver each sign in separately. Menu is photo/PDF first: scout or owner snaps the paper takeout menu, five-minute sign-off, then 86 during service. Website crawl is the fallback. After a kitchen connects its public menu page, Hometown auto-updates price and 86s. Do not certify Toast / Square / Otter.",
             },
             {
               id: "tip-menu-ocr",
               title: "Photo menu, five-minute sign-off, 86",
-              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item_name, price, description, modifiers: group / required / options). Seed parse is a fixture until a vision key is wired. Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. No Toast / Square / Otter / Deliverect / Red Card / 15% markup. No POS certification.",
+              body: "Scout or owner snaps 2–3 photos or uploads a PDF. Vision parse writes a draft (category, item_name, price, description, modifiers: group / required / options). Seed parse is a fixture until a vision key is wired. Five-minute sign-off — not a data-entry team — then Approve goes live. One tap 86 during service so the plate does not sell. Website crawl is fallback. After a kitchen connects its public menu page, Hometown revisits it and auto-updates price and 86s. No Toast / Square / Otter / Deliverect / Red Card / 15% markup. No POS certification.",
             },
             {
               id: "tip-software",

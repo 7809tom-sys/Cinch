@@ -72,7 +72,9 @@ export default async function PortalRestaurantPage({
         </h1>
         <p className="mt-2 max-w-2xl text-base text-muted">
           Snap the paper takeout menu or upload a PDF, five-minute
-          sign-off, then 86 a plate during service. Open or pause the
+          sign-off, then 86 a plate during service. Connect the kitchen’s
+          public menu page and Hometown keeps prices and availability
+          current. Open or pause the
           store, take incoming orders, cook, mark food ready, and hand
           bags to a Hometown driver or hold a pickup at the counter. We
           follow DoorDash-class diner flow — best-of Uber Eats pickup /
