@@ -4,6 +4,7 @@
  * Describe the chat before the chat happens. Exact inputs win.
  */
 import type { AgentSkill } from "./agents";
+import { composeWriterBrief, resolveWriterForm } from "./seed-writer";
 
 export const PREP_RULE =
   "Prep work is everything. You cannot scream at the model for garbage-in, garbage-out. Describe the chat before the chat happens. Write the goal, the boundaries, the deliverable, and what done looks like — then paste. The prep is the product.";
@@ -182,12 +183,51 @@ export function resolveNewSeedBrief(formData: FormData): {
   error?: string;
 } {
   const seedMode = String(formData.get("seedMode") ?? "").trim();
+  const seedKind = String(formData.get("seedKind") ?? "").trim();
   const entry: NewSeedBriefEntry =
     String(formData.get("briefEntry") ?? "").trim() === "paste"
       ? "paste"
       : "worksheet";
   let name = String(formData.get("name") ?? "").trim();
   const pasted = String(formData.get("brief") ?? "").trim();
+
+  // Writer Seeds use a dedicated premise form — not the website prep worksheet.
+  if (seedKind === "writer") {
+    const writerForm = String(formData.get("writerForm") ?? "").trim();
+    const premise = String(formData.get("writerPremise") ?? "").trim() || pasted;
+    const audience = String(formData.get("writerAudience") ?? "").trim();
+    const tone = String(formData.get("writerTone") ?? "").trim();
+    const notes = String(formData.get("writerNotes") ?? "").trim();
+    if (!name) {
+      return {
+        name,
+        brief: premise,
+        entry: "paste",
+        error: "Give the book or song a title.",
+      };
+    }
+    if (premise.length < 12) {
+      return {
+        name,
+        brief: premise,
+        entry: "paste",
+        error: "Add a premise — what the book or song is about.",
+      };
+    }
+    const form = resolveWriterForm({ writerForm, brief: premise, name });
+    return {
+      name,
+      brief: composeWriterBrief({
+        form,
+        title: name,
+        premise,
+        audience,
+        tone,
+        notes,
+      }),
+      entry: "paste",
+    };
+  }
 
   if (seedMode !== "build") {
     return { name, brief: pasted, entry };

@@ -49,6 +49,12 @@ import {
   SEED_SITE_PRICE_USD,
 } from "@/lib/site-catalog";
 import {
+  composeWriterBrief,
+  resolveWriterForm,
+  WRITER_SEED_PRICE_USD,
+  type WriterForm,
+} from "@/lib/seed-writer";
+import {
   critiqueToBrief,
   critiqueWebsite,
   type SiteCritique,
@@ -634,6 +640,85 @@ export async function purchaseCatalogSiteAction(formData: FormData) {
     priceLabel: formatUsd(priceUsd),
     email: customer.email,
     estimateLabel: critique?.estimate.summaryLabel ?? null,
+  };
+}
+
+/** Plant a Writer Seed — AI crew collaborates on a book or song. */
+export async function purchaseWriterSeedAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  const name = String(formData.get("name") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
+  const premise = String(formData.get("premise") ?? "").trim();
+  const audience = String(formData.get("audience") ?? "").trim();
+  const tone = String(formData.get("tone") ?? "").trim();
+  const notes = String(formData.get("notes") ?? "").trim();
+  const writerFormRaw = String(formData.get("writerForm") ?? "").trim();
+
+  if (!email || !email.includes("@")) {
+    return { ok: false as const, error: "Enter a valid email for your portal login." };
+  }
+  if (!title || title.length < 2) {
+    return { ok: false as const, error: "Give the book or song a title." };
+  }
+  if (premise.length < 12) {
+    return {
+      ok: false as const,
+      error: "Add a premise — what the book or song is about.",
+    };
+  }
+
+  const writerForm: WriterForm = resolveWriterForm({
+    writerForm: writerFormRaw,
+    brief: premise,
+    name: title,
+  });
+  const brief = composeWriterBrief({
+    form: writerForm,
+    title,
+    premise,
+    audience,
+    tone,
+    notes,
+  });
+  const priceUsd = priceForAccount(WRITER_SEED_PRICE_USD, email);
+  const customer = await upsertCustomer({ email, name: name || undefined });
+
+  const project = await createProject({
+    name: `${title} Writer Seed`,
+    brief,
+    customerEmail: customer.email,
+    customerName: name || customer.name,
+    seedKind: "writer",
+    writerForm,
+    seedMode: "build",
+  });
+
+  await recordSitePurchase({
+    catalogSiteId: null,
+    previewUrl: `writer://${writerForm}/${encodeURIComponent(title)}`,
+    title: `${title} (${writerForm})`,
+    customerEmail: customer.email,
+    customerName: name || customer.name,
+    priceUsd,
+    projectId: project.id,
+  });
+
+  await bootstrapSeedProject(project.id);
+  await establishCustomerSession(customer.id);
+
+  revalidatePath("/portal");
+  revalidatePath(`/portal/${project.id}`);
+  revalidatePath("/writer");
+
+  return {
+    ok: true as const,
+    projectId: project.id,
+    accessCode: customer.accessCode,
+    priceLabel: formatUsd(priceUsd),
+    email: customer.email,
+    form: writerForm,
   };
 }
 

@@ -50,6 +50,11 @@ export async function publishSeedWebsite(
 ): Promise<SeedProject> {
   const project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
+  if (project.seedKind === "writer") {
+    throw new Error(
+      "Writer Seeds publish a manuscript or lyric sheet in the portal — not a website.",
+    );
+  }
   if (project.sitePublishedAt) return project;
 
   const pm = getProjectManager();
@@ -74,6 +79,11 @@ export async function listSeedInLibrary(
 ): Promise<SeedProject> {
   let project = await getProject(projectId);
   if (!project) throw new Error("Project not found.");
+  if (project.seedKind === "writer") {
+    throw new Error(
+      "Writer Seeds are manuscripts and songs — they do not list in the website library.",
+    );
+  }
   if (project.marketplaceListingId) return project;
 
   if (!project.sitePublishedAt) {
@@ -516,9 +526,11 @@ export async function bootstrapSeedProject(
 
   pushActivity(
     project,
-    project.seedMode === "connect"
-      ? `${pm.name} staffed the crew to connect cinchseed.com to the live host — not to rebuild the site.`
-      : `${pm.name} staffed the specialist crew and is assigning work. You watch — no action needed.`,
+    project.seedKind === "writer"
+      ? `${pm.name} staffed the writing crew to collaborate on a ${project.writerForm === "song" ? "song" : "book"} — not a website.`
+      : project.seedMode === "connect"
+        ? `${pm.name} staffed the crew to connect cinchseed.com to the live host — not to rebuild the site.`
+        : `${pm.name} staffed the specialist crew and is assigning work. You watch — no action needed.`,
     pm.id,
   );
   await saveProject(project);
@@ -569,8 +581,18 @@ export async function ensureProjectManagerSeedContact(
     null;
 
   const host = project.referenceUrl || "the live site";
+  const writerForm =
+    project.seedKind === "writer"
+      ? project.writerForm === "song"
+        ? "song"
+        : "book"
+      : null;
   const body =
-    project.seedMode === "connect"
+    writerForm
+      ? activeTask
+        ? `Hi — ${pm.name} here. We got your Writer Seed “${project.name}”. The AI crew will collaborate on your ${writerForm} together — premise, structure, draft, polish, and sign-off. Up next: ${activeTask.title}. Open this Seed anytime to watch the manuscript grow.`
+        : `Hi — ${pm.name} here. We got your Writer Seed “${project.name}”. The AI crew will collaborate on your ${writerForm} together. Open this Seed anytime to watch the work grow — no action needed from you.`
+      : project.seedMode === "connect"
       ? activeTask
         ? `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com looks at and administers ${host}. manus.im hosts it — we are not rewriting it. Up next: ${activeTask.title}. Proposed updates wait for your approval.`
         : `Hi — ${pm.name} here. We got your Seed “${project.name}”. This is a connect job: cinchseed.com looks at and administers ${host}. manus.im hosts it. Open this Seed for the widget snippet (Seed ID + Connect Key). No final update without your approval.`

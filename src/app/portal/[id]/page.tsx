@@ -76,13 +76,22 @@ export default async function PortalProjectPage({ params }: PageProps) {
           </Link>
           <div className="flex max-w-full flex-wrap items-center gap-2 sm:gap-3">
             <PortalRefreshButton />
-            <a
-              href={websiteUrl}
-              className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
-            >
-              Visit website
-            </a>
-            {deliveryPlatform ? (
+            {project.seedKind === "writer" ? (
+              <Link
+                href={`/portal/${project.id}/writer`}
+                className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
+              >
+                {project.writerForm === "song" ? "Read lyrics" : "Read manuscript"}
+              </Link>
+            ) : (
+              <a
+                href={websiteUrl}
+                className="inline-flex min-h-10 items-center justify-center rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-foam transition-colors hover:bg-brand"
+              >
+                Visit website
+              </a>
+            )}
+            {deliveryPlatform && project.seedKind !== "writer" ? (
               <>
                 <Link
                   href={`/portal/${project.id}/restaurant`}
@@ -98,24 +107,28 @@ export default async function PortalProjectPage({ params }: PageProps) {
                 </Link>
               </>
             ) : null}
-            <Link
-              href={`/portal/${project.id}/playbook`}
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
-            >
-              Playbook
-            </Link>
+            {project.seedKind !== "writer" ? (
+              <Link
+                href={`/portal/${project.id}/playbook`}
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+              >
+                Playbook
+              </Link>
+            ) : null}
             <Link
               href={`/portal/${project.id}/dialog`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
               Dialog
             </Link>
-            <Link
-              href={`/portal/${project.id}/scripts`}
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
-            >
-              Scripts
-            </Link>
+            {project.seedKind !== "writer" ? (
+              <Link
+                href={`/portal/${project.id}/scripts`}
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
+              >
+                Scripts
+              </Link>
+            ) : null}
             <Link
               href={`/portal/${project.id}/source?files=1`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
@@ -137,7 +150,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
       <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 sm:gap-10 sm:px-8 sm:py-12 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <section className="min-w-0 max-w-full">
           <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-            YOUR SEED
+            {project.seedKind === "writer" ? "YOUR WRITER SEED" : "YOUR SEED"}
           </p>
           <h1 className="mt-3 max-w-full wrap-break-word font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
             {project.name}
@@ -145,6 +158,23 @@ export default async function PortalProjectPage({ params }: PageProps) {
           <p className="mt-4 max-w-2xl wrap-break-word text-base leading-relaxed text-muted [overflow-wrap:anywhere]">
             {project.brief}
           </p>
+          {project.seedKind === "writer" ? (
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep">
+              This Writer Seed grows a{" "}
+              <span className="font-semibold">
+                {project.writerForm === "song" ? "song" : "book"}
+              </span>
+              . Quill, Atlas, Lumen, and Sentry collaborate in a shared notebook
+              — open{" "}
+              <Link
+                href={`/portal/${project.id}/writer`}
+                className="font-semibold underline"
+              >
+                {project.writerForm === "song" ? "lyrics" : "manuscript"}
+              </Link>{" "}
+              anytime to read the living work.
+            </p>
+          ) : null}
           {project.seedMode === "connect" ? (
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-deep">
               This Seed connects cinchseed.com to{" "}

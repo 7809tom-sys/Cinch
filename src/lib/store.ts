@@ -51,7 +51,18 @@ import {
   projectHasEngagementCollab,
   SEED_ENGAGEMENT_COLLABORATE_RULE,
 } from "./seed-engagement-rule";
+import {
+  isWriterSeedKind,
+  planWriterBuildBacklog,
+  resolveSeedKind,
+  resolveWriterForm,
+  SEED_WRITER_COLLABORATE_RULE,
+  type SeedKind,
+  type WriterForm,
+} from "./seed-writer";
 import { briefAsksForEcommerce, seedNeedsBusinessAdmin } from "./seed-site-copy";
+
+export type { SeedKind, WriterForm } from "./seed-writer";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "done";
 
@@ -122,6 +133,13 @@ export type SeedProject = {
    * connect = drop the cinchseed.com widget on the customer’s real live host.
    */
   seedMode: SeedMode;
+  /**
+   * website = classic Seed site build/connect.
+   * writer = AI crew collaborates on a book or song (not a website).
+   */
+  seedKind: SeedKind;
+  /** When seedKind is writer — book manuscript or song lyrics. */
+  writerForm: WriterForm | null;
   /** Customer's own domain (bought elsewhere) pointed at this Seed */
   customDomain: CustomDomainConnection | null;
   /** When the customer published the live website */
@@ -164,6 +182,8 @@ async function ensureStore(): Promise<StoreShape> {
         project.githubRepoUrl ??
         resolveConnectTargets({ liveUrl: project.referenceUrl }).githubRepoUrl,
       seedMode: project.seedMode ?? "build",
+      seedKind: project.seedKind ?? "website",
+      writerForm: project.writerForm ?? null,
       customDomain: project.customDomain ?? null,
       embedEnabled: project.embedEnabled ?? true,
       connectKey: project.connectKey || generateConnectKey(),
@@ -376,6 +396,8 @@ export async function createProject(input: {
   referenceUrl?: string | null;
   githubRepoUrl?: string | null;
   seedMode?: SeedMode | string | null;
+  seedKind?: SeedKind | string | null;
+  writerForm?: WriterForm | string | null;
 }): Promise<SeedProject> {
   const store = await ensureStore();
   const pm = getProjectManager();
@@ -389,11 +411,26 @@ export async function createProject(input: {
   const referenceUrl =
     targets.liveUrl || input.referenceUrl?.trim() || null;
   const githubRepoUrl = targets.githubRepoUrl;
-  const seedMode = resolveSeedMode({
-    seedMode: input.seedMode,
+  const seedKind = resolveSeedKind({
+    seedKind: input.seedKind,
+    writerForm: input.writerForm,
     brief: input.brief,
-    referenceUrl,
   });
+  const writerForm = isWriterSeedKind(seedKind)
+    ? resolveWriterForm({
+        writerForm: input.writerForm,
+        brief: input.brief,
+        name: input.name,
+      })
+    : null;
+  // Writer Seeds grow manuscripts/lyrics — never a connect-to-live-host job.
+  const seedMode = isWriterSeedKind(seedKind)
+    ? "build"
+    : resolveSeedMode({
+        seedMode: input.seedMode,
+        brief: input.brief,
+        referenceUrl,
+      });
   if (
     isJustPutzItSeedProject({
       name: input.name,
@@ -415,13 +452,15 @@ export async function createProject(input: {
     tasks: [],
     activity: [],
     modules: [],
-    embedEnabled: true,
+    embedEnabled: !isWriterSeedKind(seedKind),
     connectKey: generateConnectKey(),
     customerEmail,
     customerName,
-    referenceUrl,
-    githubRepoUrl,
+    referenceUrl: isWriterSeedKind(seedKind) ? null : referenceUrl,
+    githubRepoUrl: isWriterSeedKind(seedKind) ? null : githubRepoUrl,
     seedMode,
+    seedKind,
+    writerForm,
     customDomain: null,
     sitePublishedAt: null,
     marketplaceListingId: null,
@@ -431,9 +470,11 @@ export async function createProject(input: {
 
   pushActivity(
     project,
-    seedMode === "connect"
-      ? `${pm.name} opened a connect Seed — cinchseed.com will watch the live host, not rebuild it.`
-      : `${pm.name} opened the Seed and is ready to staff the build.`,
+    isWriterSeedKind(seedKind)
+      ? `${pm.name} opened a Writer Seed — the crew will collaborate on a ${writerForm}.`
+      : seedMode === "connect"
+        ? `${pm.name} opened a connect Seed — cinchseed.com will watch the live host, not rebuild it.`
+        : `${pm.name} opened the Seed and is ready to staff the build.`,
     pm.id,
   );
   if (referenceUrl) {
@@ -461,6 +502,8 @@ export async function createProject(input: {
       projectId: project.id,
       projectName: project.name,
       brief: project.brief,
+      seedKind: project.seedKind,
+      writerForm: project.writerForm,
     });
   }
 
@@ -537,20 +580,24 @@ export async function updateProjectDetails(
     brief: project.brief,
   });
 
-  // Grow/refresh shop + admin surfaces from the brief (images, commerce ops).
-  const { ensureBusinessAdminInSeed, ensureShopInSeed } = await import(
-    "./seed-site"
-  );
-  if (seedNeedsBusinessAdmin(project.brief)) {
-    await ensureBusinessAdminInSeed(project);
+  // Website Seeds may grow shop/admin from the brief. Writer Seeds stay manuscript-only.
+  if (!isWriterSeedKind(project.seedKind)) {
+    const { ensureBusinessAdminInSeed, ensureShopInSeed } = await import(
+      "./seed-site"
+    );
+    if (seedNeedsBusinessAdmin(project.brief)) {
+      await ensureBusinessAdminInSeed(project);
+    }
+    if (briefAsksForEcommerce(project.brief)) {
+      await ensureShopInSeed(project);
+    }
   }
-  if (briefAsksForEcommerce(project.brief)) {
-    await ensureShopInSeed(project);
-  }
-  const { briefIsDeliveryPlatform } = await import("./seed-site-copy");
-  if (briefIsDeliveryPlatform(project.name, project.brief)) {
-    const { ensureDeliveryOpsInSeed } = await import("./seed-delivery-io");
-    await ensureDeliveryOpsInSeed(project);
+  if (!isWriterSeedKind(project.seedKind)) {
+    const { briefIsDeliveryPlatform } = await import("./seed-site-copy");
+    if (briefIsDeliveryPlatform(project.name, project.brief)) {
+      const { ensureDeliveryOpsInSeed } = await import("./seed-delivery-io");
+      await ensureDeliveryOpsInSeed(project);
+    }
   }
 
   // Queue agent work for anything the edited brief still needs.
@@ -796,12 +843,65 @@ export async function planConnectExistingSite(
   return project;
 }
 
+/** Writer Seed backlog — multi-agent book/song collaboration, not a website. */
+export async function planWriterBuild(projectId: string): Promise<SeedProject> {
+  const store = await ensureStore();
+  const project = store.projects.find((item) => item.id === projectId);
+  if (!project) throw new Error("Project not found.");
+
+  const pm = getProjectManager();
+  const stamp = now();
+  const form = resolveWriterForm({
+    writerForm: project.writerForm,
+    brief: project.brief,
+    name: project.name,
+  });
+  project.seedKind = "writer";
+  project.writerForm = form;
+
+  const backlog = planWriterBuildBacklog({
+    form,
+    projectName: project.name,
+    brief: project.brief,
+  });
+
+  project.tasks = backlog.map((item) => ({
+    ...item,
+    id: randomUUID(),
+    status: "queued" as const,
+    assigneeId: null,
+    assignedBy: null,
+    updatedAt: stamp,
+    tags: inferTaskTags({
+      title: item.title,
+      detail: item.detail,
+    }),
+  }));
+
+  pushActivity(
+    project,
+    `${pm.name} opened the Writer Seed collaboration loop — ${SEED_WRITER_COLLABORATE_RULE.summary}`,
+    pm.id,
+  );
+  pushActivity(
+    project,
+    `${pm.name} drafted ${project.tasks.length} ${form} writing tasks (premise → structure → draft → polish → sign-off).`,
+    pm.id,
+  );
+
+  await writeStore(store);
+  return project;
+}
+
 export async function planBuild(projectId: string): Promise<SeedProject> {
   const store = await ensureStore();
   const project = store.projects.find((item) => item.id === projectId);
   if (!project) throw new Error("Project not found.");
   if (project.seedMode === "connect") {
     return planConnectExistingSite(projectId);
+  }
+  if (isWriterSeedKind(project.seedKind)) {
+    return planWriterBuild(projectId);
   }
 
   const pm = getProjectManager();
@@ -1060,6 +1160,49 @@ export async function appendNextBuildWave(
 
   const open = project.tasks.some((task) => task.status !== "done");
   if (open) return project;
+
+  // Writer Seeds polish the manuscript/lyrics once — not website growth waves.
+  if (isWriterSeedKind(project.seedKind)) {
+    if (!options.force) return project;
+    const pm = getProjectManager();
+    const stamp = now();
+    const form = resolveWriterForm({
+      writerForm: project.writerForm,
+      brief: project.brief,
+      name: project.name,
+    });
+    const polishWave = [
+      {
+        title: "Writer polish wave · deepen the draft",
+        detail: `${SEED_WRITER_COLLABORATE_RULE.summary} Re-read the living ${form} and strengthen weak sections. Continue docs/writer-collab.md.`,
+        requiredSkills: ["copy"] as AgentSkill[],
+        minSkillLevel: 3,
+      },
+      {
+        title: "Writer polish wave · consistency QA",
+        detail: `${SEED_WRITER_COLLABORATE_RULE.summary} Check voice, structure, and promise delivery end-to-end.`,
+        requiredSkills: ["qa", "research"] as AgentSkill[],
+        minSkillLevel: 3,
+      },
+    ].map((item) => ({
+      ...item,
+      id: randomUUID(),
+      status: "queued" as const,
+      assigneeId: null,
+      assignedBy: null,
+      updatedAt: stamp,
+      tags: inferTaskTags({ title: item.title, detail: item.detail }),
+    }));
+    project.tasks.push(...polishWave);
+    project.updatedAt = stamp;
+    pushActivity(
+      project,
+      `${pm.name} queued a Writer polish wave on the ${form}.`,
+      pm.id,
+    );
+    await writeStore(store);
+    return project;
+  }
 
   // Without force, only allow the first growth wave so Seeds can complete.
   if (!options.force && projectHasGrowthWave(project)) {

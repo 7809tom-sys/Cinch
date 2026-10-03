@@ -34,6 +34,7 @@ Installable Progressive Web App (Add to Home Screen / Install app) via
 - `/portal` — your Seeds, work status, and links to live source
 - `/portal/[id]/source` — real-time source tree while agents build
 - `/browse` — drop a website, get a critique with time/cost estimate, purchase an improved Seed
+- `/writer` — Writer Seed: AI agents collaborate to write a book or a song
 - `/admin` — command center (Google master login required)
 - `/admin/login` — Sign in with Google (allowlisted master emails)
 - `/admin/test` — provider key tests + pre-launch Seed checklist

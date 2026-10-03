@@ -52,6 +52,12 @@ export default function Home() {
                     Plant a Seed — $99
                   </Link>
                   <Link
+                    href="/writer"
+                    className="inline-flex h-12 items-center justify-center rounded-md border border-brand-deep/20 bg-foam/80 px-5 text-sm font-bold text-brand-deep transition-colors hover:border-brand-deep/40"
+                  >
+                    Writer Seed
+                  </Link>
+                  <Link
                     href="/senti"
                     className="inline-flex h-12 items-center justify-center rounded-md px-1 text-sm font-bold text-brand-deep transition-colors hover:text-brand sm:px-4"
                   >
@@ -216,6 +222,34 @@ export default function Home() {
               When later Seeds reuse it, you earn credit back — so your library
               account can make money as the network grows.
             </p>
+          </div>
+        </section>
+
+        <section
+          id="writer"
+          className="relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_#fff6e8_0%,_#f3efe6_55%,_#e7ddd0_100%)] px-5 py-16 sm:px-8 sm:py-24"
+        >
+          <div className="pointer-events-none absolute -right-10 top-10 h-56 w-56 rounded-full bg-accent/25 blur-3xl" />
+          <div className="relative mx-auto max-w-6xl">
+            <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
+              WRITER SEED
+            </p>
+            <h2 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-[1.75rem] font-extrabold leading-tight tracking-tight text-brand-deep sm:text-5xl">
+              Have artificial intelligence write a book or a song — together.
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
+              Quill names the premise. Atlas shapes structure. The crew drafts,
+              polishes, and signs off in one shared notebook — so the manuscript
+              or lyric sheet is better than any single model alone.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3 sm:mt-9">
+              <Link
+                href="/writer"
+                className="inline-flex h-12 w-full items-center justify-center rounded-md bg-brand-deep px-6 text-sm font-bold text-foam transition-transform hover:-translate-y-0.5 sm:w-auto"
+              >
+                Plant a Writer Seed — $99
+              </Link>
+            </div>
           </div>
         </section>
 

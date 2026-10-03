@@ -108,15 +108,24 @@ export default async function PortalHomePage() {
                 No Seeds on this account yet
               </p>
               <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-                Drop an existing website into the browse page and purchase it,
-                or ask the studio to attach a Seed to {customer.email}.
+                Drop an existing website into the browse page, plant a Writer
+                Seed for a book or song, or ask the studio to attach a Seed to{" "}
+                {customer.email}.
               </p>
-              <Link
-                href="/browse"
-                className="mt-6 inline-flex h-11 items-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam"
-              >
-                Browse & purchase
-              </Link>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/browse"
+                  className="inline-flex h-11 items-center rounded-md bg-brand-deep px-5 text-sm font-semibold text-foam"
+                >
+                  Browse & purchase
+                </Link>
+                <Link
+                  href="/writer"
+                  className="inline-flex h-11 items-center rounded-md border border-brand/20 px-5 text-sm font-semibold text-brand-deep"
+                >
+                  Writer Seed
+                </Link>
+              </div>
             </div>
           ) : (
             <ul className="space-y-4">
@@ -161,6 +170,10 @@ export default async function PortalHomePage() {
                               {working ? ` · ${working}` : ""}
                             </span>
                           </>
+                        ) : project.seedKind === "writer" ? (
+                          complete
+                            ? "Writer Seed complete — read the living work anytime"
+                            : "Writer Seed ready — agents will collaborate on the draft"
                         ) : project.tasks.length === 0 ? (
                           "Website is ready — Visit anytime while the crew plans work"
                         ) : complete ? (
@@ -177,12 +190,23 @@ export default async function PortalHomePage() {
                       </p>
                     </Link>
                     <div className="mt-4 flex flex-wrap gap-2">
+                      {project.seedKind === "writer" ? (
+                        <Link
+                          href={`/portal/${project.id}/writer`}
+                          className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
+                        >
+                          {project.writerForm === "song"
+                            ? "Read lyrics"
+                            : "Read manuscript"}
+                        </Link>
+                      ) : (
                       <a
                         href={websiteUrl}
                         className="inline-flex min-h-10 items-center rounded-md bg-brand-deep px-3 text-sm font-semibold text-foam"
                       >
                         Visit website
                       </a>
+                      )}
                       {project.marketplaceListingId ? (
                         <Link
                           href="/browse"
