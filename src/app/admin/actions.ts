@@ -492,6 +492,8 @@ export async function createSeedProjectAction(formData: FormData) {
   const referenceUrl = String(formData.get("referenceUrl") ?? "").trim();
   const githubRepoUrl = String(formData.get("githubRepoUrl") ?? "").trim();
   const seedMode = String(formData.get("seedMode") ?? "").trim();
+  const seedKind = String(formData.get("seedKind") ?? "").trim();
+  const writerForm = String(formData.get("writerForm") ?? "").trim();
   const resolved = resolveNewSeedBrief(formData);
   const name = resolved.name;
   const brief = resolved.brief;
@@ -502,13 +504,14 @@ export async function createSeedProjectAction(formData: FormData) {
   if (!name || !brief) {
     return { ok: false as const, error: "Name and brief are required." };
   }
-  if (seedMode === "connect" && !referenceUrl) {
+  if (seedKind !== "writer" && seedMode === "connect" && !referenceUrl) {
     return {
       ok: false as const,
       error: "Connect jobs need the real live website URL. Do not invent a host.",
     };
   }
   if (
+    seedKind !== "writer" &&
     isJustPutzItSeedProject({
       name,
       liveUrl: referenceUrl,
@@ -523,9 +526,11 @@ export async function createSeedProjectAction(formData: FormData) {
     brief,
     customerEmail: customerEmail || null,
     customerName: customerName || null,
-    referenceUrl: referenceUrl || null,
-    githubRepoUrl: githubRepoUrl || null,
-    seedMode: seedMode || null,
+    referenceUrl: seedKind === "writer" ? null : referenceUrl || null,
+    githubRepoUrl: seedKind === "writer" ? null : githubRepoUrl || null,
+    seedMode: seedKind === "writer" ? "build" : seedMode || null,
+    seedKind: seedKind || null,
+    writerForm: writerForm || null,
   });
   // PM staffs the crew, plans tasks, and assigns work — you only watch.
   await bootstrapSeedProject(project.id);

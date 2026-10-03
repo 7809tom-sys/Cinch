@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from "react";
 const NAV_LINKS = [
   { href: "#team", label: "All-stars", external: false },
   { href: "/lockgm", label: "LockedGM", external: true },
+  { href: "/writer", label: "Writer", external: true },
   { href: "/browse", label: "Browse", external: true },
   { href: "/senti", label: "Senti", external: true },
   { href: "/scripts", label: "Scripts", external: true },

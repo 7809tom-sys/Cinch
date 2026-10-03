@@ -38,6 +38,25 @@ import {
   SEED_ENGAGEMENT_COLLABORATE_RULE,
   taskIsEngagementCollab,
 } from "./seed-engagement-rule";
+import {
+  buildBookChapterPlan,
+  compileBookManuscript,
+  draftBookChapterMarkdown,
+  draftSongLyricsMarkdown,
+  extractWriterPremise,
+  extractWriterTitle,
+  isWriterSeedKind,
+  resolveWriterForm,
+  SEED_WRITER_COLLABORATE_RULE,
+  taskIsWriterCollab,
+  writerBootstrapReadme,
+  writerCollabNotebookPath,
+  writerCollabPhaseFromTitle,
+  writerCollabSectionMarkdown,
+  writerPrimaryPath,
+  type SeedKind,
+  type WriterForm,
+} from "./seed-writer";
 import { seedEmbedSnippet } from "./domain";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 
@@ -246,7 +265,18 @@ export async function bootstrapSourceTree(input: {
   projectId: string;
   projectName: string;
   brief: string;
+  seedKind?: SeedKind | string | null;
+  writerForm?: WriterForm | string | null;
 }): Promise<SourceBundle> {
+  if (isWriterSeedKind(input.seedKind)) {
+    return bootstrapWriterSourceTree({
+      projectId: input.projectId,
+      projectName: input.projectName,
+      brief: input.brief,
+      writerForm: input.writerForm,
+    });
+  }
+
   await upsertSourceFile({
     projectId: input.projectId,
     path: "README.md",
@@ -383,6 +413,138 @@ Do not ship desktop-only layouts.
   return (await getSourceBundle(input.projectId))!;
 }
 
+async function bootstrapWriterSourceTree(input: {
+  projectId: string;
+  projectName: string;
+  brief: string;
+  writerForm?: WriterForm | string | null;
+}): Promise<SourceBundle> {
+  const form = resolveWriterForm({
+    writerForm: input.writerForm,
+    brief: input.brief,
+    name: input.projectName,
+  });
+  const title = extractWriterTitle(input.projectName, input.brief);
+  const premise = extractWriterPremise(input.brief, input.brief);
+
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "README.md",
+    content: writerBootstrapReadme({
+      title,
+      form,
+      brief: input.brief,
+    }),
+    status: "ready",
+    message: "Opened the Writer Seed source tree",
+    agentName: "Conductor",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: writerCollabNotebookPath(),
+    content: `# Writer collaboration
+
+## HARD RULE
+
+${SEED_WRITER_COLLABORATE_RULE.summary}
+
+## Why together
+
+${SEED_WRITER_COLLABORATE_RULE.whyTogether}
+
+## Seed
+
+**${title}** (${form})
+
+${input.brief}
+
+---
+`,
+    status: "draft",
+    message: "Opened the shared writer notebook",
+    agentName: "Conductor",
+  });
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: "docs/writer-research.md",
+    content: `# Writer research
+
+Comparable notes land here before the draft. Take the best of each — invent only gaps.
+
+## Title
+
+${title}
+
+## Form
+
+${form}
+`,
+    status: "draft",
+    message: "Scaffolded writer research notebook",
+    agentName: "Conductor",
+  });
+
+  if (form === "song") {
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: writerPrimaryPath("song"),
+      content: draftSongLyricsMarkdown({
+        title,
+        premise,
+        status: "building",
+      }),
+      status: "draft",
+      message: "Scaffolded lyric sheet",
+      agentName: "Conductor",
+    });
+  } else {
+    const chapters = buildBookChapterPlan({ title, premise });
+    const chapterBodies = chapters.map((chapter) => ({
+      number: chapter.number,
+      title: chapter.title,
+      body: draftBookChapterMarkdown({
+        title,
+        premise,
+        chapter,
+        status: "building",
+      }),
+    }));
+    for (const chapter of chapterBodies) {
+      await upsertSourceFile({
+        projectId: input.projectId,
+        path: `manuscript/chapters/${String(chapter.number).padStart(2, "0")}-${slugPath(chapter.title)}.md`,
+        content: chapter.body,
+        status: "draft",
+        message: `Scaffolded chapter ${chapter.number}`,
+        agentName: "Conductor",
+      });
+    }
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: writerPrimaryPath("book"),
+      content: compileBookManuscript({
+        title,
+        premise,
+        chapters: chapterBodies,
+        status: "building",
+      }),
+      status: "draft",
+      message: "Scaffolded compiled manuscript",
+      agentName: "Conductor",
+    });
+  }
+
+  return (await getSourceBundle(input.projectId))!;
+}
+
+function slugPath(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48) || "chapter";
+}
+
 /**
  * After an owner edits name/brief, rewrite identity files in the Seed source
  * so the live preview and agents stay aligned with the brief.
@@ -395,6 +557,68 @@ export async function applySeedIdentityEdit(input: {
   projectName: string;
   brief: string;
 }): Promise<void> {
+  const { getProject } = await import("./store");
+  const project = await getProject(input.projectId);
+  if (isWriterSeedKind(project?.seedKind)) {
+    const form = resolveWriterForm({
+      writerForm: project?.writerForm,
+      brief: input.brief,
+      name: input.projectName,
+    });
+    const title = extractWriterTitle(input.projectName, input.brief);
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "docs/brief-edit.md",
+      content: `# Edit Writer Seed — must react
+
+## HARD RULE
+
+${SEED_EDIT_MUST_REACT_RULE.summary}
+
+## Title
+
+${title}
+
+## Form
+
+${form}
+
+## Brief
+
+${input.brief}
+
+Updated: ${new Date().toISOString()}
+`,
+      status: "ready",
+      message: "Recorded Writer Seed brief edit",
+      agentName: "Owner",
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "README.md",
+      content: writerBootstrapReadme({
+        title,
+        form,
+        brief: input.brief,
+      }),
+      status: "ready",
+      message: "Updated Writer Seed brief",
+      agentName: "Owner",
+    });
+    await growWriterPrimaryWork({
+      projectId: input.projectId,
+      identity: {
+        title,
+        premise: extractWriterPremise(input.brief, input.brief),
+        form,
+      },
+      agentName: "Owner",
+      agentId: null,
+      status: "building",
+    });
+    return;
+  }
+
   const landing = await siteCopyWithComparables(
     input.projectId,
     input.projectName,
@@ -973,6 +1197,36 @@ ${brief}
     return;
   }
 
+  // HARD RULE: Writer Seed multi-agent book/song collaboration.
+  if (taskIsWriterCollab(input.taskTitle)) {
+    await applyWriterCollabToSource({
+      projectId: input.projectId,
+      taskTitle: input.taskTitle,
+      taskDetail: input.taskDetail,
+      agentName: agent,
+      agentId: input.agentId,
+      status,
+      phase: input.phase,
+    });
+    return;
+  }
+
+  if (
+    /lock writer seed brief|compile final (manuscript|lyric sheet)|study comparable (books|songs)|writer polish wave/i.test(
+      input.taskTitle,
+    )
+  ) {
+    await applyWriterSupportTaskToSource({
+      projectId: input.projectId,
+      taskTitle: input.taskTitle,
+      taskDetail: input.taskDetail,
+      agentName: agent,
+      agentId: input.agentId,
+      status,
+    });
+    return;
+  }
+
   // HARD RULE: multi-agent engagement / conversion psychology collaboration.
   if (taskIsEngagementCollab(input.taskTitle)) {
     const identity = await projectIdentityFromSource(input.projectId);
@@ -1536,5 +1790,264 @@ Signed off by: ${agent} (${input.phase})
     agentName: agent,
     status,
     message: `${agent} ${input.phase} “${input.taskTitle}”`,
+  });
+}
+
+async function writerIdentity(projectId: string): Promise<{
+  name: string;
+  brief: string;
+  form: WriterForm;
+  title: string;
+  premise: string;
+}> {
+  const identity = await projectIdentityFromSource(projectId);
+  const { getProject } = await import("./store");
+  const project = await getProject(projectId);
+  const name = identity.name || project?.name || "Writer Seed";
+  const brief = identity.brief || project?.brief || "";
+  const form = resolveWriterForm({
+    writerForm: project?.writerForm,
+    brief,
+    name,
+  });
+  return {
+    name,
+    brief,
+    form,
+    title: extractWriterTitle(name, brief),
+    premise: extractWriterPremise(brief, brief || name),
+  };
+}
+
+async function applyWriterCollabToSource(input: {
+  projectId: string;
+  taskTitle: string;
+  taskDetail: string;
+  agentName: string;
+  agentId: string | null;
+  status: SourceFile["status"];
+  phase: "started" | "finished";
+}): Promise<void> {
+  const identity = await writerIdentity(input.projectId);
+  const collabPhase =
+    writerCollabPhaseFromTitle(input.taskTitle) ?? "premise";
+  const notebookPath = writerCollabNotebookPath();
+  const bundle = await getSourceBundle(input.projectId);
+  const prior =
+    bundle?.files.find((file) => file.path === notebookPath)?.content ?? "";
+  const header =
+    prior.trim().length > 0
+      ? prior.trim()
+      : `# Writer collaboration
+
+## HARD RULE
+
+${SEED_WRITER_COLLABORATE_RULE.summary}
+
+## Why together
+
+${SEED_WRITER_COLLABORATE_RULE.whyTogether}
+
+## Seed
+
+**${identity.title}** (${identity.form})
+
+${identity.brief}
+
+---
+`;
+  const section = writerCollabSectionMarkdown({
+    phase: collabPhase,
+    form: identity.form,
+    agentName: input.agentName,
+    taskTitle: input.taskTitle,
+    taskDetail: input.taskDetail,
+    projectName: identity.name,
+    brief: identity.brief,
+    status: input.status === "ready" ? "ready" : "building",
+  });
+  const phaseRegex = new RegExp(
+    `\\n## ${collabPhase} — [\\s\\S]*?(?=\\n## [a-z]|$)`,
+    "i",
+  );
+  let next = header.startsWith("#") ? header : `# Writer collaboration\n\n${header}`;
+  if (phaseRegex.test(`\n${next}`)) {
+    next = `\n${next}`.replace(phaseRegex, `\n\n${section.trim()}`).trim();
+  } else {
+    next = `${next.trim()}\n\n${section.trim()}`;
+  }
+
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: notebookPath,
+    content: `${next.trim()}\n`,
+    authoredBy: input.agentId,
+    agentName: input.agentName,
+    status: input.status,
+    message: `${input.agentName} ${input.phase} writer collab (${collabPhase})`,
+  });
+
+  // Grow the living manuscript / lyric sheet as draft and polish advance.
+  if (
+    collabPhase === "draft" ||
+    collabPhase === "polish" ||
+    collabPhase === "sign-off"
+  ) {
+    await growWriterPrimaryWork({
+      projectId: input.projectId,
+      identity,
+      agentName: input.agentName,
+      agentId: input.agentId,
+      status: input.status,
+    });
+  }
+}
+
+async function applyWriterSupportTaskToSource(input: {
+  projectId: string;
+  taskTitle: string;
+  taskDetail: string;
+  agentName: string;
+  agentId: string | null;
+  status: SourceFile["status"];
+}): Promise<void> {
+  const identity = await writerIdentity(input.projectId);
+  const lower = input.taskTitle.toLowerCase();
+
+  if (/study comparable/.test(lower)) {
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "docs/writer-research.md",
+      content: `# Writer research
+
+## HARD RULE
+
+${SEED_WRITER_COLLABORATE_RULE.summary}
+
+## Title
+
+${identity.title}
+
+## Form
+
+${identity.form}
+
+## Comparables (best of each)
+
+- Opening / hook taken from: _(noted by ${input.agentName})_
+- Structure cadence taken from: _(noted by ${input.agentName})_
+- Voice / tone taken from: _(noted by ${input.agentName})_
+- Ending / final turn taken from: _(noted by ${input.agentName})_
+
+## Brief
+
+${identity.brief}
+
+## Task
+
+${input.taskDetail}
+`,
+      authoredBy: input.agentId,
+      agentName: input.agentName,
+      status: input.status,
+      message: `${input.agentName} updated writer research`,
+    });
+    return;
+  }
+
+  if (/compile final|writer polish wave|lock writer seed brief/.test(lower)) {
+    await growWriterPrimaryWork({
+      projectId: input.projectId,
+      identity,
+      agentName: input.agentName,
+      agentId: input.agentId,
+      status: input.status,
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: "docs/writer-status.md",
+      content: `# Writer status
+
+**${identity.title}** (${identity.form})
+
+Agent **${input.agentName}** marked “${input.taskTitle}” as ${input.status}.
+
+${input.taskDetail}
+`,
+      authoredBy: input.agentId,
+      agentName: input.agentName,
+      status: input.status,
+      message: `${input.agentName} updated writer status`,
+    });
+  }
+}
+
+async function growWriterPrimaryWork(input: {
+  projectId: string;
+  identity: {
+    title: string;
+    premise: string;
+    form: WriterForm;
+  };
+  agentName: string;
+  agentId: string | null;
+  status: SourceFile["status"];
+}): Promise<void> {
+  const ready = input.status === "ready" ? "ready" : "building";
+  if (input.identity.form === "song") {
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: writerPrimaryPath("song"),
+      content: draftSongLyricsMarkdown({
+        title: input.identity.title,
+        premise: input.identity.premise,
+        status: ready,
+      }),
+      authoredBy: input.agentId,
+      agentName: input.agentName,
+      status: input.status,
+      message: `${input.agentName} grew the lyric sheet`,
+    });
+    return;
+  }
+
+  const chapters = buildBookChapterPlan({
+    title: input.identity.title,
+    premise: input.identity.premise,
+  });
+  const chapterBodies = chapters.map((chapter) => ({
+    number: chapter.number,
+    title: chapter.title,
+    body: draftBookChapterMarkdown({
+      title: input.identity.title,
+      premise: input.identity.premise,
+      chapter,
+      status: ready,
+    }),
+  }));
+  for (const chapter of chapterBodies) {
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: `manuscript/chapters/${String(chapter.number).padStart(2, "0")}-${slugPath(chapter.title)}.md`,
+      content: chapter.body,
+      authoredBy: input.agentId,
+      agentName: input.agentName,
+      status: input.status,
+      message: `${input.agentName} grew chapter ${chapter.number}`,
+    });
+  }
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: writerPrimaryPath("book"),
+    content: compileBookManuscript({
+      title: input.identity.title,
+      premise: input.identity.premise,
+      chapters: chapterBodies,
+      status: ready,
+    }),
+    authoredBy: input.agentId,
+    agentName: input.agentName,
+    status: input.status,
+    message: `${input.agentName} compiled the manuscript`,
   });
 }

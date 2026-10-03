@@ -15,6 +15,9 @@ export function SiteFooter() {
           <Link href="/lockgm" className="hover:text-brand-deep">
             LockedGM
           </Link>
+          <Link href="/writer" className="hover:text-brand-deep">
+            Writer
+          </Link>
           <Link href="/browse" className="hover:text-brand-deep">
             Browse
           </Link>
