@@ -126,7 +126,15 @@ const GENERIC_IMPROVEMENTS: InPlaceImprovement[] = [
     title: "Go back from designer to cart and cabinet styles",
     why: "The kitchen path feels one-way. Shoppers should be able to jump back from the designer to the cart or cabinet styles.",
     liveChange:
-      "Paint hyperlinks among Cabinet styles, Designer, and Shopping cart on those pages. Keep every step clickable so the path is not one direction. Do not rebuild the designer.",
+      "Paint hyperlinks among Cabinet styles, Designer, and Shopping cart on those pages. Keep every step clickable so the path is not one direction. On /design, tuck those links into the header so the 3D canvas keeps its height. Do not rebuild the designer.",
+  },
+  {
+    id: "designer-canvas",
+    growthAxis: "efficiency",
+    title: "Give the 3D designer more canvas",
+    why: "A second beige bar and the Connect card steal height and a corner from the kitchen view.",
+    liveChange:
+      "On /design, fold Cabinet styles / Designer / Cart into the header and keep the Community card off the 3D canvas. Do not rebuild the designer.",
   },
   {
     id: "same-origin-freight",

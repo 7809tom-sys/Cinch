@@ -472,6 +472,7 @@ export function buildWatchClientJs(input?: {
     function paintCommunity() {
       if (markOff) return;
       if (isAffiliateStorefront()) return;
+      if (currentShopStep() === "designer") return;
       if (document.getElementById("cinch-seed-community")) {
         ui = {
           root: document.getElementById("cinch-seed-community"),
@@ -583,6 +584,16 @@ export function buildWatchClientJs(input?: {
             id: "shop-path-links",
             label: "Back links among styles, designer, and cart",
             selector: "#cinch-seed-shop-path",
+            growthAxis: "efficiency"
+          }
+        ]);
+      }
+      if (currentShopStep() === "designer") {
+        tools = tools.concat([
+          {
+            id: "designer-canvas",
+            label: "Designer canvas keeps its height",
+            selector: "#cinch-seed-shop-path[data-cinch-designer-chrome='compact']",
             growthAxis: "efficiency"
           }
         ]);
@@ -1128,26 +1139,63 @@ export function buildWatchClientJs(input?: {
       return Boolean(currentShopStep());
     }
 
+    function paintDesignerCanvasCss() {
+      if (currentShopStep() !== "designer") return;
+      try {
+        if (document.documentElement && document.documentElement.setAttribute) {
+          document.documentElement.setAttribute("data-cinch-designer", "on");
+        }
+      } catch (e) {}
+      if (document.getElementById("cinch-seed-designer-css")) return;
+      var style = document.createElement("style");
+      style.id = "cinch-seed-designer-css";
+      style.textContent = [
+        "html[data-cinch-designer='on'] #cinch-seed-community{display:none!important}",
+        "html[data-cinch-designer='on'] #cinch-seed-shop-path[data-cinch-designer-chrome='compact']{",
+        "margin-left:auto;background:transparent;border:0;padding:0;box-shadow:none;",
+        "flex:0 1 auto;min-width:0}",
+        "html[data-cinch-designer='on'] header{min-height:0}"
+      ].join("");
+      try {
+        (document.head || document.documentElement).appendChild(style);
+      } catch (e) {}
+    }
+
     function paintShopPathLinks() {
       if (!isShopPathPage()) return;
       if (document.getElementById("cinch-seed-shop-path")) return;
       var steps = shopPathSteps();
       var current = currentShopStep();
+      var compact = current === "designer";
       var nav = document.createElement("nav");
       nav.id = "cinch-seed-shop-path";
       nav.setAttribute("data-cinch-shop-path", "on");
       nav.setAttribute("aria-label", "Cabinet styles, designer, and shopping cart");
-      nav.style.cssText = [
-        "display:flex",
-        "flex-wrap:wrap",
-        "align-items:center",
-        "gap:6px 10px",
-        "padding:8px 16px",
-        "background:#f7f4ee",
-        "border-bottom:1px solid rgba(20,36,28,0.12)",
-        "font:13px/1.4 system-ui,Segoe UI,sans-serif",
-        "color:#14241c"
-      ].join(";");
+      if (compact) nav.setAttribute("data-cinch-designer-chrome", "compact");
+      nav.style.cssText = compact
+        ? [
+            "display:flex",
+            "flex-wrap:nowrap",
+            "align-items:center",
+            "gap:6px 8px",
+            "margin-left:auto",
+            "padding:0",
+            "background:transparent",
+            "border:0",
+            "font:12px/1.2 system-ui,Segoe UI,sans-serif",
+            "color:#14241c"
+          ].join(";")
+        : [
+            "display:flex",
+            "flex-wrap:wrap",
+            "align-items:center",
+            "gap:6px 10px",
+            "padding:8px 16px",
+            "background:#f7f4ee",
+            "border-bottom:1px solid rgba(20,36,28,0.12)",
+            "font:13px/1.4 system-ui,Segoe UI,sans-serif",
+            "color:#14241c"
+          ].join(";");
       var i;
       for (i = 0; i < steps.length; i++) {
         if (i > 0) {
@@ -1162,20 +1210,25 @@ export function buildWatchClientJs(input?: {
         link.href = step.href;
         link.textContent = step.label;
         link.style.cssText =
-          "color:#1a2b4a;font-weight:700;text-decoration:underline;";
+          step.id === current
+            ? "color:#7c3aed;font-weight:800;text-decoration:underline;text-underline-offset:3px;"
+            : "color:#1a2b4a;font-weight:700;text-decoration:none;";
         if (step.id === current) {
           link.setAttribute("aria-current", "page");
         }
         nav.appendChild(link);
       }
       var host = document.querySelector("header");
-      if (host && host.parentNode && host.nextSibling) {
+      if (compact && host && host.appendChild) {
+        host.appendChild(nav);
+      } else if (host && host.parentNode && host.nextSibling) {
         host.parentNode.insertBefore(nav, host.nextSibling);
       } else if (host && host.parentNode) {
         host.parentNode.appendChild(nav);
       } else {
         document.body.insertBefore(nav, document.body.firstChild);
       }
+      if (compact) paintDesignerCanvasCss();
     }
 
     function start() {
