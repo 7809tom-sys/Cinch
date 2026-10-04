@@ -25,6 +25,7 @@ import {
 } from "../src/lib/affiliate-logo";
 import {
   currentShopStep,
+  isDesignerShopPage,
   isShopPathPage,
   shopPathSteps,
 } from "../src/lib/shop-path-links";
@@ -178,6 +179,10 @@ assert(
   "shoppers can go back from designer to cart and cabinet styles",
 );
 assert(
+  cabinetPlan.improvements.some((item) => /3D designer more canvas/i.test(item.title)),
+  "cabinet hosts reclaim the designer canvas",
+);
+assert(
   isShopPathPage("/design") &&
     isShopPathPage("/cart") &&
     isShopPathPage("/styles") &&
@@ -185,6 +190,8 @@ assert(
     !isShopPathPage("/") &&
     !isShopPathPage("/affiliate") &&
     currentShopStep("/design") === "designer" &&
+    isDesignerShopPage("/design") &&
+    !isDesignerShopPage("/styles") &&
     shopPathSteps("/design").some((step) => step.href === "/styles") &&
     shopPathSteps("/design").some((step) => step.href === "/cart") &&
     shopPathSteps("/store/kathmandu/design").some(
@@ -831,6 +838,10 @@ function runWatch(scriptEl: {
       created.push(node);
       return node;
     },
+    appendChild(node: { id?: string }) {
+      created.push(node);
+      return node;
+    },
   };
   const store: Record<string, string> = {};
   const path = scriptEl.path ?? "/";
@@ -890,10 +901,15 @@ function runWatch(scriptEl: {
       createElement(tag: string) {
         const node: Record<string, unknown> = {
           tag,
+          id: "",
+          attrs: {} as Record<string, string>,
           style: { cssText: "" },
           textContent: "",
           innerHTML: "",
-          setAttribute() {},
+          setAttribute(name: string, value: string) {
+            (this.attrs as Record<string, string>)[name] = value;
+            if (name === "id") this.id = value;
+          },
           addEventListener() {},
           appendChild() {},
           remove() {},
@@ -1012,7 +1028,9 @@ assert(
     watchJs.includes("https://www.cabinetdealz.com/affiliate?viewAs=") &&
     watchJs.includes("text-decoration:underline") &&
     watchJs.includes("paintShopPathLinks") &&
-    watchJs.includes("cinch-seed-shop-path"),
+    watchJs.includes("cinch-seed-shop-path") &&
+    watchJs.includes("data-cinch-designer-chrome") &&
+    watchJs.includes("designer-canvas"),
   "watch.js can make a store logo on an affiliate page",
 );
 
@@ -1141,9 +1159,34 @@ const designPath = runWatch({
   path: "/design",
   attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
 });
+const designNav = designPath.created.find((node) => node.id === "cinch-seed-shop-path") as
+  | { id?: string; style?: { cssText?: string }; attrs?: Record<string, string> }
+  | undefined;
 assert(
-  designPath.created.some((node) => node.id === "cinch-seed-shop-path"),
-  "watch.js paints back links on the designer",
+  Boolean(designNav) &&
+    designNav?.attrs?.["data-cinch-designer-chrome"] === "compact" &&
+    /margin-left:auto/.test(designNav?.style?.cssText ?? "") &&
+    /background:transparent/.test(designNav?.style?.cssText ?? ""),
+  "watch.js paints compact back links in the designer header",
+);
+assert(
+  !designPath.created.some((node) => node.id === "cinch-seed-community"),
+  "the Connect card stays off the 3D designer canvas",
+);
+
+const stylesPath = runWatch({
+  host: "www.cabinetdealz.com",
+  path: "/styles",
+  attrs: { "data-seed": "seed-demo", "data-key": "key-demo", "data-mark": "true" },
+});
+const stylesNav = stylesPath.created.find((node) => node.id === "cinch-seed-shop-path") as
+  | { style?: { cssText?: string }; attrs?: Record<string, string> }
+  | undefined;
+assert(
+  Boolean(stylesNav) &&
+    stylesNav?.attrs?.["data-cinch-designer-chrome"] !== "compact" &&
+    /background:#f7f4ee/.test(stylesNav?.style?.cssText ?? ""),
+  "styles and cart keep the full shop-path bar",
 );
 
 const storeDesignPath = runWatch({

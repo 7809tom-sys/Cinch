@@ -57,3 +57,8 @@ export function currentShopStep(
 export function isShopPathPage(pathname?: string | null): boolean {
   return currentShopStep(pathname) !== null;
 }
+
+/** Designer canvas — keep shop-path chrome out of the 3D view. */
+export function isDesignerShopPage(pathname?: string | null): boolean {
+  return currentShopStep(pathname) === "designer";
+}
