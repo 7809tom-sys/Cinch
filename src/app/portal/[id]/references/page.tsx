@@ -56,9 +56,8 @@ export default async function PortalReferencesPage({ params }: PageProps) {
           {project.name}
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
-          Connect Google Drive and show the reference material this Seed should
-          follow — research, outlines, brand docs, lyric notes. Same pattern for
-          Writer Seeds and website Seeds.
+          Upload a PDF, paste a Google Drive link, or connect Drive. Reference
+          material lands in docs/references/ for Writer Seeds and website Seeds.
         </p>
 
         <div className="mt-10">
@@ -69,6 +68,7 @@ export default async function PortalReferencesPage({ params }: PageProps) {
             driveConnectConfigured={snapshot.driveConnectConfigured}
             googleClientId={snapshot.googleClientId}
             driveScopes={snapshot.driveScopes}
+            writerMode={project.seedKind === "writer"}
           />
         </div>
       </main>

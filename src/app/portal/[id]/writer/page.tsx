@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
+import { DriveReferencesPanel } from "@/components/drive-references-panel";
 import { getSourceBundle } from "@/lib/seed-source";
 import {
   extractWriterTitle,
@@ -27,7 +28,8 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function PortalWriterPage({ params }: PageProps) {
   const { id } = await params;
-  const { customer, project } = await getPortalProjectSnapshot(id);
+  const snapshot = await getPortalProjectSnapshot(id);
+  const { customer, project } = snapshot;
   if (!customer) redirect("/login");
   if (!project) notFound();
   if (project.seedKind !== "writer") {
@@ -46,6 +48,9 @@ export default async function PortalWriterPage({ params }: PageProps) {
     bundle?.files.find((file) => file.path === primaryPath) ?? null;
   const notebook =
     bundle?.files.find((file) => file.path === "docs/writer-collab.md") ?? null;
+  const referenceFiles =
+    bundle?.files.filter((file) => file.path.startsWith("docs/references/")) ??
+    [];
   const doneCount = project.tasks.filter((task) => task.status === "done").length;
   const complete =
     project.tasks.length > 0 && doneCount === project.tasks.length;
@@ -71,12 +76,12 @@ export default async function PortalWriterPage({ params }: PageProps) {
               complete={complete}
               initialWorkingOn={active?.title ?? null}
             />
-            <Link
-              href={`/portal/${project.id}/references`}
+            <a
+              href="#references"
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep"
             >
-              Drive refs
-            </Link>
+              References
+            </a>
             <Link
               href={`/portal/${project.id}/source?files=1`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep"
@@ -89,18 +94,37 @@ export default async function PortalWriterPage({ params }: PageProps) {
 
       <main className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-8 sm:py-14">
         <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.18em] text-accent-deep">
-          WRITER SEED · {form.toUpperCase()}
+          WRITER SEED · {form.toUpperCase()} · SYNCED
         </p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-5xl">
           {title}
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted">
           {doneCount}/{project.tasks.length || 0} tasks done
-          {active ? ` · working on ${active.title}` : ""}. The crew appends to
-          a shared notebook so each specialist continues the same {form}.
+          {active ? ` · working on ${active.title}` : ""}. Upload PDFs or connect
+          Google Drive below so the crew writes from your material.
         </p>
 
-        <article className="prose-writer mt-10 whitespace-pre-wrap border-t border-brand-deep/10 pt-8 font-[family-name:var(--font-display)] text-[1.05rem] leading-relaxed text-brand-deep">
+        <section id="references" className="mt-10 scroll-mt-24">
+          <DriveReferencesPanel
+            projectId={project.id}
+            initialReferences={snapshot.driveReferences}
+            connectedEmail={snapshot.driveConnectionEmail}
+            driveConnectConfigured={snapshot.driveConnectConfigured}
+            googleClientId={snapshot.googleClientId}
+            driveScopes={snapshot.driveScopes}
+            writerMode
+          />
+          {referenceFiles.length > 0 ? (
+            <p className="mt-3 text-xs text-muted">
+              {referenceFiles.length} file
+              {referenceFiles.length === 1 ? "" : "s"} in docs/references/ —
+              open Source to inspect the synced tree.
+            </p>
+          ) : null}
+        </section>
+
+        <article className="prose-writer mt-12 whitespace-pre-wrap border-t border-brand-deep/10 pt-8 font-[family-name:var(--font-display)] text-[1.05rem] leading-relaxed text-brand-deep">
           {primary?.content?.trim() ||
             `The ${form} is still sprouting. Refresh in a moment — agents write into ${primaryPath}.`}
         </article>

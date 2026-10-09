@@ -42,8 +42,14 @@ export type SeedDriveReference = {
   excerpt: string | null;
   addedAt: string;
   syncedAt: string | null;
-  /** share-link = pasted URL without live OAuth; oauth = connected Drive */
-  attachMode: "oauth" | "share-link";
+  /**
+   * oauth = connected Drive file
+   * share-link = pasted Drive/Docs URL
+   * upload = owner-uploaded PDF (or other file) into the Seed
+   */
+  attachMode: "oauth" | "share-link" | "upload";
+  /** Source path for uploaded binary payload (base64 JSON), when attachMode is upload. */
+  binaryPath?: string | null;
 };
 
 type DriveStore = {
@@ -234,17 +240,25 @@ async function writeReferencesIndex(input: {
   projectName: string;
   references: SeedDriveReference[];
 }): Promise<void> {
-  const indexBody = `# Drive references
+  const indexBody = `# Seed references
 
-Reference material connected to **${input.projectName}** from Google Drive.
+Reference material attached to **${input.projectName}** (Google Drive, share links, or PDF uploads).
 Agents must read these before inventing facts the owner already supplied.
 
 ${
   input.references
-    .map(
-      (ref) =>
-        `- [${ref.name}](${ref.sourcePath || ref.webViewLink || "#"}) — \`${ref.mimeType}\`${ref.webViewLink ? ` · [Open in Drive](${ref.webViewLink})` : ""}`,
-    )
+    .map((ref) => {
+      const via =
+        ref.attachMode === "upload"
+          ? "PDF upload"
+          : ref.attachMode === "oauth"
+            ? "Drive sync"
+            : "Share link";
+      const open = ref.webViewLink
+        ? ` · [Open](${ref.webViewLink})`
+        : "";
+      return `- [${ref.name}](${ref.sourcePath || "#"}) — \`${ref.mimeType}\` (${via})${open}`;
+    })
     .join("\n") || "_No references attached yet._"
 }
 `;
@@ -253,9 +267,178 @@ ${
     path: "docs/references/README.md",
     content: indexBody,
     status: "ready",
-    message: "Updated Drive references index",
+    message: "Updated Seed references index",
     agentName: "Drive sync",
   });
+}
+
+const MAX_PDF_BYTES = 4.5 * 1024 * 1024;
+
+/**
+ * Best-effort text scrape from a PDF without a heavyweight parser.
+ * Pulls printable strings from literal `(...)` PDF text operators.
+ */
+export function extractRoughPdfText(
+  buffer: Buffer,
+  maxChars = 12_000,
+): string | null {
+  const raw = buffer.toString("latin1");
+  if (!/%PDF-/i.test(raw.slice(0, 16))) return null;
+  const chunks: string[] = [];
+  const re = /\((?:\\.|[^\\)])*\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(raw))) {
+    const inner = match[0]
+      .slice(1, -1)
+      .replace(/\\n/g, "\n")
+      .replace(/\\r/g, "\n")
+      .replace(/\\t/g, "\t")
+      .replace(/\\\(/g, "(")
+      .replace(/\\\)/g, ")")
+      .replace(/\\\\/g, "\\")
+      .replace(/\\[0-7]{1,3}/g, " ")
+      .replace(/[^\x09\x0a\x0d\x20-\x7e]/g, " ")
+      .replace(/[ \t]{2,}/g, " ")
+      .trim();
+    if (inner.length >= 3) chunks.push(inner);
+    if (chunks.join(" ").length >= maxChars) break;
+  }
+  const text = chunks.join(" ").replace(/\s+\n/g, "\n").trim();
+  if (text.length < 20) return null;
+  return text.length > maxChars
+    ? `${text.slice(0, maxChars)}\n\n…(truncated for Seed sync)`
+    : text;
+}
+
+/** Upload a PDF into the Seed as reference material for the AI crew. */
+export async function uploadReferencePdfToProject(input: {
+  projectId: string;
+  projectName: string;
+  customerId: string;
+  file: File | Blob;
+  fileName?: string;
+}): Promise<
+  | { ok: true; reference: SeedDriveReference }
+  | { ok: false; error: string }
+> {
+  const fileName =
+    input.fileName?.trim() ||
+    (input.file instanceof File ? input.file.name : "") ||
+    "reference.pdf";
+  const mime = input.file.type || "application/pdf";
+  const isPdf =
+    mime === "application/pdf" || /\.pdf$/i.test(fileName);
+  if (!isPdf) {
+    return { ok: false, error: "Upload a PDF file (.pdf)." };
+  }
+  if (input.file.size <= 0 || input.file.size > MAX_PDF_BYTES) {
+    return {
+      ok: false,
+      error: "PDF must be under about 4.5 MB.",
+    };
+  }
+
+  const buffer = Buffer.from(await input.file.arrayBuffer());
+  if (!/%PDF-/i.test(buffer.slice(0, 8).toString("latin1"))) {
+    return { ok: false, error: "That file does not look like a valid PDF." };
+  }
+
+  const slug = slugDriveFileName(fileName);
+  const uploadId = `upload-${randomUUID().slice(0, 10)}`;
+  const binaryPath = `docs/references/uploads/${slug}-${uploadId.slice(-8)}.pdf.json`;
+  const sourcePath = `docs/references/${slug}-${uploadId.slice(-8)}.md`;
+  const excerpt =
+    extractRoughPdfText(buffer) ||
+    "_PDF uploaded. Text could not be extracted automatically — the binary is stored for the crew under docs/references/uploads/._";
+
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: binaryPath,
+    content: JSON.stringify({
+      mime: "application/pdf",
+      base64: buffer.toString("base64"),
+      originalName: fileName,
+      storedAt: now(),
+      bytes: buffer.length,
+    }),
+    status: "ready",
+    message: `Uploaded PDF “${fileName}”`,
+    agentName: "Owner",
+  });
+
+  const reference: SeedDriveReference = {
+    id: randomUUID(),
+    projectId: input.projectId,
+    customerId: input.customerId,
+    driveFileId: uploadId,
+    name: fileName,
+    mimeType: "application/pdf",
+    kind: "file",
+    webViewLink: null,
+    iconLink: null,
+    sourcePath,
+    excerpt,
+    addedAt: now(),
+    syncedAt: now(),
+    attachMode: "upload",
+    binaryPath,
+  };
+
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: sourcePath,
+    content: `# Reference — ${fileName}
+
+Uploaded PDF into **${input.projectName}**.
+
+| | |
+| --- | --- |
+| Source | Owner PDF upload |
+| Type | application/pdf |
+| Binary | \`${binaryPath}\` |
+| Synced | ${now()} |
+
+## Excerpt
+
+${excerpt}
+`,
+    status: "ready",
+    message: `Indexed PDF reference “${fileName}”`,
+    agentName: "Owner",
+  });
+
+  const store = await ensureStore();
+  store.references.unshift(reference);
+  await writeStore(store);
+  await writeReferencesIndex({
+    projectId: input.projectId,
+    projectName: input.projectName,
+    references: store.references.filter(
+      (item) => item.projectId === input.projectId,
+    ),
+  });
+
+  // Writer Seeds: rebuild chapter scaffold from the uploaded outline immediately.
+  try {
+    const { getProject } = await import("./store");
+    const project = await getProject(input.projectId);
+    if (project?.seedKind === "writer" && project.writerForm !== "song") {
+      const { applyTaskToSource } = await import("./seed-source");
+      await applyTaskToSource({
+        projectId: input.projectId,
+        taskTitle: "Writer collab · draft manuscript chapters",
+        taskDetail:
+          "Owner uploaded a PDF outline. Rebuild the living manuscript from docs/references/.",
+        agentName: "Owner",
+        agentId: null,
+        phase: "finished",
+      });
+    }
+  } catch {
+    // Non-fatal — reference is already attached.
+  }
+
+  return { ok: true, reference };
 }
 
 export async function attachDriveFileToProject(input: {

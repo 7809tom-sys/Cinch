@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   attachDriveFileAction,
   attachDriveShareLinkAction,
@@ -10,6 +10,7 @@ import {
   listDriveBrowseAction,
   removeDriveReferenceAction,
   resyncDriveReferencesAction,
+  uploadReferencePdfAction,
 } from "@/app/portal/actions";
 import type { SeedDriveReference } from "@/lib/seed-drive-refs";
 import type { DriveFileSummary } from "@/lib/google-drive";
@@ -25,6 +26,7 @@ export function DriveReferencesPanel({
   googleClientId,
   driveScopes,
   compact = false,
+  writerMode = false,
 }: {
   projectId: string;
   initialReferences: SeedDriveReference[];
@@ -33,8 +35,11 @@ export function DriveReferencesPanel({
   googleClientId: string | null;
   driveScopes: string;
   compact?: boolean;
+  /** Emphasize PDF upload + share link for Writer Seeds. */
+  writerMode?: boolean;
 }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -110,6 +115,28 @@ export function DriveReferencesPanel({
     client.requestAccessToken({ prompt: email ? "" : "consent" });
   }
 
+  function uploadPdf(file: File | null) {
+    if (!file) return;
+    const formData = new FormData();
+    formData.set("projectId", projectId);
+    formData.set("file", file);
+    setError(null);
+    startTransition(async () => {
+      const result = await uploadReferencePdfAction(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setReferences((prev) => [
+        result.reference,
+        ...prev.filter((item) => item.id !== result.reference.id),
+      ]);
+      setNotice(`Uploaded “${result.reference.name}”`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      router.refresh();
+    });
+  }
+
   return (
     <section
       className={`min-w-0 max-w-full border border-brand/10 bg-foam ${
@@ -117,19 +144,78 @@ export function DriveReferencesPanel({
       }`}
     >
       <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
-        Google Drive
+        {writerMode ? "Synced references" : "Google Drive"}
       </p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-        Reference material
+        {writerMode ? "Reference material for this book or song" : "Reference material"}
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Connect Drive to this Seed and attach briefs, research, lyrics notes, or
-        brand docs. Synced files land in{" "}
-        <code className="text-brand-deep">docs/references/</code> so the AI crew
-        can read them while they work.
+        {writerMode
+          ? "Upload a PDF, paste a Google Drive link, or connect Drive. Files sync into docs/references/ so the writing crew follows your material."
+          : "Upload a PDF, paste a Drive link, or connect Google Drive. Synced files land in docs/references/ for the AI crew."}
       </p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-5 space-y-4">
+        <div>
+          <p className="text-sm font-semibold text-brand-deep">Upload a PDF</p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              disabled={pending}
+              onChange={(event) => {
+                uploadPdf(event.target.files?.[0] ?? null);
+              }}
+              className="block w-full min-w-0 text-sm text-brand-deep file:mr-3 file:rounded-md file:border-0 file:bg-brand-deep file:px-3 file:py-2 file:text-sm file:font-semibold file:text-foam"
+            />
+          </div>
+          <p className="mt-1 text-xs text-muted">PDF up to about 4.5 MB.</p>
+        </div>
+
+        <form
+          className="flex flex-col gap-2 sm:flex-row"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const url = shareUrl.trim();
+            if (!url) return;
+            startTransition(async () => {
+              const result = await attachDriveShareLinkAction({
+                projectId,
+                shareUrl: url,
+              });
+              if (!result.ok) {
+                setError(result.error);
+                return;
+              }
+              setShareUrl("");
+              setReferences((prev) => [
+                result.reference,
+                ...prev.filter((item) => item.id !== result.reference.id),
+              ]);
+              setNotice(`Attached “${result.reference.name}”`);
+              setError(null);
+              router.refresh();
+            });
+          }}
+        >
+          <input
+            value={shareUrl}
+            onChange={(event) => setShareUrl(event.target.value)}
+            placeholder="Paste a Google Drive / Docs share link"
+            className="min-h-11 w-full flex-1 rounded-md border border-brand/15 bg-background px-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+          />
+          <button
+            type="submit"
+            disabled={pending || !shareUrl.trim()}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+          >
+            Attach link
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-brand-deep/10 pt-4">
         {driveConnectConfigured && googleClientId ? (
           <button
             type="button"
@@ -141,10 +227,8 @@ export function DriveReferencesPanel({
           </button>
         ) : (
           <p className="text-sm text-muted">
-            Drive OAuth is not enabled yet — paste a share link below, or set{" "}
-            <code className="text-brand-deep">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code>{" "}
-            +{" "}
-            <code className="text-brand-deep">NEXT_PUBLIC_GOOGLE_DRIVE_ENABLED=true</code>.
+            PDF upload and share links work now. Full Drive browse needs Google
+            OAuth enabled for this site.
           </p>
         )}
         {email ? (
@@ -205,47 +289,6 @@ export function DriveReferencesPanel({
         </p>
       ) : null}
 
-      <form
-        className="mt-5 flex flex-col gap-2 sm:flex-row"
-        onSubmit={(event) => {
-          event.preventDefault();
-          const url = shareUrl.trim();
-          if (!url) return;
-          startTransition(async () => {
-            const result = await attachDriveShareLinkAction({
-              projectId,
-              shareUrl: url,
-            });
-            if (!result.ok) {
-              setError(result.error);
-              return;
-            }
-            setShareUrl("");
-            setReferences((prev) => [
-              result.reference,
-              ...prev.filter((item) => item.id !== result.reference.id),
-            ]);
-            setNotice(`Attached “${result.reference.name}”`);
-            setError(null);
-            router.refresh();
-          });
-        }}
-      >
-        <input
-          value={shareUrl}
-          onChange={(event) => setShareUrl(event.target.value)}
-          placeholder="Paste a Google Drive / Docs share link"
-          className="min-h-11 w-full flex-1 rounded-md border border-brand/15 bg-background px-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
-        />
-        <button
-          type="submit"
-          disabled={pending || !shareUrl.trim()}
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
-        >
-          Attach link
-        </button>
-      </form>
-
       {browse.length > 0 ? (
         <div className="mt-6">
           <h3 className="text-sm font-bold text-brand-deep">From your Drive</h3>
@@ -301,7 +344,7 @@ export function DriveReferencesPanel({
         </h3>
         {references.length === 0 ? (
           <p className="mt-2 text-sm text-muted">
-            No Drive references yet. Connect Drive or paste a share link.
+            No references yet. Upload a PDF or paste a Drive share link.
           </p>
         ) : (
           <ul className="mt-3 space-y-3">
@@ -314,7 +357,11 @@ export function DriveReferencesPanel({
                   <div className="min-w-0">
                     <p className="font-semibold text-brand-deep">{ref.name}</p>
                     <p className="mt-1 text-xs text-muted">
-                      {ref.attachMode === "oauth" ? "Drive sync" : "Share link"}
+                      {ref.attachMode === "oauth"
+                        ? "Drive sync"
+                        : ref.attachMode === "upload"
+                          ? "PDF upload"
+                          : "Share link"}
                       {ref.sourcePath ? ` · ${ref.sourcePath}` : ""}
                     </p>
                     {ref.excerpt ? (

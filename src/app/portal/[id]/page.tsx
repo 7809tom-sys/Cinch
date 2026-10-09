@@ -134,7 +134,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
               href={`/portal/${project.id}/references`}
               className="inline-flex min-h-10 items-center justify-center rounded-md border border-brand/20 bg-foam px-3 py-1.5 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
-              Drive
+              References
             </Link>
             <Link
               href={`/portal/${project.id}/source?files=1`}
@@ -251,7 +251,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
               href={`/portal/${project.id}/references`}
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-brand/20 bg-foam px-4 text-sm font-semibold text-brand-deep transition-colors hover:border-brand/40 hover:bg-mist/40"
             >
-              Google Drive refs
+              References
             </Link>
             <Link
               href={`/portal/${project.id}/dialog`}
@@ -276,6 +276,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
               googleClientId={snapshot.googleClientId}
               driveScopes={snapshot.driveScopes}
               compact
+              writerMode={project.seedKind === "writer"}
             />
           </div>
           {project.referenceUrl ? (
