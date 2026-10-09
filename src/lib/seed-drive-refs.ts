@@ -417,6 +417,27 @@ ${excerpt}
       (item) => item.projectId === input.projectId,
     ),
   });
+
+  // Writer Seeds: rebuild chapter scaffold from the uploaded outline immediately.
+  try {
+    const { getProject } = await import("./store");
+    const project = await getProject(input.projectId);
+    if (project?.seedKind === "writer" && project.writerForm !== "song") {
+      const { applyTaskToSource } = await import("./seed-source");
+      await applyTaskToSource({
+        projectId: input.projectId,
+        taskTitle: "Writer collab · draft manuscript chapters",
+        taskDetail:
+          "Owner uploaded a PDF outline. Rebuild the living manuscript from docs/references/.",
+        agentName: "Owner",
+        agentId: null,
+        phase: "finished",
+      });
+    }
+  } catch {
+    // Non-fatal — reference is already attached.
+  }
+
   return { ok: true, reference };
 }
 

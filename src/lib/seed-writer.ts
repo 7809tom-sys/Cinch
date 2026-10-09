@@ -390,11 +390,60 @@ function slugWord(value: string): string {
     .join(" ");
 }
 
+/**
+ * Pull "Chapter N: Title" headings from an owner outline / PDF excerpt so the
+ * living manuscript follows their structure instead of a generic plot template.
+ */
+export function parseOutlineChaptersFromText(
+  text: string,
+): Array<{ number: number; title: string; purpose: string }> {
+  const chapters: Array<{ number: number; title: string; purpose: string }> =
+    [];
+  // Prefer a clean title like "The Wish Book (The Rise)" even when PDF text
+  // scrape joins the next sentence onto the same line. Stop before the next
+  // "Chapter N" so later chapters are not swallowed into the title capture.
+  const re =
+    /Chapter\s+(\d+)\s*[:.\-—–]\s*([\s\S]*?)(?=Chapter\s+\d+\s*[:.\-—–]|$)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text))) {
+    const number = Number(match[1]);
+    const block = match[2]!.replace(/\s+/g, " ").trim();
+    if (!number || !block) continue;
+    if (chapters.some((chapter) => chapter.number === number)) continue;
+
+    const withParen = block.match(/^(.{2,90}?\([^)]+\))/);
+    let title = withParen?.[1]?.trim() || "";
+    if (!title) {
+      title =
+        block.split(/\bOpening scene\b|[.](?:\s|$)/i)[0]?.trim() ||
+        block.slice(0, 80);
+    }
+    title = title.replace(/[.:;\-—–]+$/g, "").trim().slice(0, 80);
+    if (title.length < 2) continue;
+
+    const afterTitle = block.slice(block.toLowerCase().indexOf(title.toLowerCase()) + title.length);
+    const purpose =
+      afterTitle
+        .replace(/^\s*[:.\-—–]?\s*/, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 280) ||
+      `Follow the owner outline for Chapter ${number}: ${title}.`;
+    chapters.push({ number, title, purpose });
+  }
+  return chapters.sort((a, b) => a.number - b.number);
+}
+
 /** Deterministic chapter outline for book Seeds (no API key required). */
 export function buildBookChapterPlan(input: {
   title: string;
   premise: string;
+  /** Owner outline / PDF excerpt — preferred when it names Chapter N headings. */
+  outlineText?: string | null;
 }): Array<{ number: number; title: string; purpose: string }> {
+  const fromOutline = parseOutlineChaptersFromText(input.outlineText || "");
+  if (fromOutline.length >= 2) return fromOutline;
+
   const topic = slugWord(input.premise) || slugWord(input.title) || "the journey";
   const bases = [
     { title: "The spark", purpose: `Open on the world of ${topic} and the ache that starts the story.` },
@@ -420,11 +469,43 @@ export function draftBookChapterMarkdown(input: {
   premise: string;
   chapter: { number: number; title: string; purpose: string };
   status: "building" | "ready";
+  outlineText?: string | null;
 }): string {
   const voice =
     input.status === "ready"
       ? "polished for a first reader"
       : "drafted for crew review";
+  const outline = (input.outlineText || "").trim();
+  const nonfiction =
+    /\b(MBA|PIE Effect|footnote|\[verify\]|annual report|catalog|founder)\b/i.test(
+      `${input.title}\n${input.premise}\n${outline}`,
+    );
+
+  if (nonfiction) {
+    return `# Chapter ${input.chapter.number}: ${input.chapter.title}
+
+> ${input.chapter.purpose}
+
+**${input.title}** — narrative nonfiction draft.
+
+${input.premise}
+
+## Beat sheet (from owner outline)
+
+${input.chapter.purpose}
+
+Keep floor-level scenes concrete. Flag unsourced facts as \`[verify]\`. Target 5,000–7,000 words before polish. Every hard number and date needs a footnote before print.
+
+## Draft
+
+Open on the scene the outline demands. Stay with people who ran the floor — not the vocabulary of the top floor — until the hinge forces the turn.
+
+---
+
+_${voice} by the Writer Seed crew — better together than alone. Follow docs/references/ before inventing structure._
+`;
+  }
+
   return `# Chapter ${input.chapter.number}: ${input.chapter.title}
 
 > ${input.chapter.purpose}

@@ -3,8 +3,10 @@
  * Run: npx tsx scripts/assert-seed-writer.ts
  */
 import {
+  buildBookChapterPlan,
   composeWriterBrief,
   draftSongLyricsMarkdown,
+  parseOutlineChaptersFromText,
   planWriterBuildBacklog,
   planWriterCollaborationChain,
   projectHasWriterCollab,
@@ -187,6 +189,27 @@ const lyrics = draftSongLyricsMarkdown({
 });
 assert(/Chorus/i.test(lyrics), "song draft includes a chorus");
 assert(/Verse 1/i.test(lyrics), "song draft includes verse 1");
+
+const outline = `
+Chapter 3: The Wish Book (The Rise)
+Opening scene. North Redwood, Minnesota, 1886.
+Chapter 4: The Paper Tiger (The Fall)
+Opening scene. 1993. Sears shuts down its big general catalog.
+`;
+const parsed = parseOutlineChaptersFromText(outline);
+assert(parsed.length === 2, "outline parser finds two Sears chapters");
+assert(parsed[0]?.title.includes("Wish Book"), "chapter 3 title from outline");
+assert(parsed[1]?.title.includes("Paper Tiger"), "chapter 4 title from outline");
+const planned = buildBookChapterPlan({
+  title: "MBA Disease and the PIE Effect",
+  premise: "PIE Effect decay in American retail.",
+  outlineText: outline,
+});
+assert(
+  planned.some((c) => /Wish Book/i.test(c.title)) &&
+    planned.some((c) => /Paper Tiger/i.test(c.title)),
+  "book plan prefers owner outline chapters over generic plot",
+);
 
 if (process.exitCode) {
   console.error("assert-seed-writer failed");

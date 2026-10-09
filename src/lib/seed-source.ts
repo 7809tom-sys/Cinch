@@ -2011,9 +2011,11 @@ async function growWriterPrimaryWork(input: {
     return;
   }
 
+  const outlineText = await loadWriterOutlineText(input.projectId);
   const chapters = buildBookChapterPlan({
     title: input.identity.title,
     premise: input.identity.premise,
+    outlineText,
   });
   const chapterBodies = chapters.map((chapter) => ({
     number: chapter.number,
@@ -2023,8 +2025,36 @@ async function growWriterPrimaryWork(input: {
       premise: input.identity.premise,
       chapter,
       status: ready,
+      outlineText,
     }),
   }));
+  const keepPaths = new Set(
+    chapterBodies.map(
+      (chapter) =>
+        `manuscript/chapters/${String(chapter.number).padStart(2, "0")}-${slugPath(chapter.title)}.md`,
+    ),
+  );
+  const bundle = await getSourceBundle(input.projectId);
+  const stale =
+    bundle?.files.filter(
+      (file) =>
+        file.path.startsWith("manuscript/chapters/") &&
+        !keepPaths.has(file.path),
+    ) ?? [];
+  for (const file of stale) {
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: file.path,
+      content: `# Removed
+
+Replaced by the owner outline in docs/references/.
+`,
+      authoredBy: input.agentId,
+      agentName: input.agentName,
+      status: "ready",
+      message: `${input.agentName} retired obsolete chapter ${file.path}`,
+    });
+  }
   for (const chapter of chapterBodies) {
     await upsertSourceFile({
       projectId: input.projectId,
@@ -2050,4 +2080,31 @@ async function growWriterPrimaryWork(input: {
     status: input.status,
     message: `${input.agentName} compiled the manuscript`,
   });
+}
+
+/** Prefer owner PDF / Drive reference excerpts when shaping the manuscript. */
+async function loadWriterOutlineText(projectId: string): Promise<string> {
+  try {
+    const { listProjectDriveReferences } = await import("./seed-drive-refs");
+    const refs = await listProjectDriveReferences(projectId);
+    const fromRefs = refs
+      .map((ref) => ref.excerpt?.trim() || "")
+      .filter(Boolean)
+      .join("\n\n");
+    if (fromRefs.length > 40) return fromRefs;
+  } catch {
+    // Store may be empty in unit tests.
+  }
+  const bundle = await getSourceBundle(projectId);
+  const refFiles =
+    bundle?.files.filter(
+      (file) =>
+        file.path.startsWith("docs/references/") &&
+        file.path.endsWith(".md") &&
+        !file.path.endsWith("README.md"),
+    ) ?? [];
+  return refFiles
+    .map((file) => file.content)
+    .join("\n\n")
+    .trim();
 }
