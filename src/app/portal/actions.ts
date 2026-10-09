@@ -69,6 +69,7 @@ import {
   removeDriveReference,
   resyncProjectDriveReferences,
   saveDriveConnection,
+  uploadReferencePdfToProject,
 } from "@/lib/seed-drive-refs";
 import {
   critiqueToBrief,
@@ -1154,6 +1155,34 @@ export async function attachDriveShareLinkAction(input: {
   });
   if (!result.ok) return result;
   revalidateDrivePaths(input.projectId);
+  return result;
+}
+
+/** Upload a PDF reference into the Seed (Writer and website Seeds). */
+export async function uploadReferencePdfAction(formData: FormData) {
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  const file = formData.get("file");
+  if (!projectId) {
+    return { ok: false as const, error: "Missing Seed id." };
+  }
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false as const, error: "Choose a PDF to upload." };
+  }
+
+  const owned = await requireOwnedProject(projectId);
+  if (!owned.ok) return { ok: false as const, error: owned.error };
+  const customer = await getCurrentCustomer();
+  if (!customer) return { ok: false as const, error: "Sign in required." };
+
+  const result = await uploadReferencePdfToProject({
+    projectId: owned.project.id,
+    projectName: owned.project.name,
+    customerId: customer.id,
+    file,
+    fileName: file.name,
+  });
+  if (!result.ok) return result;
+  revalidateDrivePaths(projectId);
   return result;
 }
 

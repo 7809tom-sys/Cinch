@@ -2,12 +2,17 @@
  * Guard: Google Drive reference material on Seeds.
  * Run: npx tsx scripts/assert-seed-drive-refs.ts
  */
+import { readFileSync } from "fs";
+import { join } from "path";
 import {
   driveReferenceMarkdown,
   parseGoogleDriveFileId,
   slugDriveFileName,
 } from "../src/lib/google-drive";
-import { formatDriveReferencesForBrief } from "../src/lib/seed-drive-refs";
+import {
+  extractRoughPdfText,
+  formatDriveReferencesForBrief,
+} from "../src/lib/seed-drive-refs";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -94,6 +99,40 @@ assert(
   formatDriveReferencesForBrief([]) === "",
   "empty refs produce empty brief block",
 );
+
+// Minimal valid PDF with a text string operator.
+const miniPdf = Buffer.from(
+  `%PDF-1.1
+1 0 obj<<>>endobj
+2 0 obj<< /Length 44 >>stream
+BT /F1 12 Tf 100 700 Td (Greenhouse outline notes) Tj ET
+endstream
+endobj
+trailer<<>>
+%%EOF`,
+  "utf8",
+);
+const scraped = extractRoughPdfText(miniPdf);
+assert(
+  Boolean(scraped && /Greenhouse outline notes/i.test(scraped)),
+  "rough PDF text scrape finds literal strings",
+);
+assert(extractRoughPdfText(Buffer.from("not-a-pdf")) === null, "rejects non-PDF");
+
+const writerPage = readFileSync(
+  join(process.cwd(), "src/app/portal/[id]/writer/page.tsx"),
+  "utf8",
+);
+assert(
+  /DriveReferencesPanel/.test(writerPage) && /writerMode/.test(writerPage),
+  "Writer synced page embeds the references panel",
+);
+assert(/uploadReferencePdfAction|Upload a PDF/.test(
+  readFileSync(
+    join(process.cwd(), "src/components/drive-references-panel.tsx"),
+    "utf8",
+  ),
+), "references panel offers PDF upload");
 
 if (process.exitCode) {
   console.error("assert-seed-drive-refs failed");
