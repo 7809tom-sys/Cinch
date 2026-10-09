@@ -1,24 +1,45 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { purchaseWriterSeedAction } from "@/app/portal/actions";
+import type { WriterConcept } from "@/lib/writer-concepts";
 
 export function WriterPlantForm({
   defaultEmail,
   defaultName,
+  concept = null,
 }: {
   defaultEmail?: string | null;
   defaultName?: string | null;
+  concept?: WriterConcept | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [writerForm, setWriterForm] = useState<"book" | "song">("book");
+  const [writerForm, setWriterForm] = useState<"book" | "song">(
+    concept?.form ?? "book",
+  );
+  const [title, setTitle] = useState(concept?.title ?? "");
+  const [premise, setPremise] = useState(concept?.premise ?? "");
+  const [audience, setAudience] = useState(concept?.audience ?? "");
+  const [tone, setTone] = useState(concept?.tone ?? "");
+  const [notes, setNotes] = useState(concept?.notes ?? "");
   const [accessCode, setAccessCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!concept) return;
+    setWriterForm(concept.form);
+    setTitle(concept.title);
+    setPremise(concept.premise);
+    setAudience(concept.audience);
+    setTone(concept.tone);
+    setNotes(concept.notes);
+  }, [concept]);
 
   return (
     <form
+      id="plant-writer"
       className="mx-auto max-w-xl space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
@@ -37,6 +58,15 @@ export function WriterPlantForm({
         });
       }}
     >
+      {concept ? (
+        <p className="rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-brand-deep">
+          Starting from{" "}
+          <span className="font-semibold">{concept.title}</span>. Edit
+          anything below, then plant — upload the outline PDF on the synced
+          Seed after checkout.
+        </p>
+      ) : null}
+
       <fieldset className="space-y-3">
         <legend className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.14em] text-accent-deep">
           WRITE A
@@ -90,6 +120,8 @@ export function WriterPlantForm({
         <input
           name="title"
           required
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
           placeholder={
             writerForm === "song"
               ? "Midnight on the River"
@@ -105,6 +137,8 @@ export function WriterPlantForm({
           name="premise"
           required
           rows={5}
+          value={premise}
+          onChange={(event) => setPremise(event.target.value)}
           placeholder={
             writerForm === "song"
               ? "A late-night drive song about choosing hope after a hard year."
@@ -122,6 +156,8 @@ export function WriterPlantForm({
           </span>
           <input
             name="audience"
+            value={audience}
+            onChange={(event) => setAudience(event.target.value)}
             placeholder="Who it's for"
             className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
           />
@@ -133,6 +169,8 @@ export function WriterPlantForm({
           </span>
           <input
             name="tone"
+            value={tone}
+            onChange={(event) => setTone(event.target.value)}
             placeholder="Warm, spare, hopeful"
             className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
           />
@@ -146,7 +184,9 @@ export function WriterPlantForm({
         </span>
         <textarea
           name="notes"
-          rows={3}
+          rows={4}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
           placeholder="Must-include themes, characters, or lines."
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />

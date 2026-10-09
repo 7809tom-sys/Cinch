@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { getBrowseSnapshot } from "@/app/portal/actions";
+import { WRITER_CONCEPTS, getWriterConcept } from "@/lib/writer-concepts";
 import { WriterPlantForm } from "./writer-plant-form";
 
 export const dynamic = "force-dynamic";
@@ -8,11 +9,21 @@ export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Writer Seed — Cinch",
   description:
-    "Plant a Writer Seed. Quill, Atlas, Lumen, and Sentry collaborate to write a book or a song together.",
+    "Plant a Writer Seed. Quill, Atlas, Lumen, and Sentry collaborate to write a book or a song together — including MBA Disease and the PIE Effect.",
 };
 
-export default async function WriterPage() {
+export default async function WriterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ concept?: string; fresh?: string }>;
+}) {
   const { customer } = await getBrowseSnapshot();
+  const params = await searchParams;
+  const featured = WRITER_CONCEPTS[0]!;
+  const selected =
+    params.fresh === "1"
+      ? null
+      : (getWriterConcept(params.concept) ?? featured);
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -65,10 +76,55 @@ export default async function WriterPage() {
             so the work is better than any single model alone.
           </p>
 
+          <section
+            id="mba-disease"
+            className="animate-sprout mt-12 border-y border-brand-deep/10 py-10"
+          >
+            <p className="font-[family-name:var(--font-display)] text-xs font-bold tracking-[0.18em] text-accent-deep uppercase">
+              {featured.eyebrow}
+            </p>
+            <h2 className="mt-3 max-w-3xl font-[family-name:var(--font-display)] text-3xl font-extrabold tracking-tight text-brand-deep sm:text-4xl">
+              {featured.title}
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+              {featured.summary}
+            </p>
+            {featured.sampleChapters?.length ? (
+              <div className="mt-8 grid gap-6 sm:grid-cols-2">
+                {featured.sampleChapters.map((chapter) => (
+                  <div key={chapter.number} className="max-w-md">
+                    <p className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.12em] text-brand-deep/55 uppercase">
+                      Chapter {chapter.number}
+                    </p>
+                    <p className="mt-1 font-[family-name:var(--font-display)] text-xl font-extrabold text-brand-deep">
+                      {chapter.title}
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                      {chapter.beat}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <a
+                href="#plant-writer"
+                className="inline-flex h-11 items-center justify-center rounded-md bg-brand-deep px-6 text-sm font-bold text-foam transition-colors hover:bg-brand"
+              >
+                Plant this book on Cinch
+              </a>
+              <p className="text-sm text-muted">
+                Form below is prefilled. After plant, upload the outline PDF on
+                the synced Writer desk.
+              </p>
+            </div>
+          </section>
+
           <div className="animate-sprout mt-12 rounded-md border border-brand-deep/10 bg-foam/80 p-6 backdrop-blur-sm sm:p-8">
             <WriterPlantForm
               defaultEmail={customer?.email}
               defaultName={customer?.name}
+              concept={selected}
             />
           </div>
         </div>

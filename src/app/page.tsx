@@ -242,12 +242,26 @@ export default function Home() {
               polishes, and signs off in one shared notebook — so the manuscript
               or lyric sheet is better than any single model alone.
             </p>
+            <p className="mt-6 max-w-xl font-[family-name:var(--font-display)] text-xl font-extrabold text-brand-deep sm:text-2xl">
+              Featured: MBA Disease and the PIE Effect
+            </p>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
+              Rise-and-fall company stories — Sears Wish Book to Paper Tiger —
+              with Product, Innovation, and Execution as the through-line. Plant
+              it, then upload the outline PDF on the synced Writer desk.
+            </p>
             <div className="mt-8 flex flex-wrap gap-3 sm:mt-9">
               <Link
-                href="/writer"
+                href="/writer#mba-disease"
                 className="inline-flex h-12 w-full items-center justify-center rounded-md bg-brand-deep px-6 text-sm font-bold text-foam transition-transform hover:-translate-y-0.5 sm:w-auto"
               >
-                Plant a Writer Seed — $99
+                Plant MBA Disease on Cinch — $99
+              </Link>
+              <Link
+                href="/writer?fresh=1"
+                className="inline-flex h-12 w-full items-center justify-center rounded-md border border-brand-deep/20 bg-foam/80 px-6 text-sm font-bold text-brand-deep transition-colors hover:border-brand-deep/40 sm:w-auto"
+              >
+                Or start a blank Writer Seed
               </Link>
             </div>
           </div>
