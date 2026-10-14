@@ -19,8 +19,24 @@ export type { SeedGrowthBoard, SeedProfitPlay, SeedResultStat };
 
 /** True when text looks like an agent task note, not customer website copy. */
 export function looksLikeAgentTaskCopy(text: string): boolean {
-  return /wave\s*\d+|growth wave|polish mobile|touch targets|cross-device|verify phone|safe-area|44px|installable app manifest|information architecture|qa checklist|ship cross-device|implement frontend|write seed landing|shape information/i.test(
+  return /wave\s*\d+|growth wave|polish mobile|touch targets|cross-device|verify phone|safe-area|44px|installable app manifest|information architecture|qa checklist|ship cross-device|implement frontend|write seed landing|shape information|all-star|be the next ai/i.test(
     text,
+  );
+}
+
+/**
+ * Wisconsin Cheese and Wine Club — name, domain, or the spec Doc id.
+ * The hostname is one word (`wisconsincheeseandwineclub`), so word
+ * boundaries are not enough.
+ */
+export function briefIsCheeseWineClub(projectName: string, brief: string): boolean {
+  const raw = `${projectName} ${brief}`;
+  if (/1EJdRQ9K1yuIsIVz_niBEJKLAMpFSYN2hBsAPnV8lZcQ/i.test(raw)) return true;
+  const compact = raw.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  return (
+    compact.includes("cheese") &&
+    compact.includes("wine") &&
+    (compact.includes("club") || compact.includes("wisconsin"))
   );
 }
 
@@ -155,6 +171,8 @@ function industryKey(brief: string, name = ""): string {
     return "detail";
   }
 
+  if (briefIsCheeseWineClub(name, brief)) return "club";
+
   return "generic";
 }
 
@@ -171,6 +189,7 @@ export function looksLikeHometownRunnerBrand(name: string): boolean {
 export function customerFacingBrandName(projectName: string): string {
   const brand = projectName.replace(/\s+Seed$/i, "").trim() || projectName;
   if (looksLikeHometownRunnerBrand(brand)) return HOMETOWN_RUNNER_BRAND;
+  if (briefIsCheeseWineClub(brand, "")) return "Wisconsin Cheese and Wine Club";
   return brand;
 }
 
@@ -359,6 +378,24 @@ export function seedLandingCopyMismatchesIndustry(
   ) {
     return true;
   }
+  // The cheese-and-wine spec is not the consulting brochure, a URL stub, or another industry's math.
+  if (key === "club") {
+    const readTheReport = /pairing|taste quiz|creamery|winery/.test(blob);
+    const copiedBrochure =
+      /ask\. price\. done|neighborhood customer|core service|2020 template|all-star|kitchen design|lead response/.test(
+        blob,
+      );
+    const textIsUrl =
+      /^https?:\/\//i.test((copy.support ?? "").trim()) ||
+      /^https?:\/\//i.test((copy.headline ?? "").trim());
+    if (!readTheReport || copiedBrochure || textIsUrl) return true;
+  }
+  if (
+    /^https?:\/\//i.test((copy.support ?? "").trim()) ||
+    /^https?:\/\//i.test((copy.headline ?? "").trim())
+  ) {
+    return true;
+  }
   // Any vertical that still ships the consulting brochure is unsellable.
   if (key !== "generic" && seedLandingLooksUnsellable(copy)) return true;
   if (briefIsPizza(projectName, brief) && !looksLikePizzaCopy && looksLikeRetailCopy)
@@ -371,7 +408,10 @@ export function customerFacingSupport(brief: string): string {
   if (briefIsDeliveryPlatform("", brief)) {
     return "Kitchens in this town. A driver brings dinner to your door.";
   }
-  const cleaned = brief.replace(/\s+/g, " ").trim();
+  const cleaned = brief
+    .replace(/\s+/g, " ")
+    .replace(/https?:\/\/\S+/gi, " ")
+    .trim();
   if (!cleaned) return "Quality work, done the way you need it.";
 
   const sentences = firstSentences(cleaned, 3).filter(
@@ -439,6 +479,7 @@ export function customerFacingHeadline(
   }
   if (key === "retail") return "Find what fits — without the noise.";
   if (key === "trade") return "Fixed right. On your time.";
+  if (key === "club") return "The month’s cheese. The month’s wine.";
 
   const name = customerFacingBrandName(projectName);
   return `Welcome to ${name}.`;
@@ -458,6 +499,7 @@ export function customerFacingCta(brief: string, projectName = ""): string {
   if (key === "salon") return "Book an appointment";
   if (key === "retail") return "Shop now";
   if (key === "trade") return "Request service";
+  if (key === "club") return "Join the club";
   return "Get started";
 }
 
@@ -496,6 +538,9 @@ export function customerFacingHeroImage(
   }
   if (key === "trade") {
     return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (key === "club") {
+    return "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1800&q=80";
   }
   return "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1800&q=80";
 }
@@ -1157,53 +1202,44 @@ function withBusinessSiteDepth(
       key,
     );
   }
+  const ownSteps = (core.services ?? []).slice(0, 3).map((item) => ({
+    title: item.title,
+    detail: item.detail,
+  }));
+  while (ownSteps.length < 2) {
+    ownSteps.push({
+      title: brand,
+      detail: core.support,
+    });
+  }
   return withGrowthBoard(
     {
     ...core,
-    galleryEyebrow: "Look closer",
-    galleryHeadline: "The work, not a slide deck",
+    galleryEyebrow: "The business",
+    galleryHeadline: brand,
     gallery: [
       {
-        src: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80",
-        alt: "Workspace and meeting area",
+        src: core.heroImage,
+        alt: brand,
       },
       {
-        src: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=80",
-        alt: "Team collaborating",
-      },
-      {
-        src: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=1200&q=80",
-        alt: "Customer conversation",
+        src: core.heroImage,
+        alt: `${brand} detail`,
       },
     ],
-    processEyebrow: "How it actually goes",
-    processHeadline: "Ask. Price. Done.",
-    process: [
-      {
-        title: "Tell us what you need",
-        detail: "A short note and the best way to reach you is enough.",
-      },
-      {
-        title: "Get a clear price",
-        detail: "Written before work starts — no wandering scope.",
-      },
-      {
-        title: "We finish and stay reachable",
-        detail: "You get the deliverable and a number if something slips.",
-      },
-    ],
-    aboutImage:
-      "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80",
-    proofEyebrow: "Neighbors",
-    proofHeadline: "Why they send people",
+    processEyebrow: "From the brief",
+    processHeadline: "Only what this business actually said",
+    process: ownSteps,
+    aboutImage: core.heroImage,
+    proofEyebrow: "In their words",
+    proofHeadline: brand,
     proof: {
-      quote:
-        "Showed up when they said and finished what they quoted. I sent my sister next week.",
-      attribution: "Sam · neighborhood customer",
+      quote: core.support.slice(0, 220),
+      attribution: brand,
     },
-    areaEyebrow: "Around here",
-    areaHeadline: "Local, not a call center",
-    areaBody: `${brand} works this town and the next one over. Text or call — we answer like a neighbor, not a ticket queue.`,
+    areaEyebrow: "Scope",
+    areaHeadline: "No borrowed story",
+    areaBody: `${brand} does not use another company’s quote, town, or process. If the brief does not name a place or a price, this page does not invent one.`,
     },
     key,
   );
@@ -1354,11 +1390,154 @@ export function siteCopyFromConfirmedFacts(
   );
 }
 
+/** Public club site from the Wisconsin Cheese and Wine Club specification. */
+export function cheeseWineClubSiteCopy(brand = "Wisconsin Cheese and Wine Club"): SeedSiteCopy {
+  const hero =
+    "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1800&q=80";
+  return {
+    brand,
+    headline: "The month’s cheese. The month’s wine.",
+    support:
+      "A taste quiz matches you to a Wisconsin pairing. Creameries and wineries take the featured month, and a share of the margin stays with farm nonprofits here.",
+    cta: "Join the club",
+    heroImage: hero,
+    navLabel: "The club",
+    servicesEyebrow: "Membership",
+    servicesHeadline: "What the club actually does",
+    services: [
+      {
+        title: "Taste quiz",
+        detail:
+          "Wine body from light to full, sweetness from dry to sweet, tannin, and the varietals you lean toward. Cheese firmness, flavor from mild to aged or blue, and cow, goat, or sheep milk.",
+      },
+      {
+        title: "Monthly pairing",
+        detail:
+          "Your answers pick the featured box: one Wisconsin cheese and the wine that belongs with it. Twelve partner pairings a year, one maker at a time.",
+      },
+      {
+        title: "Reorder from the package",
+        detail:
+          "Every shipment has a QR code on the bottle or wedge. Scan it and that exact item is waiting in a one-tap reorder.",
+      },
+    ],
+    galleryEyebrow: "Wisconsin",
+    galleryHeadline: "Cheese, wine, and the table they share",
+    gallery: [
+      {
+        src: hero,
+        alt: "Wine poured for a pairing",
+      },
+      {
+        src: "https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=1200&q=80",
+        alt: "A wedge of cheese on a board",
+      },
+      {
+        src: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+        alt: "A table set for cheese and wine",
+      },
+    ],
+    processEyebrow: "How a month works",
+    processHeadline: "Quiz. Box. Scan what you loved.",
+    process: [
+      {
+        title: "Tell us how you taste",
+        detail:
+          "The quiz scores body, sweetness, tannin, firmness, and milk. It is the only thing between you and the month’s pairing.",
+      },
+      {
+        title: "Makers take the month",
+        detail:
+          "A creamery and a winery can lock a featured slot up to 36 months out. The month stays exclusive to that pairing.",
+      },
+      {
+        title: "Keep the one you finish",
+        detail:
+          "Add an extra bottle or wedge before the billing lock, or scan the QR later and reorder just that item.",
+      },
+    ],
+    aboutEyebrow: "Why this club",
+    aboutHeadline: "Members on one side. Makers on the other.",
+    aboutBody:
+      "Wisconsin Cheese and Wine Club connects people who want a real pairing with the creameries and wineries that make it. Phase one is Wisconsin: premium, local, and built so the producer is the point of the box.",
+    aboutImage:
+      "https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=1400&q=80",
+    proofEyebrow: "The club",
+    proofHeadline: "One pairing. One month.",
+    proof: {
+      quote:
+        "Each month one creamery and one winery. The pairing is yours, then the slot moves to the next makers.",
+      attribution: "Wisconsin Cheese and Wine Club",
+    },
+    resultsEyebrow: "Year two",
+    resultsHeadline: "What this club is built to reach",
+    resultsSupport:
+      "Membership, a full year of Wisconsin pairings, and a renewal rate worth keeping.",
+    results: [
+      {
+        value: "~750",
+        label: "active members",
+        detail: "Year-two aim, inside a range of 500 to 1,000 subscribers.",
+      },
+      {
+        value: "12",
+        label: "featured pairings",
+        detail: "One Wisconsin partner pairing each month of the year.",
+      },
+      {
+        value: "70–80%",
+        label: "renewal aim",
+        detail: "The reorder and renewal rate the club is built to hold.",
+      },
+      {
+        value: "A share",
+        label: "to Wisconsin nonprofits",
+        detail: "A set percentage of each month’s subscription margin goes to farm and food charities in the state.",
+      },
+    ],
+    profitEyebrow: "For members",
+    profitHeadline: "Ways the box gets more personal",
+    profitSupport:
+      "The quiz sets the box. An extra bottle can join it. The code on the package brings that one back.",
+    profitPlays: [
+      {
+        title: "The quiz sets the box",
+        detail:
+          "Body, sweetness, tannin, firmness, and milk type decide which featured pairing is yours.",
+      },
+      {
+        title: "Add before the lock date",
+        detail:
+          "Extra bottles or wedges can join the upcoming month before billing closes.",
+      },
+      {
+        title: "The package reorders itself",
+        detail:
+          "A QR code on that bottle or wedge opens a one-tap reorder for active members.",
+      },
+    ],
+    areaEyebrow: "Wisconsin first",
+    areaHeadline: "Twelve makers. One state.",
+    areaBody:
+      "The club launches in Wisconsin. Featured slots stay with in-state creameries and wineries. New York and California are a later copy of this same club, not a different product.",
+    bookEyebrow: "Join",
+    bookHeadline: "Start with the taste quiz",
+    bookBody:
+      "Tell us how you like wine and cheese. The club assigns the monthly pairing from that score, then ships it.",
+    bookNote: "Active members can scan a package QR and reorder without starting over.",
+    footerNote: `${brand} · Wisconsin pairings`,
+  };
+}
+
 /** Industry-shaped services, about, and booking copy for a full site — not a hero stub. */
 export function customerFacingSiteCopy(
   projectName: string,
   brief: string,
 ): SeedSiteCopy {
+  if (briefIsCheeseWineClub(projectName, brief)) {
+    return cheeseWineClubSiteCopy(customerFacingBrandName(projectName));
+  }
+
   const fromOwner = siteCopyFromConfirmedFacts(projectName, brief);
   if (fromOwner) return fromOwner;
 
@@ -1977,19 +2156,16 @@ export function customerFacingSiteCopy(
     heroImage,
     navLabel: "Menu",
     servicesEyebrow: "What we offer",
-    servicesHeadline: "Built around how you work with us",
+    servicesHeadline: `What ${brand} actually offers`,
     services: [
       {
-        title: "Core service",
+        title: brand,
         detail: support,
       },
       {
-        title: "Guidance",
-        detail: "Clear next steps so you’re never guessing what comes after.",
-      },
-      {
-        title: "Follow-through",
-        detail: "We stay reachable after the first visit.",
+        title: "Still missing from the brief",
+        detail:
+          "Prices, the real service list, and who it is for. This page will not invent a customer, a town, or another company’s process to fill the gap.",
       },
     ],
     aboutEyebrow: "About",
@@ -2006,8 +2182,11 @@ export function customerFacingSiteCopy(
 }
 
 /** Full public-site CSS — hero + real sections, not a blank stub. */
-export function seedPublicSiteCss(): string {
-  return `@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap");
+export function seedPublicSiteCss(project?: {
+  name?: string;
+  brief?: string;
+}): string {
+  const css = `@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap");
 
 :root {
   --ink: #0b1014;
@@ -3838,6 +4017,28 @@ button {
   margin: 0.1rem 0 0;
 }
 `;
+  if (project && briefIsCheeseWineClub(project.name ?? "", project.brief ?? "")) {
+    return `${css}
+/* seed-club-palette — burgundy, warm sand, charcoal from the club spec */
+.seed-site {
+  --ink: #2a211c;
+  --panel: #3f1826;
+  --foam: #f6f1e7;
+  --muted: rgba(246, 241, 231, 0.78);
+  --muted-strong: rgba(42, 33, 28, 0.68);
+  --line: rgba(246, 241, 231, 0.16);
+  --line-dark: rgba(63, 24, 38, 0.14);
+  --accent: #8c2f45;
+  --accent-ink: #f6f1e7;
+}
+.seed-site .seed-hero h1,
+.seed-site .seed-nav-brand,
+.seed-site h2 {
+  font-family: "Source Serif 4", Georgia, serif;
+}
+`;
+  }
+  return css;
 }
 
 /** Baseline CSS every Seed ships in source — mirrors the public site. */
@@ -3867,6 +4068,7 @@ export function seedHomePageSource(
     : "";
   const showDeliveryApps =
     input.includeDeliveryApps ?? /^order nearby$/i.test(input.cta ?? "");
+  const clubLanding = input.navLabel === "The club";
   const deliveryNav = showDeliveryApps
     ? `
           <li>
@@ -4120,7 +4322,9 @@ ${profitPlays
               <span>Go online. Pick up bags on these streets.</span>
             </a>
           </div>`
-              : `<form className="seed-book-form" action="#" method="post">
+              : clubLanding
+                ? `<a className="cta" href="#services">${cta}</a>`
+                : `<form className="seed-book-form" action="#" method="post">
             <label>
               Name
               <input name="name" type="text" autoComplete="name" required />

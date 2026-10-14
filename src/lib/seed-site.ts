@@ -10,6 +10,7 @@ import {
 import {
   briefAsksForBusinessAdmin,
   briefAsksForEcommerce,
+  briefIsCheeseWineClub,
   briefIsDeliveryPlatform,
   seedOffersCustomerShop,
   customerFacingAdminCopy,
@@ -319,7 +320,13 @@ export async function buildSeedSitePreview(
   const copy = copyRaw
     ? mergeStoredCopy(project.name, project.brief, fallback, copyRaw)
     : fallback;
-  const css = fileContent(files, "app/globals.css") ?? seedPublicSiteCss();
+  const storedCss = fileContent(files, "app/globals.css") ?? "";
+  const css =
+    !storedCss ||
+    (briefIsCheeseWineClub(project.name, project.brief) &&
+      !storedCss.includes("seed-club-palette"))
+      ? seedPublicSiteCss(project)
+      : storedCss;
 
   // Do not HTML-escape here — React text nodes escape safely on render.
   // Escaping first caused visible "&amp;" in titles like "Express wash & wipe".
@@ -377,8 +384,10 @@ export async function repairCustomerLandingIfNeeded(
           `${project.name} ${project.brief}`,
         );
       copyLooksBad = Boolean(
-        (copy.headline && looksLikeAgentTaskCopy(copy.headline)) ||
+          (copy.headline && looksLikeAgentTaskCopy(copy.headline)) ||
           (copy.support && looksLikeAgentTaskCopy(copy.support)) ||
+          (copy.support && /https?:\/\//i.test(copy.support)) ||
+          (copy.headline && /https?:\/\//i.test(copy.headline)) ||
           (copy.headline &&
             copy.headline.trim().toLowerCase() === brand.toLowerCase()) ||
           !copy.heroImage ||
@@ -465,7 +474,9 @@ export async function repairCustomerLandingIfNeeded(
     !css.includes("seed-hero") ||
     !css.includes("seed-services") ||
     !css.includes("seed-gallery") ||
-    !css.includes("seed-process");
+    !css.includes("seed-process") ||
+    (briefIsCheeseWineClub(project.name, project.brief) &&
+      !css.includes("seed-club-palette"));
 
   if (!pageLooksBad && !copyLooksBad && !cssLooksBad) return;
 
@@ -474,7 +485,7 @@ export async function repairCustomerLandingIfNeeded(
   await upsertSourceFile({
     projectId: project.id,
     path: "app/globals.css",
-    content: seedPublicSiteCss(),
+    content: seedPublicSiteCss(project),
     status: "ready",
     message: "Restored full business website (gallery, process, proof, results, profit)",
     agentName: "Conductor",

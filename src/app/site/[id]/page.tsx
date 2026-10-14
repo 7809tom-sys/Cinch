@@ -14,7 +14,10 @@ import {
   seedNeedsBusinessAdmin,
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
+import { CheeseWineClubSite } from "@/components/cheese-wine-club-site";
 import {
+  briefIsCheeseWineClub,
+  cheeseWineClubSiteCopy,
   customerFacingBrandName,
   customerFacingSupport,
   seedIndustryKey,
@@ -34,9 +37,13 @@ export async function generateMetadata({
   const { id } = await params;
   const project = await getProject(id);
   if (!project) return { title: "Seed site" };
+  const club = briefIsCheeseWineClub(project.name, project.brief);
   return {
     title: customerFacingBrandName(project.name),
-    description: customerFacingSupport(project.brief).slice(0, 160),
+    description: (club
+      ? cheeseWineClubSiteCopy().support
+      : customerFacingSupport(project.brief)
+    ).slice(0, 160),
     robots: project.sitePublishedAt ? "index,follow" : "noindex",
   };
 }
@@ -105,6 +112,30 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
       ? `/site/${project.id}/admin`
       : null;
 
+  if (briefIsCheeseWineClub(project.name, project.brief)) {
+    return (
+      <>
+        <CheeseWineClubSite
+          copy={preview}
+          reserveOwnerChrome={showOwnerChrome}
+        />
+        {showOwnerChrome ? (
+          <SiteOwnerChrome
+            projectId={project.id}
+            projectName={project.name}
+            sitePublished={Boolean(project.sitePublishedAt)}
+            listedInLibrary={Boolean(project.marketplaceListingId)}
+            marketplaceListingId={project.marketplaceListingId}
+            showPublishControls={isOwner || isMaster}
+            portalHref={isOwner || isMaster ? `/portal/${project.id}` : null}
+            editHref={isOwner || isMaster ? `/portal/${project.id}/edit` : null}
+            adminHref={businessAdminHref}
+          />
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: preview.css }} />
@@ -118,7 +149,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
           </a>
           <ul className="seed-nav-links">
             <li>
-              <a href="#services">Services</a>
+              <a href="#services">{preview.navLabel || "Services"}</a>
             </li>
             {preview.menuItems && preview.menuItems.length > 0 ? (
               <li>

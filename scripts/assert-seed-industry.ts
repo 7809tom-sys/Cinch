@@ -7,6 +7,7 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
+import { assignClubPairing } from "../src/lib/club-taste";
 import {
   collectSeedSiteProofFailures,
   SEED_SITE_MUST_PROOF_RULE,
@@ -25,6 +26,8 @@ import {
   seedIndustryKey,
   seedLandingCopyMismatchesIndustry,
   seedLandingLooksUnsellable,
+  seedHomePageSource,
+  seedPublicSiteCss,
   seedRestaurantMenuProducts,
   seedShopCatalogMismatchesBrief,
   seedShopChromeMismatchesBrief,
@@ -828,6 +831,109 @@ assert(
 assert(
   hometownDrive.includes("Driver portal"),
   "Seed builds a driver portal for Hometown Runner",
+);
+
+const clubName = "wisconsincheeseandwineclub.com";
+const clubBrief =
+  "https://docs.google.com/document/d/1EJdRQ9K1yuIsIVz_niBEJKLAMpFSYN2hBsAPnV8lZcQ/edit?usp=sharing";
+const club = customerFacingSiteCopy(clubName, clubBrief);
+const clubBlob = JSON.stringify(club);
+assert(
+  club.brand === "Wisconsin Cheese and Wine Club",
+  "club domain prints the club name",
+);
+assert(
+  club.headline === "The month’s cheese. The month’s wine.",
+  "club headline is the pairing, not an AI slogan",
+);
+const clubWords = [
+  club.headline,
+  club.support,
+  club.servicesHeadline,
+  club.processHeadline,
+  club.proof.quote,
+  club.proof.attribution,
+  ...club.services.flatMap((item) => [item.title, item.detail]),
+  ...club.process.flatMap((item) => [item.title, item.detail]),
+].join(" ");
+assert(/taste quiz/i.test(clubWords), "club site includes the taste quiz from the spec");
+assert(/QR/i.test(clubWords), "club site includes the package reorder code");
+assert(/70–80%/.test(clubBlob), "club site uses the spec’s renewal aim");
+assert(
+  !/all-star|Ask\. Price|neighborhood customer|2020 template|kitchen design|Core service|docs\.google/i.test(
+    clubWords,
+  ),
+  "club site does not copy the generic brochure or print the Doc URL",
+);
+assert(
+  seedLandingCopyMismatchesIndustry(clubName, clubBrief, {
+    headline: "Be the next AI all-star",
+    support: "https://docs.",
+    servicesHeadline: "Built around how you work with us",
+    services: [{ title: "Core service", detail: "https://docs." }],
+    processHeadline: "Ask. Price. Done.",
+    proof: {
+      quote: "Showed up when they said and finished what they quoted.",
+      attribution: "Sam · neighborhood customer",
+    },
+  }),
+  "the live club page is rejected as the wrong brochure",
+);
+assert(
+  !seedLandingCopyMismatchesIndustry(clubName, clubBrief, club),
+  "fresh club copy matches the cheese and wine brief",
+);
+assert(
+  seedPublicSiteCss({ name: clubName, brief: clubBrief }).includes("seed-club-palette"),
+  "club palette is burgundy sand charcoal",
+);
+assert(
+  /36 months/.test(club.process.map((step) => step.detail).join(" ")),
+  "makers can lock a featured month 36 months out",
+);
+const clubPage = seedHomePageSource(club);
+assert(
+  !clubPage.includes("What do you need?"),
+  "the club export does not ask what a consulting lead needs",
+);
+const publicClubPage = readFileSync(
+  join(process.cwd(), "src/app/site/[id]/page.tsx"),
+  "utf8",
+);
+assert(
+  publicClubPage.includes("CheeseWineClubSite") &&
+    publicClubPage.includes("briefIsCheeseWineClub"),
+  "the live club URL renders the club layout",
+);
+const fullRed = assignClubPairing({
+  body: "full",
+  sweetness: "dry",
+  tannin: "high",
+  varietal: "red",
+  firmness: "firm",
+  flavor: "aged",
+  milk: "cow",
+});
+assert(
+  /full-bodied red/.test(fullRed.title) && /aged cow’s-milk cheese/.test(fullRed.title),
+  "a full dry red with an aged cow cheese is that pairing",
+);
+const lightWhite = assignClubPairing({
+  body: "light",
+  sweetness: "sweet",
+  tannin: "high",
+  varietal: "white",
+  firmness: "soft",
+  flavor: "mild",
+  milk: "goat",
+});
+assert(
+  /light white/.test(lightWhite.title) && /goat’s-milk/.test(lightWhite.title),
+  "a sweet light white stays a white even when tannin is high",
+);
+assert(
+  /firm tannin/.test(lightWhite.note),
+  "a white plus firm tannin explains the structure",
 );
 
 if (process.exitCode) {
