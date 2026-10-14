@@ -1,7 +1,8 @@
 /**
- * HARD RULE — when Seed describes a site, crawl at least 20 competitor
- * websites in that industry and take the best of EACH: CTA from one,
- * headline from another, fulfillment from a third, SEO/AIO from the set.
+ * HARD RULE — when Seed describes a site, crawl at least 50 competitor
+ * websites in that industry and take the best features of each.
+ * Give the customer who ordered the site at least five reference links.
+ * Do not paste competitor headlines onto the page.
  * A notebook is not research — this module fetches public HTML.
  */
 
@@ -11,11 +12,13 @@ import {
   type SeedSiteCopy,
 } from "./seed-site-copy";
 
-export const MIN_COMPARABLE_CRAWL = 20;
+export const MIN_COMPARABLE_CRAWL = 50;
+
+export const MIN_CUSTOMER_REFERENCES = 5;
 
 export const SEED_COMPARE_IDEALS_RULE = {
   summary:
-    "HARD-CODED: crawl at least 20 competitor websites in this industry and take the best of EACH — CTA, headline, fulfillment, and SEO/AIO from different sites. A notebook is not research. Never UPS a car.",
+    "HARD-CODED: crawl at least 50 competitor websites in this industry and take the best features of each — CTA, headline, fulfillment, and SEO/AIO from different sites. Give the customer who ordered the website at least five reference sites to open. Do not paste competitor headlines onto the page. A notebook is not research. Never UPS a car.",
 } as const;
 
 export const SEARCH_COMPARABLE_IDEALS_TITLE =
@@ -305,6 +308,422 @@ const IDEAL_URLS: Record<string, string[]> = {
     "https://www.yelp.com/",
     "https://www.bbb.org/",
   ],
+  club: [
+    "https://www.brightcellars.com/",
+    "https://www.winc.com/",
+    "https://www.nakedwines.com/",
+    "https://www.wsjwine.com/",
+    "https://www.wine.com/",
+    "https://www.vivino.com/",
+    "https://www.winefolly.com/",
+    "https://www.klwines.com/",
+    "https://www.zachys.com/",
+    "https://www.wineenthusiast.com/",
+    "https://www.cellartracker.com/",
+    "https://www.totalwine.com/",
+    "https://www.wineaccess.com/",
+    "https://www.lastbottlewines.com/",
+    "https://www.wtso.com/",
+    "https://www.invino.com/",
+    "https://www.lot18.com/",
+    "https://www.winebid.com/",
+    "https://www.astorwines.com/",
+    "https://www.flatironwines.com/",
+    "https://www.winesearcher.com/",
+    "https://www.decanter.com/",
+    "https://www.vinous.com/",
+    "https://www.jancisrobinson.com/",
+    "https://www.robertparker.com/",
+    "https://www.flaviar.com/",
+    "https://www.reservebar.com/",
+    "https://www.drizly.com/",
+    "https://www.murrayscheese.com/",
+    "https://www.igourmet.com/",
+    "https://www.cheese.com/",
+    "https://www.wisconsincheese.com/",
+    "https://www.fromagination.com/",
+    "https://www.wisconsincheesemart.com/",
+    "https://www.formaggiokitchen.com/",
+    "https://www.dibruno.com/",
+    "https://www.zabars.com/",
+    "https://www.cowgirlcreamery.com/",
+    "https://www.pointreyescheese.com/",
+    "https://www.rothcheese.com/",
+    "https://www.hookscheese.com/",
+    "https://www.sartoricheese.com/",
+    "https://www.carrvalleycheese.com/",
+    "https://www.hookscheese.com/shop",
+    "https://www.wollersheim.com/",
+    "https://www.cedarcreekwinery.com/",
+    "https://www.culturecheesemag.com/",
+    "https://www.beecherscheese.com/",
+    "https://www.tillamook.com/",
+    "https://www.cabotcheese.coop/",
+    "https://www.goldbelly.com/",
+    "https://www.mouth.com/",
+    "https://www.food52.com/",
+    "https://www.surlatable.com/",
+    "https://www.williams-sonoma.com/",
+    "https://www.vinebox.com/",
+    "https://www.usualwines.com/",
+    "https://www.undergroundcellar.com/",
+    "https://www.firstleaf.com/",
+    "https://www.splashwines.com/",
+    "https://www.wineinsiders.com/",
+    "https://www.goldmedalwineclub.com/",
+    "https://www.thecaliforniawineclub.com/",
+    "https://www.bedfordcheeseshop.com/",
+  ],
+};
+
+/**
+ * Extra competitor hosts so every industry catalog clears the 50-site floor.
+ * Hosts already listed above are skipped by uniqueCompetitorHosts.
+ */
+const EXTRA_IDEAL_URLS: Record<string, string[]> = {
+  dealership: [
+    "https://www.shift.com/",
+    "https://www.autolist.com/",
+    "https://www.iseecars.com/",
+    "https://www.carsoup.com/",
+    "https://www.autobytel.com/",
+    "https://www.carsforsale.com/",
+    "https://www.classiccars.com/",
+    "https://www.hemmings.com/",
+    "https://www.bringatrailer.com/",
+    "https://www.dupontregistry.com/",
+    "https://www.tred.com/",
+    "https://www.drivetime.com/",
+    "https://www.byrider.com/",
+    "https://www.jdbyrider.com/",
+    "https://www.americascarmart.com/",
+    "https://www.offleaseonly.com/",
+    "https://www.carsense.com/",
+    "https://www.penskeautomotive.com/",
+    "https://www.hendrickcars.com/",
+    "https://www.herbchambers.com/",
+    "https://www.galpin.com/",
+    "https://www.echopark.com/",
+    "https://www.flowautomotive.com/",
+    "https://www.morganauto.com/",
+    "https://www.raycatena.com/",
+    "https://www.fletcherjones.com/",
+    "https://www.sewell.com/",
+    "https://www.koons.com/",
+    "https://www.ourisman.com/",
+    "https://www.sheehy.com/",
+    "https://www.darcars.com/",
+    "https://www.rickcase.com/",
+    "https://www.kengarff.com/",
+  ],
+  delivery: [
+    "https://www.favordelivery.com/",
+    "https://www.waitrapp.com/",
+    "https://www.delivery.com/",
+    "https://www.slicelife.com/",
+    "https://www.toasttab.com/",
+    "https://www.olo.com/",
+    "https://www.chownow.com/",
+    "https://www.beyondmenu.com/",
+    "https://www.menufy.com/",
+    "https://www.ezcater.com/",
+    "https://www.goldbelly.com/",
+    "https://www.tryotter.com/",
+    "https://www.shipt.com/",
+    "https://www.freshdirect.com/",
+    "https://www.hungryroot.com/",
+    "https://www.misfitsmarket.com/",
+    "https://www.thrivemarket.com/",
+    "https://www.rappi.com/",
+    "https://www.ifood.com.br/",
+    "https://www.glovoapp.com/",
+    "https://www.zomato.com/",
+    "https://www.swiggy.com/",
+    "https://www.foodpanda.com/",
+    "https://www.grab.com/",
+    "https://www.wolt.com/",
+    "https://www.lieferando.de/",
+    "https://www.talabat.com/",
+    "https://www.careem.com/",
+    "https://www.zeptonow.com/",
+    "https://www.blinkit.com/",
+    "https://www.getir.com/",
+    "https://www.amazon.com/",
+    "https://www.walmart.com/",
+    "https://www.kroger.com/",
+    "https://www.wholefoodsmarket.com/",
+  ],
+  food: [
+    "https://www.mcdonalds.com/",
+    "https://www.bk.com/",
+    "https://www.wendys.com/",
+    "https://www.tacobell.com/",
+    "https://www.kfc.com/",
+    "https://www.popeyes.com/",
+    "https://www.chick-fil-a.com/",
+    "https://www.fiveguys.com/",
+    "https://www.shakeshack.com/",
+    "https://www.in-n-out.com/",
+    "https://www.whataburger.com/",
+    "https://www.culvers.com/",
+    "https://www.sonicdrivein.com/",
+    "https://www.arbys.com/",
+    "https://www.dairyqueen.com/",
+    "https://www.subway.com/",
+    "https://www.jerseymikes.com/",
+    "https://www.firehousesubs.com/",
+    "https://www.jimmyjohns.com/",
+    "https://www.potbelly.com/",
+    "https://www.noodles.com/",
+    "https://www.pandaexpress.com/",
+    "https://www.pfchangs.com/",
+    "https://www.thecheesecakefactory.com/",
+    "https://www.redlobster.com/",
+    "https://www.texasroadhouse.com/",
+    "https://www.longhornsteakhouse.com/",
+    "https://www.crackerbarrel.com/",
+    "https://www.dennys.com/",
+    "https://www.ihop.com/",
+    "https://www.wafflehouse.com/",
+    "https://www.buffalowildwings.com/",
+    "https://www.wingstop.com/",
+  ],
+  salon: [
+    "https://www.glossgenius.com/",
+    "https://www.fresha.com/",
+    "https://www.joinblvd.com/",
+    "https://www.phorest.com/",
+    "https://www.sallybeauty.com/",
+    "https://www.cosmoprofbeauty.com/",
+    "https://www.aveda.com/",
+    "https://www.paulmitchell.com/",
+    "https://www.redken.com/",
+    "https://www.ipsy.com/",
+    "https://www.birchbox.com/",
+    "https://www.functionofbeauty.com/",
+    "https://www.curology.com/",
+    "https://www.hims.com/",
+    "https://www.forhers.com/",
+    "https://www.floydsbarbershop.com/",
+    "https://www.haircuttery.com/",
+    "https://www.firstchoicehaircutters.com/",
+    "https://www.magicuts.com/",
+    "https://www.chatters.ca/",
+    "https://www.toniandguy.com/",
+    "https://www.salonlofts.com/",
+    "https://www.solasalons.com/",
+    "https://www.phenixsalon.com/",
+    "https://www.mysalonsuite.com/",
+    "https://www.saloncentric.com/",
+    "https://www.olaplex.com/",
+    "https://www.livingproof.com/",
+    "https://www.oribe.com/",
+    "https://www.wella.com/",
+    "https://www.matrix.com/",
+    "https://www.rudysbarbershop.com/",
+  ],
+  lawn: [
+    "https://www.lawndoctor.com/",
+    "https://www.mosquitojoe.com/",
+    "https://www.mosquitonix.com/",
+    "https://www.mosquitosquad.com/",
+    "https://www.barefootmosquito.com/",
+    "https://www.savatree.com/",
+    "https://www.davey.com/",
+    "https://www.bartlett.com/",
+    "https://www.brightview.com/",
+    "https://www.ruppertlandscape.com/",
+    "https://www.uslawns.com/",
+    "https://www.groundsguys.com/",
+    "https://www.plowzandmowz.com/",
+    "https://www.getsunday.com/",
+    "https://www.orkin.com/",
+    "https://www.terminix.com/",
+    "https://www.rentokil.com/",
+    "https://www.masseyservices.com/",
+    "https://www.arrowexterminators.com/",
+    "https://www.siteone.com/",
+    "https://www.deere.com/",
+    "https://www.toro.com/",
+    "https://www.husqvarna.com/",
+    "https://www.stihlusa.com/",
+    "https://www.cubcadet.com/",
+    "https://www.ariens.com/",
+    "https://www.exmark.com/",
+    "https://www.yellowstonelandscape.com/",
+    "https://www.taskeasy.com/",
+    "https://www.lawn.com/",
+    "https://www.domyown.com/",
+    "https://www.pennington.com/",
+  ],
+  garage: [
+    "https://www.take5oilchange.com/",
+    "https://www.greasemonkeyauto.com/",
+    "https://www.speedeeoil.com/",
+    "https://www.expressoilchange.com/",
+    "https://www.tiresplus.com/",
+    "https://www.discounttire.com/",
+    "https://www.ntb.com/",
+    "https://www.bigotires.com/",
+    "https://www.belletire.com/",
+    "https://www.townfairtire.com/",
+    "https://www.mavistire.com/",
+    "https://www.goodyear.com/",
+    "https://www.michelinman.com/",
+    "https://www.continentaltire.com/",
+    "https://www.pirelli.com/",
+    "https://www.calibercollision.com/",
+    "https://www.gerbercollision.com/",
+    "https://www.carstar.com/",
+    "https://www.crashchampions.com/",
+    "https://www.servicekingcollision.com/",
+    "https://www.precisiontune.com/",
+    "https://www.tuffyauto.com/",
+    "https://www.cottman.com/",
+    "https://www.honest1auto.com/",
+    "https://www.abraauto.com/",
+    "https://www.classiccollision.com/",
+    "https://www.yokohamatire.com/",
+    "https://www.bfgoodrichtires.com/",
+    "https://www.sullivantire.com/",
+    "https://www.firestone.com/",
+    "https://www.bridgestone.com/",
+  ],
+  detail: [
+    "https://www.mistercarwash.com/",
+    "https://www.tommys-express.com/",
+    "https://www.quickquackcarwash.com/",
+    "https://www.clubcarwash.com/",
+    "https://www.tidalwaveautospa.com/",
+    "https://www.zipscarwash.com/",
+    "https://www.deltasoniccarwash.com/",
+    "https://www.gtechniq.com/",
+    "https://www.ceramicpro.com/",
+    "https://www.gyeon.co/",
+    "https://www.rupesusa.com/",
+    "https://www.armorall.com/",
+    "https://www.rainx.com/",
+    "https://www.303products.com/",
+    "https://www.sonaxusa.com/",
+    "https://www.drbeasleys.com/",
+    "https://www.poorboysworld.com/",
+    "https://www.wolfgangcarcare.com/",
+    "https://www.collinite.com/",
+    "https://www.jescar.com/",
+    "https://www.theragcompany.com/",
+    "https://www.esotericdetail.com/",
+    "https://www.obsessedgarage.com/",
+    "https://www.superstarcarwash.com/",
+    "https://www.washos.com/",
+    "https://www.autogeek.com/",
+    "https://www.carpro.com/",
+    "https://www.koch-chemie.com/",
+    "https://www.lakecountrymfg.com/",
+    "https://www.buffandshine.com/",
+    "https://www.detailpro.com/",
+  ],
+  retail: [
+    "https://www.gap.com/",
+    "https://www.oldnavy.com/",
+    "https://www.bananarepublic.com/",
+    "https://www.jcrew.com/",
+    "https://www.uniqlo.com/",
+    "https://www.zara.com/",
+    "https://www.hm.com/",
+    "https://www.nike.com/",
+    "https://www.adidas.com/",
+    "https://www.lululemon.com/",
+    "https://www.patagonia.com/",
+    "https://www.llbean.com/",
+    "https://www.dickssportinggoods.com/",
+    "https://www.academy.com/",
+    "https://www.cabelas.com/",
+    "https://www.basspro.com/",
+    "https://www.williams-sonoma.com/",
+    "https://www.potterybarn.com/",
+    "https://www.crateandbarrel.com/",
+    "https://www.westelm.com/",
+    "https://www.anthropologie.com/",
+    "https://www.urbanoutfitters.com/",
+    "https://www.newegg.com/",
+    "https://www.bhphotovideo.com/",
+    "https://www.gamestop.com/",
+    "https://www.staples.com/",
+    "https://www.officedepot.com/",
+    "https://www.containerstore.com/",
+    "https://www.walgreens.com/",
+    "https://www.cvs.com/",
+    "https://www.wholefoodsmarket.com/",
+    "https://www.kroger.com/",
+  ],
+  trade: [
+    "https://www.benjaminfranklinplumbing.com/",
+    "https://www.onehourheatandair.com/",
+    "https://www.mistersparky.com/",
+    "https://www.mrelectric.com/",
+    "https://www.mrrooter.com/",
+    "https://www.mrappliance.com/",
+    "https://www.aireserv.com/",
+    "https://www.glassdoctor.com/",
+    "https://www.windowworld.com/",
+    "https://www.renewalbyandersen.com/",
+    "https://www.leaffilter.com/",
+    "https://www.bathfitter.com/",
+    "https://www.rebath.com/",
+    "https://www.certapro.com/",
+    "https://www.stanleysteemer.com/",
+    "https://www.zerorez.com/",
+    "https://www.chemdry.com/",
+    "https://www.coit.com/",
+    "https://www.belfor.com/",
+    "https://www.pauldavis.com/",
+    "https://www.rainbowintl.com/",
+    "https://www.overheaddoor.com/",
+    "https://www.clopaydoor.com/",
+    "https://www.fivestarpainting.com/",
+    "https://www.collegepro.com/",
+    "https://www.orkin.com/",
+    "https://www.terminix.com/",
+    "https://www.ars.com/",
+    "https://www.a1garagedoor.com/",
+    "https://www.garage.com/",
+  ],
+  generic: [
+    "https://www.duda.co/",
+    "https://www.jimdo.com/",
+    "https://www.site123.com/",
+    "https://www.zyro.com/",
+    "https://www.ucraft.com/",
+    "https://www.tilda.cc/",
+    "https://www.bubble.io/",
+    "https://www.softr.io/",
+    "https://www.durable.co/",
+    "https://www.10web.io/",
+    "https://www.dreamhost.com/",
+    "https://www.a2hosting.com/",
+    "https://www.inmotionhosting.com/",
+    "https://www.wpengine.com/",
+    "https://www.kinsta.com/",
+    "https://www.getflywheel.com/",
+    "https://www.cloudways.com/",
+    "https://www.netlify.com/",
+    "https://vercel.com/",
+    "https://www.webador.com/",
+    "https://www.vistaprint.com/",
+    "https://www.format.com/",
+    "https://www.cargocollective.com/",
+    "https://www.readymag.com/",
+    "https://www.super.so/",
+    "https://www.typedream.com/",
+    "https://www.unbounce.com/",
+    "https://www.leadpages.com/",
+    "https://www.instapage.com/",
+    "https://www.clickfunnels.com/",
+    "https://www.podia.com/",
+    "https://www.teachable.com/",
+    "https://www.kajabi.com/",
+    "https://www.systeme.io/",
+  ],
 };
 
 const SEARCH_QUERY: Record<string, string> = {
@@ -320,10 +739,358 @@ const SEARCH_QUERY: Record<string, string> = {
   retail: "best small retail website shop now",
   trade: "best home service website request service",
   generic: "best small business website clear CTA SEO",
+  club: "cheese and wine club monthly pairing taste quiz subscription reorder",
 };
 
 export function idealUrlsForIndustry(industry: string): string[] {
-  return IDEAL_URLS[industry] ?? IDEAL_URLS.generic;
+  const base = IDEAL_URLS[industry] ?? IDEAL_URLS.generic;
+  const extra = EXTRA_IDEAL_URLS[industry] ?? [];
+  return [...base, ...extra];
+}
+
+export type CustomerReferenceSite = {
+  url: string;
+  host: string;
+  feature: string;
+};
+
+/** Five sites the ordering customer can open. The feature line is ours. */
+const CUSTOMER_REFERENCES: Record<string, CustomerReferenceSite[]> = {
+  club: [
+    {
+      url: "https://www.brightcellars.com/",
+      host: "brightcellars.com",
+      feature: "A palate quiz chooses the case before it ships.",
+    },
+    {
+      url: "https://www.nakedwines.com/",
+      host: "nakedwines.com",
+      feature: "Members can skip a month and still back the maker.",
+    },
+    {
+      url: "https://www.winc.com/",
+      host: "winc.com",
+      feature: "Preferences set a monthly club shipment.",
+    },
+    {
+      url: "https://www.wisconsincheese.com/",
+      host: "wisconsincheese.com",
+      feature: "The state’s creameries are the product, not a stock board.",
+    },
+    {
+      url: "https://www.murrayscheese.com/",
+      host: "murrayscheese.com",
+      feature: "A producer note sits next to the wedge.",
+    },
+  ],
+  dealership: [
+    {
+      url: "https://www.carmax.com/",
+      host: "carmax.com",
+      feature: "Filter the lot and hold a car.",
+    },
+    {
+      url: "https://www.carvana.com/",
+      host: "carvana.com",
+      feature: "The seller delivers the car. A parcel carrier does not.",
+    },
+    {
+      url: "https://www.autotrader.com/",
+      host: "autotrader.com",
+      feature: "Search inventory before the visit.",
+    },
+    {
+      url: "https://www.cargurus.com/",
+      host: "cargurus.com",
+      feature: "Price context sits on the listing.",
+    },
+    {
+      url: "https://www.edmunds.com/",
+      host: "edmunds.com",
+      feature: "Research the car, then go see it.",
+    },
+  ],
+  delivery: [
+    {
+      url: "https://www.doordash.com/",
+      host: "doordash.com",
+      feature: "Order from kitchens nearby.",
+    },
+    {
+      url: "https://www.ubereats.com/",
+      host: "ubereats.com",
+      feature: "Track the bag from kitchen to door.",
+    },
+    {
+      url: "https://www.grubhub.com/",
+      host: "grubhub.com",
+      feature: "Reorder a meal you already liked.",
+    },
+    {
+      url: "https://www.instacart.com/",
+      host: "instacart.com",
+      feature: "A shopper brings the grocery list.",
+    },
+    {
+      url: "https://www.gopuff.com/",
+      host: "gopuff.com",
+      feature: "A small order can still come to the door.",
+    },
+  ],
+  food: [
+    {
+      url: "https://www.dominos.com/",
+      host: "dominos.com",
+      feature: "Order, pickup, or delivery from one menu.",
+    },
+    {
+      url: "https://www.chipotle.com/",
+      host: "chipotle.com",
+      feature: "Build the order in a few taps.",
+    },
+    {
+      url: "https://www.sweetgreen.com/",
+      host: "sweetgreen.com",
+      feature: "The menu is the homepage.",
+    },
+    {
+      url: "https://www.olivegarden.com/",
+      host: "olivegarden.com",
+      feature: "A table can be reserved before you arrive.",
+    },
+    {
+      url: "https://www.starbucks.com/",
+      host: "starbucks.com",
+      feature: "A saved order comes back the next visit.",
+    },
+  ],
+  salon: [
+    {
+      url: "https://www.greatclips.com/",
+      host: "greatclips.com",
+      feature: "Book a chair by time, not by a phone tag.",
+    },
+    {
+      url: "https://www.sportclips.com/",
+      host: "sportclips.com",
+      feature: "Check-in and the wait is visible.",
+    },
+    {
+      url: "https://www.booksy.com/",
+      host: "booksy.com",
+      feature: "The stylist’s book is online.",
+    },
+    {
+      url: "https://www.styleseat.com/",
+      host: "styleseat.com",
+      feature: "A client can rebook the same service.",
+    },
+    {
+      url: "https://www.drybar.com/",
+      host: "drybar.com",
+      feature: "Services are named so a guest knows what they booked.",
+    },
+  ],
+  lawn: [
+    {
+      url: "https://www.trugreen.com/",
+      host: "trugreen.com",
+      feature: "A seasonal plan, not a one-off guess.",
+    },
+    {
+      url: "https://www.lawnstarter.com/",
+      host: "lawnstarter.com",
+      feature: "A quote before the crew shows up.",
+    },
+    {
+      url: "https://www.lawnlove.com/",
+      host: "lawnlove.com",
+      feature: "Recurring mows on a route.",
+    },
+    {
+      url: "https://www.angi.com/",
+      host: "angi.com",
+      feature: "Compare local crews before you hire.",
+    },
+    {
+      url: "https://www.thumbtack.com/",
+      host: "thumbtack.com",
+      feature: "Request the job and get a price.",
+    },
+  ],
+  garage: [
+    {
+      url: "https://www.jiffylube.com/",
+      host: "jiffylube.com",
+      feature: "Book a service bay online.",
+    },
+    {
+      url: "https://www.firestonecompleteautocare.com/",
+      host: "firestonecompleteautocare.com",
+      feature: "Tires and repair share one visit.",
+    },
+    {
+      url: "https://www.meineke.com/",
+      host: "meineke.com",
+      feature: "The repair menu is public before you arrive.",
+    },
+    {
+      url: "https://www.yourmechanic.com/",
+      host: "yourmechanic.com",
+      feature: "The mechanic can come to the car.",
+    },
+    {
+      url: "https://www.repairpal.com/",
+      host: "repairpal.com",
+      feature: "A fair-price range sits next to the job.",
+    },
+  ],
+  detail: [
+    {
+      url: "https://www.ziebart.com/",
+      host: "ziebart.com",
+      feature: "Packages are named before the driveway visit.",
+    },
+    {
+      url: "https://www.chemicalguys.com/",
+      host: "chemicalguys.com",
+      feature: "The product and the job are explained together.",
+    },
+    {
+      url: "https://www.mistercarwash.com/",
+      host: "mistercarwash.com",
+      feature: "A membership for the wash you repeat.",
+    },
+    {
+      url: "https://www.meguiars.com/",
+      host: "meguiars.com",
+      feature: "Care steps are shown, not just a slogan.",
+    },
+    {
+      url: "https://www.griotsgarage.com/",
+      host: "griotsgarage.com",
+      feature: "A kit matches the job the owner is doing.",
+    },
+  ],
+  retail: [
+    {
+      url: "https://www.rei.com/",
+      host: "rei.com",
+      feature: "The product story sits next to the buy button.",
+    },
+    {
+      url: "https://www.etsy.com/",
+      host: "etsy.com",
+      feature: "The maker is part of the listing.",
+    },
+    {
+      url: "https://www.shopify.com/",
+      host: "shopify.com",
+      feature: "A shop can live on the same site as the story.",
+    },
+    {
+      url: "https://www.target.com/",
+      host: "target.com",
+      feature: "Search, then add, then checkout.",
+    },
+    {
+      url: "https://www.nordstrom.com/",
+      host: "nordstrom.com",
+      feature: "Size, color, and availability before the cart.",
+    },
+  ],
+  trade: [
+    {
+      url: "https://www.angi.com/",
+      host: "angi.com",
+      feature: "Request a home service with the job named.",
+    },
+    {
+      url: "https://www.thumbtack.com/",
+      host: "thumbtack.com",
+      feature: "Get a price before the truck rolls.",
+    },
+    {
+      url: "https://www.taskrabbit.com/",
+      host: "taskrabbit.com",
+      feature: "Book a person for a specific hour.",
+    },
+    {
+      url: "https://www.rotorooter.com/",
+      host: "rotorooter.com",
+      feature: "The emergency job has its own path.",
+    },
+    {
+      url: "https://www.servpro.com/",
+      host: "servpro.com",
+      feature: "What happens after the call is spelled out.",
+    },
+  ],
+  generic: [
+    {
+      url: "https://www.squarespace.com/",
+      host: "squarespace.com",
+      feature: "One primary action on the first screen.",
+    },
+    {
+      url: "https://www.wix.com/",
+      host: "wix.com",
+      feature: "The owner can change the words without a rebuild.",
+    },
+    {
+      url: "https://www.webflow.com/",
+      host: "webflow.com",
+      feature: "Layout stays intentional on a phone.",
+    },
+    {
+      url: "https://www.shopify.com/",
+      host: "shopify.com",
+      feature: "A shop can sit next to the story.",
+    },
+    {
+      url: "https://www.godaddy.com/",
+      host: "godaddy.com",
+      feature: "A domain and a contact path are obvious.",
+    },
+  ],
+};
+
+export function customerReferenceSites(
+  industry: string,
+  research?: ComparableResearch | null,
+): CustomerReferenceSite[] {
+  const curated = CUSTOMER_REFERENCES[industry] ?? CUSTOMER_REFERENCES.generic;
+  const picked: CustomerReferenceSite[] = [];
+  const seen = new Set<string>();
+
+  function push(site: CustomerReferenceSite) {
+    const host = site.host.replace(/^www\./, "");
+    if (!host || seen.has(host) || picked.length >= MIN_CUSTOMER_REFERENCES) return;
+    if (!/^https:\/\//i.test(site.url)) return;
+    seen.add(host);
+    picked.push({ ...site, host });
+  }
+
+  for (const site of curated) push(site);
+
+  const fromResearch = [...(research?.snapshots ?? [])]
+    .filter((snap) => snap.fetched && snap.url)
+    .sort((a, b) => b.score - a.score);
+  for (const snap of fromResearch) {
+    push({
+      url: snap.url,
+      host: snap.host || hostOf(snap.url),
+      feature: "Opened while taking features for this site.",
+    });
+  }
+  for (const url of idealUrlsForIndustry(industry)) {
+    push({
+      url,
+      host: hostOf(url),
+      feature: "Opened while taking features for this site.",
+    });
+  }
+  return picked;
 }
 
 export function comparableSearchQuery(
@@ -726,6 +1493,8 @@ export function applyComparableOverlay(
   copy: SeedSiteCopy,
   research: ComparableResearch,
 ): SeedSiteCopy {
+  // Club pages keep the specification. Competitor lines stay in the research notes.
+  if (research.industry === "club") return copy;
   const next = { ...copy };
   const cta = research.bestOfEach?.cta?.value ?? research.bestCta;
   const headline = research.bestOfEach?.headline?.value ?? research.bestHeadline;
@@ -837,6 +1606,11 @@ export async function researchComparables(input: {
       "Customer-friendly lot method: hold the unit, book a drive, or dealer-deliver the car. Never UPS a vehicle.",
     );
   }
+  if (industry === "club") {
+    takeaways.push(
+      "Club pages keep the specification. Take quiz, skip-or-gift, maker notes, and package reorder as features. Do not paste competitor headlines. Show the customer five reference sites.",
+    );
+  }
   takeaways.push(
     ...bestOfEach.methods.map(
       (piece) => `Best method from ${piece.fromHost}: ${piece.value}`,
@@ -945,6 +1719,15 @@ export function seoSourceFromResearch(
   brand: string,
   research: ComparableResearch,
 ): string {
+  if (research.industry === "club") {
+    return `export const siteSeo = {
+  title: ${JSON.stringify(`${brand} · Monthly Wisconsin pairings`)},
+  description: ${JSON.stringify("A taste quiz matches you to a Wisconsin cheese and wine pairing. Reorder from the package. A share of the margin stays with farm nonprofits.")},
+  robots: "index,follow",
+  aio: "Taste quiz, monthly pairing, package reorder, skip or gift a month, maker notes. Competitor headlines stay off this page.",
+};
+`;
+  }
   const title =
     research.bestSeoTitle &&
     !containsForeignBrand(
@@ -1027,6 +1810,12 @@ ${(research.customerFriendlyMethods ?? []).map((line) => `- ${line}`).join("\n")
 
 - Title: ${research.bestSeoTitle || "(industry default)"}
 - Description: ${research.bestSeoDescription || "(industry default)"}
+
+## Reference sites for the customer
+
+${customerReferenceSites(research.industry, research)
+  .map((site) => `- [${site.host}](${site.url}) — ${site.feature}`)
+  .join("\n")}
 
 ## Take the best of each
 

@@ -15,6 +15,7 @@ import {
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import { CheeseWineClubSite } from "@/components/cheese-wine-club-site";
+import { customerReferenceSites } from "@/lib/seed-comparable-research";
 import {
   briefIsCheeseWineClub,
   cheeseWineClubSiteCopy,
@@ -117,6 +118,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
       <>
         <CheeseWineClubSite
           copy={preview}
+          references={customerReferenceSites("club")}
           reserveOwnerChrome={showOwnerChrome}
         />
         {showOwnerChrome ? (

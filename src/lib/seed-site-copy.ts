@@ -1420,6 +1420,16 @@ export function cheeseWineClubSiteCopy(brand = "Wisconsin Cheese and Wine Club")
         detail:
           "Every shipment has a QR code on the bottle or wedge. Scan it and that exact item is waiting in a one-tap reorder.",
       },
+      {
+        title: "Skip a month or send it",
+        detail:
+          "The membership stays. That box can wait, or it can go to someone else as a gift, without starting the club over.",
+      },
+      {
+        title: "The maker’s note",
+        detail:
+          "The creamery and the winery tell you who made this month’s pairing. The note rides in the box.",
+      },
     ],
     galleryEyebrow: "Wisconsin",
     galleryHeadline: "Cheese, wine, and the table they share",

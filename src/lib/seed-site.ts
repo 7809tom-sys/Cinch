@@ -213,6 +213,11 @@ function mergeStoredCopy(
   fallback: SeedSiteCopy,
   raw: string,
 ): SeedSiteCopy {
+  // The stored club page was a consulting brochure. Keep none of it.
+  if (briefIsCheeseWineClub(projectName, brief)) {
+    return fallback;
+  }
+
   try {
     const copy = JSON.parse(raw) as Partial<SeedSiteCopy>;
 
@@ -383,7 +388,12 @@ export async function repairCustomerLandingIfNeeded(
         /\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(
           `${project.name} ${project.brief}`,
         );
+      const clubSpec = briefIsCheeseWineClub(project.name, project.brief)
+        ? customerFacingSiteCopy(project.name, project.brief)
+        : null;
       copyLooksBad = Boolean(
+          (clubSpec &&
+            (copy.headline ?? "").trim() !== clubSpec.headline.trim()) ||
           (copy.headline && looksLikeAgentTaskCopy(copy.headline)) ||
           (copy.support && looksLikeAgentTaskCopy(copy.support)) ||
           (copy.support && /https?:\/\//i.test(copy.support)) ||

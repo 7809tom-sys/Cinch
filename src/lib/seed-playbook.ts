@@ -15,7 +15,7 @@ import { briefIsDeliveryPlatform } from "./seed-site-copy";
 export const SENTI_NAME = "Senti";
 
 export const SEED_PLAYBOOK_RULE =
-  "Prep work is everything. Describe the chat before the chat happens. Spec website, admin, accounting, CRM, and delivery — or mark N/A — before Conductor builds. Senti holds that brief on the Seed. Do not dump a suggestion file on cinchseed.com. Do not open AI cold.";
+  "Prep work is everything. Describe the chat before the chat happens. Spec website, admin, accounting, CRM, and delivery — or mark N/A — before Conductor builds. Senti holds that brief on the Seed. Do not dump a suggestion file on cinchseed.com. Do not open AI cold. Programming the Seed is not enough. Research 50 competitor sites, take the best features from them, and give the customer who ordered the website at least five reference sites to open. Do not paste those sites’ headlines onto the page.";
 
 export function seedPlaybookUrl(projectId: string): string {
   return `/admin/projects/${projectId}/playbook`;

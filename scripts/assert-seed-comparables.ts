@@ -10,8 +10,10 @@ import {
   compareComparableSites,
   composeBestOfEach,
   ctaFitsIndustry,
+  customerReferenceSites,
   idealUrlsForIndustry,
   MIN_COMPARABLE_CRAWL,
+  MIN_CUSTOMER_REFERENCES,
   parseDuckDuckGoResultUrls,
   researchMeetsHardRule,
   scoreComparableSnapshot,
@@ -41,9 +43,10 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(
-  /crawl at least 20/i.test(SEED_COMPARE_IDEALS_RULE.summary) &&
-    /best of EACH/i.test(SEED_COMPARE_IDEALS_RULE.summary),
-  "rule requires crawling at least 20 competitors and taking the best of each",
+  /crawl at least 50/i.test(SEED_COMPARE_IDEALS_RULE.summary) &&
+    /best features of each/i.test(SEED_COMPARE_IDEALS_RULE.summary) &&
+    /five reference sites/i.test(SEED_COMPARE_IDEALS_RULE.summary),
+  "rule requires crawling at least 50 competitors, the best features, and five reference sites",
 );
 for (const industry of [
   "dealership",
@@ -56,6 +59,7 @@ for (const industry of [
   "retail",
   "trade",
   "generic",
+  "club",
 ]) {
   assert(
     uniqueCompetitorHosts(idealUrlsForIndustry(industry)).length >=
@@ -238,7 +242,7 @@ assert(
     customerFriendlyMethods: [],
     takeaways: [],
   }),
-  "a one-site notebook fails the 20-competitor hard rule",
+  "a one-site notebook fails the 50-competitor hard rule",
 );
 assert(
   !researchMeetsHardRule({
@@ -403,15 +407,20 @@ assert(
   "planBuild queues comparable research when describing the site",
 );
 assert(
-  /crawl at least 20/i.test(backlog) &&
-    /best of EACH/i.test(backlog) &&
+  /crawl at least 50/i.test(backlog) &&
+    /best features of each/i.test(backlog) &&
+    /five reference sites/i.test(backlog) &&
     /never UPS a car/i.test(backlog),
-  "planBuild research task requires a 20-site crawl and the best of each",
+  "planBuild research task requires a 50-site crawl and the best features",
 );
 const siteLib = readFileSync(join(process.cwd(), "src/lib/seed-site.ts"), "utf8");
 assert(
   siteLib.includes("ensureComparableResearchInSeed"),
-  "opening the live site hard-runs the 20-competitor crawl when research is missing",
+  "opening the live site hard-runs the 50-competitor crawl when research is missing",
+);
+assert(
+  /if \(briefIsCheeseWineClub\(projectName, brief\)\) \{\s*return fallback;/.test(siteLib),
+  "club pages discard every stored Cinch landing field",
 );
 assert(
   source.includes("writeComparableResearchIntoSeed") &&
@@ -423,8 +432,48 @@ const docs = readFileSync(
   "utf8",
 );
 assert(
-  /crawl at least 20/i.test(docs),
-  "docs lock the crawl-20-sites rule",
+  /crawl at least 50/i.test(docs) && /five reference sites/i.test(docs),
+  "docs lock the crawl-50-sites rule and the five reference sites",
+);
+const clubCopy = customerFacingSiteCopy(
+  "wisconsincheeseandwineclub.com",
+  "https://docs.google.com/document/d/1EJdRQ9K1yuIsIVz_niBEJKLAMpFSYN2hBsAPnV8lZcQ/edit",
+);
+const clubStolen = applyComparableOverlay(clubCopy, {
+  query: "club",
+  industry: "club",
+  searchedAt: "2026-10-14T00:00:00.000Z",
+  urlsConsidered: idealUrlsForIndustry("club"),
+  snapshots: [],
+  winnerUrl: null,
+  bestCta: "Shop the sale",
+  bestHeadline: "Be the next AI all-star",
+  bestSeoTitle: "Core service",
+  bestSeoDescription: "Ask. Price. Done.",
+  customerFriendlyMethods: [],
+  takeaways: [],
+});
+assert(
+  clubStolen.headline === clubCopy.headline && clubStolen.cta === clubCopy.cta,
+  "club overlay does not paste competitor headlines or CTAs",
+);
+const clubRefs = customerReferenceSites("club");
+assert(
+  clubRefs.length >= MIN_CUSTOMER_REFERENCES &&
+    clubRefs.every((site) => site.url.startsWith("https://")) &&
+    clubRefs.some((site) => site.host === "brightcellars.com") &&
+    clubRefs.some((site) => site.host === "wisconsincheese.com") &&
+    !/all-star|ask\. price/i.test(clubRefs.map((site) => site.feature).join(" ")),
+  "the ordering customer gets five club reference sites without stolen headlines",
+);
+const senti = readFileSync(join(process.cwd(), "src/lib/seed-playbook.ts"), "utf8");
+const prep = readFileSync(join(process.cwd(), "src/lib/seed-prep.ts"), "utf8");
+assert(
+  /Research 50 competitor sites/i.test(senti) &&
+    /five reference sites/i.test(senti) &&
+    /50 competitor sites/i.test(prep) &&
+    /five reference sites/i.test(prep),
+  "Senti is told to research 50 sites and show five references",
 );
 
 if (process.exitCode) {
