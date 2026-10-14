@@ -6,7 +6,10 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import {
   driveReferenceMarkdown,
+  extractGoogleDriveFileIds,
+  mimeTypeFromDriveShareUrl,
   parseGoogleDriveFileId,
+  publicGoogleExportUrl,
   slugDriveFileName,
 } from "../src/lib/google-drive";
 import {
@@ -49,6 +52,25 @@ assert(
 assert(
   parseGoogleDriveFileId("https://example.com/not-drive") === null,
   "rejects non-Google links",
+);
+assert(
+  extractGoogleDriveFileIds(
+    "see https://docs.google.com/document/d/1AbCDefGhIjkLMnopQRstuVWxyz012345/edit",
+  )[0]?.id === "1AbCDefGhIjkLMnopQRstuVWxyz012345",
+  "finds a Docs link inside a message",
+);
+assert(
+  mimeTypeFromDriveShareUrl(
+    "https://docs.google.com/document/d/1AbCDefGhIjkLMnopQRstuVWxyz012345/edit",
+  ) === "application/vnd.google-apps.document",
+  "a Docs URL is a Google Doc",
+);
+assert(
+  publicGoogleExportUrl(
+    "1AbCDefGhIjkLMnopQRstuVWxyz012345",
+    "application/vnd.google-apps.document",
+  )?.includes("/export?format=txt") === true,
+  "public Doc export is plain text",
 );
 
 assert(

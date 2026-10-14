@@ -86,6 +86,97 @@ export function parseGoogleDriveFileId(raw: string): string | null {
   return null;
 }
 
+const DRIVE_URL_IN_TEXT =
+  /https?:\/\/(?:[\w-]+\.)?google\.com\/[^\s<>"')]+/gi;
+
+/** Every Drive/Docs/Sheets/Slides file id mentioned in a message. */
+export function extractGoogleDriveFileIds(
+  raw: string,
+): Array<{ id: string; url: string }> {
+  const found: Array<{ id: string; url: string }> = [];
+  const seen = new Set<string>();
+  const push = (id: string | null, url: string) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    found.push({ id, url });
+  };
+
+  const trimmed = raw.trim();
+  if (trimmed && !/\s/.test(trimmed)) {
+    push(parseGoogleDriveFileId(trimmed), trimmed);
+  }
+
+  for (const match of raw.matchAll(DRIVE_URL_IN_TEXT)) {
+    const url = match[0].replace(/[.,]+$/, "");
+    push(parseGoogleDriveFileId(url), url);
+  }
+  return found;
+}
+
+/** Guess a Google-native MIME type from a share URL. */
+export function mimeTypeFromDriveShareUrl(raw: string): string | null {
+  if (/docs\.google\.com\/document\//i.test(raw)) {
+    return "application/vnd.google-apps.document";
+  }
+  if (/docs\.google\.com\/spreadsheets\//i.test(raw)) {
+    return "application/vnd.google-apps.spreadsheet";
+  }
+  if (/docs\.google\.com\/presentation\//i.test(raw)) {
+    return "application/vnd.google-apps.presentation";
+  }
+  if (/drive\.google\.com\/drive\/folders\//i.test(raw)) {
+    return "application/vnd.google-apps.folder";
+  }
+  return null;
+}
+
+export function publicGoogleExportUrl(
+  fileId: string,
+  mimeType: string,
+): string | null {
+  if (mimeType === "application/vnd.google-apps.document") {
+    return `https://docs.google.com/document/d/${encodeURIComponent(fileId)}/export?format=txt`;
+  }
+  if (mimeType === "application/vnd.google-apps.spreadsheet") {
+    return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(fileId)}/export?format=csv`;
+  }
+  if (mimeType === "application/vnd.google-apps.presentation") {
+    return `https://docs.google.com/presentation/d/${encodeURIComponent(fileId)}/export?format=txt`;
+  }
+  return null;
+}
+
+/**
+ * Read a file that is shared as "anyone with the link".
+ * Private files redirect to Google sign-in and return null.
+ */
+export async function exportPublicGoogleFileText(input: {
+  fileId: string;
+  mimeType: string;
+  maxChars?: number;
+}): Promise<string | null> {
+  const url = publicGoogleExportUrl(input.fileId, input.mimeType);
+  if (!url) return null;
+  const maxChars = input.maxChars ?? 12_000;
+  let response: Response;
+  try {
+    response = await fetch(url, { redirect: "manual", cache: "no-store" });
+  } catch {
+    return null;
+  }
+  if (response.status < 200 || response.status >= 300) return null;
+  const type = response.headers.get("content-type") || "";
+  if (/html/i.test(type)) return null;
+  const text = await response.text();
+  const cleaned = text.replace(/\u0000/g, "").trim();
+  if (!cleaned || /<!doctype html|<html/i.test(cleaned.slice(0, 300))) {
+    return null;
+  }
+  return cleaned.length > maxChars
+    ? `${cleaned.slice(0, maxChars)}\n\n…(truncated for Seed sync)`
+    : cleaned;
+}
+
 export async function verifyGoogleAccessToken(accessToken: string): Promise<{
   email: string;
   name: string;
