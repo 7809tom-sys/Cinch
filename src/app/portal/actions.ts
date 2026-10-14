@@ -36,7 +36,14 @@ import { formatUsd, priceForAccount } from "@/lib/pricing";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { listAffiliateDesigns } from "@/lib/affiliate-designs-store";
 import { getSeedWatchSnapshot } from "@/lib/seed-watch";
-import { getSourceBundle } from "@/lib/seed-source";
+import { getSourceBundle, upsertSourceFile } from "@/lib/seed-source";
+import {
+  classifyCustomerLink,
+  composeBriefFromFacts,
+  draftFromDocumentText,
+  fetchPublicLinkText,
+  type IntakeFact,
+} from "@/lib/seed-link-intake";
 import {
   creditCapturedLockgmReferral,
   resolveLockgmPublicGmId,
@@ -1203,6 +1210,146 @@ export async function removeDriveReferenceAction(input: {
   if (!result.ok) return result;
   revalidateDrivePaths(input.projectId);
   return result;
+}
+
+const PRIVATE_GOOGLE_LINK =
+  "Google is keeping that file private, so the Seed cannot read it yet. Connect Google Drive on this Seed, or set the file to anyone with the link, then paste it again.";
+
+/** Read a Google Drive, Dropbox, or web link into lines the customer can fix. */
+export async function readSeedLinkAction(projectId: string, url: string) {
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const classified = classifyCustomerLink(url);
+  if (!classified) {
+    return {
+      ok: false as const,
+      error: "Paste a Google Drive, Dropbox, or other public https link.",
+    };
+  }
+
+  if (classified.kind === "google") {
+    const customer = access.customer;
+    if (!customer) {
+      return { ok: false as const, error: "Sign in required." };
+    }
+    const attached = await attachDriveShareLinkToProject({
+      projectId: access.project.id,
+      projectName: access.project.name,
+      customerId: customer.id,
+      shareUrl: classified.url,
+    });
+    if (!attached.ok) return attached;
+    const text = attached.reference.excerpt?.trim() ?? "";
+    if (text.length < 40) {
+      revalidateDrivePaths(projectId);
+      return { ok: false as const, error: PRIVATE_GOOGLE_LINK };
+    }
+    revalidateDrivePaths(projectId);
+    return {
+      ok: true as const,
+      draft: draftFromDocumentText({
+        text,
+        sourceUrl: classified.url,
+        sourceLabel: "Google Drive",
+        fallbackTitle: attached.reference.name,
+      }),
+    };
+  }
+
+  const fetched = await fetchPublicLinkText(classified.fetchUrl);
+  if (!fetched.ok) return fetched;
+  return {
+    ok: true as const,
+    draft: draftFromDocumentText({
+      text: fetched.text,
+      sourceUrl: classified.url,
+      sourceLabel: classified.kind === "dropbox" ? "Dropbox" : "Web link",
+    }),
+  };
+}
+
+/** Save the lines the customer kept and rebuild the Seed site from them. */
+export async function applySeedLinkFactsAction(
+  projectId: string,
+  input: {
+    name: string;
+    summary: string;
+    facts: IntakeFact[];
+    sourceUrl: string;
+    sourceLabel: string;
+  },
+) {
+  const access = await canManageSeedWebsite(projectId);
+  if (!access.ok) return { ok: false as const, error: access.error };
+
+  const name = input.name.trim();
+  const brief = composeBriefFromFacts({
+    summary: input.summary,
+    facts: input.facts ?? [],
+  });
+  if (!name) return { ok: false as const, error: "Add a name for this Seed." };
+  if (!brief) {
+    return {
+      ok: false as const,
+      error: "Keep a summary or at least one line, then build.",
+    };
+  }
+
+  const result = await updateProjectDetails(projectId, { name, brief });
+  if ("error" in result) return { ok: false as const, error: result.error };
+
+  const kept = (input.facts ?? []).filter((fact) => fact.included && fact.text.trim());
+  await upsertSourceFile({
+    projectId,
+    path: "docs/references/confirmed-link.md",
+    content: `# Confirmed from ${input.sourceLabel || "a link"}
+
+Source: ${input.sourceUrl || "(pasted link)"}
+
+## Summary
+
+${input.summary.trim()}
+
+## Kept
+
+${kept.map((fact) => `- ${fact.text.trim()}`).join("\n") || "_No lines kept._"}
+`,
+    status: "ready",
+    message: "Saved the lines the owner confirmed from a pasted link",
+    agentName: "Owner",
+  });
+
+  if (result.reactionTasksQueued > 0) {
+    try {
+      await assignWorkAfterSeedEdit(projectId);
+    } catch {
+      /* site already rebuilt */
+    }
+  }
+  try {
+    await refreshDevelopedSeedPreview(result.project);
+  } catch {
+    /* listing may not exist */
+  }
+
+  revalidatePath(`/portal/${projectId}`);
+  revalidatePath(`/portal/${projectId}/references`);
+  revalidatePath(`/portal/${projectId}/edit`);
+  revalidatePath("/portal");
+  revalidatePath(`/site/${projectId}`);
+  revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/shop`);
+  revalidatePath("/browse");
+
+  const writer = result.project.seedKind === "writer";
+  const base = writer
+    ? `/portal/${projectId}/writer`
+    : liveWebsiteUrl(result.project);
+  const websiteUrl = writer
+    ? base
+    : `${base}${base.includes("?") ? "&" : "?"}refreshed=${Date.now()}`;
+  return { ok: true as const, websiteUrl };
 }
 
 export async function resyncDriveReferencesAction(projectId: string) {

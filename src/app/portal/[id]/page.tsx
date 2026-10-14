@@ -22,6 +22,7 @@ import {
 import { AffiliateDesignCrm } from "@/components/affiliate-design-crm";
 import { ConnectImproveBoard } from "@/components/connect-improve-board";
 import { DriveReferencesPanel } from "@/components/drive-references-panel";
+import { SeedLinkIntake } from "@/components/seed-link-intake";
 import { WatchPingLine } from "@/components/watch-ping-line";
 import { ConnectPanel } from "./connect-panel";
 import { PortalRefreshButton } from "../refresh-button";
@@ -268,6 +269,14 @@ export default async function PortalProjectPage({ params }: PageProps) {
           </div>
 
           <div className="mt-8">
+            <SeedLinkIntake
+              projectId={project.id}
+              currentName={project.name}
+              seedKind={project.seedKind}
+              seedMode={project.seedMode}
+            />
+          </div>
+          <div className="mt-6">
             <DriveReferencesPanel
               projectId={project.id}
               initialReferences={snapshot.driveReferences}

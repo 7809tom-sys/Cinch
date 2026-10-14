@@ -7,8 +7,10 @@ import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
   driveReferenceMarkdown,
   exportDriveFileText,
+  exportPublicGoogleFileText,
   getDriveFile,
   listDriveFiles,
+  mimeTypeFromDriveShareUrl,
   parseGoogleDriveFileId,
   slugDriveFileName,
   type DriveFileSummary,
@@ -196,6 +198,23 @@ async function syncReferenceIntoSource(input: {
     excerpt =
       (await exportDriveFileText({
         accessToken: input.accessToken,
+        fileId: input.reference.driveFileId,
+        mimeType: input.reference.mimeType,
+      })) ?? excerpt;
+  }
+
+  const linkMime = mimeTypeFromDriveShareUrl(
+    input.reference.webViewLink || "",
+  );
+  if (
+    linkMime &&
+    input.reference.mimeType === "application/octet-stream"
+  ) {
+    input.reference.mimeType = linkMime;
+  }
+  if (!excerpt?.trim() && input.reference.kind === "file") {
+    excerpt =
+      (await exportPublicGoogleFileText({
         fileId: input.reference.driveFileId,
         mimeType: input.reference.mimeType,
       })) ?? excerpt;
@@ -545,10 +564,13 @@ export async function attachDriveShareLinkToProject(input: {
     });
   }
 
+  const shareMime = mimeTypeFromDriveShareUrl(input.shareUrl);
   const name =
     input.label?.trim() ||
     file?.name ||
-    `Drive reference ${fileId.slice(0, 8)}`;
+    (shareMime === "application/vnd.google-apps.document"
+      ? `Google Doc ${fileId.slice(0, 8)}`
+      : `Drive reference ${fileId.slice(0, 8)}`);
   const store = await ensureStore();
   const existing = store.references.find(
     (item) =>
@@ -560,11 +582,16 @@ export async function attachDriveShareLinkToProject(input: {
     customerId: input.customerId,
     driveFileId: fileId,
     name,
-    mimeType: file?.mimeType || "application/octet-stream",
-    kind: file?.kind || "file",
+    mimeType:
+      file?.mimeType || shareMime || "application/octet-stream",
+    kind:
+      file?.kind ||
+      (shareMime === "application/vnd.google-apps.folder" ? "folder" : "file"),
     webViewLink:
       file?.webViewLink ||
-      `https://drive.google.com/file/d/${fileId}/view`,
+      (/^https?:\/\//i.test(input.shareUrl.trim())
+        ? input.shareUrl.trim()
+        : `https://drive.google.com/file/d/${fileId}/view`),
     iconLink: file?.iconLink ?? null,
     sourcePath: null,
     excerpt: null,
@@ -579,6 +606,13 @@ export async function attachDriveShareLinkToProject(input: {
     base.webViewLink = file.webViewLink;
     base.iconLink = file.iconLink;
     base.attachMode = "oauth";
+  } else if (shareMime) {
+    base.mimeType = shareMime;
+    base.kind =
+      shareMime === "application/vnd.google-apps.folder" ? "folder" : "file";
+    if (/^https?:\/\//i.test(input.shareUrl.trim())) {
+      base.webViewLink = input.shareUrl.trim();
+    }
   }
 
   const synced = await syncReferenceIntoSource({

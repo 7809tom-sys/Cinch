@@ -66,14 +66,15 @@ export function SeedDialogPanel({
         ) : (
           "this host"
         )}
-        . Ask how to improve the site — proposed updates wait for your
-        approval. No rebuild.
+        . Paste a Google Doc or Drive link and this Seed files it under
+        references, then confirms it arrived. Ask how to improve the site —
+        proposed updates wait for your approval. No rebuild.
       </p>
 
       <div className="mt-4 flex max-h-[28rem] flex-col gap-2 overflow-y-auto rounded-md border border-brand/10 p-3">
         {messages.length === 0 ? (
           <p className="text-sm text-muted">
-            No turns yet. Say hello or ask how to improve the site.
+            No turns yet. Paste a Google Doc link, or ask how to improve the site.
           </p>
         ) : (
           messages.map((message) => (
@@ -100,7 +101,7 @@ export function SeedDialogPanel({
         <textarea
           className="flex-1 rounded-md border border-brand/15 bg-foam px-3 py-2 text-sm outline-none ring-brand/30 focus:ring-2"
           rows={3}
-          placeholder="Ask this Seed… try “how do we improve the site?”"
+          placeholder="Paste a Google Doc link, or ask “how do we improve the site?”"
           value={text}
           onChange={(event) => setText(event.target.value)}
           disabled={pending}

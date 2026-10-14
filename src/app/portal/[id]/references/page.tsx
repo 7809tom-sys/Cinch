@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { DriveReferencesPanel } from "@/components/drive-references-panel";
+import { SeedLinkIntake } from "@/components/seed-link-intake";
 import { getPortalProjectSnapshot } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -56,11 +57,20 @@ export default async function PortalReferencesPage({ params }: PageProps) {
           {project.name}
         </h1>
         <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
-          Upload a PDF, paste a Google Drive link, or connect Drive. Reference
-          material lands in docs/references/ for Writer Seeds and website Seeds.
+          Paste a Google Drive, Dropbox, or web link. Keep the lines you want,
+          fix the rest, and the Seed builds from that.
         </p>
 
-        <div className="mt-10">
+        <div className="mt-8">
+          <SeedLinkIntake
+            projectId={project.id}
+            currentName={project.name}
+            seedKind={project.seedKind}
+            seedMode={project.seedMode}
+          />
+        </div>
+
+        <div className="mt-8">
           <DriveReferencesPanel
             projectId={project.id}
             initialReferences={snapshot.driveReferences}

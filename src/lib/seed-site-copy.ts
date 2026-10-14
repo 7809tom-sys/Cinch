@@ -8,6 +8,7 @@ import {
   type SeedProfitPlay,
   type SeedResultStat,
 } from "./seed-ai-thorough";
+import { parseOwnerConfirmedFacts } from "./seed-link-intake";
 
 export {
   SEED_AI_THOROUGH_RULE,
@@ -1208,11 +1209,159 @@ function withBusinessSiteDepth(
   );
 }
 
+function factToService(fact: string): { title: string; detail: string } {
+  const splitAt = fact.indexOf(":");
+  if (splitAt > 2 && splitAt < 64) {
+    const title = fact.slice(0, splitAt).trim();
+    const detail = fact.slice(splitAt + 1).trim();
+    if (title && detail) return { title: title.slice(0, 80), detail: detail.slice(0, 280) };
+  }
+  const words = fact.split(/\s+/);
+  const title = words.slice(0, 6).join(" ").slice(0, 72);
+  return { title, detail: fact.slice(0, 280) };
+}
+
+function ownerHeroImage(projectName: string, brief: string): string {
+  const blob = `${projectName} ${brief}`.toLowerCase();
+  if (/\b(wine|winery|vineyard)\b/.test(blob)) {
+    return "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1800&q=80";
+  }
+  if (/\b(cheese|creamery|dairy)\b/.test(blob)) {
+    return "https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=1800&q=80";
+  }
+  return customerFacingHeroImage(brief, projectName);
+}
+
+/**
+ * When the owner confirmed lines from a pasted link, the public site
+ * uses those lines — not a canned industry brochure.
+ */
+export function siteCopyFromConfirmedFacts(
+  projectName: string,
+  brief: string,
+): SeedSiteCopy | null {
+  const owner = parseOwnerConfirmedFacts(brief);
+  if (!owner || owner.facts.length === 0) return null;
+
+  const brand = customerFacingBrandName(projectName);
+  const key = industryKey(brief, projectName);
+  const summary =
+    owner.summary ||
+    `${brand} — built from the notes you confirmed.`;
+  const sentence = firstSentences(summary, 1)[0] || summary;
+  const headline =
+    sentence.length > 90 ? `${sentence.slice(0, 87).trim()}…` : sentence;
+  const services = owner.facts.slice(0, 6).map(factToService);
+  if (services.length === 1) {
+    services.push({
+      title: "What you confirmed",
+      detail: summary.slice(0, 220),
+    });
+  }
+  if (
+    briefIsDeliveryPlatform(projectName, brief) &&
+    !services.some((item) => /pickup/i.test(item.detail) && /favorite/i.test(item.detail))
+  ) {
+    services.push({
+      title: "Pickup and favorites",
+      detail: "Order for pickup and save a favorite for the next time.",
+    });
+  }
+  const steps = services.slice(0, 3).map((item) => ({
+    title: item.title,
+    detail: item.detail,
+  }));
+  while (steps.length < 2) {
+    steps.push({
+      title: "You can change this",
+      detail: "Edit a line on the Seed desk and build the site again.",
+    });
+  }
+  const hero = ownerHeroImage(projectName, brief);
+  const blob = `${projectName} ${summary} ${owner.facts.join(" ")}`.toLowerCase();
+  const cta = /\b(join|member|subscription|subscribers|club)\b/.test(blob)
+    ? "Join"
+    : /\b(book|appointment)\b/.test(blob)
+      ? "Book"
+      : "Get started";
+  const wantsMenu =
+    !briefIsDeliveryPlatform(projectName, brief) &&
+    /\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(`${projectName} ${brief}`);
+  const menuItems = wantsMenu
+    ? [...services, ...services].slice(0, 4).map((item) => ({
+        category: "From your notes",
+        name: item.title,
+        detail: item.detail,
+        priceLabel: "Ask",
+      }))
+    : undefined;
+
+  return withGrowthBoard(
+    {
+      brand,
+      headline: headline.trim() || `Welcome to ${brand}.`,
+      support: summary.slice(0, 240),
+      cta,
+      heroImage: hero,
+      navLabel: "Offer",
+      servicesEyebrow: "Your notes",
+      servicesHeadline: "What you kept",
+      services,
+      galleryEyebrow: "The work",
+      galleryHeadline: "From the link you pasted",
+      gallery: [
+        { src: hero, alt: `${brand} — from the notes you confirmed` },
+        {
+          src: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+          alt: "A table set for a tasting",
+        },
+        {
+          src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
+          alt: "Food ready to share",
+        },
+      ],
+      processEyebrow: "How it reads",
+      processHeadline: "The lines you kept",
+      process: steps,
+      ...(menuItems
+        ? {
+            menuEyebrow: "From your notes",
+            menuHeadline: "What you kept on the board",
+            menuSupport: summary.slice(0, 180),
+            menuItems,
+          }
+        : {}),
+      aboutEyebrow: "The brief",
+      aboutHeadline: brand,
+      aboutBody: summary.slice(0, 500),
+      aboutImage: hero,
+      proofEyebrow: "Confirmed",
+      proofHeadline: "This is the version you kept",
+      proof: {
+        quote: sentence.slice(0, 220),
+        attribution: "Confirmed on this Seed",
+      },
+      areaEyebrow: "Yours",
+      areaHeadline: "Change a line, build again",
+      areaBody: `${brand} is using the notes you confirmed. Uncheck a line or rewrite it on the Seed desk, then build the site again.`,
+      bookEyebrow: "Next",
+      bookHeadline: cta,
+      bookBody: summary.slice(0, 280),
+      bookNote: "Built from the link you pasted into this Seed.",
+      footerNote: `${brand} · from the link you confirmed`,
+    },
+    key,
+  );
+}
+
 /** Industry-shaped services, about, and booking copy for a full site — not a hero stub. */
 export function customerFacingSiteCopy(
   projectName: string,
   brief: string,
 ): SeedSiteCopy {
+  const fromOwner = siteCopyFromConfirmedFacts(projectName, brief);
+  if (fromOwner) return fromOwner;
+
   const brand = customerFacingBrandName(projectName);
   const key = industryKey(brief, projectName);
   const support = customerFacingSupport(brief);
