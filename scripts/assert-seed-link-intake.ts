@@ -78,10 +78,39 @@ assert(parsed?.facts.length === 2, "an unchecked line stays off the brief");
 assert(!/36 months/.test(brief), "the dropped partner line is not in the brief");
 
 const copy = customerFacingSiteCopy("Wisconsin Cheese and Wine Club", brief);
-assert(/QR code/i.test(copy.services.map((item) => item.detail).join(" ")), "the site uses a kept line");
-assert(!/36 months/.test(JSON.stringify(copy.services)), "the site omits an unchecked line");
-assert(copy.cta === "Join", "a club brief asks people to join");
+assert(/taste quiz/i.test(copy.services.map((item) => item.title).join(" ")), "this club name uses the spec, not a pasted sentence");
+assert(/QR code/i.test(copy.services.map((item) => item.detail).join(" ")), "the spec site includes the package reorder code");
+assert(copy.cta === "Join the club", "the club spec asks people to join the club");
 assert(/photo-1510812431401/.test(copy.heroImage), "wine notes use a wine photograph");
+
+const pantryDraft = draftFromDocumentText({
+  sourceUrl: "https://example.com/pantry-notes",
+  sourceLabel: "Web link",
+  text: `# North Shore Pantry
+
+A neighborhood pantry for weekly staples.
+
+- Sourdough on Thursdays
+- Partners book the window up to 36 months out
+- A QR code on the bag reorders that loaf
+`,
+});
+const pantryBrief = composeBriefFromFacts({
+  summary: pantryDraft.summary,
+  facts: pantryDraft.facts.map((fact, index) => ({
+    ...fact,
+    included: index !== 1,
+  })),
+});
+const pantry = customerFacingSiteCopy("North Shore Pantry", pantryBrief);
+assert(
+  /QR code/i.test(pantry.services.map((item) => item.detail).join(" ")),
+  "a kept line is on the site",
+);
+assert(
+  !/36 months/.test(JSON.stringify(pantry.services)),
+  "an unchecked line stays off the site",
+);
 
 const htmlText = htmlToReadableText("<p>Hello <b>club</b></p><script>nope</script>");
 const hidden = htmlToReadableText("<script>secret</script><p>Visible note</p>");
