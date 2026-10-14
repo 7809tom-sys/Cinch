@@ -1,10 +1,12 @@
 /**
- * HARD-CODED — Crawl at least 20 competitor sites and take the best of EACH.
+ * HARD-CODED — Crawl at least 50 competitor sites and take the best features.
  *
- * A brief is not enough. Opening or building a Seed must crawl at least 20
- * competitor websites in that industry. Take the best piece from each:
+ * A brief is not enough. Opening or building a Seed must crawl at least 50
+ * competitor websites in that industry. Take the best features from the set:
  * CTA from one, headline from another, fulfillment from a third, SEO/AIO
- * from the set. Used-car lots never UPS a vehicle — hold, test-drive, or
+ * from the set. Give the customer who ordered the website at least five reference sites
+ * to open. Do not paste competitor headlines onto the page.
+ * Used-car lots never UPS a vehicle — hold, test-drive, or
  * dealer-deliver. A notebook is not research.
  *
  * Do not paste another brand’s copyrighted page. Take structure and verbs.

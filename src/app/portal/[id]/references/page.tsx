@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { DriveReferencesPanel } from "@/components/drive-references-panel";
 import { SeedLinkIntake } from "@/components/seed-link-intake";
+import { SeedCompetitorReferences } from "@/components/seed-competitor-references";
 import { getPortalProjectSnapshot } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,8 @@ export default async function PortalReferencesPage({ params }: PageProps) {
           Paste a Google Drive, Dropbox, or web link. Keep the lines you want,
           fix the rest, and the Seed builds from that.
         </p>
+
+        <SeedCompetitorReferences name={project.name} brief={project.brief} />
 
         <div className="mt-8">
           <SeedLinkIntake

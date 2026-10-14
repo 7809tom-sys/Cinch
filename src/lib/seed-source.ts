@@ -1039,13 +1039,16 @@ export async function writeComparableResearchIntoSeed(input: {
     customerFacingSiteCopy(input.projectName, input.brief),
     research,
   );
+  const clubKept = research.industry === "club";
   await upsertSourceFile({
     projectId: input.projectId,
     path: "content/landing.copy.json",
     content: seedLandingCopyJson(landing),
     agentName: agent,
     status: "ready",
-    message: `${agent} stamped landing from the best of each competitor`,
+    message: clubKept
+      ? `${agent} kept the club specification and did not copy competitor lines`
+      : `${agent} stamped landing from the best of each competitor`,
   });
   await upsertSourceFile({
     projectId: input.projectId,
@@ -1056,7 +1059,9 @@ export async function writeComparableResearchIntoSeed(input: {
     }),
     agentName: agent,
     status: "ready",
-    message: `${agent} took the best of each competitor site`,
+    message: clubKept
+      ? `${agent} kept the club specification on the public page`
+      : `${agent} took the best of each competitor site`,
   });
   if (briefAsksForEcommerce(input.brief)) {
     const shop = applyComparableOverlayToShop(
@@ -1082,7 +1087,7 @@ export async function writeComparableResearchIntoSeed(input: {
   }
 }
 
-/** HARD RULE: opening or building a Seed must crawl 20 competitors if missing. */
+/** HARD RULE: opening or building a Seed must crawl 50 competitors if missing. */
 export async function ensureComparableResearchInSeed(input: {
   projectId: string;
   projectName: string;
@@ -1175,7 +1180,7 @@ ${brief}
     return;
   }
 
-  // HARD RULE: crawl 20 competitors and take the best of each.
+  // HARD RULE: crawl 50 competitors and take the best features of each.
   if (taskIsComparableResearch(input.taskTitle)) {
     const identity = await projectIdentityFromSource(input.projectId);
     const name = identity.name || "Seed site";

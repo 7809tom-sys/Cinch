@@ -1,4 +1,5 @@
 import { ClubTasteQuiz } from "@/components/club-taste-quiz";
+import type { CustomerReferenceSite } from "@/lib/seed-comparable-research";
 import type { SeedSiteCopy } from "@/lib/seed-site-copy";
 
 const CLUB_CSS = `
@@ -282,6 +283,24 @@ const CLUB_CSS = `
   line-height: 1.45;
 }
 
+.club-refs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1rem;
+}
+
+.club-refs a {
+  font-weight: 600;
+  color: var(--burgundy);
+}
+
+.club-refs p {
+  margin: 0.25rem 0 0;
+  line-height: 1.45;
+}
+
 .club-footer {
   padding: 1.4rem clamp(1.1rem, 4vw, 2.5rem) 2rem;
   border-top: 1px solid var(--line);
@@ -314,9 +333,11 @@ const CLUB_CSS = `
 
 export function CheeseWineClubSite({
   copy,
+  references = [],
   reserveOwnerChrome = false,
 }: {
   copy: SeedSiteCopy;
+  references?: CustomerReferenceSite[];
   reserveOwnerChrome?: boolean;
 }) {
   return (
@@ -340,6 +361,11 @@ export function CheeseWineClubSite({
             <li>
               <a href="#aims">Year two</a>
             </li>
+            {references.length > 0 ? (
+              <li>
+                <a href="#references">References</a>
+              </li>
+            ) : null}
           </ul>
         </nav>
       </header>
@@ -426,6 +452,29 @@ export function CheeseWineClubSite({
           </ul>
         </div>
       </section>
+
+      {references.length > 0 ? (
+        <section className="club-section" id="references">
+          <div className="club-section-inner">
+            <p className="club-kicker">For the person who ordered this site</p>
+            <h2>Five sites to open</h2>
+            <p className="club-lead">
+              These competitors were part of the research. The features are
+              on this club. Their headlines stay on their sites.
+            </p>
+            <ol className="club-refs">
+              {references.map((site) => (
+                <li key={site.url}>
+                  <a href={site.url} target="_blank" rel="noopener noreferrer">
+                    {site.host}
+                  </a>
+                  <p>{site.feature}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+      ) : null}
 
       <footer className="club-footer">
         <p>{copy.footerNote}</p>

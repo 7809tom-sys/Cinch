@@ -7,7 +7,7 @@ import type { AgentSkill } from "./agents";
 import { composeWriterBrief, resolveWriterForm } from "./seed-writer";
 
 export const PREP_RULE =
-  "Prep work is everything. You cannot scream at the model for garbage-in, garbage-out. Describe the chat before the chat happens. Write the goal, the boundaries, the deliverable, and what done looks like — then paste. The prep is the product.";
+  "Prep work is everything. You cannot scream at the model for garbage-in, garbage-out. Describe the chat before the chat happens. Write the goal, the boundaries, the deliverable, and what done looks like — then paste. The prep is the product. A build must research 50 competitor sites, keep their best features, and show the customer at least five reference sites.";
 
 export const PREP_LANES = [
   { id: "website", label: "Website / product" },

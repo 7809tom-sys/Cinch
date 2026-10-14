@@ -56,6 +56,11 @@ export default function SentiDeskPage() {
           there — method by method — before Conductor builds. Just Putz It is
           not a Cinch Seed.
         </p>
+        <p className="mt-4 max-w-2xl text-sm font-semibold leading-relaxed text-brand-deep">
+          Research 50 competitor sites before the build. Take their best
+          features. Give the customer who ordered the website at least five
+          reference sites to open. Leave their headlines on their sites.
+        </p>
 
         <ul className="mt-8 grid gap-3 sm:grid-cols-5">
           {PREP_LANES.map((lane) => (
