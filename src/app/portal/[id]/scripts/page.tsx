@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { SiteFooter } from "@/components/site-footer";
 import { ScriptManagementBoard } from "@/components/script-management-board";
 import {
@@ -29,7 +30,7 @@ export default async function PortalScriptManagementPage({ params }: PageProps) 
   const { id } = await params;
   const { customer, project, watch } = await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   const inventory = await inventoryForHost(
     applyHeartbeat(hostFromProject(project), {

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { SiteFooter } from "@/components/site-footer";
 import { DriveReferencesPanel } from "@/components/drive-references-panel";
 import { getSourceBundle } from "@/lib/seed-source";
@@ -31,7 +32,7 @@ export default async function PortalWriterPage({ params }: PageProps) {
   const snapshot = await getPortalProjectSnapshot(id);
   const { customer, project } = snapshot;
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
   if (project.seedKind !== "writer") {
     redirect(`/portal/${project.id}`);
   }

@@ -8,6 +8,7 @@ import {
   driveReferenceMarkdown,
   extractGoogleDriveFileIds,
   mimeTypeFromDriveShareUrl,
+  canonicalDriveOpenUrl,
   parseGoogleDriveFileId,
   publicGoogleExportUrl,
   slugDriveFileName,
@@ -71,6 +72,16 @@ assert(
     "application/vnd.google-apps.document",
   )?.includes("/export?format=txt") === true,
   "public Doc export is plain text",
+);
+assert(
+  canonicalDriveOpenUrl({
+    fileId: "1gR1Zr4ucrejgD2TOUargIFe7E7_V8I3W8nhHClj2wVw",
+    mimeType: "application/vnd.google-apps.document",
+    webViewLink:
+      "https://drive.google.com/file/d/1gR1Zr4ucrejgD2TOUargIFe7E7_V8I3W8nhHClj2wVw/view",
+  }) ===
+    "https://docs.google.com/document/d/1gR1Zr4ucrejgD2TOUargIFe7E7_V8I3W8nhHClj2wVw/edit",
+  "a Google Doc does not open through the Drive file URL that 404s",
 );
 
 assert(

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
 import { SiteFooter } from "@/components/site-footer";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
@@ -27,7 +28,7 @@ export default async function PortalDriverPage({
   const { id } = await params;
   const { customer, project } = await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/portal/${project.id}`);

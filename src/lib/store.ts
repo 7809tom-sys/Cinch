@@ -165,6 +165,57 @@ const STORE_KEY = "seed-projects";
 
 let memoryStore: StoreShape | null = null;
 
+function normalizeProject(project: SeedProject): SeedProject {
+  return {
+    ...project,
+    customerEmail: project.customerEmail ?? null,
+    customerName: project.customerName ?? null,
+    referenceUrl: project.referenceUrl ?? null,
+    githubRepoUrl:
+      project.githubRepoUrl ??
+      resolveConnectTargets({ liveUrl: project.referenceUrl }).githubRepoUrl,
+    seedMode: project.seedMode ?? "build",
+    seedKind: project.seedKind ?? "website",
+    writerForm: project.writerForm ?? null,
+    customDomain: project.customDomain ?? null,
+    embedEnabled: project.embedEnabled ?? true,
+    connectKey: project.connectKey || generateConnectKey(),
+    sitePublishedAt: project.sitePublishedAt ?? null,
+    marketplaceListingId: project.marketplaceListingId ?? null,
+    pmIntroSentAt: project.pmIntroSentAt ?? null,
+    pmIntroBody: project.pmIntroBody ?? null,
+  };
+}
+
+/**
+ * Merge Seeds saved by another server instance into this process's list.
+ * An empty remote list is ignored so a failed read cannot wipe the cache.
+ * A newer `updatedAt` wins. Seeds that exist only here stay put.
+ */
+export function absorbRemoteProjects(
+  local: SeedProject[],
+  remote: SeedProject[],
+): SeedProject[] {
+  if (remote.length === 0) return local;
+  const byId = new Map<string, SeedProject>();
+  for (const project of local) {
+    byId.set(project.id, project);
+  }
+  for (const project of remote) {
+    const normalized = normalizeProject(project);
+    const current = byId.get(normalized.id);
+    if (!current || normalized.updatedAt > current.updatedAt) {
+      byId.set(normalized.id, normalized);
+    }
+  }
+  return [...byId.values()];
+}
+
+async function pullProjectsFromDurableStore(store: StoreShape): Promise<void> {
+  const fresh = await readJsonStore<StoreShape>(STORE_KEY, { projects: [] });
+  store.projects = absorbRemoteProjects(store.projects, fresh.projects ?? []);
+}
+
 async function ensureStore(): Promise<StoreShape> {
   if (memoryStore) return memoryStore;
 
@@ -173,25 +224,7 @@ async function ensureStore(): Promise<StoreShape> {
   let backfilled = false;
   memoryStore.projects = (memoryStore.projects ?? []).map((project) => {
     if (!project.connectKey) backfilled = true;
-    return {
-      ...project,
-      customerEmail: project.customerEmail ?? null,
-      customerName: project.customerName ?? null,
-      referenceUrl: project.referenceUrl ?? null,
-      githubRepoUrl:
-        project.githubRepoUrl ??
-        resolveConnectTargets({ liveUrl: project.referenceUrl }).githubRepoUrl,
-      seedMode: project.seedMode ?? "build",
-      seedKind: project.seedKind ?? "website",
-      writerForm: project.writerForm ?? null,
-      customDomain: project.customDomain ?? null,
-      embedEnabled: project.embedEnabled ?? true,
-      connectKey: project.connectKey || generateConnectKey(),
-      sitePublishedAt: project.sitePublishedAt ?? null,
-      marketplaceListingId: project.marketplaceListingId ?? null,
-      pmIntroSentAt: project.pmIntroSentAt ?? null,
-      pmIntroBody: project.pmIntroBody ?? null,
-    };
+    return normalizeProject(project);
   });
   if (backfilled) {
     // Persist the newly-generated keys so they stay stable across restarts.
@@ -230,11 +263,17 @@ function pushActivity(
 
 export async function listProjects(): Promise<SeedProject[]> {
   const store = await ensureStore();
+  await pullProjectsFromDurableStore(store);
   return store.projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export async function getProject(id: string): Promise<SeedProject | null> {
   const store = await ensureStore();
+  const cached = store.projects.find((project) => project.id === id);
+  if (cached) return cached;
+  // This process cached the list before another instance planted the Seed.
+  // Without a fresh read, the desk calls notFound() and the owner sees a 404.
+  await pullProjectsFromDurableStore(store);
   return store.projects.find((project) => project.id === id) ?? null;
 }
 

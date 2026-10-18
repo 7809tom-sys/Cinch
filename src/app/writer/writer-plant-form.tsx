@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { purchaseWriterSeedAction } from "@/app/portal/actions";
 import type { WriterConcept } from "@/lib/writer-concepts";
@@ -14,7 +13,6 @@ export function WriterPlantForm({
   defaultName?: string | null;
   concept?: WriterConcept | null;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [writerForm, setWriterForm] = useState<"book" | "song">(
@@ -56,7 +54,9 @@ export function WriterPlantForm({
             return;
           }
           setAccessCode(result.accessCode);
-          router.push(`/portal/${result.projectId}/writer`);
+          // Full load so the new sign-in cookie is sent. A soft navigation
+          // can open the desk with the previous session and render a 404.
+          window.location.assign(`/portal/${result.projectId}/writer`);
         });
       }}
     >

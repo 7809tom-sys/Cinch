@@ -745,6 +745,7 @@ export async function purchaseWriterSeedAction(formData: FormData) {
   });
   const priceUsd = priceForAccount(WRITER_SEED_PRICE_USD, email);
   const customer = await upsertCustomer({ email, name: name || undefined });
+  const signedIn = await getCurrentCustomer();
 
   const project = await createProject({
     name: `${title} Writer Seed`,
@@ -765,6 +766,14 @@ export async function purchaseWriterSeedAction(formData: FormData) {
     priceUsd,
     projectId: project.id,
   });
+
+  if (signedIn && signedIn.id !== customer.id) {
+    await upsertCustomer({
+      email: signedIn.email,
+      name: signedIn.name,
+      projectId: project.id,
+    });
+  }
 
   try {
     await bootstrapSeedProject(project.id);

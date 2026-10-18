@@ -28,6 +28,7 @@ import {
   knownWriterOutlineForDriveFile,
   WRITER_CONCEPTS,
 } from "../src/lib/writer-concepts";
+import { absorbRemoteProjects, type SeedProject } from "../src/lib/store";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -288,6 +289,39 @@ assert(
     readFileSync(join(process.cwd(), "src/app/writer/writer-plant-form.tsx"), "utf8"),
   ),
   "writer plant form accepts a Google Doc link",
+);
+assert(
+  /location\.assign/.test(
+    readFileSync(join(process.cwd(), "src/app/writer/writer-plant-form.tsx"), "utf8"),
+  ),
+  "planting opens the desk with a full page load",
+);
+
+const localOnly = {
+  id: "local-seed",
+  name: "Local",
+  updatedAt: "2026-10-18T00:00:00.000Z",
+} as SeedProject;
+const remoteNewer = {
+  id: "planted-on-other-instance",
+  name: "MBA Disease Writer Seed",
+  updatedAt: "2026-10-18T01:00:00.000Z",
+  seedKind: "writer",
+} as SeedProject;
+const remoteOlder = {
+  id: "local-seed",
+  name: "Stale remote",
+  updatedAt: "2026-10-17T00:00:00.000Z",
+} as SeedProject;
+const absorbed = absorbRemoteProjects([localOnly], [remoteNewer, remoteOlder]);
+assert(
+  absorbed.some((project) => project.id === "planted-on-other-instance") &&
+    absorbed.some((project) => project.id === "local-seed" && project.name === "Local"),
+  "a Seed planted on another instance is visible without dropping newer local edits",
+);
+assert(
+  absorbRemoteProjects([localOnly], []).length === 1,
+  "an empty remote read does not wipe cached Seeds",
 );
 
 if (process.exitCode) {

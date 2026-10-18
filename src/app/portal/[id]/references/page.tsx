@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { SiteFooter } from "@/components/site-footer";
 import { DriveReferencesPanel } from "@/components/drive-references-panel";
 import { SeedLinkIntake } from "@/components/seed-link-intake";
@@ -27,7 +28,7 @@ export default async function PortalReferencesPage({ params }: PageProps) {
   const snapshot = await getPortalProjectSnapshot(id);
   const { customer, project } = snapshot;
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   return (
     <div className="min-h-full overflow-x-hidden bg-background text-foreground">

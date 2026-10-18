@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { SiteFooter } from "@/components/site-footer";
 import {
   AgentStatusDot,
@@ -50,7 +51,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
   const snapshot = await getPortalProjectSnapshot(id);
   const { customer, project, watch, designs, crew, pmContact } = snapshot;
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   const activeTasks = project.tasks.filter(
     (task) => task.status === "in_progress" || task.status === "assigned",
@@ -391,9 +392,13 @@ export default async function PortalProjectPage({ params }: PageProps) {
             {activeTasks.length === 0 ? (
               <p className="mt-3 text-sm leading-relaxed text-muted [overflow-wrap:anywhere]">
                 {project.tasks.length === 0
-                  ? "Your website is already up. The desk will not keep looking for an AI — open Visit website, Senti, or Please-do suggestions."
+                  ? project.seedKind === "writer"
+                    ? "The crew has not started yet. Open the manuscript — the book lives on this desk, not on a public website."
+                    : "Your website is already up. The desk will not keep looking for an AI — open Visit website, Senti, or Please-do suggestions."
                   : buildComplete
-                    ? "All planned tasks are done. Open the website to Publish or list it in the library."
+                    ? project.seedKind === "writer"
+                      ? "All planned tasks are done. Open the manuscript to read the living book."
+                      : "All planned tasks are done. Open the website to Publish or list it in the library."
                     : "Nothing actively assigned right now — queued work is waiting for the next assignment."}
               </p>
             ) : (
@@ -460,6 +465,24 @@ export default async function PortalProjectPage({ params }: PageProps) {
         </section>
 
         <aside className="min-w-0 max-w-full space-y-6">
+          {project.seedKind === "writer" ? (
+            <div className="border border-brand/10 bg-brand-deep px-5 py-5 text-foam">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
+                {project.writerForm === "song" ? "Lyrics" : "Manuscript"}
+              </h2>
+              <p className="mt-2 text-sm text-mist">
+                This Writer Seed stays on the desk. Open the living{" "}
+                {project.writerForm === "song" ? "lyric sheet" : "manuscript"}.
+                There is no separate public website for this Seed.
+              </p>
+              <Link
+                href={`/portal/${project.id}/writer`}
+                className="mt-4 inline-flex h-11 items-center rounded-md bg-accent px-4 text-sm font-bold text-brand-deep transition-transform hover:-translate-y-0.5"
+              >
+                {project.writerForm === "song" ? "Read lyrics" : "Read manuscript"}
+              </Link>
+            </div>
+          ) : (
           <div className="border border-brand/10 bg-brand-deep px-5 py-5 text-foam">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold">
               Website
@@ -479,6 +502,7 @@ export default async function PortalProjectPage({ params }: PageProps) {
               {websiteUrl}
             </p>
           </div>
+          )}
 
           <div className="border border-brand/10 bg-foam px-5 py-5">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">

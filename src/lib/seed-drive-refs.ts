@@ -5,6 +5,7 @@
 import { randomUUID } from "crypto";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
+  canonicalDriveOpenUrl,
   driveReferenceMarkdown,
   exportDriveFileText,
   exportPublicGoogleFileText,
@@ -512,7 +513,11 @@ export async function attachDriveFileToProject(input: {
     name: file.name,
     mimeType: file.mimeType,
     kind: file.kind,
-    webViewLink: file.webViewLink,
+    webViewLink: canonicalDriveOpenUrl({
+      fileId: file.id,
+      mimeType: file.mimeType,
+      webViewLink: file.webViewLink,
+    }),
     iconLink: file.iconLink,
     sourcePath: null,
     excerpt: null,
@@ -523,7 +528,11 @@ export async function attachDriveFileToProject(input: {
   base.name = file.name;
   base.mimeType = file.mimeType;
   base.kind = file.kind;
-  base.webViewLink = file.webViewLink;
+  base.webViewLink = canonicalDriveOpenUrl({
+    fileId: file.id,
+    mimeType: file.mimeType,
+    webViewLink: file.webViewLink,
+  });
   base.iconLink = file.iconLink;
   base.attachMode = "oauth";
 
@@ -608,11 +617,12 @@ export async function attachDriveShareLinkToProject(
     kind:
       file?.kind ||
       (shareMime === "application/vnd.google-apps.folder" ? "folder" : "file"),
-    webViewLink:
-      file?.webViewLink ||
-      (/^https?:\/\//i.test(input.shareUrl.trim())
-        ? input.shareUrl.trim()
-        : `https://drive.google.com/file/d/${fileId}/view`),
+    webViewLink: canonicalDriveOpenUrl({
+      fileId,
+      mimeType: file?.mimeType || shareMime,
+      shareUrl: input.shareUrl,
+      webViewLink: file?.webViewLink,
+    }),
     iconLink: file?.iconLink ?? null,
     sourcePath: null,
     excerpt: null,
@@ -624,7 +634,12 @@ export async function attachDriveShareLinkToProject(
   if (file) {
     base.mimeType = file.mimeType;
     base.kind = file.kind;
-    base.webViewLink = file.webViewLink;
+    base.webViewLink = canonicalDriveOpenUrl({
+      fileId,
+      mimeType: file.mimeType,
+      shareUrl: input.shareUrl,
+      webViewLink: file.webViewLink,
+    });
     base.iconLink = file.iconLink;
     base.attachMode = "oauth";
   } else if (shareMime) {
