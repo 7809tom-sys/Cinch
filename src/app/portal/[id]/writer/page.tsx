@@ -101,8 +101,8 @@ export default async function PortalWriterPage({ params }: PageProps) {
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted">
           {doneCount}/{project.tasks.length || 0} tasks done
-          {active ? ` · working on ${active.title}` : ""}. Upload PDFs or connect
-          Google Drive below so the crew writes from your material.
+          {active ? ` · working on ${active.title}` : ""}. Paste the Google Doc
+          below so the crew writes the book from your outline.
         </p>
 
         <section id="references" className="mt-10 scroll-mt-24">

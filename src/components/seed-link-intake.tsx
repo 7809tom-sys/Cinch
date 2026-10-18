@@ -76,11 +76,14 @@ export function SeedLinkIntake({
         Paste a link
       </p>
       <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl font-bold text-brand-deep">
-        The Seed reads it. You fix the lines. Then it builds.
+        {writer
+          ? "Paste the Google Doc. The crew writes the book from it."
+          : "The Seed reads it. You fix the lines. Then it builds."}
       </h2>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
-        Google Drive, Dropbox, or any public page. Checked lines go on the
-        site. Uncheck or rewrite anything that is wrong.
+        {writer
+          ? "A Docs outline becomes the chapter list. Check the lines, then the manuscript follows what you keep. A private Doc you already planted still uses its saved structure until Drive is connected."
+          : "Google Drive, Dropbox, or any public page. Checked lines go on the site. Uncheck or rewrite anything that is wrong."}
       </p>
 
       <form

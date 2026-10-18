@@ -246,9 +246,10 @@ export default function Home() {
               Featured: MBA Disease and the PIE Effect
             </p>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-              Rise-and-fall company stories — Sears Wish Book to Paper Tiger —
-              with Product, Innovation, and Execution as the through-line. Plant
-              it, then upload the outline PDF on the synced Writer desk.
+              Forensic chapters on Product, Innovation, and Execution — from the
+              Great Decoupling through Boeing, Intel, and Sears. Plant it with
+              the master outline Google Doc and the crew writes from that
+              structure.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 sm:mt-9">
               <Link

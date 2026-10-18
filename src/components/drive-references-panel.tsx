@@ -151,7 +151,7 @@ export function DriveReferencesPanel({
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         {writerMode
-          ? "Upload a PDF, paste a Google Drive link, or connect Drive. Files sync into docs/references/ so the writing crew follows your material."
+          ? "Paste the Google Doc for this book, upload a PDF, or connect Drive. The manuscript follows that outline."
           : "Upload a PDF, paste a Drive link, or connect Google Drive. Synced files land in docs/references/ for the AI crew."}
       </p>
 
@@ -202,7 +202,11 @@ export function DriveReferencesPanel({
           <input
             value={shareUrl}
             onChange={(event) => setShareUrl(event.target.value)}
-            placeholder="Paste a Google Drive / Docs share link"
+            placeholder={
+              writerMode
+                ? "Paste the Google Doc for this book"
+                : "Paste a Google Drive / Docs share link"
+            }
             className="min-h-11 w-full flex-1 rounded-md border border-brand/15 bg-background px-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
           />
           <button
@@ -364,6 +368,11 @@ export function DriveReferencesPanel({
                           : "Share link"}
                       {ref.sourcePath ? ` · ${ref.sourcePath}` : ""}
                     </p>
+                    {ref.syncNote ? (
+                      <p className="mt-2 text-xs leading-relaxed text-brand-deep">
+                        {ref.syncNote}
+                      </p>
+                    ) : null}
                     {ref.excerpt ? (
                       <p className="mt-2 line-clamp-3 text-muted">
                         {ref.excerpt}

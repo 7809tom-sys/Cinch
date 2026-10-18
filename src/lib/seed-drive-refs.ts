@@ -17,6 +17,7 @@ import {
   verifyGoogleAccessToken,
 } from "./google-drive";
 import { upsertSourceFile } from "./seed-source";
+import { parseOutlineChaptersFromText } from "./seed-writer";
 
 export type DriveConnection = {
   customerId: string;
@@ -52,6 +53,8 @@ export type SeedDriveReference = {
   attachMode: "oauth" | "share-link" | "upload";
   /** Source path for uploaded binary payload (base64 JSON), when attachMode is upload. */
   binaryPath?: string | null;
+  /** Shown on the Seed desk when the file could not be read as-is. */
+  syncNote?: string | null;
 };
 
 type DriveStore = {
@@ -189,18 +192,18 @@ async function syncReferenceIntoSource(input: {
   accessToken: string | null;
   connectedEmail: string | null;
 }): Promise<SeedDriveReference> {
-  let excerpt = input.reference.excerpt;
+  let exported: string | null = null;
   if (
     input.accessToken &&
     input.reference.kind === "file" &&
     input.reference.mimeType !== "application/vnd.google-apps.folder"
   ) {
-    excerpt =
-      (await exportDriveFileText({
-        accessToken: input.accessToken,
-        fileId: input.reference.driveFileId,
-        mimeType: input.reference.mimeType,
-      })) ?? excerpt;
+    exported = await exportDriveFileText({
+      accessToken: input.accessToken,
+      fileId: input.reference.driveFileId,
+      mimeType: input.reference.mimeType,
+      maxChars: 24_000,
+    });
   }
 
   const linkMime = mimeTypeFromDriveShareUrl(
@@ -212,13 +215,16 @@ async function syncReferenceIntoSource(input: {
   ) {
     input.reference.mimeType = linkMime;
   }
-  if (!excerpt?.trim() && input.reference.kind === "file") {
-    excerpt =
-      (await exportPublicGoogleFileText({
-        fileId: input.reference.driveFileId,
-        mimeType: input.reference.mimeType,
-      })) ?? excerpt;
+  if (!exported?.trim() && input.reference.kind === "file") {
+    exported = await exportPublicGoogleFileText({
+      fileId: input.reference.driveFileId,
+      mimeType: input.reference.mimeType,
+      maxChars: 24_000,
+    });
   }
+  const excerpt = exported?.trim()
+    ? exported
+    : input.reference.excerpt;
 
   const sourcePath = `docs/references/${slugDriveFileName(input.reference.name)}-${input.reference.driveFileId.slice(0, 8)}.md`;
   const content = driveReferenceMarkdown({
@@ -249,6 +255,7 @@ async function syncReferenceIntoSource(input: {
   return {
     ...input.reference,
     excerpt,
+    syncNote: exported?.trim() ? null : input.reference.syncNote,
     sourcePath,
     syncedAt: now(),
   };
@@ -437,27 +444,34 @@ ${excerpt}
     ),
   });
 
-  // Writer Seeds: rebuild chapter scaffold from the uploaded outline immediately.
-  try {
-    const { getProject } = await import("./store");
-    const project = await getProject(input.projectId);
-    if (project?.seedKind === "writer" && project.writerForm !== "song") {
-      const { applyTaskToSource } = await import("./seed-source");
-      await applyTaskToSource({
-        projectId: input.projectId,
-        taskTitle: "Writer collab · draft manuscript chapters",
-        taskDetail:
-          "Owner uploaded a PDF outline. Rebuild the living manuscript from docs/references/.",
-        agentName: "Owner",
-        agentId: null,
-        phase: "finished",
-      });
-    }
-  } catch {
-    // Non-fatal — reference is already attached.
-  }
+  await rebuildWriterBookFromReferences(
+    input.projectId,
+    "Owner uploaded a PDF outline. Rebuild the living manuscript from docs/references/.",
+  );
 
   return { ok: true, reference };
+}
+
+async function rebuildWriterBookFromReferences(
+  projectId: string,
+  detail: string,
+): Promise<void> {
+  try {
+    const { getProject } = await import("./store");
+    const project = await getProject(projectId);
+    if (project?.seedKind !== "writer" || project.writerForm === "song") return;
+    const { applyTaskToSource } = await import("./seed-source");
+    await applyTaskToSource({
+      projectId,
+      taskTitle: "Writer collab · draft manuscript chapters",
+      taskDetail: detail,
+      agentName: "Owner",
+      agentId: null,
+      phase: "finished",
+    });
+  } catch {
+    // Non-fatal — the reference is already attached.
+  }
 }
 
 export async function attachDriveFileToProject(input: {
@@ -534,16 +548,23 @@ export async function attachDriveFileToProject(input: {
       (item) => item.projectId === input.projectId,
     ),
   });
+  await rebuildWriterBookFromReferences(
+    input.projectId,
+    "Owner attached a Google Drive file. Rebuild the living manuscript from docs/references/.",
+  );
   return { ok: true, reference: synced };
 }
 
-export async function attachDriveShareLinkToProject(input: {
+export async function attachDriveShareLinkToProject(
+  input: {
   projectId: string;
   projectName: string;
   customerId: string;
   shareUrl: string;
   label?: string;
-}): Promise<
+  },
+  options?: { rebuildBook?: boolean },
+): Promise<
   | { ok: true; reference: SeedDriveReference }
   | { ok: false; error: string }
 > {
@@ -636,7 +657,142 @@ export async function attachDriveShareLinkToProject(input: {
       (item) => item.projectId === input.projectId,
     ),
   });
+  if (options?.rebuildBook !== false) {
+    await rebuildWriterBookFromReferences(
+      input.projectId,
+      "Owner pasted a Google Doc. Rebuild the living manuscript from docs/references/.",
+    );
+  }
   return { ok: true, reference: synced };
+}
+
+const PRIVATE_DOC_NOTE =
+  "Google is keeping this Doc private. The planted outline is shaping the manuscript. Connect Google Drive on this Seed and re-sync to read the live file.";
+
+/** Write outline text onto a reference when Drive could not export the file. */
+export async function pinWriterOutlineExcerpt(input: {
+  projectId: string;
+  projectName: string;
+  referenceId: string;
+  outlineText: string;
+  syncNote?: string | null;
+}): Promise<SeedDriveReference | null> {
+  const store = await ensureStore();
+  const reference = store.references.find(
+    (item) => item.id === input.referenceId && item.projectId === input.projectId,
+  );
+  if (!reference) return null;
+  reference.excerpt = input.outlineText.trim();
+  reference.syncNote = input.syncNote ?? PRIVATE_DOC_NOTE;
+  reference.syncedAt = now();
+  const sourcePath =
+    reference.sourcePath ||
+    `docs/references/${slugDriveFileName(reference.name)}-${reference.driveFileId.slice(0, 8)}.md`;
+  reference.sourcePath = sourcePath;
+  await upsertSourceFile({
+    projectId: input.projectId,
+    path: sourcePath,
+    content: driveReferenceMarkdown({
+      projectName: input.projectName,
+      file: {
+        id: reference.driveFileId,
+        name: reference.name,
+        mimeType: reference.mimeType,
+        kind: reference.kind,
+        webViewLink: reference.webViewLink,
+        iconLink: reference.iconLink,
+        modifiedTime: null,
+        size: null,
+      },
+      excerpt: reference.excerpt,
+      connectedEmail: null,
+    }),
+    status: "ready",
+    message: `Pinned outline for “${reference.name}”`,
+    agentName: "Owner",
+  });
+  await writeStore(store);
+  await writeReferencesIndex({
+    projectId: input.projectId,
+    projectName: input.projectName,
+    references: store.references.filter(
+      (item) => item.projectId === input.projectId,
+    ),
+  });
+  return reference;
+}
+
+/**
+ * Attach a Google Doc to a book Seed and rebuild chapters from it.
+ * When the file is private, `fallbackOutline` (chapter-formatted) is pinned
+ * so the manuscript still follows the owner's structure.
+ */
+export async function ensureWriterBookOutline(input: {
+  projectId: string;
+  projectName: string;
+  customerId: string;
+  driveUrl?: string | null;
+  fallbackOutline?: string | null;
+  label?: string | null;
+}): Promise<{ warning: string | null }> {
+  const { getProject } = await import("./store");
+  const project = await getProject(input.projectId);
+  if (!project || project.seedKind !== "writer" || project.writerForm === "song") {
+    return { warning: null };
+  }
+
+  let warning: string | null = null;
+  const driveUrl = input.driveUrl?.trim() || "";
+  if (driveUrl) {
+    const attached = await attachDriveShareLinkToProject(
+      {
+        projectId: input.projectId,
+        projectName: input.projectName,
+        customerId: input.customerId,
+        shareUrl: driveUrl,
+        label: input.label?.trim() || undefined,
+      },
+      { rebuildBook: false },
+    );
+    if (!attached.ok) warning = attached.error;
+  }
+
+  const store = await ensureStore();
+  const refs = store.references.filter(
+    (item) => item.projectId === input.projectId,
+  );
+  const combined = refs.map((item) => item.excerpt?.trim() || "").join("\n\n");
+  const parsed = parseOutlineChaptersFromText(combined);
+  const fallback = input.fallbackOutline?.trim() || "";
+  if (
+    parsed.length < 2 &&
+    fallback &&
+    parseOutlineChaptersFromText(fallback).length >= 2
+  ) {
+    const target = refs[0];
+    if (target) {
+      await pinWriterOutlineExcerpt({
+        projectId: input.projectId,
+        projectName: input.projectName,
+        referenceId: target.id,
+        outlineText: fallback,
+      });
+      warning = PRIVATE_DOC_NOTE;
+    }
+  } else if (driveUrl && combined.length < 40) {
+    warning = PRIVATE_DOC_NOTE;
+    const target = refs[0];
+    if (target) {
+      target.syncNote = PRIVATE_DOC_NOTE;
+      await writeStore(store);
+    }
+  }
+
+  await rebuildWriterBookFromReferences(
+    input.projectId,
+    "Owner planted a Google Doc outline. Rebuild the living manuscript from docs/references/.",
+  );
+  return { warning };
 }
 
 export async function removeDriveReference(input: {
@@ -703,6 +859,10 @@ export async function resyncProjectDriveReferences(input: {
       (item) => item.projectId === input.projectId,
     ),
   });
+  await rebuildWriterBookFromReferences(
+    input.projectId,
+    "Owner re-synced Google Drive references. Rebuild the living manuscript from docs/references/.",
+  );
   return { ok: true, synced };
 }
 
