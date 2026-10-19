@@ -285,6 +285,18 @@ assert(
   "the master Google Doc id maps to the featured book",
 );
 assert(
+  knownWriterOutlineForDriveFile(
+    "1Kxz8073Rb0IREtzBEMdvcNritFH07RrA",
+  )?.concept.id === "mba-disease-pie-effect",
+  "the shared outline PDF maps to the featured book",
+);
+assert(
+  /1Kxz8073Rb0IREtzBEMdvcNritFH07RrA/.test(mba?.driveUrl || "") &&
+    /737 MAX/.test(mba?.outlineText || "") &&
+    /ButterBurger/.test(mba?.outlineText || ""),
+  "featured book is prefilled from the shared PDF outline",
+);
+assert(
   /driveLink/.test(
     readFileSync(join(process.cwd(), "src/app/writer/writer-plant-form.tsx"), "utf8"),
   ),

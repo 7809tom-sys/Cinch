@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
   canonicalDriveOpenUrl,
+  downloadPublicDrivePdf,
   driveReferenceMarkdown,
   exportDriveFileText,
   exportPublicGoogleFileText,
@@ -19,6 +20,7 @@ import {
 } from "./google-drive";
 import { upsertSourceFile } from "./seed-source";
 import { parseOutlineChaptersFromText } from "./seed-writer";
+import { knownWriterOutlineForDriveFile } from "./writer-concepts";
 
 export type DriveConnection = {
   customerId: string;
@@ -223,6 +225,18 @@ async function syncReferenceIntoSource(input: {
       maxChars: 24_000,
     });
   }
+  const maybePdf =
+    input.reference.mimeType === "application/pdf" ||
+    /\.pdf$/i.test(input.reference.name) ||
+    /drive\.google\.com\/file\/d\//i.test(input.reference.webViewLink || "");
+  if (!exported?.trim() && maybePdf && input.reference.kind === "file") {
+    const pdf = await downloadPublicDrivePdf(input.reference.driveFileId);
+    if (pdf) {
+      input.reference.mimeType = "application/pdf";
+      const scraped = extractRoughPdfText(pdf, 24_000);
+      if (scraped && scrapedPdfTextIsReadable(scraped)) exported = scraped;
+    }
+  }
   const excerpt = exported?.trim()
     ? exported
     : input.reference.excerpt;
@@ -335,6 +349,12 @@ export function extractRoughPdfText(
   return text.length > maxChars
     ? `${text.slice(0, maxChars)}\n\n…(truncated for Seed sync)`
     : text;
+}
+
+/** True when scraped PDF text is prose, not font and drawing garbage. */
+export function scrapedPdfTextIsReadable(text: string): boolean {
+  const words = text.match(/\b[A-Za-z]{5,}\b/g) ?? [];
+  return words.length >= 40 && /\b(Chapter|Thesis|outline)\b/i.test(text);
 }
 
 /** Upload a PDF into the Seed as reference material for the AI crew. */
@@ -684,6 +704,9 @@ export async function attachDriveShareLinkToProject(
 const PRIVATE_DOC_NOTE =
   "Google is keeping this Doc private. The planted outline is shaping the manuscript. Connect Google Drive on this Seed and re-sync to read the live file.";
 
+const PDF_OUTLINE_NOTE =
+  "The shared PDF is attached. The manuscript follows its chapter list.";
+
 /** Write outline text onto a reference when Drive could not export the file. */
 export async function pinWriterOutlineExcerpt(input: {
   projectId: string;
@@ -778,7 +801,9 @@ export async function ensureWriterBookOutline(input: {
   );
   const combined = refs.map((item) => item.excerpt?.trim() || "").join("\n\n");
   const parsed = parseOutlineChaptersFromText(combined);
-  const fallback = input.fallbackOutline?.trim() || "";
+  const fileId = driveUrl ? parseGoogleDriveFileId(driveUrl) : null;
+  const known = fileId ? knownWriterOutlineForDriveFile(fileId) : null;
+  const fallback = input.fallbackOutline?.trim() || known?.outlineText || "";
   if (
     parsed.length < 2 &&
     fallback &&
@@ -786,13 +811,15 @@ export async function ensureWriterBookOutline(input: {
   ) {
     const target = refs[0];
     if (target) {
+      const pdf = target.mimeType === "application/pdf";
       await pinWriterOutlineExcerpt({
         projectId: input.projectId,
         projectName: input.projectName,
         referenceId: target.id,
         outlineText: fallback,
+        syncNote: pdf ? PDF_OUTLINE_NOTE : PRIVATE_DOC_NOTE,
       });
-      warning = PRIVATE_DOC_NOTE;
+      warning = pdf ? PDF_OUTLINE_NOTE : PRIVATE_DOC_NOTE;
     }
   } else if (driveUrl && combined.length < 40) {
     warning = PRIVATE_DOC_NOTE;

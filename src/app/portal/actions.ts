@@ -70,6 +70,7 @@ import {
 import {
   getWriterConcept,
   knownWriterOutlineForDriveFile,
+  writerConceptHasDriveFile,
 } from "@/lib/writer-concepts";
 import {
   attachDriveFileToProject,
@@ -779,9 +780,7 @@ export async function purchaseWriterSeedAction(formData: FormData) {
     await bootstrapSeedProject(project.id);
     const sameOutline =
       !driveLink ||
-      (Boolean(concept?.driveUrl) &&
-        parseGoogleDriveFileId(driveLink) ===
-          parseGoogleDriveFileId(concept?.driveUrl || ""));
+      writerConceptHasDriveFile(concept, parseGoogleDriveFileId(driveLink));
     if (writerForm === "book" && (driveLink || concept?.outlineText)) {
       await ensureWriterBookOutline({
         projectId: project.id,

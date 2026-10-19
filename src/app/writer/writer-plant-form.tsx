@@ -190,13 +190,13 @@ export function WriterPlantForm({
           type="url"
           value={driveLink}
           onChange={(event) => setDriveLink(event.target.value)}
-          placeholder="https://docs.google.com/document/d/…"
+          placeholder="https://drive.google.com/file/d/… or a Google Doc"
           className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
         />
         <span className="mt-1 block text-xs leading-relaxed text-muted">
-          Paste the outline. The crew writes the book from its chapters. A
-          private Doc still plants from the saved structure until you connect
-          Drive on the Writer desk.
+          Paste the shared PDF or Google Doc. The crew writes the book from
+          its chapters. A private file still uses the saved chapter list until
+          you connect Drive on the Writer desk.
         </span>
       </label>
 
