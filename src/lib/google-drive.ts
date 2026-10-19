@@ -178,6 +178,35 @@ export function publicDriveDownloadUrl(fileId: string): string {
  * Download a Drive file shared as anyone-with-the-link when it is a PDF.
  * Private files and HTML interstitial pages return null.
  */
+/** Bytes of a Drive file the connected account can read (PDF, images, other binaries). */
+export async function downloadDriveFileBytes(input: {
+  accessToken: string;
+  fileId: string;
+  maxBytes?: number;
+}): Promise<Buffer | null> {
+  const maxBytes = input.maxBytes ?? 8_000_000;
+  const params = new URLSearchParams({
+    alt: "media",
+    supportsAllDrives: "true",
+  });
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}?${params}`,
+      {
+        headers: { Authorization: `Bearer ${input.accessToken}` },
+        cache: "no-store",
+      },
+    );
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 5 || bytes.length > maxBytes) return null;
+  return bytes;
+}
+
 export async function downloadPublicDrivePdf(
   fileId: string,
   maxBytes = 8_000_000,

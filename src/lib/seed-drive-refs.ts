@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import {
   canonicalDriveOpenUrl,
+  downloadDriveFileBytes,
   downloadPublicDrivePdf,
   driveReferenceMarkdown,
   exportDriveFileText,
@@ -18,6 +19,7 @@ import {
   type DriveFileSummary,
   verifyGoogleAccessToken,
 } from "./google-drive";
+import { extractPdfDocumentText } from "./pdf-text";
 import { upsertSourceFile } from "./seed-source";
 import { parseOutlineChaptersFromText } from "./seed-writer";
 import { knownWriterOutlineForDriveFile } from "./writer-concepts";
@@ -230,11 +232,20 @@ async function syncReferenceIntoSource(input: {
     /\.pdf$/i.test(input.reference.name) ||
     /drive\.google\.com\/file\/d\//i.test(input.reference.webViewLink || "");
   if (!exported?.trim() && maybePdf && input.reference.kind === "file") {
-    const pdf = await downloadPublicDrivePdf(input.reference.driveFileId);
+    const authed = input.accessToken
+      ? await downloadDriveFileBytes({
+          accessToken: input.accessToken,
+          fileId: input.reference.driveFileId,
+        })
+      : null;
+    const pdf =
+      authed && authed.subarray(0, 5).toString("latin1").startsWith("%PDF-")
+        ? authed
+        : await downloadPublicDrivePdf(input.reference.driveFileId);
     if (pdf) {
       input.reference.mimeType = "application/pdf";
-      const scraped = extractRoughPdfText(pdf, 24_000);
-      if (scraped && scrapedPdfTextIsReadable(scraped)) exported = scraped;
+      const read = await textFromPdfBuffer(pdf);
+      if (read) exported = read;
     }
   }
   const excerpt = exported?.trim()
@@ -357,6 +368,14 @@ export function scrapedPdfTextIsReadable(text: string): boolean {
   return words.length >= 40 && /\b(Chapter|Thesis|outline)\b/i.test(text);
 }
 
+async function textFromPdfBuffer(buffer: Buffer): Promise<string | null> {
+  const parsed = await extractPdfDocumentText(buffer, 24_000);
+  if (parsed && scrapedPdfTextIsReadable(parsed)) return parsed;
+  const rough = extractRoughPdfText(buffer, 24_000);
+  if (rough && scrapedPdfTextIsReadable(rough)) return rough;
+  return null;
+}
+
 /** Upload a PDF into the Seed as reference material for the AI crew. */
 export async function uploadReferencePdfToProject(input: {
   projectId: string;
@@ -395,7 +414,7 @@ export async function uploadReferencePdfToProject(input: {
   const binaryPath = `docs/references/uploads/${slug}-${uploadId.slice(-8)}.pdf.json`;
   const sourcePath = `docs/references/${slug}-${uploadId.slice(-8)}.md`;
   const excerpt =
-    extractRoughPdfText(buffer) ||
+    (await textFromPdfBuffer(buffer)) ||
     "_PDF uploaded. Text could not be extracted automatically — the binary is stored for the crew under docs/references/uploads/._";
 
   await upsertSourceFile({
@@ -804,7 +823,9 @@ export async function ensureWriterBookOutline(input: {
   const fileId = driveUrl ? parseGoogleDriveFileId(driveUrl) : null;
   const known = fileId ? knownWriterOutlineForDriveFile(fileId) : null;
   const fallback = input.fallbackOutline?.trim() || known?.outlineText || "";
+  const pdfTextRead = scrapedPdfTextIsReadable(combined);
   if (
+    !pdfTextRead &&
     parsed.length < 2 &&
     fallback &&
     parseOutlineChaptersFromText(fallback).length >= 2
