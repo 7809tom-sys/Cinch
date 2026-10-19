@@ -269,6 +269,52 @@ assert(
   "framework section becomes its own chapter",
 );
 
+const pdfOutline = `
+I. Core Thesis: The Great Decoupling
+The disease is the Theater of Corporate Compliance. Leadership leaves the floor.
+
+Chapter Two: The Illusion of the Paper Tiger
+Chapter Two explores how the 2% use bad data to cover up the rot.
+
+II. Comprehensive Chapter Structure
+Case Study Applications
+● General Motors: The Blueprint of Disconnect (Applying the 5-part architecture:
+Founder's Genesis, Forensic Evidence, Nardelli Protocol, PIE Decay, and CEO Manifesto)
+● CHABoeing: The Engineering Migration
+○ 1. Founder’s Genesis: The era of the Engineer-King (1916–1996).
+○ 4. PIE Effect Decay: The 737 MAX and MCAS.
+● Sears & Kodak: The Legacy Blindness (Applying the 5-part architecture: Founder's
+
+The Founder’s Genesis: Tactile Obsession
+Every great institution begins with a spark of tactile obsession. Quarterly lag is the cost of distance.
+`;
+const fromPdf = parseOutlineChaptersFromText(pdfOutline);
+assert(
+  fromPdf.some((c) => c.number === 1 && /Great Decoupling/i.test(c.title)) &&
+    /Theater of Corporate Compliance/.test(
+      fromPdf.find((c) => c.number === 1)?.purpose || "",
+    ),
+  "PDF text keeps the thesis prose as chapter 1",
+);
+assert(
+  fromPdf.some((c) => c.number === 2 && /Paper Tiger/i.test(c.title)),
+  "PDF text keeps Chapter Two",
+);
+assert(
+  fromPdf.some((c) => /^Boeing:/.test(c.title)) &&
+    /Engineer-King|737/.test(
+      fromPdf.find((c) => /^Boeing:/.test(c.title))?.purpose || "",
+    ),
+  "PDF text reads the Boeing case study",
+);
+assert(
+  fromPdf.some((c) => /Tactile Obsession/i.test(c.title)) &&
+    /Quarterly lag/.test(
+      fromPdf.find((c) => /Tactile Obsession/i.test(c.title))?.purpose || "",
+    ),
+  "PDF text reads the tactile obsession section",
+);
+
 const mba = WRITER_CONCEPTS.find((c) => c.id === "mba-disease-pie-effect");
 const planted = parseOutlineChaptersFromText(mba?.outlineText || "");
 assert(planted.length >= 8, "featured book outline has the full chapter list");
@@ -283,6 +329,18 @@ assert(
     "1gR1Zr4ucrejgD2TOUargIFe7E7_V8I3W8nhHClj2wVw",
   )?.concept.id === "mba-disease-pie-effect",
   "the master Google Doc id maps to the featured book",
+);
+assert(
+  knownWriterOutlineForDriveFile(
+    "1Kxz8073Rb0IREtzBEMdvcNritFH07RrA",
+  )?.concept.id === "mba-disease-pie-effect",
+  "the shared outline PDF maps to the featured book",
+);
+assert(
+  /1Kxz8073Rb0IREtzBEMdvcNritFH07RrA/.test(mba?.driveUrl || "") &&
+    /737 MAX/.test(mba?.outlineText || "") &&
+    /ButterBurger/.test(mba?.outlineText || ""),
+  "featured book is prefilled from the shared PDF outline",
 );
 assert(
   /driveLink/.test(

@@ -16,6 +16,7 @@ import {
 import {
   extractRoughPdfText,
   formatDriveReferencesForBrief,
+  scrapedPdfTextIsReadable,
 } from "../src/lib/seed-drive-refs";
 
 function assert(condition: boolean, message: string) {
@@ -149,6 +150,17 @@ const scraped = extractRoughPdfText(miniPdf);
 assert(
   Boolean(scraped && /Greenhouse outline notes/i.test(scraped)),
   "rough PDF text scrape finds literal strings",
+);
+assert(
+  scrapedPdfTextIsReadable(
+    "Chapter Two: The Illusion of the Paper Tiger. " +
+      "Performance incentive efficiency dashboard operators spreadsheet outline thesis ".repeat(8),
+  ),
+  "readable outline text is accepted",
+);
+assert(
+  !scrapedPdfTextIsReadable("Skia/PDF m157 Google Docs Renderer MBA Disease"),
+  "font garbage from a Docs PDF is not treated as the outline",
 );
 assert(extractRoughPdfText(Buffer.from("not-a-pdf")) === null, "rejects non-PDF");
 

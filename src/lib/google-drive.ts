@@ -170,6 +170,65 @@ export function canonicalDriveOpenUrl(input: {
   return `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
 }
 
+export function publicDriveDownloadUrl(fileId: string): string {
+  return `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`;
+}
+
+/**
+ * Download a Drive file shared as anyone-with-the-link when it is a PDF.
+ * Private files and HTML interstitial pages return null.
+ */
+/** Bytes of a Drive file the connected account can read (PDF, images, other binaries). */
+export async function downloadDriveFileBytes(input: {
+  accessToken: string;
+  fileId: string;
+  maxBytes?: number;
+}): Promise<Buffer | null> {
+  const maxBytes = input.maxBytes ?? 8_000_000;
+  const params = new URLSearchParams({
+    alt: "media",
+    supportsAllDrives: "true",
+  });
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}?${params}`,
+      {
+        headers: { Authorization: `Bearer ${input.accessToken}` },
+        cache: "no-store",
+      },
+    );
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 5 || bytes.length > maxBytes) return null;
+  return bytes;
+}
+
+export async function downloadPublicDrivePdf(
+  fileId: string,
+  maxBytes = 8_000_000,
+): Promise<Buffer | null> {
+  let response: Response;
+  try {
+    response = await fetch(publicDriveDownloadUrl(fileId), {
+      redirect: "follow",
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const type = response.headers.get("content-type") || "";
+  if (/html/i.test(type)) return null;
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 5 || bytes.length > maxBytes) return null;
+  if (!bytes.subarray(0, 5).toString("latin1").startsWith("%PDF-")) return null;
+  return bytes;
+}
+
 export function publicGoogleExportUrl(
   fileId: string,
   mimeType: string,

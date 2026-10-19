@@ -439,7 +439,7 @@ function chapterPurpose(block: string, title: string, number: number): string {
       .replace(/\*+/g, "")
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 280) ||
+      .slice(0, 1800) ||
     `Follow the owner outline for Chapter ${number}: ${title}.`
   );
 }
@@ -461,6 +461,92 @@ function titleFromChapterBlock(rawBlock: string, block: string): string {
   return cleanOutlineTitle(title).replace(/[.:;\-—–]+$/g, "").trim().slice(0, 80);
 }
 
+function trimOutlineChapterBlock(raw: string): string {
+  const cut = raw.search(
+    /\n(?:#{1,3}\s+)?(?:[IVXLC]+\.\s+)?(?:Comprehensive Chapter Structure|Case Study Applications)\b/,
+  );
+  return cut >= 0 ? raw.slice(0, cut) : raw;
+}
+
+function thesisPurposeFromOutline(text: string): string {
+  const match = text.match(
+    /^(?:[IVXLC]+\.\s*)?Core Thesis:\s*.+$/im,
+  );
+  if (!match || match.index == null) return "";
+  const after = text.slice(match.index + match[0].length);
+  const end = after.search(/\nChapter\s+\w+\s*[:.\-—–]/i);
+  const body = (end >= 0 ? after.slice(0, end) : after)
+    .replace(/\s+/g, " ")
+    .trim();
+  return body.slice(0, 1800);
+}
+
+function normalizePlainCaseTitle(raw: string): string {
+  return cleanOutlineTitle(raw)
+    .replace(/^CHABoeing\b/, "Boeing")
+    .replace(/\s+&\s+/g, " and ")
+    .replace(/\s*\(Applying[\s\S]*$/i, "")
+    .replace(/[.:;\-—–]+$/g, "")
+    .trim()
+    .slice(0, 80);
+}
+
+function collectPlainCaseStudies(
+  text: string,
+  extraTitles: Array<{ title: string; purpose: string }>,
+): void {
+  const lines = text.split(/\r?\n/);
+  const caseAt = lines.findIndex((line) =>
+    /Case Study Applications/i.test(line),
+  );
+  if (caseAt < 0) return;
+  for (let index = caseAt + 1; index < lines.length; index += 1) {
+    const top = (lines[index] ?? "").match(/^[●•]\s+(.+)$/);
+    if (top) {
+      const title = normalizePlainCaseTitle(top[1] ?? "");
+      if (!title.includes(":") || /^\d/.test(title)) continue;
+      const bits: string[] = [];
+      for (let follow = index + 1; follow < lines.length; follow += 1) {
+        const next = lines[follow] ?? "";
+        if (/^[●•]\s+/.test(next)) break;
+        if (/^The [^:\n]{3,40}:\s+[A-Z][^.\n]{3,40}$/.test(next.trim())) break;
+        const sub = next.replace(/^[○◦]\s+/, "").trim();
+        if (!sub) continue;
+        bits.push(cleanOutlineTitle(sub));
+        if (bits.join(" ").length > 1800) break;
+      }
+      extraTitles.push({
+        title,
+        purpose:
+          bits.join(" ").replace(/\s+/g, " ").trim().slice(0, 1800) ||
+          `Forensic case study: ${title}. Follow the five-part architecture in the owner outline.`,
+      });
+      continue;
+    }
+    const section = (lines[index] ?? "").trim();
+    if (!/^The [^:\n]{3,40}:\s+[A-Z][^.\n]{3,40}$/.test(section)) continue;
+    const title = cleanOutlineTitle(section).replace(/[.:;\-—–]+$/g, "").trim();
+    if (!title.includes(":")) continue;
+    const following: string[] = [];
+    for (let follow = index + 1; follow < lines.length; follow += 1) {
+      const sub = (lines[follow] ?? "").trim();
+      if (!sub) {
+        if (following.length > 0) break;
+        continue;
+      }
+      if (/^[●•]\s+/.test(sub) || /^Chapter\s+\w+/i.test(sub)) break;
+      following.push(cleanOutlineTitle(sub));
+      if (following.join(" ").length > 1800) break;
+    }
+    extraTitles.push({
+      title: title.slice(0, 80),
+      purpose:
+        following.join(" ").replace(/\s+/g, " ").trim().slice(0, 1800) ||
+        `Framework section from the owner outline: ${title}.`,
+    });
+  }
+}
+
 /**
  * Pull chapters from an owner outline so the manuscript follows their
  * structure instead of a generic plot template.
@@ -479,7 +565,7 @@ export function parseOutlineChaptersFromText(
   let match: RegExpExecArray | null;
   while ((match = re.exec(text))) {
     const number = chapterNumberFromToken(match[1] ?? "");
-    const rawBlock = match[2] ?? "";
+    const rawBlock = trimOutlineChapterBlock(match[2] ?? "");
     const block = rawBlock.replace(/\s+/g, " ").trim();
     if (!number || !block) continue;
     if (chapters.some((chapter) => chapter.number === number)) continue;
@@ -522,6 +608,26 @@ export function parseOutlineChaptersFromText(
         number: 1,
         title: thesis,
         purpose:
+          thesisPurposeFromOutline(text) ||
+          "Open on the core thesis before the later chapters and case studies.",
+      });
+    }
+  }
+
+  if (!chapters.some((chapter) => chapter.number === 1)) {
+    const plainThesis = text.match(
+      /^(?:[IVXLC]+\.\s*)?Core Thesis:\s*(.+)$/im,
+    );
+    const plainTitle = cleanOutlineTitle(plainThesis?.[1] ?? "")
+      .replace(/[.:;\-—–]+$/g, "")
+      .trim()
+      .slice(0, 80);
+    if (plainTitle.length >= 2) {
+      chapters.push({
+        number: 1,
+        title: plainTitle,
+        purpose:
+          thesisPurposeFromOutline(text) ||
           "Open on the core thesis before the later chapters and case studies.",
       });
     }
@@ -551,7 +657,7 @@ export function parseOutlineChaptersFromText(
       bits.push(cleanOutlineTitle(sub));
       if (bits.join(" ").length > 500) break;
     }
-    const purpose = bits.join(" ").replace(/\s+/g, " ").trim().slice(0, 280);
+    const purpose = bits.join(" ").replace(/\s+/g, " ").trim().slice(0, 1800);
     extraTitles.push({
       title: title.slice(0, 80),
       purpose:
@@ -584,10 +690,12 @@ export function parseOutlineChaptersFromText(
     extraTitles.push({
       title,
       purpose:
-        following.join(" ").replace(/\s+/g, " ").trim().slice(0, 280) ||
+        following.join(" ").replace(/\s+/g, " ").trim().slice(0, 1800) ||
         `Framework section from the owner outline: ${title}.`,
     });
   }
+
+  collectPlainCaseStudies(text, extraTitles);
 
   let next =
     chapters.reduce((max, chapter) => Math.max(max, chapter.number), 0) + 1;
