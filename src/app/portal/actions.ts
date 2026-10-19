@@ -65,14 +65,21 @@ import {
   googleDriveClientId,
   googleDriveScopes,
   isGoogleDriveConnectConfigured,
+  parseGoogleDriveFileId,
 } from "@/lib/google-drive";
+import {
+  getWriterConcept,
+  knownWriterOutlineForDriveFile,
+} from "@/lib/writer-concepts";
 import {
   attachDriveFileToProject,
   attachDriveShareLinkToProject,
   browseConnectedDrive,
   disconnectDrive,
+  ensureWriterBookOutline,
   getDriveConnection,
   listProjectDriveReferences,
+  pinWriterOutlineExcerpt,
   removeDriveReference,
   resyncProjectDriveReferences,
   saveDriveConnection,
@@ -700,6 +707,15 @@ export async function purchaseWriterSeedAction(formData: FormData) {
   const tone = String(formData.get("tone") ?? "").trim();
   const notes = String(formData.get("notes") ?? "").trim();
   const writerFormRaw = String(formData.get("writerForm") ?? "").trim();
+  const concept = getWriterConcept(String(formData.get("conceptId") ?? ""));
+  const driveLink = String(formData.get("driveLink") ?? "").trim();
+
+  if (driveLink && !parseGoogleDriveFileId(driveLink)) {
+    return {
+      ok: false as const,
+      error: "Paste a Google Docs or Drive link, or leave that field blank.",
+    };
+  }
 
   if (!email || !email.includes("@")) {
     return { ok: false as const, error: "Enter a valid email for your portal login." };
@@ -729,6 +745,7 @@ export async function purchaseWriterSeedAction(formData: FormData) {
   });
   const priceUsd = priceForAccount(WRITER_SEED_PRICE_USD, email);
   const customer = await upsertCustomer({ email, name: name || undefined });
+  const signedIn = await getCurrentCustomer();
 
   const project = await createProject({
     name: `${title} Writer Seed`,
@@ -750,8 +767,34 @@ export async function purchaseWriterSeedAction(formData: FormData) {
     projectId: project.id,
   });
 
+  if (signedIn && signedIn.id !== customer.id) {
+    await upsertCustomer({
+      email: signedIn.email,
+      name: signedIn.name,
+      projectId: project.id,
+    });
+  }
+
   try {
     await bootstrapSeedProject(project.id);
+    const sameOutline =
+      !driveLink ||
+      (Boolean(concept?.driveUrl) &&
+        parseGoogleDriveFileId(driveLink) ===
+          parseGoogleDriveFileId(concept?.driveUrl || ""));
+    if (writerForm === "book" && (driveLink || concept?.outlineText)) {
+      await ensureWriterBookOutline({
+        projectId: project.id,
+        projectName: project.name,
+        customerId: customer.id,
+        driveUrl: driveLink || null,
+        fallbackOutline: sameOutline ? concept?.outlineText ?? null : null,
+        label:
+          concept?.id === "mba-disease-pie-effect"
+            ? "MBA Disease and the PIE Effect - Master Book Outline"
+            : concept?.title || null,
+      });
+    }
     await establishCustomerSession(customer.id);
   } catch (error) {
     return {
@@ -1240,7 +1283,26 @@ export async function readSeedLinkAction(projectId: string, url: string) {
       shareUrl: classified.url,
     });
     if (!attached.ok) return attached;
-    const text = attached.reference.excerpt?.trim() ?? "";
+    let text = attached.reference.excerpt?.trim() ?? "";
+    const fileId = parseGoogleDriveFileId(classified.url);
+    const known = fileId ? knownWriterOutlineForDriveFile(fileId) : null;
+    const writerBook =
+      access.project.seedKind === "writer" && access.project.writerForm !== "song";
+    if (text.length < 40 && known && writerBook) {
+      const pinned = await pinWriterOutlineExcerpt({
+        projectId: access.project.id,
+        projectName: access.project.name,
+        referenceId: attached.reference.id,
+        outlineText: known.outlineText,
+      });
+      text = pinned?.excerpt?.trim() || known.outlineText;
+      await ensureWriterBookOutline({
+        projectId: access.project.id,
+        projectName: access.project.name,
+        customerId: customer.id,
+        fallbackOutline: null,
+      });
+    }
     if (text.length < 40) {
       revalidateDrivePaths(projectId);
       return { ok: false as const, error: PRIVATE_GOOGLE_LINK };
@@ -1284,10 +1346,29 @@ export async function applySeedLinkFactsAction(
   if (!access.ok) return { ok: false as const, error: access.error };
 
   const name = input.name.trim();
-  const brief = composeBriefFromFacts({
-    summary: input.summary,
-    facts: input.facts ?? [],
-  });
+  const writerBook =
+    access.project.seedKind === "writer" && access.project.writerForm !== "song";
+  const kept = (input.facts ?? []).filter(
+    (fact) => fact.included && fact.text.trim(),
+  );
+  const brief = writerBook
+    ? composeWriterBrief({
+        form: "book",
+        title: name.replace(/\s+Writer Seed$/i, ""),
+        premise:
+          input.summary.trim() ||
+          "Write the book from the attached Google Doc outline.",
+        notes: [
+          input.sourceUrl
+            ? `Structure bible: ${input.sourceUrl}`
+            : "Structure bible: the attached Google Doc.",
+          ...kept.map((fact) => fact.text.trim()),
+        ].join("\n"),
+      })
+    : composeBriefFromFacts({
+        summary: input.summary,
+        facts: input.facts ?? [],
+      });
   if (!name) return { ok: false as const, error: "Add a name for this Seed." };
   if (!brief) {
     return {
@@ -1299,7 +1380,6 @@ export async function applySeedLinkFactsAction(
   const result = await updateProjectDetails(projectId, { name, brief });
   if ("error" in result) return { ok: false as const, error: result.error };
 
-  const kept = (input.facts ?? []).filter((fact) => fact.included && fact.text.trim());
   await upsertSourceFile({
     projectId,
     path: "docs/references/confirmed-link.md",
@@ -1319,6 +1399,14 @@ ${kept.map((fact) => `- ${fact.text.trim()}`).join("\n") || "_No lines kept._"}
     message: "Saved the lines the owner confirmed from a pasted link",
     agentName: "Owner",
   });
+
+  if (writerBook && access.customer) {
+    await ensureWriterBookOutline({
+      projectId,
+      projectName: result.project.name,
+      customerId: access.customer.id,
+    });
+  }
 
   if (result.reactionTasksQueued > 0) {
     try {

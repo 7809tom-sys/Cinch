@@ -390,47 +390,221 @@ function slugWord(value: string): string {
     .join(" ");
 }
 
+const CHAPTER_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+};
+
+function chapterNumberFromToken(token: string): number | null {
+  if (/^\d+$/.test(token)) {
+    const number = Number(token);
+    return number > 0 && number < 80 ? number : null;
+  }
+  return CHAPTER_WORDS[token.toLowerCase()] ?? null;
+}
+
+function cleanOutlineTitle(raw: string): string {
+  return raw
+    .replace(/\\/g, "")
+    .replace(/\*+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function chapterPurpose(block: string, title: string, number: number): string {
+  const afterTitle = block.slice(
+    block.toLowerCase().indexOf(title.toLowerCase()) + title.length,
+  );
+  return (
+    afterTitle
+      .replace(/^\s*[:.\-—–]?\s*/, "")
+      .replace(/\*+/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 280) ||
+    `Follow the owner outline for Chapter ${number}: ${title}.`
+  );
+}
+
+function titleFromChapterBlock(rawBlock: string, block: string): string {
+  const firstLine =
+    rawBlock
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean) ?? "";
+  const source = firstLine.length > 140 ? block : firstLine || block;
+  const withParen = source.match(/^(.{2,90}?\([^)]+\))/);
+  let title = withParen?.[1]?.trim() || "";
+  if (!title) {
+    title =
+      source.split(/\bOpening scene\b|[.](?:\s|$)/i)[0]?.trim() ||
+      source.slice(0, 80);
+  }
+  return cleanOutlineTitle(title).replace(/[.:;\-—–]+$/g, "").trim().slice(0, 80);
+}
+
 /**
- * Pull "Chapter N: Title" headings from an owner outline / PDF excerpt so the
- * living manuscript follows their structure instead of a generic plot template.
+ * Pull chapters from an owner outline so the manuscript follows their
+ * structure instead of a generic plot template.
+ *
+ * Accepts "Chapter 3: Title", "Chapter Two: Title", top-level case studies
+ * like "* **General Motors: The Blueprint of Disconnect**", and a leading
+ * thesis heading when the outline starts at chapter two.
  */
 export function parseOutlineChaptersFromText(
   text: string,
 ): Array<{ number: number; title: string; purpose: string }> {
   const chapters: Array<{ number: number; title: string; purpose: string }> =
     [];
-  // Prefer a clean title like "The Wish Book (The Rise)" even when PDF text
-  // scrape joins the next sentence onto the same line. Stop before the next
-  // "Chapter N" so later chapters are not swallowed into the title capture.
   const re =
-    /Chapter\s+(\d+)\s*[:.\-—–]\s*([\s\S]*?)(?=Chapter\s+\d+\s*[:.\-—–]|$)/gi;
+    /Chapter\s+(\d+|[A-Za-z]+)\s*[:.\-—–]\s*([\s\S]*?)(?=Chapter\s+(?:\d+|[A-Za-z]+)\s*[:.\-—–]|$)/gi;
   let match: RegExpExecArray | null;
   while ((match = re.exec(text))) {
-    const number = Number(match[1]);
-    const block = match[2]!.replace(/\s+/g, " ").trim();
+    const number = chapterNumberFromToken(match[1] ?? "");
+    const rawBlock = match[2] ?? "";
+    const block = rawBlock.replace(/\s+/g, " ").trim();
     if (!number || !block) continue;
     if (chapters.some((chapter) => chapter.number === number)) continue;
-
-    const withParen = block.match(/^(.{2,90}?\([^)]+\))/);
-    let title = withParen?.[1]?.trim() || "";
-    if (!title) {
-      title =
-        block.split(/\bOpening scene\b|[.](?:\s|$)/i)[0]?.trim() ||
-        block.slice(0, 80);
-    }
-    title = title.replace(/[.:;\-—–]+$/g, "").trim().slice(0, 80);
+    const title = titleFromChapterBlock(rawBlock, block);
     if (title.length < 2) continue;
-
-    const afterTitle = block.slice(block.toLowerCase().indexOf(title.toLowerCase()) + title.length);
-    const purpose =
-      afterTitle
-        .replace(/^\s*[:.\-—–]?\s*/, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 280) ||
-      `Follow the owner outline for Chapter ${number}: ${title}.`;
-    chapters.push({ number, title, purpose });
+    chapters.push({
+      number,
+      title,
+      purpose: chapterPurpose(block, title, number),
+    });
   }
+
+  const numbered = chapters.map((chapter) => chapter.number);
+  const minNumber = numbered.length ? Math.min(...numbered) : 0;
+  if (minNumber >= 2 && !chapters.some((chapter) => chapter.number === 1)) {
+    const headingRe =
+      /^#{1,3}\s+\**\s*(?:[IVXLC]+\.\s*)?([^*\n#]{6,90})/gm;
+    let heading: RegExpExecArray | null;
+    let seen = 0;
+    let thesis = "";
+    while ((heading = headingRe.exec(text))) {
+      seen += 1;
+      const raw = cleanOutlineTitle(heading[1] ?? "");
+      if (!raw || /^chapter\b/i.test(raw)) continue;
+      if (seen === 1 && /outline|mba disease/i.test(raw)) continue;
+      thesis = raw
+        .replace(/^(?:core thesis|section)\s*:\s*/i, "")
+        .replace(/[.:;\-—–]+$/g, "")
+        .trim()
+        .slice(0, 80);
+      break;
+    }
+    if (
+      thesis.length >= 2 &&
+      !chapters.some(
+        (chapter) => chapter.title.toLowerCase() === thesis.toLowerCase(),
+      )
+    ) {
+      chapters.push({
+        number: 1,
+        title: thesis,
+        purpose:
+          "Open on the core thesis before the later chapters and case studies.",
+      });
+    }
+  }
+
+  const extraTitles: Array<{ title: string; purpose: string }> = [];
+  const lines = text.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const caseMatch = lines[index]?.match(
+      /^[ \t]*[*•-][ \t]+\*\*([^*\n]{4,90})\*\*[ \t]*([^\n]*)$/,
+    );
+    if (!caseMatch) continue;
+    const title = cleanOutlineTitle(caseMatch[1] ?? "").replace(
+      /^CHABoeing\b/,
+      "Boeing",
+    );
+    if (!title.includes(":") || /^\d+/.test(title)) continue;
+    const bits = [
+      cleanOutlineTitle(caseMatch[2] ?? "").replace(/^\(+|\)+$/g, ""),
+    ];
+    for (let follow = index + 1; follow < lines.length; follow += 1) {
+      const next = lines[follow] ?? "";
+      if (/^[ \t]*[*•-][ \t]+\*\*/.test(next) && !/^\s{2,}/.test(next)) break;
+      if (/^#{1,3}\s/.test(next) || /^\*\*[A-Z]/.test(next)) break;
+      const sub = next.trim();
+      if (!sub || sub === "---" || sub.startsWith("## ---")) continue;
+      bits.push(cleanOutlineTitle(sub));
+      if (bits.join(" ").length > 500) break;
+    }
+    const purpose = bits.join(" ").replace(/\s+/g, " ").trim().slice(0, 280);
+    extraTitles.push({
+      title: title.slice(0, 80),
+      purpose:
+        purpose ||
+        `Forensic case study: ${title}. Follow the five-part architecture in the owner outline.`,
+    });
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const sectionMatch = lines[index]?.match(
+      /^\*\*([A-Z][^:*\n]{3,60}:\s+[^:*\n]{3,80})\*\*\s*$/,
+    );
+    if (!sectionMatch) continue;
+    const title = cleanOutlineTitle(sectionMatch[1] ?? "")
+      .replace(/[.:;\-—–]+$/g, "")
+      .trim()
+      .slice(0, 80);
+    if (!title.includes(":")) continue;
+    const following: string[] = [];
+    for (let follow = index + 1; follow < lines.length; follow += 1) {
+      const sub = (lines[follow] ?? "").trim();
+      if (!sub || sub.startsWith("![") || sub === "---" || sub.startsWith("## ---")) {
+        if (following.length > 0) break;
+        continue;
+      }
+      if (/^#{1,3}\s/.test(sub) || /^\*\*[A-Z]/.test(sub)) break;
+      following.push(cleanOutlineTitle(sub));
+      if (following.join(" ").length > 280) break;
+    }
+    extraTitles.push({
+      title,
+      purpose:
+        following.join(" ").replace(/\s+/g, " ").trim().slice(0, 280) ||
+        `Framework section from the owner outline: ${title}.`,
+    });
+  }
+
+  let next =
+    chapters.reduce((max, chapter) => Math.max(max, chapter.number), 0) + 1;
+  if (chapters.length === 0) next = 1;
+  for (const extra of extraTitles) {
+    const key = extra.title.toLowerCase();
+    if (chapters.some((chapter) => chapter.title.toLowerCase() === key)) {
+      continue;
+    }
+    chapters.push({
+      number: next,
+      title: extra.title,
+      purpose: extra.purpose,
+    });
+    next += 1;
+  }
+
   return chapters.sort((a, b) => a.number - b.number);
 }
 

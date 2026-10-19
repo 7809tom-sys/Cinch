@@ -130,6 +130,46 @@ export function mimeTypeFromDriveShareUrl(raw: string): string | null {
   return null;
 }
 
+/**
+ * Open URL for a Drive file. Google Docs opened as
+ * drive.google.com/file/d/…/view render Google's own "404. That's an error."
+ * Docs, Sheets, and Slides need their native URLs.
+ */
+export function canonicalDriveOpenUrl(input: {
+  fileId: string;
+  mimeType?: string | null;
+  shareUrl?: string | null;
+  webViewLink?: string | null;
+}): string {
+  const id = input.fileId.trim();
+  const mime =
+    input.mimeType ||
+    mimeTypeFromDriveShareUrl(input.shareUrl || "") ||
+    mimeTypeFromDriveShareUrl(input.webViewLink || "") ||
+    "";
+  if (mime === "application/vnd.google-apps.document") {
+    return `https://docs.google.com/document/d/${encodeURIComponent(id)}/edit`;
+  }
+  if (mime === "application/vnd.google-apps.spreadsheet") {
+    return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/edit`;
+  }
+  if (mime === "application/vnd.google-apps.presentation") {
+    return `https://docs.google.com/presentation/d/${encodeURIComponent(id)}/edit`;
+  }
+  if (mime === "application/vnd.google-apps.folder") {
+    return `https://drive.google.com/drive/folders/${encodeURIComponent(id)}`;
+  }
+  const share = input.shareUrl?.trim() || "";
+  if (/^https?:\/\//i.test(share) && !/drive\.google\.com\/file\/d\//i.test(share)) {
+    return share;
+  }
+  const view = input.webViewLink?.trim() || "";
+  if (/^https?:\/\//i.test(view) && !/drive\.google\.com\/file\/d\//i.test(view)) {
+    return view;
+  }
+  return `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`;
+}
+
 export function publicGoogleExportUrl(
   fileId: string,
   mimeType: string,
@@ -307,18 +347,19 @@ export async function exportDriveFileText(input: {
   const maxChars = input.maxChars ?? 12_000;
   let url: string | null = null;
 
+  const sharedDrive = "supportsAllDrives=true";
   if (input.mimeType === "application/vnd.google-apps.document") {
-    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}/export?mimeType=${encodeURIComponent("text/plain")}`;
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}/export?mimeType=${encodeURIComponent("text/plain")}&${sharedDrive}`;
   } else if (input.mimeType === "application/vnd.google-apps.spreadsheet") {
-    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}/export?mimeType=${encodeURIComponent("text/csv")}`;
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}/export?mimeType=${encodeURIComponent("text/csv")}&${sharedDrive}`;
   } else if (input.mimeType === "application/vnd.google-apps.presentation") {
-    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}/export?mimeType=${encodeURIComponent("text/plain")}`;
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}/export?mimeType=${encodeURIComponent("text/plain")}&${sharedDrive}`;
   } else if (
     input.mimeType.startsWith("text/") ||
     input.mimeType === "application/json" ||
     input.mimeType === "application/rtf"
   ) {
-    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}?alt=media`;
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.fileId)}?alt=media&${sharedDrive}`;
   }
 
   if (!url) {

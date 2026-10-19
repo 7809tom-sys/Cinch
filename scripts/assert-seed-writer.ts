@@ -24,6 +24,11 @@ import {
   publicWebsiteUrl,
   writerSeedPortalPath,
 } from "../src/lib/domain";
+import {
+  knownWriterOutlineForDriveFile,
+  WRITER_CONCEPTS,
+} from "../src/lib/writer-concepts";
+import { absorbRemoteProjects, type SeedProject } from "../src/lib/store";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -209,6 +214,114 @@ assert(
   planned.some((c) => /Wish Book/i.test(c.title)) &&
     planned.some((c) => /Paper Tiger/i.test(c.title)),
   "book plan prefers owner outline chapters over generic plot",
+);
+
+const worded = parseOutlineChaptersFromText(
+  "Chapter Two: The Illusion of the Paper Tiger\nThe spreadsheet covers the rot.",
+);
+assert(
+  worded.length === 1 && worded[0]?.number === 2 && /Paper Tiger/i.test(worded[0].title),
+  "outline parser accepts Chapter Two",
+);
+
+const masterDoc = `
+# **MBA Disease and the PIE Effect: Structural Outline**
+
+## **I. Core Thesis: The Great Decoupling**
+
+The disease is leadership leaving the floor.
+
+## **Chapter Two: The Illusion of the Paper Tiger**
+
+Chapter Two explores how bad data covers the rot.
+
+* **General Motors: The Blueprint of Disconnect** (Applying the 5-part architecture)
+* **CHABoeing: The Engineering Migration**
+  * **1\\. Founder’s Genesis:** The Engineer-King.
+* **Intel: The Paralysis of Advantage** (Applying the 5-part architecture)
+
+**The Founder’s Genesis: Tactile Obsession**
+`;
+const fromDoc = parseOutlineChaptersFromText(masterDoc);
+assert(
+  fromDoc.some((c) => c.number === 1 && /Great Decoupling/i.test(c.title)),
+  "master outline promotes the thesis to chapter 1",
+);
+assert(
+  fromDoc.some((c) => c.number === 2 && /Paper Tiger/i.test(c.title)),
+  "master outline keeps Chapter Two",
+);
+assert(
+  fromDoc.some((c) => /General Motors/i.test(c.title)) &&
+    fromDoc.some((c) => /^Boeing:/.test(c.title)) &&
+    fromDoc.some((c) => /Engineer-King|737/.test(
+      fromDoc.find((c) => /^Boeing:/.test(c.title))?.purpose || "",
+    )) &&
+    fromDoc.some((c) => /Intel/i.test(c.title)),
+  "master outline turns case studies into chapters",
+);
+assert(
+  !fromDoc.some((c) => /Founder.s Genesis/i.test(c.title) && c.title.startsWith("1")),
+  "five-part sub-beats stay inside the case study",
+);
+assert(
+  fromDoc.some((c) => /Tactile Obsession/i.test(c.title)),
+  "framework section becomes its own chapter",
+);
+
+const mba = WRITER_CONCEPTS.find((c) => c.id === "mba-disease-pie-effect");
+const planted = parseOutlineChaptersFromText(mba?.outlineText || "");
+assert(planted.length >= 8, "featured book outline has the full chapter list");
+assert(
+  planted.some((c) => /Great Decoupling/i.test(c.title)) &&
+    planted.some((c) => /Boeing/i.test(c.title)) &&
+    planted.some((c) => /Sears and Kodak/i.test(c.title)),
+  "featured outline names the decoupling, Boeing, and Sears",
+);
+assert(
+  knownWriterOutlineForDriveFile(
+    "1gR1Zr4ucrejgD2TOUargIFe7E7_V8I3W8nhHClj2wVw",
+  )?.concept.id === "mba-disease-pie-effect",
+  "the master Google Doc id maps to the featured book",
+);
+assert(
+  /driveLink/.test(
+    readFileSync(join(process.cwd(), "src/app/writer/writer-plant-form.tsx"), "utf8"),
+  ),
+  "writer plant form accepts a Google Doc link",
+);
+assert(
+  /location\.assign/.test(
+    readFileSync(join(process.cwd(), "src/app/writer/writer-plant-form.tsx"), "utf8"),
+  ),
+  "planting opens the desk with a full page load",
+);
+
+const localOnly = {
+  id: "local-seed",
+  name: "Local",
+  updatedAt: "2026-10-18T00:00:00.000Z",
+} as SeedProject;
+const remoteNewer = {
+  id: "planted-on-other-instance",
+  name: "MBA Disease Writer Seed",
+  updatedAt: "2026-10-18T01:00:00.000Z",
+  seedKind: "writer",
+} as SeedProject;
+const remoteOlder = {
+  id: "local-seed",
+  name: "Stale remote",
+  updatedAt: "2026-10-17T00:00:00.000Z",
+} as SeedProject;
+const absorbed = absorbRemoteProjects([localOnly], [remoteNewer, remoteOlder]);
+assert(
+  absorbed.some((project) => project.id === "planted-on-other-instance") &&
+    absorbed.some((project) => project.id === "local-seed" && project.name === "Local"),
+  "a Seed planted on another instance is visible without dropping newer local edits",
+);
+assert(
+  absorbRemoteProjects([localOnly], []).length === 1,
+  "an empty remote read does not wipe cached Seeds",
 );
 
 if (process.exitCode) {

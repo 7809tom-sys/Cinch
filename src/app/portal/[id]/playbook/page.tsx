@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { getPortalProjectSnapshot } from "../../actions";
 import { SeedPlaybookBuilder } from "@/components/seed-playbook-builder";
 import { SeedPlaybookPack } from "@/components/seed-playbook-pack";
@@ -26,7 +27,7 @@ export default async function PortalSeedPlaybookPage({ params }: PageProps) {
   const { id } = await params;
   const { customer, project } = await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   const pack = compileSeedPlaybook({
     name: project.name,

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { purchaseWriterSeedAction } from "@/app/portal/actions";
 import type { WriterConcept } from "@/lib/writer-concepts";
@@ -14,7 +13,6 @@ export function WriterPlantForm({
   defaultName?: string | null;
   concept?: WriterConcept | null;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [writerForm, setWriterForm] = useState<"book" | "song">(
@@ -25,6 +23,7 @@ export function WriterPlantForm({
   const [audience, setAudience] = useState(concept?.audience ?? "");
   const [tone, setTone] = useState(concept?.tone ?? "");
   const [notes, setNotes] = useState(concept?.notes ?? "");
+  const [driveLink, setDriveLink] = useState(concept?.driveUrl ?? "");
   const [accessCode, setAccessCode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,6 +34,7 @@ export function WriterPlantForm({
     setAudience(concept.audience);
     setTone(concept.tone);
     setNotes(concept.notes);
+    setDriveLink(concept.driveUrl ?? "");
   }, [concept]);
 
   return (
@@ -54,18 +54,21 @@ export function WriterPlantForm({
             return;
           }
           setAccessCode(result.accessCode);
-          router.push(`/portal/${result.projectId}/writer`);
+          // Full load so the new sign-in cookie is sent. A soft navigation
+          // can open the desk with the previous session and render a 404.
+          window.location.assign(`/portal/${result.projectId}/writer`);
         });
       }}
     >
       {concept ? (
         <p className="rounded-md border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-brand-deep">
           Starting from{" "}
-          <span className="font-semibold">{concept.title}</span>. Edit
-          anything below, then plant — upload the outline PDF on the synced
-          Seed after checkout.
+          <span className="font-semibold">{concept.title}</span>. The Google
+          Doc below is the structure bible. Edit anything, then plant.
         </p>
       ) : null}
+
+      {concept ? <input type="hidden" name="conceptId" value={concept.id} /> : null}
 
       <fieldset className="space-y-3">
         <legend className="font-[family-name:var(--font-display)] text-sm font-bold tracking-[0.14em] text-accent-deep">
@@ -176,6 +179,26 @@ export function WriterPlantForm({
           />
         </label>
       </div>
+
+      <label className="block">
+        <span className="text-sm font-medium text-brand-deep">
+          Google Doc{" "}
+          <span className="font-normal text-muted">(optional)</span>
+        </span>
+        <input
+          name="driveLink"
+          type="url"
+          value={driveLink}
+          onChange={(event) => setDriveLink(event.target.value)}
+          placeholder="https://docs.google.com/document/d/…"
+          className="mt-2 w-full rounded-md border border-brand/15 bg-foam px-4 py-3 text-sm text-brand-deep outline-none ring-brand/30 focus:ring-2"
+        />
+        <span className="mt-1 block text-xs leading-relaxed text-muted">
+          Paste the outline. The crew writes the book from its chapters. A
+          private Doc still plants from the saved structure until you connect
+          Drive on the Writer desk.
+        </span>
+      </label>
 
       <label className="block">
         <span className="text-sm font-medium text-brand-deep">

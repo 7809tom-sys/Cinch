@@ -548,9 +548,41 @@ export async function getCustomerFromSessionToken(
   const store = await ensureCustomers();
   const hashed = hashSessionToken(token);
   const stamp = now();
-  const session = store.sessions.find(
+  let session = store.sessions.find(
     (item) => item.token === hashed && item.expiresAt > stamp,
   );
+
+  // The login cookie may have been written by another instance. A warm
+  // process that cached customers earlier would otherwise miss the session
+  // or the Seed that was just attached to this account.
+  const fresh = await readJsonStore<CustomerStore>(STORE_KEY, {
+    accounts: [],
+    sessions: [],
+  });
+  const freshHasRows =
+    (fresh.accounts?.length ?? 0) > 0 || (fresh.sessions?.length ?? 0) > 0;
+  if (freshHasRows) {
+    if (!session) {
+      const incoming = (fresh.sessions ?? []).find(
+        (item) => item.token === hashed && item.expiresAt > stamp,
+      );
+      if (incoming) {
+        store.sessions.unshift(incoming);
+        session = incoming;
+      }
+    }
+    if (session) {
+      const remote = (fresh.accounts ?? []).find(
+        (item) => item.id === session!.customerId,
+      );
+      const local = store.accounts.find((item) => item.id === session!.customerId);
+      if (remote && (!local || remote.updatedAt > local.updatedAt)) {
+        if (local) Object.assign(local, remote);
+        else store.accounts.unshift(remote);
+      }
+    }
+  }
+
   if (!session) return null;
   return getCustomerById(session.customerId);
 }

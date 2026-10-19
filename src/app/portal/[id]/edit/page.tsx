@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { SiteFooter } from "@/components/site-footer";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { withDeliveryDriverPolicyBrief } from "@/lib/seed-delivery";
@@ -28,7 +29,7 @@ export default async function EditSeedPage({ params }: PageProps) {
   const { id } = await params;
   const { customer, project } = await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   const websiteUrl = liveWebsiteUrl(project);
   const deliveryPlatform = briefIsDeliveryPlatform(

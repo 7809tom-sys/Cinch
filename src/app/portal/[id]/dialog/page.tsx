@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { getPortalProjectSnapshot } from "../../actions";
 import { SeedDialogPanel } from "@/components/seed-dialog-panel";
 import { getProjectManager } from "@/lib/agents";
@@ -26,7 +27,7 @@ export default async function PortalSeedDialogPage({ params }: PageProps) {
   const { id } = await params;
   const { customer, project } = await getPortalProjectSnapshot(id);
   if (!customer) redirect("/login");
-  if (!project) notFound();
+  if (!project) return <SeedNotOnAccount />;
 
   const messages = await listMessagesForSeed(project.id);
   const pm = getProjectManager();

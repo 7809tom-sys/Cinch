@@ -114,8 +114,8 @@ export default async function WriterPage({
                 Plant this book on Cinch
               </a>
               <p className="text-sm text-muted">
-                Form below is prefilled. After plant, upload the outline PDF on
-                the synced Writer desk.
+                Form below is prefilled from the master outline. Plant it and
+                the crew writes from that Google Doc.
               </p>
             </div>
           </section>

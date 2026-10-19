@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
+import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { SiteFooter } from "@/components/site-footer";
 import { liveWebsiteUrl } from "@/lib/domain";
 import { SEED_MARKETPLACE_DEVELOPER_RATE } from "@/lib/pricing";
@@ -37,7 +38,7 @@ export default async function PortalSourcePage({
   const query = await searchParams;
   const snapshot = await getPortalSourceSnapshot(id);
   if (!snapshot.customer) redirect("/login");
-  if (snapshot.unauthorized || !snapshot.project) notFound();
+  if (snapshot.unauthorized || !snapshot.project) return <SeedNotOnAccount />;
 
   const project = snapshot.project;
   const websiteUrl = liveWebsiteUrl(project);
