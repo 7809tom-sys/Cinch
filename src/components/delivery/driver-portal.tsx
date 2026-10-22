@@ -722,7 +722,11 @@ function ScoutPaperMenuDesk({
         the prices and modifiers, then Approve — five-minute sign-off. The
         kitchen 86s plates on the merchant tablet during service.
       </p>
-      {restaurant.menu?.uploadedFiles?.length ? (
+      {restaurant.menu?.uploadReceipt ? (
+        <p className="mt-2 text-sm font-semibold text-brand-deep">
+          {restaurant.menu.uploadReceipt}
+        </p>
+      ) : restaurant.menu?.uploadedFiles?.length ? (
         <p className="mt-2 text-sm font-semibold text-brand-deep">
           Received {restaurant.menu.uploadedFiles.join(", ")}
         </p>

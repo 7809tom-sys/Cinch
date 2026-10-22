@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { sourceFileUploadKind } from "@/lib/uploaded-file-kind";
 import { getPortalSourceSnapshot } from "../../actions";
 
 type SourceFile = {
@@ -120,6 +121,7 @@ export function LiveSourceViewer({ projectId }: { projectId: string }) {
             {(bundle?.files ?? []).map((file) => {
               const selected = active?.path === file.path;
               const flashed = flashPath === file.path;
+              const uploadKind = sourceFileUploadKind(file);
               return (
                 <li key={file.id}>
                   <button
@@ -135,7 +137,7 @@ export function LiveSourceViewer({ projectId }: { projectId: string }) {
                       {file.path}
                     </span>
                     <span className="shrink-0 text-[10px] font-bold tracking-wide text-[#e8a54b] uppercase">
-                      {file.status}
+                      {uploadKind ?? file.status}
                     </span>
                   </button>
                 </li>
@@ -152,7 +154,9 @@ export function LiveSourceViewer({ projectId }: { projectId: string }) {
         <div className="flex min-h-[20rem] flex-col">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
             <p className="font-mono text-xs text-[#e8a54b]">
-              {active?.path ?? "—"}
+              {active
+                ? `${sourceFileUploadKind(active) ? `${sourceFileUploadKind(active)} · ` : ""}${active.path}`
+                : "—"}
             </p>
             {active ? (
               <p className="text-[11px] text-[#e7ddd0]/70">

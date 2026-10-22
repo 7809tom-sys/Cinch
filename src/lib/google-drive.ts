@@ -444,9 +444,19 @@ export function driveReferenceMarkdown(input: {
   excerpt: string | null;
   connectedEmail: string | null;
 }): string {
+  const isPdf =
+    input.file.mimeType === "application/pdf" || /\.pdf$/i.test(input.file.name);
+  const isPicture =
+    input.file.mimeType.startsWith("image/") ||
+    /\.(jpe?g|png|webp|gif)$/i.test(input.file.name);
+  const kindLine = isPdf
+    ? `PDF: ${input.file.name}`
+    : isPicture
+      ? `Picture: ${input.file.name}`
+      : "";
   return `# Reference — ${input.file.name}
 
-Synced from Google Drive into **${input.projectName}**.
+${kindLine ? `${kindLine}\n\n` : ""}Synced from Google Drive into **${input.projectName}**.
 
 | | |
 | --- | --- |

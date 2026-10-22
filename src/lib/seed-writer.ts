@@ -807,11 +807,18 @@ export function compileBookManuscript(input: {
   premise: string;
   chapters: Array<{ number: number; title: string; body: string }>;
   status: "building" | "ready";
+  /** "PDF uploaded: outline.pdf" / "Picture uploaded: cover.jpg" */
+  uploads?: string[];
 }): string {
   const toc = input.chapters
     .map((chapter) => `${chapter.number}. ${chapter.title}`)
     .join("\n");
   const bodies = input.chapters.map((chapter) => chapter.body.trim()).join("\n\n---\n\n");
+  const uploads = (input.uploads ?? []).map((line) => line.trim()).filter(Boolean);
+  const uploadedBlock =
+    uploads.length > 0
+      ? `\n## Uploaded files\n\n${uploads.map((line) => `- ${line}`).join("\n")}\n`
+      : "";
   return `# ${input.title}
 
 *A Writer Seed book — agents collaborating on cinchseed.com*
@@ -819,7 +826,7 @@ export function compileBookManuscript(input: {
 ## Premise
 
 ${input.premise}
-
+${uploadedBlock}
 ## Contents
 
 ${toc}
@@ -840,9 +847,15 @@ export function draftSongLyricsMarkdown(input: {
   title: string;
   premise: string;
   status: "building" | "ready";
+  uploads?: string[];
 }): string {
   const hook = extractHookLine(input.premise, input.title);
   const topic = slugWord(input.premise) || "tonight";
+  const uploads = (input.uploads ?? []).map((line) => line.trim()).filter(Boolean);
+  const uploadedBlock =
+    uploads.length > 0
+      ? `\n## Uploaded files\n\n${uploads.map((line) => `- ${line}`).join("\n")}\n`
+      : "";
   return `# ${input.title}
 
 *A Writer Seed song — agents collaborating on cinchseed.com*
@@ -850,7 +863,7 @@ export function draftSongLyricsMarkdown(input: {
 ## Premise
 
 ${input.premise}
-
+${uploadedBlock}
 ## Lyrics
 
 ### Verse 1

@@ -64,6 +64,7 @@ import {
   ingestMenuPhotos,
   inferredMenuUploadKind,
   menuUploadFileNames,
+  menuUploadsMarkdown,
   parseMenuFromUpload,
   parseModifierLines,
   formatModifierLines,
@@ -1058,8 +1059,27 @@ assert(
     /counter-1/.test(
       ingestedNamed.restaurants.find((row) => row.id === "rest-tacos")?.menu
         ?.parseNote ?? "",
-    ),
+    ) &&
+    ingestedNamed.restaurants.find((row) => row.id === "rest-tacos")?.menu
+      ?.uploadReceipt === "Pictures uploaded: counter-1.jpg, counter-2.jpg",
   "ingest records the uploaded photo names so the kitchen sees the snap landed",
+);
+const ingestedPdf = ingestMenuPhotos(ops, "rest-tacos", {
+  kind: "pdf",
+  attachments: [{ name: "takeout.pdf", type: "application/pdf" }],
+  useFixture: true,
+  parseNote: "Review prices, then Approve.",
+});
+const pdfMenu = ingestedPdf.restaurants.find((row) => row.id === "rest-tacos")
+  ?.menu;
+const approvedPdf = approveMenuDraft(ingestedPdf, "rest-tacos");
+assert(
+  pdfMenu?.uploadReceipt === "PDF uploaded: takeout.pdf" &&
+    approvedPdf.restaurants.find((row) => row.id === "rest-tacos")?.menu
+      ?.uploadReceipt === "PDF uploaded: takeout.pdf" &&
+    /PDF uploaded: takeout.pdf/.test(menuUploadsMarkdown(ingestedPdf) ?? "") &&
+    !/Approve/.test(pdfMenu?.uploadReceipt ?? ""),
+  "a PDF upload is written into the Seed file separately from approval",
 );
 assert(
   geminiMenuVisionModels("gemini-1.5-flash")[0] === "gemini-2.5-flash" &&
@@ -1660,7 +1680,7 @@ assert(
   "diner copy stays clean of OCR / vision / 86 / POS internals",
 );
 assert(
-  /customerFacingSupport\(project\.brief\)/.test(landing) &&
+  /customerFacingSiteCopy\(project\.name, project\.brief\)\.support/.test(landing) &&
     !/project\.brief\.slice\(0,\s*160\)/.test(landing),
   "diner page metadata uses guest support, not the ops brief",
 );

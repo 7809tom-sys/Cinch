@@ -1999,6 +1999,7 @@ async function growWriterPrimaryWork(input: {
   status: SourceFile["status"];
 }): Promise<void> {
   const ready = input.status === "ready" ? "ready" : "building";
+  const uploads = await loadWriterUploadReceipts(input.projectId);
   if (input.identity.form === "song") {
     await upsertSourceFile({
       projectId: input.projectId,
@@ -2007,6 +2008,7 @@ async function growWriterPrimaryWork(input: {
         title: input.identity.title,
         premise: input.identity.premise,
         status: ready,
+        uploads,
       }),
       authoredBy: input.agentId,
       agentName: input.agentName,
@@ -2079,12 +2081,32 @@ Replaced by the owner outline in docs/references/.
       premise: input.identity.premise,
       chapters: chapterBodies,
       status: ready,
+      uploads,
     }),
     authoredBy: input.agentId,
     agentName: input.agentName,
     status: input.status,
     message: `${input.agentName} compiled the manuscript`,
   });
+}
+
+/** Lines such as "PDF uploaded: outline.pdf" for the manuscript file. */
+async function loadWriterUploadReceipts(projectId: string): Promise<string[]> {
+  try {
+    const { listProjectDriveReferences } = await import("./seed-drive-refs");
+    const { referenceFileKind, uploadedFileReceipt } = await import(
+      "./uploaded-file-kind"
+    );
+    const refs = await listProjectDriveReferences(projectId);
+    return refs.flatMap((ref) => {
+      const kind = referenceFileKind(ref.name, ref.mimeType);
+      if (!kind) return [];
+      if (ref.attachMode === "upload") return [uploadedFileReceipt(kind, ref.name)];
+      return [`${kind === "pdf" ? "PDF" : "Picture"}: ${ref.name}`];
+    });
+  } catch {
+    return [];
+  }
 }
 
 /** Prefer owner PDF / Drive reference excerpts when shaping the manuscript. */

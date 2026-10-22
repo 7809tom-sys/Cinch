@@ -1,7 +1,9 @@
 import { tickHometownMenuCrawls } from "./hometown-menu-crawler";
 import {
   DELIVERY_OPS_PATH,
+  MENU_UPLOADS_PATH,
   deliveryOpsJson,
+  menuUploadsMarkdown,
   parseDeliveryOps,
   applyDriverSubscriptionPolicies,
   starterDeliveryOps,
@@ -31,6 +33,17 @@ export async function saveDeliveryOps(
     message,
     agentName: "Hometown Runner",
   });
+  const uploads = menuUploadsMarkdown(ops);
+  if (uploads) {
+    await upsertSourceFile({
+      projectId,
+      path: MENU_UPLOADS_PATH,
+      content: uploads,
+      status: "ready",
+      message: "Recorded whether the menu upload was a PDF or pictures",
+      agentName: "Hometown Runner",
+    });
+  }
 }
 
 export async function ensureDeliveryOpsInSeed(
