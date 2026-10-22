@@ -421,7 +421,11 @@ function MenuConfirmBoard({
         on this tablet / web view so diners cannot buy it. {drafts.length}{" "}
         item{drafts.length === 1 ? "" : "s"} still need sign-off.
       </p>
-      {restaurant.menu?.uploadedFiles?.length ? (
+      {restaurant.menu?.uploadReceipt ? (
+        <p className="mt-3 text-sm font-semibold text-brand-deep">
+          {restaurant.menu.uploadReceipt}
+        </p>
+      ) : restaurant.menu?.uploadedFiles?.length ? (
         <p className="mt-3 text-sm font-semibold text-brand-deep">
           Received {restaurant.menu.uploadedFiles.join(", ")}
         </p>

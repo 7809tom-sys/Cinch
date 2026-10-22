@@ -102,7 +102,10 @@
  *   kitchen after one delivery — they cannot keep the 5% on their own.
  */
 
+import { uploadedFilesReceipt } from "./uploaded-file-kind";
+
 export const DELIVERY_OPS_PATH = "content/delivery.ops.json";
+export const MENU_UPLOADS_PATH = "content/menu-uploads.md";
 export const RESTAURANT_COMMISSION_RATE = 0.1;
 /** $0 from restaurant orders — platform money is subscriptions only. */
 export const PLATFORM_SHARE_RATE = 0;
@@ -466,6 +469,11 @@ export type RestaurantMenuDraft = {
   approvedAt?: string | null;
   /** File names received with the last paper-menu parse. */
   uploadedFiles?: string[];
+  /**
+   * Stays in the Seed file after Approve. "PDF uploaded: menu.pdf"
+   * or "Pictures uploaded: a.jpg, b.jpg".
+   */
+  uploadReceipt?: string | null;
   parseNote?: string;
 };
 export type FoundMenuItem = {
@@ -1324,6 +1332,22 @@ export const SEED_PAPER_MENU_PARSE_FIXTURE: ParsedMenuJson = {
   ],
 };
 
+/** Readable Seed file: which kitchens uploaded a PDF or pictures. */
+export function menuUploadsMarkdown(ops: DeliveryOps): string | null {
+  const lines = ops.restaurants.flatMap((row) => {
+    const receipt = row.menu?.uploadReceipt?.trim();
+    if (!receipt) return [];
+    return [`- ${row.name}: ${receipt}`];
+  });
+  if (lines.length === 0) return null;
+  return `# Menu uploads
+
+Approval does not erase this. Each line says whether the kitchen sent a PDF or pictures.
+
+${lines.join("\n")}
+`;
+}
+
 export function menuUploadFileNames(input: MenuUploadInput = {}): string[] {
   const named = [
     ...(input.fileNames ?? []),
@@ -1605,6 +1629,10 @@ export function ingestMenuPhotos(
   const parsed = parseMenuFromUpload(input);
   const kind = inferredMenuUploadKind(input);
   const uploadedFiles = menuUploadFileNames(input);
+  const uploadReceipt =
+    kind === "fixture"
+      ? null
+      : uploadedFilesReceipt(kind, uploadedFiles);
   const source: Extract<RestaurantMenuItemSource, "photo_parse" | "pdf_parse"> =
     kind === "pdf" ? "pdf_parse" : "photo_parse";
   const drafts = parsed.items.map((item) => parsedItemToDraft(item, source));
@@ -1630,6 +1658,7 @@ export function ingestMenuPhotos(
           crawledAt: ingestedAt,
           approvedAt: null,
           uploadedFiles: uploadedFiles.length ? uploadedFiles : menu.uploadedFiles,
+          uploadReceipt: uploadReceipt || menu.uploadReceipt || null,
           parseNote: input.parseNote?.trim() || menu.parseNote,
           items: [...kept, ...drafts],
         },
@@ -1784,6 +1813,11 @@ export function normalizeDeliveryRestaurant(
           parseNote:
             typeof row.menu.parseNote === "string" && row.menu.parseNote.trim()
               ? row.menu.parseNote.trim()
+              : undefined,
+          uploadReceipt:
+            typeof row.menu.uploadReceipt === "string" &&
+            row.menu.uploadReceipt.trim()
+              ? row.menu.uploadReceipt.trim()
               : undefined,
         }
       : crawlRestaurantMenuDraft({

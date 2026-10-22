@@ -14,6 +14,10 @@ import {
 } from "@/app/portal/actions";
 import type { SeedDriveReference } from "@/lib/seed-drive-refs";
 import type { DriveFileSummary } from "@/lib/google-drive";
+import {
+  referenceFileKind,
+  uploadedFileReceipt,
+} from "@/lib/uploaded-file-kind";
 
 const GIS_SCRIPT = "https://accounts.google.com/gsi/client";
 const SCRIPT_ID = "google-gis-oauth-client";
@@ -131,7 +135,15 @@ export function DriveReferencesPanel({
         result.reference,
         ...prev.filter((item) => item.id !== result.reference.id),
       ]);
-      setNotice(`Uploaded “${result.reference.name}”`);
+      const kind = referenceFileKind(
+        result.reference.name,
+        result.reference.mimeType,
+      );
+      setNotice(
+        kind
+          ? uploadedFileReceipt(kind, result.reference.name)
+          : `Uploaded “${result.reference.name}”`,
+      );
       if (fileInputRef.current) fileInputRef.current.value = "";
       router.refresh();
     });
@@ -151,18 +163,20 @@ export function DriveReferencesPanel({
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted">
         {writerMode
-          ? "Paste the Google Doc for this book, upload a PDF, or connect Drive. The manuscript follows that outline."
-          : "Upload a PDF, paste a Drive link, or connect Google Drive. Synced files land in docs/references/ for the AI crew."}
+          ? "Paste the Google Doc for this book, upload a PDF or a picture, or connect Drive. The manuscript file records which one you sent."
+          : "Upload a PDF or a picture, paste a Drive link, or connect Google Drive. The Seed file records whether it was a PDF or a picture."}
       </p>
 
       <div className="mt-5 space-y-4">
         <div>
-          <p className="text-sm font-semibold text-brand-deep">Upload a PDF</p>
+          <p className="text-sm font-semibold text-brand-deep">
+            Upload a PDF or a picture
+          </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               ref={fileInputRef}
               type="file"
-              accept="application/pdf,.pdf"
+              accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/gif"
               disabled={pending}
               onChange={(event) => {
                 uploadPdf(event.target.files?.[0] ?? null);
@@ -170,7 +184,10 @@ export function DriveReferencesPanel({
               className="block w-full min-w-0 text-sm text-brand-deep file:mr-3 file:rounded-md file:border-0 file:bg-brand-deep file:px-3 file:py-2 file:text-sm file:font-semibold file:text-foam"
             />
           </div>
-          <p className="mt-1 text-xs text-muted">PDF up to about 4.5 MB.</p>
+          <p className="mt-1 text-xs text-muted">
+            PDF, JPG, PNG, WebP, or GIF — up to about 4.5 MB. The file will
+            say PDF uploaded or Picture uploaded.
+          </p>
         </div>
 
         <form
@@ -364,7 +381,11 @@ export function DriveReferencesPanel({
                       {ref.attachMode === "oauth"
                         ? "Drive sync"
                         : ref.attachMode === "upload"
-                          ? "PDF upload"
+                          ? uploadedFileReceipt(
+                              referenceFileKind(ref.name, ref.mimeType) ??
+                                "pdf",
+                              ref.name,
+                            )
                           : "Share link"}
                       {ref.sourcePath ? ` · ${ref.sourcePath}` : ""}
                     </p>

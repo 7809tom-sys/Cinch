@@ -39,6 +39,7 @@ import {
   type SeedShopCopy,
   type SeedSiteCopy,
 } from "./seed-site-copy";
+import { landingDropsDescriptionFacts, weaveDescriptionIntoSite } from "./seed-description-learning";
 import {
   collectSeedSiteProofFailures,
   type SeedSiteProofFailure,
@@ -308,7 +309,8 @@ function mergeStoredCopy(
     if (seedLandingCopyMismatchesIndustry(projectName, brief, next)) {
       return fallback;
     }
-    return next;
+    if (briefIsDeliveryPlatform(projectName, brief)) return next;
+    return weaveDescriptionIntoSite(next, brief, projectName);
   } catch {
     return fallback;
   }
@@ -424,6 +426,12 @@ export async function repairCustomerLandingIfNeeded(
               return !/pickup/i.test(serviceBlob) || !/favorite/i.test(serviceBlob);
             })()) ||
           seedLandingCopyMismatchesIndustry(project.name, project.brief, copy) ||
+          (!briefIsDeliveryPlatform(project.name, project.brief) &&
+            landingDropsDescriptionFacts(
+              project.brief,
+              JSON.stringify(copy),
+              project.name,
+            ).length > 0) ||
           (looksLikeHometownRunnerBrand(copy.brand ?? "") &&
             (copy.brand ?? "").trim() !== HOMETOWN_RUNNER_BRAND),
       );

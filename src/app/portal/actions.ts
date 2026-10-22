@@ -1215,7 +1215,7 @@ export async function uploadReferencePdfAction(formData: FormData) {
     return { ok: false as const, error: "Missing Seed id." };
   }
   if (!(file instanceof File) || file.size <= 0) {
-    return { ok: false as const, error: "Choose a PDF to upload." };
+    return { ok: false as const, error: "Choose a PDF or a picture to upload." };
   }
 
   const owned = await requireOwnedProject(projectId);

@@ -22,6 +22,11 @@ import {
 import { extractPdfDocumentText } from "./pdf-text";
 import { upsertSourceFile } from "./seed-source";
 import { parseOutlineChaptersFromText } from "./seed-writer";
+import {
+  referenceFileKind,
+  uploadedFileReceipt,
+  type UploadedFileKind,
+} from "./uploaded-file-kind";
 import { knownWriterOutlineForDriveFile } from "./writer-concepts";
 
 export type DriveConnection = {
@@ -294,7 +299,7 @@ async function writeReferencesIndex(input: {
 }): Promise<void> {
   const indexBody = `# Seed references
 
-Reference material attached to **${input.projectName}** (Google Drive, share links, or PDF uploads).
+Reference material attached to **${input.projectName}** (Google Drive, share links, PDF uploads, or pictures).
 Agents must read these before inventing facts the owner already supplied.
 
 ${
@@ -302,14 +307,25 @@ ${
     .map((ref) => {
       const via =
         ref.attachMode === "upload"
-          ? "PDF upload"
+          ? uploadedFileReceipt(
+              referenceFileKind(ref.name, ref.mimeType) ?? "pdf",
+              ref.name,
+            )
           : ref.attachMode === "oauth"
             ? "Drive sync"
             : "Share link";
       const open = ref.webViewLink
         ? ` · [Open](${ref.webViewLink})`
         : "";
-      return `- [${ref.name}](${ref.sourcePath || "#"}) — \`${ref.mimeType}\` (${via})${open}`;
+      const kindNote =
+        ref.attachMode === "upload"
+          ? ""
+          : referenceFileKind(ref.name, ref.mimeType) === "picture"
+            ? " · Picture"
+            : referenceFileKind(ref.name, ref.mimeType) === "pdf"
+              ? " · PDF"
+              : "";
+      return `- [${ref.name}](${ref.sourcePath || "#"}) — ${via}${kindNote}${open}`;
     })
     .join("\n") || "_No references attached yet._"
 }
@@ -325,6 +341,25 @@ ${
 }
 
 const MAX_PDF_BYTES = 4.5 * 1024 * 1024;
+
+function bufferLooksLikeImage(buffer: Buffer): boolean {
+  if (buffer.length < 12) return false;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return true;
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return true;
+  }
+  if (buffer.slice(0, 6).toString("ascii") === "GIF87a") return true;
+  if (buffer.slice(0, 6).toString("ascii") === "GIF89a") return true;
+  return (
+    buffer.slice(0, 4).toString("ascii") === "RIFF" &&
+    buffer.slice(8, 12).toString("ascii") === "WEBP"
+  );
+}
 
 /**
  * Best-effort text scrape from a PDF without a heavyweight parser.
@@ -376,7 +411,38 @@ async function textFromPdfBuffer(buffer: Buffer): Promise<string | null> {
   return null;
 }
 
-/** Upload a PDF into the Seed as reference material for the AI crew. */
+export function referenceUploadMarkdown(input: {
+  projectName: string;
+  fileName: string;
+  kind: UploadedFileKind;
+  mimeType: string;
+  binaryPath: string;
+  syncedAt: string;
+  excerpt: string;
+}): string {
+  const receipt = uploadedFileReceipt(input.kind, input.fileName);
+  const typeLabel = input.kind === "pdf" ? "PDF" : "Picture";
+  return `# Reference — ${input.fileName}
+
+${receipt}
+
+Uploaded into **${input.projectName}**. This line stays in the file so a later approval or parse note cannot hide what was sent.
+
+| | |
+| --- | --- |
+| Source | Owner upload |
+| Type | ${typeLabel} |
+| MIME | ${input.mimeType} |
+| Binary | \`${input.binaryPath}\` |
+| Synced | ${input.syncedAt} |
+
+## Excerpt
+
+${input.excerpt}
+`;
+}
+
+/** Upload a PDF or picture into the Seed as reference material for the AI crew. */
 export async function uploadReferencePdfToProject(input: {
   projectId: string;
   projectName: string;
@@ -391,44 +457,56 @@ export async function uploadReferencePdfToProject(input: {
     input.fileName?.trim() ||
     (input.file instanceof File ? input.file.name : "") ||
     "reference.pdf";
-  const mime = input.file.type || "application/pdf";
-  const isPdf =
-    mime === "application/pdf" || /\.pdf$/i.test(fileName);
-  if (!isPdf) {
-    return { ok: false, error: "Upload a PDF file (.pdf)." };
+  const mime = input.file.type || "";
+  const kind = referenceFileKind(fileName, mime);
+  if (!kind) {
+    return {
+      ok: false,
+      error: "Upload a PDF or a picture (JPG, PNG, WebP, or GIF).",
+    };
   }
   if (input.file.size <= 0 || input.file.size > MAX_PDF_BYTES) {
     return {
       ok: false,
-      error: "PDF must be under about 4.5 MB.",
+      error: "That file must be under about 4.5 MB.",
     };
   }
 
   const buffer = Buffer.from(await input.file.arrayBuffer());
-  if (!/%PDF-/i.test(buffer.slice(0, 8).toString("latin1"))) {
+  if (kind === "pdf" && !/%PDF-/i.test(buffer.slice(0, 8).toString("latin1"))) {
     return { ok: false, error: "That file does not look like a valid PDF." };
+  }
+  if (kind === "picture" && !bufferLooksLikeImage(buffer)) {
+    return { ok: false, error: "That file does not look like a picture." };
   }
 
   const slug = slugDriveFileName(fileName);
   const uploadId = `upload-${randomUUID().slice(0, 10)}`;
-  const binaryPath = `docs/references/uploads/${slug}-${uploadId.slice(-8)}.pdf.json`;
+  const storedMime = kind === "pdf" ? "application/pdf" : mime || "image/jpeg";
+  const binaryPath = `docs/references/uploads/${slug}-${uploadId.slice(-8)}.${kind === "pdf" ? "pdf" : "picture"}.json`;
   const sourcePath = `docs/references/${slug}-${uploadId.slice(-8)}.md`;
+  const receipt = uploadedFileReceipt(kind, fileName);
   const excerpt =
-    (await textFromPdfBuffer(buffer)) ||
-    "_PDF uploaded. Text could not be extracted automatically — the binary is stored for the crew under docs/references/uploads/._";
+    kind === "pdf"
+      ? (await textFromPdfBuffer(buffer)) ||
+        `${receipt}. Text could not be extracted automatically — the PDF is stored for the crew under docs/references/uploads/.`
+      : `${receipt}. The picture is stored for the crew under docs/references/uploads/.`;
+  const syncedAt = now();
 
   await upsertSourceFile({
     projectId: input.projectId,
     path: binaryPath,
     content: JSON.stringify({
-      mime: "application/pdf",
+      mime: storedMime,
       base64: buffer.toString("base64"),
       originalName: fileName,
-      storedAt: now(),
+      uploadedKind: kind,
+      receipt,
+      storedAt: syncedAt,
       bytes: buffer.length,
     }),
     status: "ready",
-    message: `Uploaded PDF “${fileName}”`,
+    message: receipt,
     agentName: "Owner",
   });
 
@@ -438,14 +516,14 @@ export async function uploadReferencePdfToProject(input: {
     customerId: input.customerId,
     driveFileId: uploadId,
     name: fileName,
-    mimeType: "application/pdf",
+    mimeType: storedMime,
     kind: "file",
     webViewLink: null,
     iconLink: null,
     sourcePath,
     excerpt,
-    addedAt: now(),
-    syncedAt: now(),
+    addedAt: syncedAt,
+    syncedAt,
     attachMode: "upload",
     binaryPath,
   };
@@ -453,23 +531,17 @@ export async function uploadReferencePdfToProject(input: {
   await upsertSourceFile({
     projectId: input.projectId,
     path: sourcePath,
-    content: `# Reference — ${fileName}
-
-Uploaded PDF into **${input.projectName}**.
-
-| | |
-| --- | --- |
-| Source | Owner PDF upload |
-| Type | application/pdf |
-| Binary | \`${binaryPath}\` |
-| Synced | ${now()} |
-
-## Excerpt
-
-${excerpt}
-`,
+    content: referenceUploadMarkdown({
+      projectName: input.projectName,
+      fileName,
+      kind,
+      mimeType: storedMime,
+      binaryPath,
+      syncedAt,
+      excerpt,
+    }),
     status: "ready",
-    message: `Indexed PDF reference “${fileName}”`,
+    message: receipt,
     agentName: "Owner",
   });
 
@@ -486,7 +558,7 @@ ${excerpt}
 
   await rebuildWriterBookFromReferences(
     input.projectId,
-    "Owner uploaded a PDF outline. Rebuild the living manuscript from docs/references/.",
+    `${receipt} Rebuild the living manuscript from docs/references/.`,
   );
 
   return { ok: true, reference };
@@ -938,7 +1010,14 @@ export function formatDriveReferencesForBrief(
     const excerpt = ref.excerpt?.trim()
       ? ref.excerpt.trim().slice(0, 400)
       : "(metadata only)";
-    return `- ${ref.name} (${ref.mimeType})\n  ${excerpt}`;
+    const kind = referenceFileKind(ref.name, ref.mimeType);
+    const lead =
+      ref.attachMode === "upload" && kind
+        ? uploadedFileReceipt(kind, ref.name)
+        : kind
+          ? `${kind === "pdf" ? "PDF" : "Picture"}: ${ref.name}`
+          : `${ref.name} (${ref.mimeType})`;
+    return `- ${lead}\n  ${excerpt}`;
   });
   return [
     "Google Drive reference material attached to this Seed:",

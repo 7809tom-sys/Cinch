@@ -16,8 +16,10 @@ import {
 import {
   extractRoughPdfText,
   formatDriveReferencesForBrief,
+  referenceUploadMarkdown,
   scrapedPdfTextIsReadable,
 } from "../src/lib/seed-drive-refs";
+import { sourceFileUploadKind } from "../src/lib/uploaded-file-kind";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -172,12 +174,48 @@ assert(
   /DriveReferencesPanel/.test(writerPage) && /writerMode/.test(writerPage),
   "Writer synced page embeds the references panel",
 );
-assert(/uploadReferencePdfAction|Upload a PDF/.test(
+assert(/uploadReferencePdfAction|Upload a PDF or a picture/.test(
   readFileSync(
     join(process.cwd(), "src/components/drive-references-panel.tsx"),
     "utf8",
   ),
-), "references panel offers PDF upload");
+), "references panel offers PDF and picture upload");
+const pdfFile = referenceUploadMarkdown({
+  projectName: "Harbor Notes",
+  fileName: "outline.pdf",
+  kind: "pdf",
+  mimeType: "application/pdf",
+  binaryPath: "docs/references/uploads/outline.pdf.json",
+  syncedAt: "2026-10-22T16:00:00.000Z",
+  excerpt: "Chapter one.",
+});
+const pictureFile = referenceUploadMarkdown({
+  projectName: "Harbor Notes",
+  fileName: "cover.jpg",
+  kind: "picture",
+  mimeType: "image/jpeg",
+  binaryPath: "docs/references/uploads/cover.picture.json",
+  syncedAt: "2026-10-22T16:00:00.000Z",
+  excerpt: "Picture uploaded: cover.jpg",
+});
+assert(
+  pdfFile.startsWith("# Reference — outline.pdf\n\nPDF uploaded: outline.pdf"),
+  "the reference file says a PDF was uploaded",
+);
+assert(
+  pictureFile.includes("Picture uploaded: cover.jpg") &&
+    pictureFile.includes("| Type | Picture |"),
+  "the reference file says a picture was uploaded",
+);
+assert(
+  sourceFileUploadKind({ path: "docs/references/outline.md", content: pdfFile }) ===
+    "PDF" &&
+    sourceFileUploadKind({
+      path: "docs/references/cover.md",
+      content: pictureFile,
+    }) === "Picture",
+  "the file list can tell a PDF from a picture",
+);
 
 if (process.exitCode) {
   console.error("assert-seed-drive-refs failed");

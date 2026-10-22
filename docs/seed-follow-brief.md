@@ -42,9 +42,14 @@ Two failures made that feel like a rename of another project:
    plain Visit).
 6. **HARD RULE:** every Edit Seed save must be read and reacted to — see
    `docs/seed-edit-must-react.md` and `SEED_EDIT_MUST_REACT_RULE`.
+7. **HARD RULE:** a description’s price, town, hours, phone, and email stay
+   on the public page. Industry shape can stay; those facts cannot be
+   dropped. Sentry cannot sign off a page that forgot them. Delivery
+   platforms keep operator prices off the diner page.
 
 ## Guards
 
+- `npm run assert:seed-practice` — eight described websites, and the facts each one taught.
 - `npm run assert:seed-industry` — pizza + salon classification and mismatch.
 - `npm run assert:seed-delivery` — Hometown Runner ledger + live apps.
 - `npm run assert:seed-edit-react` — Edit Seed reaction planning.

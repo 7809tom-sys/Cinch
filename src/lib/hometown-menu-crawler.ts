@@ -344,6 +344,7 @@ export function applyWebsiteMenuSync(input: {
         items: nextItems,
         approvedAt: input.restaurant.menu?.approvedAt ?? crawledAt,
         uploadedFiles: input.restaurant.menu?.uploadedFiles,
+        uploadReceipt: input.restaurant.menu?.uploadReceipt,
         parseNote:
           changes.length > 0
             ? `Website crawl updated ${changes.length} plate${changes.length === 1 ? "" : "s"} from ${input.sourceUrl}.`
