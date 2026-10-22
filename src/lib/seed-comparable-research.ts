@@ -1493,30 +1493,14 @@ export function applyComparableOverlay(
   copy: SeedSiteCopy,
   research: ComparableResearch,
 ): SeedSiteCopy {
-  // Club pages keep the specification. Competitor lines stay in the research notes.
-  if (research.industry === "club") return copy;
+  // Club and book pages keep their own words. Competitor lines stay in the notes.
+  // A competitor headline ("Homepage", "Punctual Plumbers!") is never the page.
+  if (research.industry === "club" || research.industry === "book") return copy;
+  if (/^read the chapters$/i.test(copy.cta.trim())) return copy;
   const next = { ...copy };
   const cta = research.bestOfEach?.cta?.value ?? research.bestCta;
-  const headline = research.bestOfEach?.headline?.value ?? research.bestHeadline;
   if (cta && ctaFitsIndustry(cta, research.industry)) {
     next.cta = titleCaseCta(cta);
-  }
-  if (
-    headline &&
-    headline.length >= 8 &&
-    headline.length <= 80 &&
-    !containsForeignBrand(
-      headline,
-      research.snapshots.map((snap) => snap.host),
-    ) &&
-    !(
-      research.industry === "delivery" &&
-      /pizza with personality|reserve a table|table worth dressing|dinner service|chef/i.test(
-        headline,
-      )
-    )
-  ) {
-    next.headline = headline;
   }
   const methods = research.customerFriendlyMethods;
   if (research.industry === "dealership" && methods.length > 0) {

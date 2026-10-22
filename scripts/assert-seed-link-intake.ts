@@ -14,6 +14,10 @@ import {
 } from "../src/lib/seed-link-intake";
 import { customerFacingSiteCopy } from "../src/lib/seed-site-copy";
 import {
+  critiqueToBrief,
+  estimateBuildForPages,
+} from "../src/lib/site-critique";
+import {
   composeSeedReply,
   formatSeedReferenceReceipt,
 } from "../src/lib/seed-dialog";
@@ -110,6 +114,73 @@ assert(
 assert(
   !/36 months/.test(JSON.stringify(pantry.services)),
   "an unchecked line stays off the site",
+);
+const pantryPage = JSON.stringify(pantry);
+assert(
+  !/what you kept|notes you confirmed|food ready to share|link you pasted|build the site again/i.test(
+    pantryPage,
+  ),
+  "a pasted link becomes the business, not a Seed worksheet",
+);
+assert(
+  /sourdough/i.test(pantry.services.map((item) => `${item.title} ${item.detail}`).join(" ")),
+  "a kept offer is a section on the site",
+);
+
+const bookBrief = `MBA Disease and the PIE Effect: Structural Outline
+
+I. Core Thesis: The Great Decoupling. Companies split the people who do the work from the people who score the work.
+
+Chapter Two: The Illusion of the Paper Tiger. Green dashboards hide a human fax machine.
+
+Sears launched Shop Your Way and counted the program as the business.
+Private equity counts units over kitchens.
+`;
+const book = customerFacingSiteCopy("MBA Disease and the PIE Effect", bookBrief);
+const bookServices = book.services.map((item) => `${item.title} ${item.detail}`).join(" ");
+assert(/paper tiger/i.test(bookServices), "a chapter title is on the book page");
+assert(
+  /decoupling/i.test(`${book.headline} ${book.support} ${book.aboutBody}`),
+  "the thesis is the opening of the book page",
+);
+assert(book.cta === "Read the chapters", "a book outline asks the reader to read");
+assert(!/shop now/i.test(book.cta), "Shop Your Way does not turn the book into a store");
+assert(
+  !/still missing from the brief|what you kept|reserve a table/i.test(JSON.stringify(book)),
+  "a book outline is not an empty brief or a dining room",
+);
+
+const dropped = critiqueToBrief({
+  url: "https://example.com/harbor",
+  title: "Harbor Dock Co",
+  fetched: true,
+  fetchNote: null,
+  pageCountEstimate: 4,
+  overview: "We reviewed Harbor Dock Co and see about 4 pages.",
+  findings: [
+    { area: "Offer", severity: "medium", note: "The price is easy to miss." },
+  ],
+  improvements: ["Put the spring price in the first screen."],
+  estimate: estimateBuildForPages(4),
+  critiquedAt: "2026-10-22T15:00:00.000Z",
+  businessDescription: "Harbor Dock Co builds and repairs boat docks on the bay.",
+  businessLines: [
+    "Spring installs start at $1,200.",
+    "Call the yard before the ice goes out.",
+  ],
+});
+const harbor = customerFacingSiteCopy("Harbor Dock Co", dropped);
+const harborPublic = `${harbor.headline} ${harbor.support} ${harbor.services
+  .map((item) => `${item.title} ${item.detail}`)
+  .join(" ")}`;
+assert(/\$1,200/.test(harborPublic), "a dropped website keeps its price");
+assert(
+  /boat docks/i.test(harborPublic),
+  "a dropped website keeps the business description",
+);
+assert(
+  !/customer dropped|still missing from the brief|what you kept/i.test(harborPublic),
+  "critique notes stay off the public page",
 );
 
 const htmlText = htmlToReadableText("<p>Hello <b>club</b></p><script>nope</script>");

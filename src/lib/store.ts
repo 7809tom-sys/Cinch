@@ -1028,12 +1028,6 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
       minSkillLevel: 3,
     },
     {
-      title: "Design primary landing composition",
-      detail: `Brand-first hero and one clear CTA that reflows phone → tablet → laptop. Reuse landing/UI modulars before drawing new composition. ${modularsFirst}`,
-      requiredSkills: ["ui", "frontend"],
-      minSkillLevel: 3,
-    },
-    {
       title: "Write Seed landing copy",
       detail: `Headline, support line, and signup narrative for narrow screens. Pull copy patterns from adopted modulars; write original lines only where the brief needs them. ${modularsFirst}`,
       requiredSkills: ["copy"],
@@ -1067,7 +1061,7 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
     },
     {
       title: "Proof the live site against the brief",
-      detail: `HARD RULE: compare landing, shop, CTAs, and catalog to this Seed’s name + brief. Restaurant plates, kitchen tickets, or “Order from the menu” on a used-car lot is a fail — rewrite from the brief. A checklist is not proof. Then verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA. ${modularsFirst}`,
+      detail: `Sentry double-checks the whole Seed. The composer does not sign off. HARD RULE: compare landing, shop, CTAs, and catalog to this Seed’s name + brief. A page that says the brief is missing, or that only swaps in the brand name, is a fail — rewrite from the name and brief. Restaurant plates, kitchen tickets, or “Order from the menu” on a used-car lot is a fail. A checklist is not proof. Then verify portal/source/embed plus phone (~375), tablet (~768), laptop (~1280), and app/PWA. ${modularsFirst}`,
       requiredSkills: ["qa"],
       minSkillLevel: 3,
     },

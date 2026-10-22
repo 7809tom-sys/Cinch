@@ -20,7 +20,7 @@ import {
   briefIsCheeseWineClub,
   cheeseWineClubSiteCopy,
   customerFacingBrandName,
-  customerFacingSupport,
+  customerFacingSiteCopy,
   seedIndustryKey,
 } from "@/lib/seed-site-copy";
 import { getProject } from "@/lib/store";
@@ -39,12 +39,12 @@ export async function generateMetadata({
   const project = await getProject(id);
   if (!project) return { title: "Seed site" };
   const club = briefIsCheeseWineClub(project.name, project.brief);
+  const description = club
+    ? cheeseWineClubSiteCopy().support
+    : customerFacingSiteCopy(project.name, project.brief).support;
   return {
     title: customerFacingBrandName(project.name),
-    description: (club
-      ? cheeseWineClubSiteCopy().support
-      : customerFacingSupport(project.brief)
-    ).slice(0, 160),
+    description: description.slice(0, 160),
     robots: project.sitePublishedAt ? "index,follow" : "noindex",
   };
 }

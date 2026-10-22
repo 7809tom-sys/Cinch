@@ -111,7 +111,7 @@ export const AGENT_CATALOG: AgentDefinition[] = [
     id: "ui-atlas",
     name: "Atlas",
     role: "Interface Designer",
-    specialty: "Layout, visual hierarchy, desire-path composition, and component systems",
+    specialty: "Layout, visual hierarchy, and component systems",
     skills: ["ui", "frontend"],
     skillLevel: 4,
     provider: "DeepSeek / Flash",
@@ -174,7 +174,7 @@ export const AGENT_CATALOG: AgentDefinition[] = [
     name: "Sentry",
     role: "QA Reviewer",
     specialty:
-      "Breaks flows, signs off conversion paths, checks multi-agent engagement notebook",
+      "Double-checks the whole Seed against the name and brief before anything is called done",
     skills: ["qa", "research"],
     skillLevel: 4,
     provider: "DeepSeek / Flash",

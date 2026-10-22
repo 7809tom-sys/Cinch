@@ -3,9 +3,10 @@
  *
  * A brief is not enough. Opening or building a Seed must crawl at least 50
  * competitor websites in that industry. Take the best features from the set:
- * CTA from one, headline from another, fulfillment from a third, SEO/AIO
- * from the set. Give the customer who ordered the website at least five reference sites
- * to open. Do not paste competitor headlines onto the page.
+ * CTA from one, fulfillment from another, SEO/AIO from the set.
+ * Record competitor headlines in the research notes. Give the customer who
+ * ordered the website at least five reference sites to open. Do not paste
+ * competitor headlines onto the page.
  * Used-car lots never UPS a vehicle — hold, test-drive, or
  * dealer-deliver. A notebook is not research.
  *

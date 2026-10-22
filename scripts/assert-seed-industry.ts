@@ -526,6 +526,30 @@ assert(
   }).length === 0,
   "proof collector passes a lot inventory shop",
 );
+const brain = customerFacingSiteCopy("brain exercise", "");
+const brainPage = JSON.stringify(brain);
+assert(
+  /memory|attention/i.test(brainPage),
+  "a Seed named brain exercise says what the practice is",
+);
+assert(
+  !/still missing from the brief|quality work, done the way you need it|2020 template/i.test(
+    brainPage,
+  ),
+  "brain exercise is not the blank template",
+);
+assert(
+  collectSeedSiteProofFailures("brain exercise", "", {
+    landing: {
+      headline: "Welcome to brain exercise.",
+      support: "Quality work, done the way you need it.",
+      services: [
+        { title: "Still missing from the brief", detail: "Prices, the real service list" },
+      ],
+    },
+  }).some((failure) => /blank template/i.test(failure.reason)),
+  "Sentry fails the blank brain-exercise page",
+);
 assert(
   /proof the live site against the brief/i.test(SEED_SITE_MUST_PROOF_RULE.summary),
   "proof rule says Seed + Conductor must proof the live site",

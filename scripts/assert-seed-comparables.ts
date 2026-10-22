@@ -175,8 +175,8 @@ assert(
   `overlay takes the winning lot CTA (got ${overlaid.cta})`,
 );
 assert(
-  overlaid.headline === "Shop used cars",
-  "overlay can take a brand-safe winning headline",
+  overlaid.headline === usedCar.headline,
+  "overlay keeps this business's headline; competitor headlines stay in the notes",
 );
 assert(
   /hold on the lot/i.test(overlaid.support),
