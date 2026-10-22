@@ -158,6 +158,30 @@ if (!isRouteBlocked(pii)) {
   assert(pii.providerId !== "deepseek", "DeepSeek never sees PII / invoices");
 }
 
+const doubleCheck = pickAgentForTask({
+  title: "Proof the live site against the brief",
+  detail: "Sentry double-checks the whole Seed. The composer does not sign off.",
+  requiredSkills: ["qa"],
+  minSkillLevel: 3,
+});
+assert(
+  doubleCheck?.id === "qa-sentry",
+  "the whole-Seed double-check goes to Sentry",
+);
+assert(
+  pickAgentForTask(
+    {
+      title: "Proof the live site against the brief",
+      detail: "Sentry double-checks the whole Seed.",
+      requiredSkills: ["qa"],
+      minSkillLevel: 3,
+    },
+    undefined,
+    { unavailableAgentIds: ["qa-sentry"] },
+  ) === null,
+  "Atlas does not take the double-check when Sentry is busy",
+);
+
 const reactBrief = byLabel["React to edited brief — hand off"];
 assert(!isRouteBlocked(reactBrief), "copy+frontend+ui reaction routes");
 if (!isRouteBlocked(reactBrief)) {

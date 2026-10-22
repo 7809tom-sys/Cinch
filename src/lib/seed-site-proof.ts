@@ -25,6 +25,40 @@ export type SeedSiteProofFailure = {
   reason: string;
 };
 
+const BLANK_TEMPLATE =
+  /still missing from the brief|quality work, done the way you need it|proof this isn.t a 2020 template|only what this business actually said|the seed works while the owner/i;
+
+function landingIsBlankTemplate(landing: {
+  headline?: string;
+  support?: string;
+  services?: Array<{ title?: string; detail?: string }>;
+  servicesHeadline?: string;
+  processHeadline?: string;
+  resultsHeadline?: string;
+  areaHeadline?: string;
+  areaBody?: string;
+  bookHeadline?: string;
+  bookNote?: string;
+  footerNote?: string;
+}): boolean {
+  const blob = [
+    landing.headline,
+    landing.support,
+    landing.servicesHeadline,
+    landing.processHeadline,
+    landing.resultsHeadline,
+    landing.areaHeadline,
+    landing.areaBody,
+    landing.bookHeadline,
+    landing.bookNote,
+    landing.footerNote,
+    ...(landing.services ?? []).flatMap((item) => [item.title, item.detail]),
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return BLANK_TEMPLATE.test(blob);
+}
+
 export function collectSeedSiteProofFailures(
   projectName: string,
   brief: string,
@@ -60,7 +94,13 @@ export function collectSeedSiteProofFailures(
 ): SeedSiteProofFailure[] {
   const failures: SeedSiteProofFailure[] = [];
 
-  if (
+  if (input.landing && landingIsBlankTemplate(input.landing)) {
+    failures.push({
+      surface: "landing",
+      reason:
+        "The page is a blank template. Sentry cannot sign off until it says what this Seed is.",
+    });
+  } else if (
     input.landing &&
     seedLandingCopyMismatchesIndustry(projectName, brief, input.landing)
   ) {

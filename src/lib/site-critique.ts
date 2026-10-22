@@ -1,5 +1,9 @@
 import { SEED_SITE_PRICE_USD } from "./site-url";
 import { formatUsd } from "./pricing";
+import {
+  OWNER_CONFIRMED_FACTS_MARKER,
+  SEED_BUILD_NOTES_MARKER,
+} from "./seed-link-intake";
 
 export type CritiqueSeverity = "high" | "medium" | "low" | "strength";
 
@@ -32,6 +36,10 @@ export type SiteCritique = {
   improvements: string[];
   estimate: SiteBuildEstimate;
   critiquedAt: string;
+  /** The business’s own description, when the live page could be read. */
+  businessDescription?: string | null;
+  /** Sentences from the live page. These become the public Seed site. */
+  businessLines?: string[];
 };
 
 function stripTags(html: string): string {
@@ -387,6 +395,8 @@ export async function critiqueWebsite(rawUrl: string): Promise<SiteCritique> {
       improvements: improvementsFromFindings(findings, pageCountEstimate),
       estimate,
       critiquedAt,
+      businessDescription: null,
+      businessLines: [],
     };
   }
 
@@ -401,6 +411,8 @@ export async function critiqueWebsite(rawUrl: string): Promise<SiteCritique> {
   const estimate = estimateBuildForPages(pageCountEstimate);
   const issueCount = findings.filter((f) => f.severity !== "strength").length;
 
+  const businessLines = businessLinesFromVisibleText(text);
+
   return {
     url,
     title,
@@ -412,7 +424,33 @@ export async function critiqueWebsite(rawUrl: string): Promise<SiteCritique> {
     improvements: improvementsFromFindings(findings, pageCountEstimate),
     estimate,
     critiquedAt,
+    businessDescription: description || null,
+    businessLines,
   };
+}
+
+/** Sentences a visitor could read. Nav chrome and legal lines stay out. */
+export function businessLinesFromVisibleText(text: string): string[] {
+  const skip =
+    /cookie|privacy policy|all rights reserved|javascript|enable javascript|sign in|log in|subscribe to our newsletter|skip to content|accept all|terms of service|shopping cart/i;
+  const sentences = text
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(
+      (sentence) =>
+        sentence.length >= 40 &&
+        sentence.length <= 280 &&
+        !skip.test(sentence) &&
+        !/^https?:\/\//i.test(sentence),
+    );
+  const unique: string[] = [];
+  for (const sentence of sentences) {
+    if (unique.some((item) => item.toLowerCase() === sentence.toLowerCase())) continue;
+    unique.push(sentence);
+    if (unique.length >= 8) break;
+  }
+  return unique;
 }
 
 function safeHostname(url: string): string {
@@ -428,7 +466,19 @@ export function critiqueToBrief(critique: SiteCritique): string {
     .map((f) => `- [${f.severity}] ${f.area}: ${f.note}`)
     .join("\n");
   const improveLines = critique.improvements.map((item) => `- ${item}`).join("\n");
+  const description = (critique.businessDescription ?? "").replace(/\s+/g, " ").trim();
+  const lines = (critique.businessLines ?? [])
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line.length >= 8)
+    .slice(0, 8);
+  const opening = description || critique.title.replace(/\s+/g, " ").trim();
   return [
+    opening,
+    "",
+    OWNER_CONFIRMED_FACTS_MARKER,
+    ...lines.map((line) => `- ${line}`),
+    "",
+    SEED_BUILD_NOTES_MARKER,
     `Customer dropped ${critique.url} for critique-and-rebuild.`,
     critique.overview,
     `Build estimate: ${critique.estimate.summaryLabel}`,

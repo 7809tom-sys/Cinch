@@ -6,6 +6,9 @@ import { extractGoogleDriveFileIds } from "./google-drive";
 
 export const OWNER_CONFIRMED_FACTS_MARKER = "Owner-confirmed facts:";
 
+/** Trailer on a brief. Public pages stop reading here. */
+export const SEED_BUILD_NOTES_MARKER = "Seed build notes:";
+
 export type CustomerLinkKind = "google" | "dropbox" | "web";
 
 export type ClassifiedCustomerLink = {
@@ -215,11 +218,13 @@ export function parseOwnerConfirmedFacts(brief: string): {
   const markerAt = brief.indexOf(OWNER_CONFIRMED_FACTS_MARKER);
   if (markerAt === -1) return null;
   const summary = brief.slice(0, markerAt).replace(/\s+/g, " ").trim();
-  const facts = brief
-    .slice(markerAt + OWNER_CONFIRMED_FACTS_MARKER.length)
+  const after = brief.slice(markerAt + OWNER_CONFIRMED_FACTS_MARKER.length);
+  const notesAt = after.search(new RegExp(`^${SEED_BUILD_NOTES_MARKER}\\s*$`, "m"));
+  const factBlock = notesAt === -1 ? after : after.slice(0, notesAt);
+  const facts = factBlock
     .split(/\r?\n/)
     .map((line) => line.replace(/^[-*•]\s+/, "").trim())
-    .filter((line) => line.length >= 2)
+    .filter((line) => line.length >= 2 && line !== SEED_BUILD_NOTES_MARKER)
     .slice(0, MAX_FACTS);
   if (!summary && facts.length === 0) return null;
   return { summary, facts };

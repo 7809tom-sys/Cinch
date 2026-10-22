@@ -8,7 +8,10 @@ import {
   type SeedProfitPlay,
   type SeedResultStat,
 } from "./seed-ai-thorough";
-import { parseOwnerConfirmedFacts } from "./seed-link-intake";
+import {
+  parseOwnerConfirmedFacts,
+  SEED_BUILD_NOTES_MARKER,
+} from "./seed-link-intake";
 
 export {
   SEED_AI_THOROUGH_RULE,
@@ -105,6 +108,10 @@ function briefLooksLikeDealership(name: string, brief: string): boolean {
 
 function industryKey(brief: string, name = ""): string {
   const lower = `${name} ${brief}`.toLowerCase();
+
+  // A book outline is its own page. "Shop Your Way" or "kitchens" inside
+  // a case study must not classify the manuscript as retail or food.
+  if (briefLooksLikeBook(name, brief)) return "book";
 
   // Hair / beauty / barber before retail+auto — briefs often say "wash"
   // (shampoo) or compound words like barbershop / hairstylist.
@@ -397,7 +404,35 @@ export function seedLandingCopyMismatchesIndustry(
     return true;
   }
   // Any vertical that still ships the consulting brochure is unsellable.
-  if (key !== "generic" && seedLandingLooksUnsellable(copy)) return true;
+  if (key !== "generic" && key !== "book" && seedLandingLooksUnsellable(copy)) return true;
+  if (
+    key === "book" &&
+    /shop now|shop app|homepage|reserve a table|punctual plumber/i.test(blob)
+  ) {
+    return true;
+  }
+  const storedHeadline = (copy.headline ?? "").trim();
+  if (storedHeadline) {
+    const stockHeadline = customerFacingHeadline(projectName, brief);
+    const inBrief = brief.toLowerCase().includes(storedHeadline.toLowerCase());
+    const inName = projectName.toLowerCase().includes(storedHeadline.toLowerCase());
+    if (
+      storedHeadline.toLowerCase() !== stockHeadline.toLowerCase() &&
+      !inBrief &&
+      !inName
+    ) {
+      const liveHeadline = customerFacingSiteCopy(projectName, brief).headline.trim();
+      if (storedHeadline.toLowerCase() !== liveHeadline.toLowerCase()) return true;
+    }
+  }
+  // A finished page that talks about the Seed, or admits the brief was ignored.
+  if (
+    /what you kept|notes you confirmed|link you pasted|still missing from the brief|build the site again|from the link you confirmed|you can change this/i.test(
+      blob,
+    )
+  ) {
+    return true;
+  }
   if (briefIsPizza(projectName, brief) && !looksLikePizzaCopy && looksLikeRetailCopy)
     return true;
   return false;
@@ -1245,6 +1280,387 @@ function withBusinessSiteDepth(
   );
 }
 
+const BOOK_HERO =
+  "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1800&q=80";
+const BOOK_HERO_ALT =
+  "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80";
+
+const PUBLIC_META_LINE =
+  /owner-confirmed facts|seed build notes|customer dropped|critique findings|improve by|build estimate|what you kept|notes you confirmed|still missing from the brief|link you pasted|build the site again|from the link you confirmed|you can change this/i;
+
+/**
+ * A book outline is not a shop. "Shop Your Way" inside a case study must
+ * not turn the manuscript into retail, and "kitchens" must not turn it
+ * into a restaurant.
+ */
+export function briefLooksLikeBook(projectName: string, brief: string): boolean {
+  if (briefIsCheeseWineClub(projectName, brief)) return false;
+  if (briefIsDeliveryPlatform(projectName, brief)) return false;
+  if (briefIsPizza(projectName, brief)) return false;
+  const hay = `${projectName}\n${brief}`;
+  const chapters =
+    hay.match(
+      /\bchapters?\s+(?:\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/gi,
+    ) ?? [];
+  if (chapters.length >= 2) return true;
+  if (/\bcore thesis\b/i.test(hay) && /\b(outline|chapter)\b/i.test(hay)) return true;
+  if (/\b(structural outline|master book outline|book outline)\b/i.test(hay)) {
+    return true;
+  }
+  return false;
+}
+
+function cleanPublicLine(line: string): string {
+  return line
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^[-*•]\s+/, "")
+    .replace(/^\d+[.)]\s+/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function publicOfferLines(text: string): string[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map(cleanPublicLine)
+    .filter(
+      (line) =>
+        line.length >= 8 &&
+        line.length <= 400 &&
+        !PUBLIC_META_LINE.test(line) &&
+        !/^https?:\/\//i.test(line) &&
+        !/^\[(high|medium|low|strength)\]/i.test(line),
+    );
+  const unique: string[] = [];
+  for (const line of lines) {
+    if (unique.some((item) => item.toLowerCase() === line.toLowerCase())) continue;
+    unique.push(line);
+    if (unique.length >= 8) break;
+  }
+  return unique;
+}
+
+function asPublicHeadline(text: string, brand: string): string {
+  const cleaned = text
+    .replace(/^(?:i{1,3}|iv|vi{0,3}|ix|x)\.\s+/i, "")
+    .replace(/^core thesis:\s*/i, "")
+    .trim();
+  const sentences = firstSentences(cleaned, 3).filter(
+    (sentence) => sentence.replace(/[^A-Za-z]/g, "").length >= 12,
+  );
+  const sentence = (sentences[0] || cleaned).replace(/\s+/g, " ").trim();
+  let headline = sentence.length > 90 ? `${sentence.slice(0, 87).trim()}…` : sentence;
+  if (!headline || headline.toLowerCase() === brand.toLowerCase()) {
+    headline = `The work of ${brand}`;
+  }
+  return headline;
+}
+
+function splitBookHeading(raw: string): { title: string; inline: string } {
+  const withoutRoman = raw.replace(/^(?:i{1,3}|iv|vi{0,3}|ix|x)\.\s+/i, "");
+  const chapter = withoutRoman.match(
+    /^(chapter\s+[A-Za-z0-9]+)\s*[:.\-—]\s+(.+)$/i,
+  );
+  if (chapter?.[1] && chapter[2]) {
+    return { title: chapter[1].slice(0, 80), inline: chapter[2] };
+  }
+  const thesis = withoutRoman.match(/^core thesis\s*:\s*(.+)$/i);
+  if (thesis?.[1]) {
+    const rest = thesis[1].trim();
+    const dot = rest.indexOf(". ");
+    if (dot > 8 && dot < 90) {
+      return { title: rest.slice(0, dot), inline: rest.slice(dot + 2) };
+    }
+    return { title: rest.slice(0, 80), inline: rest };
+  }
+  const colon = withoutRoman.indexOf(":");
+  if (colon > 2 && colon < 70) {
+    return {
+      title: withoutRoman.slice(0, colon).trim().slice(0, 80),
+      inline: withoutRoman.slice(colon + 1).trim(),
+    };
+  }
+  return { title: withoutRoman.slice(0, 80), inline: "" };
+}
+
+function bookSectionsFromText(text: string): SeedService[] {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 1 && !PUBLIC_META_LINE.test(line));
+  const sections: SeedService[] = [];
+  const isHeading = (line: string) =>
+    /^chapter\s+/i.test(line) ||
+    /^(?:i{1,3}|iv|vi{0,3}|ix|x)\.\s+\S/i.test(line) ||
+    /^core thesis\b/i.test(line) ||
+    /^the [^:]{3,80}:\s+\S/.test(line);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const raw = cleanPublicLine(lines[index] ?? "");
+    if (!isHeading(raw)) continue;
+    const split = splitBookHeading(raw);
+    const title = split.title.slice(0, 90);
+    const detailParts: string[] = split.inline ? [split.inline] : [];
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const follow = lines[next] ?? "";
+      if (isHeading(cleanPublicLine(follow))) break;
+      if (follow.length >= 24) detailParts.push(cleanPublicLine(follow));
+      if (detailParts.join(" ").length >= 220 || detailParts.length >= 2) break;
+    }
+    const detail = (detailParts.join(" ") || title).slice(0, 280);
+    if (title.length < 3) continue;
+    sections.push({ title, detail });
+    if (sections.length >= 8) break;
+  }
+  return sections;
+}
+
+function contactLine(brief: string): string | null {
+  const phone = brief.match(
+    /(?:\+?1[-.\s]?)?(?:\(\d{3}\)|\d{3})[-.\s]\d{3}[-.\s]\d{4}/,
+  );
+  const email = brief.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const bits = [phone?.[0], email?.[0]].filter(Boolean);
+  return bits.length ? bits.join(" · ") : null;
+}
+
+function ownerGrowthBoard(
+  brand: string,
+  lines: string[],
+  book: boolean,
+): SeedGrowthBoard {
+  const prices = lines.join(" ").match(/\$\d[\d,]*(?:\.\d{2})?/g) ?? [];
+  const countLabel = String(Math.max(lines.length, 2));
+  if (book) {
+    return {
+      resultsEyebrow: "The book",
+      resultsHeadline: "What a reader can count",
+      resultsSupport: `${brand} leads with the claim, then the chapters that test it.`,
+      results: [
+        {
+          value: countLabel,
+          label: "chapters on this page",
+          detail: "Each chapter below is taken from the outline.",
+        },
+        {
+          value: "1",
+          label: "thesis",
+          detail: "The opening states the claim before the cases.",
+        },
+        {
+          value: prices[0] ?? "In the text",
+          label: prices[0] ? "named in the outline" : "the reading",
+          detail: "The page uses the outline’s own words.",
+        },
+        {
+          value: "First",
+          label: "read the claim",
+          detail: "The thesis is the first thing on the page.",
+        },
+      ],
+      profitEyebrow: "For the reader",
+      profitHeadline: "How to use this book",
+      profitSupport: "Read the claim, then one case, then the close.",
+      profitPlays: [
+        {
+          title: "Start with the thesis",
+          detail: "The claim is the test for every chapter that follows.",
+        },
+        {
+          title: "Read one case at a time",
+          detail: "Each case is a chapter, with the evidence under the title.",
+        },
+        {
+          title: "Take the close back to work",
+          detail: "The last section is the move the book asks for.",
+        },
+      ],
+    };
+  }
+
+  const priceDetail = prices[0]
+    ? `${prices[0]} is written on this site because it was in the notes.`
+    : "No price was in the notes, so this page does not invent one.";
+  return {
+    resultsEyebrow: "On this page",
+    resultsHeadline: `What ${brand} actually says`,
+    resultsSupport: "The numbers and offers below come from this business’s own notes.",
+    results: [
+      {
+        value: countLabel,
+        label: "offers listed",
+        detail: "Each offer is a line from this business, not a stand-in from another trade.",
+      },
+      {
+        value: prices[0] ?? "Ask",
+        label: prices[0] ? "a price named here" : "pricing",
+        detail: priceDetail,
+      },
+      {
+        value: "1",
+        label: "opening",
+        detail: "The top of the page is the first thing this business said.",
+      },
+      {
+        value: "Direct",
+        label: "next step",
+        detail: "The close tells a visitor how to reach the business.",
+      },
+    ],
+    profitEyebrow: "Why it converts",
+    profitHeadline: "The page sells what was written down",
+    profitSupport: "Visitors decide from the real offer, the real price, and a way to reply.",
+    profitPlays: [
+      {
+        title: "Lead with the first sentence",
+        detail: "The headline is the business’s own opening, so the page is recognizable in one glance.",
+      },
+      {
+        title: "Put the price where it was named",
+        detail: priceDetail,
+      },
+      {
+        title: "One way to reply",
+        detail: "The closing section is a single next step, with the phone or email when one was given.",
+      },
+    ],
+  };
+}
+
+function assembleOwnerSite(
+  projectName: string,
+  brief: string,
+  summary: string,
+  facts: string[],
+  book: boolean,
+): SeedSiteCopy {
+  const brand = customerFacingBrandName(projectName);
+  const offerLines = facts.filter((line) => line.trim().length >= 2).slice(0, 8);
+  const summaryText =
+    summary.replace(/\s+/g, " ").trim() ||
+    offerLines[0] ||
+    `${brand} — in the words supplied for this site.`;
+  const services = (
+    book ? bookSectionsFromText(`${summary}\n${brief}`) : []
+  ).filter((section) => section.title.length > 2);
+  const fromFacts = (services.length >= 2 ? services : offerLines.map(factToService)).slice(
+    0,
+    8,
+  );
+  if (fromFacts.length === 0) {
+    fromFacts.push(factToService(summaryText.slice(0, 280)));
+  }
+  if (fromFacts.length === 1) {
+    const extra = summaryText.slice(0, 220);
+    if (extra && extra !== fromFacts[0]?.detail) {
+      fromFacts.push({
+        title: fromFacts[0]?.title === brand ? "The offer" : brand,
+        detail: extra,
+      });
+    } else {
+      fromFacts.push({
+        title: "How to start",
+        detail: summaryText.slice(0, 220),
+      });
+    }
+  }
+
+  const headline = asPublicHeadline(
+    book
+      ? bookSectionsFromText(brief).find((section) => /thesis/i.test(section.title))?.detail ||
+        summaryText
+      : summaryText,
+    brand,
+  );
+  const hero = book ? BOOK_HERO : customerFacingHeroImage(brief, projectName);
+  const contact = contactLine(brief);
+  const food =
+    !book &&
+    /\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(`${projectName} ${brief}`);
+  const menuItems = food
+    ? [...fromFacts, ...fromFacts].slice(0, 4).map((item) => {
+        const price = item.detail.match(/\$\d[\d,]*(?:\.\d{2})?/)?.[0];
+        return {
+          category: "From the kitchen",
+          name: item.title,
+          detail: item.detail,
+          priceLabel: price ?? "Ask",
+        };
+      })
+    : undefined;
+  const steps = fromFacts.slice(0, 3).map((item) => ({
+    title: item.title,
+    detail: item.detail,
+  }));
+  while (steps.length < 2) {
+    steps.push({ title: brand, detail: summaryText.slice(0, 220) });
+  }
+  const quote = (firstSentences(summaryText, 1)[0] || summaryText).slice(0, 220);
+  const growth = ownerGrowthBoard(
+    brand,
+    fromFacts.map((item) => `${item.title} ${item.detail}`),
+    book,
+  );
+
+  return {
+    brand,
+    headline,
+    support: summaryText.slice(0, 240),
+    cta: book ? "Read the chapters" : customerFacingCta(brief, projectName),
+    heroImage: hero,
+    navLabel: book ? "Chapters" : food ? "Menu" : "Offer",
+    servicesEyebrow: book ? "Chapters" : "The offer",
+    servicesHeadline: book ? "The chapters" : `What ${brand} does`,
+    services: fromFacts,
+    galleryEyebrow: book ? "The book" : "The work",
+    galleryHeadline: book ? brand : `Inside ${brand}`,
+    gallery: [
+      { src: hero, alt: book ? `${brand} — the book` : brand },
+      {
+        src: book ? BOOK_HERO_ALT : hero,
+        alt: book ? "Open pages of a book" : `${brand}`,
+      },
+    ],
+    processEyebrow: book ? "How to read it" : "How it goes",
+    processHeadline: book ? "Claim, then cases" : "What happens next",
+    process: steps,
+    ...(menuItems
+      ? {
+          menuEyebrow: "Menu",
+          menuHeadline: `What ${brand} serves`,
+          menuSupport: summaryText.slice(0, 180),
+          menuItems,
+        }
+      : {}),
+    aboutEyebrow: book ? "The thesis" : "About",
+    aboutHeadline: brand,
+    aboutBody: summaryText.slice(0, 500),
+    aboutImage: book ? BOOK_HERO_ALT : hero,
+    proofEyebrow: book ? "The claim" : "In their words",
+    proofHeadline: book ? "Why this book" : brand,
+    proof: { quote, attribution: brand },
+    ...growth,
+    areaEyebrow: book ? "Who it’s for" : "Reach",
+    areaHeadline: book ? "Readers who do the work" : `Talk to ${brand}`,
+    areaBody: book
+      ? `${brand} is for the person who has to live with the decision the book describes.`
+      : contact
+        ? `${brand} can be reached at ${contact}.`
+        : `${summaryText.slice(0, 220)}`,
+    bookEyebrow: book ? "Start" : "Next",
+    bookHeadline: book ? "Read the claim first" : `Start with ${brand}`,
+    bookBody: contact
+      ? `${summaryText.slice(0, 200)} ${contact}`
+      : summaryText.slice(0, 280),
+    bookNote: contact
+      ? contact
+      : book
+        ? "The chapters on this page follow the outline."
+        : `${brand}`,
+    footerNote: book ? `${brand} · the book` : `${brand}`,
+  };
+}
+
 function factToService(fact: string): { title: string; detail: string } {
   const splitAt = fact.indexOf(":");
   if (splitAt > 2 && splitAt < 64) {
@@ -1257,136 +1673,81 @@ function factToService(fact: string): { title: string; detail: string } {
   return { title, detail: fact.slice(0, 280) };
 }
 
-function ownerHeroImage(projectName: string, brief: string): string {
-  const blob = `${projectName} ${brief}`.toLowerCase();
-  if (/\b(wine|winery|vineyard)\b/.test(blob)) {
-    return "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=1800&q=80";
-  }
-  if (/\b(cheese|creamery|dairy)\b/.test(blob)) {
-    return "https://images.unsplash.com/photo-1452195100486-9cc805987862?auto=format&fit=crop&w=1800&q=80";
-  }
-  return customerFacingHeroImage(brief, projectName);
-}
-
 /**
  * When the owner confirmed lines from a pasted link, the public site
- * uses those lines — not a canned industry brochure.
+ * uses those lines — not a canned industry brochure and not a worksheet
+ * about the Seed.
  */
 export function siteCopyFromConfirmedFacts(
   projectName: string,
   brief: string,
 ): SeedSiteCopy | null {
+  if (briefIsDeliveryPlatform(projectName, brief)) return null;
   const owner = parseOwnerConfirmedFacts(brief);
-  if (!owner || owner.facts.length === 0) return null;
+  if (!owner) return null;
+  const facts = owner.facts.filter(
+    (fact) => fact.length >= 2 && !PUBLIC_META_LINE.test(fact),
+  );
+  const summary = owner.summary.replace(PUBLIC_META_LINE, " ").replace(/\s+/g, " ").trim();
+  if (facts.length === 0 && summary.length < 40) return null;
+  return assembleOwnerSite(projectName, brief, summary, facts, false);
+}
 
+/** A plain brief with real sentences, when no industry template applies. */
+/** A named Seed with no real brief still has to say what the name is. */
+function siteFromNameOnly(projectName: string, brief: string): SeedSiteCopy | null {
+  if (brief.trim().length >= 80) return null;
   const brand = customerFacingBrandName(projectName);
-  const key = industryKey(brief, projectName);
-  const summary =
-    owner.summary ||
-    `${brand} — built from the notes you confirmed.`;
-  const sentence = firstSentences(summary, 1)[0] || summary;
-  const headline =
-    sentence.length > 90 ? `${sentence.slice(0, 87).trim()}…` : sentence;
-  const services = owner.facts.slice(0, 6).map(factToService);
-  if (services.length === 1) {
-    services.push({
-      title: "What you confirmed",
-      detail: summary.slice(0, 220),
-    });
+  const words = brand
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (words.length < 4 || /^(seed|website|new site|untitled|test)$/.test(words)) {
+    return null;
   }
-  if (
-    briefIsDeliveryPlatform(projectName, brief) &&
-    !services.some((item) => /pickup/i.test(item.detail) && /favorite/i.test(item.detail))
-  ) {
-    services.push({
-      title: "Pickup and favorites",
-      detail: "Order for pickup and save a favorite for the next time.",
-    });
-  }
-  const steps = services.slice(0, 3).map((item) => ({
-    title: item.title,
-    detail: item.detail,
-  }));
-  while (steps.length < 2) {
-    steps.push({
-      title: "You can change this",
-      detail: "Edit a line on the Seed desk and build the site again.",
-    });
-  }
-  const hero = ownerHeroImage(projectName, brief);
-  const blob = `${projectName} ${summary} ${owner.facts.join(" ")}`.toLowerCase();
-  const cta = /\b(join|member|subscription|subscribers|club)\b/.test(blob)
-    ? "Join"
-    : /\b(book|appointment)\b/.test(blob)
-      ? "Book"
-      : "Get started";
-  const wantsMenu =
-    !briefIsDeliveryPlatform(projectName, brief) &&
-    /\b(pizza|restaurant|menu|dining|pizzeria)\b/i.test(`${projectName} ${brief}`);
-  const menuItems = wantsMenu
-    ? [...services, ...services].slice(0, 4).map((item) => ({
-        category: "From your notes",
-        name: item.title,
-        detail: item.detail,
-        priceLabel: "Ask",
-      }))
-    : undefined;
+  const shaped = /\b(brain|memory|cogniti|mental fitness)\b/.test(words)
+    ? {
+        summary: `${brand} is a short daily practice for memory and attention.`,
+        facts: [
+          "Memory drills you can finish in a few minutes.",
+          "Attention sets that get harder only after you succeed.",
+          "A streak you can see, so the practice happens again tomorrow.",
+        ],
+      }
+    : {
+        summary: `${brand} is the offer on this page.`,
+        facts: [
+          `${brand} says what it is in the opening.`,
+          `Someone can reach ${brand} from this page.`,
+        ],
+      };
+  return assembleOwnerSite(
+    projectName,
+    `${brief}\n${shaped.summary}`,
+    shaped.summary,
+    shaped.facts,
+    false,
+  );
+}
 
-  return withGrowthBoard(
-    {
-      brand,
-      headline: headline.trim() || `Welcome to ${brand}.`,
-      support: summary.slice(0, 240),
-      cta,
-      heroImage: hero,
-      navLabel: "Offer",
-      servicesEyebrow: "Your notes",
-      servicesHeadline: "What you kept",
-      services,
-      galleryEyebrow: "The work",
-      galleryHeadline: "From the link you pasted",
-      gallery: [
-        { src: hero, alt: `${brand} — from the notes you confirmed` },
-        {
-          src: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
-          alt: "A table set for a tasting",
-        },
-        {
-          src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
-          alt: "Food ready to share",
-        },
-      ],
-      processEyebrow: "How it reads",
-      processHeadline: "The lines you kept",
-      process: steps,
-      ...(menuItems
-        ? {
-            menuEyebrow: "From your notes",
-            menuHeadline: "What you kept on the board",
-            menuSupport: summary.slice(0, 180),
-            menuItems,
-          }
-        : {}),
-      aboutEyebrow: "The brief",
-      aboutHeadline: brand,
-      aboutBody: summary.slice(0, 500),
-      aboutImage: hero,
-      proofEyebrow: "Confirmed",
-      proofHeadline: "This is the version you kept",
-      proof: {
-        quote: sentence.slice(0, 220),
-        attribution: "Confirmed on this Seed",
-      },
-      areaEyebrow: "Yours",
-      areaHeadline: "Change a line, build again",
-      areaBody: `${brand} is using the notes you confirmed. Uncheck a line or rewrite it on the Seed desk, then build the site again.`,
-      bookEyebrow: "Next",
-      bookHeadline: cta,
-      bookBody: summary.slice(0, 280),
-      bookNote: "Built from the link you pasted into this Seed.",
-      footerNote: `${brand} · from the link you confirmed`,
-    },
-    key,
+function siteFromLooseBrief(projectName: string, brief: string): SeedSiteCopy | null {
+  if (parseOwnerConfirmedFacts(brief)) return null;
+  const notesAt = brief.search(
+    new RegExp(`^${SEED_BUILD_NOTES_MARKER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "m"),
+  );
+  const body = notesAt === -1 ? brief : brief.slice(0, notesAt);
+  const lines = publicOfferLines(body);
+  const summary =
+    lines.find((line) => line.length >= 40) ||
+    body.replace(/\s+/g, " ").trim().slice(0, 500);
+  if (lines.length < 2 && summary.length < 80) return null;
+  return assembleOwnerSite(
+    projectName,
+    brief,
+    summary,
+    lines.length > 0 ? lines : [summary],
+    false,
   );
 }
 
@@ -1546,6 +1907,25 @@ export function customerFacingSiteCopy(
 ): SeedSiteCopy {
   if (briefIsCheeseWineClub(projectName, brief)) {
     return cheeseWineClubSiteCopy(customerFacingBrandName(projectName));
+  }
+
+  if (briefLooksLikeBook(projectName, brief)) {
+    const owner = parseOwnerConfirmedFacts(brief);
+    const facts = (owner?.facts ?? publicOfferLines(brief)).filter(
+      (fact) => fact.length >= 2 && !PUBLIC_META_LINE.test(fact),
+    );
+    const summary = (
+      owner?.summary ||
+      facts.find((line) => /core thesis/i.test(line)) ||
+      facts.find((line) => line.length >= 80) ||
+      facts.find((line) => line.length >= 40) ||
+      brief
+    )
+      .replace(PUBLIC_META_LINE, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 600);
+    return assembleOwnerSite(projectName, brief, summary, facts, true);
   }
 
   const fromOwner = siteCopyFromConfirmedFacts(projectName, brief);
@@ -2157,6 +2537,12 @@ export function customerFacingSiteCopy(
     );
   }
 
+  const fromProse = siteFromLooseBrief(projectName, brief);
+  if (fromProse) return fromProse;
+
+  const fromName = siteFromNameOnly(projectName, brief);
+  if (fromName) return fromName;
+
   return withBusinessSiteDepth(
     {
     brand,
@@ -2164,27 +2550,27 @@ export function customerFacingSiteCopy(
     support,
     cta,
     heroImage,
-    navLabel: "Menu",
-    servicesEyebrow: "What we offer",
-    servicesHeadline: `What ${brand} actually offers`,
+    navLabel: "Offer",
+    servicesEyebrow: "The offer",
+    servicesHeadline: `What ${brand} does`,
     services: [
       {
         title: brand,
         detail: support,
       },
       {
-        title: "Still missing from the brief",
+        title: "Ask for the specifics",
         detail:
-          "Prices, the real service list, and who it is for. This page will not invent a customer, a town, or another company’s process to fill the gap.",
+          "A price, a service list, and who it is for. This page will not invent a customer, a town, or another company’s process.",
       },
     ],
     aboutEyebrow: "About",
     aboutHeadline: `Why ${brand}`,
     aboutBody: support,
     bookEyebrow: "Start",
-    bookHeadline: "Let’s get you going",
+    bookHeadline: `Talk to ${brand}`,
     bookBody: "Share what you need and the best way to reach you.",
-    bookNote: "We reply during business hours.",
+    bookNote: `${brand} replies when you write.`,
     footerNote: `${brand}`,
     },
     key,

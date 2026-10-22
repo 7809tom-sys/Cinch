@@ -102,7 +102,7 @@ export function planEngagementCollaborationChain(input?: {
     phaseTask(
       "desire-path",
       `${ENGAGEMENT_COLLAB_TITLE_PREFIX} · design the desire path`,
-      `Read Quill’s psychology notes. Compose hero → proof → CTA so the primary ask is inevitable on phone and laptop — brand first, no clutter competing with conversion.`,
+      `Read Quill’s psychology notes. Lay out hero → proof → CTA so the primary ask is inevitable on phone and laptop — brand first, no clutter competing with conversion. Sentry double-checks the finished page.`,
       ["ui", "frontend"],
       3,
     ),

@@ -481,6 +481,13 @@ function sortRosterForTask(
  * any remaining crew. Busy agents are skipped when someone else is free
  * so a new Edit Seed task is handed off instead of sitting uncompleted.
  */
+/** Final sign-off. Only Sentry may take it — not the agent who composed the page. */
+export function taskIsWholeSeedDoubleCheck(title: string): boolean {
+  return /proof the live site against the brief|double-check the whole seed/i.test(
+    title,
+  );
+}
+
 export function rankAgentsForTask(
   input: RouteTaskInput,
   options: Pick<
@@ -490,6 +497,11 @@ export function rankAgentsForTask(
 ): AgentDefinition[] {
   const specialists = specialistRoster(input, options.invitedAgentIds);
   const busy = new Set(options.unavailableAgentIds ?? []);
+  if (taskIsWholeSeedDoubleCheck(input.title)) {
+    const sentry = specialists.find((agent) => agent.id === "qa-sentry");
+    if (!sentry || busy.has(sentry.id)) return [];
+    return [sentry];
+  }
   const free = specialists.filter((agent) => !busy.has(agent.id));
   return sortRosterForTask(free.length > 0 ? free : specialists, input);
 }

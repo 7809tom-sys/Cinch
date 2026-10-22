@@ -3,6 +3,7 @@ import { AGENT_CATALOG, getAgent, getProjectManager } from "./agents";
 import {
   isRouteBlocked,
   routeConductorTask,
+  taskIsWholeSeedDoubleCheck,
   type ConductorRoute,
   type SeedProviderId,
 } from "./conductor-routing";
@@ -283,6 +284,34 @@ export async function failoverTaskAfterProviderFailure(
   });
 }
 
+/**
+ * Sentry is the only sign-off. A blank template stays open — the task
+ * is not marked done.
+ */
+async function sentryAllowsSignOff(
+  project: SeedProject,
+  task: ProjectTask,
+): Promise<boolean> {
+  if (!taskIsWholeSeedDoubleCheck(task.title)) return true;
+  const { proofAndRepairSeedSite } = await import("./seed-site");
+  const result = await proofAndRepairSeedSite(project);
+  if (result.ok) return true;
+  task.escalate = true;
+  task.updatedAt = now();
+  const already = project.activity.some((event) =>
+    event.message.includes("Sentry refused to sign off"),
+  );
+  if (!already) {
+    const why = result.failures.map((failure) => failure.reason).join(" ");
+    pushActivity(
+      project,
+      `Sentry refused to sign off. The live page still does not match this Seed. ${why}`,
+      task.assigneeId ?? "qa-sentry",
+    );
+  }
+  return false;
+}
+
 export async function advanceAssignedWork(
   projectId: string,
 ): Promise<SeedProject> {
@@ -318,6 +347,7 @@ export async function advanceAssignedWork(
   );
   for (const task of inProgress) {
     const agent = task.assigneeId ? getAgent(task.assigneeId) : null;
+    if (!(await sentryAllowsSignOff(project, task))) continue;
     task.status = "done";
     task.updatedAt = now();
     // Finishing stamps brief-derived Seed source (applyTaskToSource) — never
@@ -855,6 +885,10 @@ export async function tickProjectWork(
     const agent = inProgress.assigneeId
       ? getAgent(inProgress.assigneeId)
       : null;
+    if (!(await sentryAllowsSignOff(project, inProgress))) {
+      await saveProject(project);
+      return finishResult(project, false, inProgress.title, null);
+    }
     inProgress.status = "done";
     inProgress.updatedAt = now();
     // Stamps brief-derived templates via applyTaskToSource — not a clone.
