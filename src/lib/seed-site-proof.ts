@@ -9,8 +9,10 @@
  * Guard: `npm run assert:seed-industry`.
  */
 
+import { landingDropsDescriptionFacts } from "./seed-description-learning";
 import {
   briefAsksForEcommerce,
+  briefIsDeliveryPlatform,
   seedLandingCopyMismatchesIndustry,
   seedShopMismatchesIndustry,
 } from "./seed-site-copy";
@@ -108,6 +110,22 @@ export function collectSeedSiteProofFailures(
       surface: "landing",
       reason: "Landing copy is the wrong industry for this brief.",
     });
+  } else if (
+    input.landing?.aboutBody &&
+    (input.landing.services?.length ?? 0) >= 2 &&
+    !briefIsDeliveryPlatform(projectName, brief)
+  ) {
+    const dropped = landingDropsDescriptionFacts(
+      brief,
+      JSON.stringify(input.landing),
+      projectName,
+    );
+    if (dropped.length > 0) {
+      failures.push({
+        surface: "landing",
+        reason: `The page dropped details from the description: ${dropped.join(", ")}.`,
+      });
+    }
   }
 
   if (input.shop && seedShopMismatchesIndustry(projectName, brief, input.shop)) {

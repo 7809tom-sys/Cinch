@@ -8,6 +8,7 @@ import {
   type SeedProfitPlay,
   type SeedResultStat,
 } from "./seed-ai-thorough";
+import { weaveDescriptionIntoSite } from "./seed-description-learning";
 import {
   parseOwnerConfirmedFacts,
   SEED_BUILD_NOTES_MARKER,
@@ -160,6 +161,16 @@ function industryKey(brief: string, name = ""): string {
   // Auto garage / mechanic before detailing — repair shop ≠ mobile detail.
   if (briefLooksLikeGarage(name, brief)) {
     return "garage";
+  }
+  // A plumbing / HVAC / electrical shop is a trade visit, not a retail store.
+  // "shop" alone must not win first — "repair shop" was stamping "Shop now".
+  if (
+    /\bplumb(?:ing|er|ers)?\b/.test(lower) ||
+    /\bhvac\b/.test(lower) ||
+    /\belectric(?:ian|al)?\b/.test(lower) ||
+    /\bhandyman\b/.test(lower)
+  ) {
+    return "trade";
   }
   // Word boundaries — do not let "shop" inside "barbershop" win as retail.
   if (/\b(shop|store|retail|boutique|florist)\b/.test(lower)) return "retail";
@@ -1151,7 +1162,7 @@ function withBusinessSiteDepth(
         },
       ],
       processEyebrow: "Service path",
-      processHeadline: "Diagnose, fix, follow through",
+      processHeadline: "Diagnose, fix, stand behind it",
       process: [
         {
           title: "Tell us what’s wrong",
@@ -1900,8 +1911,12 @@ export function cheeseWineClubSiteCopy(brand = "Wisconsin Cheese and Wine Club")
   };
 }
 
-/** Industry-shaped services, about, and booking copy for a full site — not a hero stub. */
-export function customerFacingSiteCopy(
+/**
+ * Industry-shaped services, about, and booking copy for a full site — not a hero stub.
+ * This draft does not yet fold the owner's prices, towns, and hours back in.
+ * `customerFacingSiteCopy` does that before anything public is returned.
+ */
+export function customerFacingSiteCopyBeforeLearning(
   projectName: string,
   brief: string,
 ): SeedSiteCopy {
@@ -2575,6 +2590,16 @@ export function customerFacingSiteCopy(
     },
     key,
   );
+}
+
+/** Public site copy. Industry shape stays; the description's facts stay too. */
+export function customerFacingSiteCopy(
+  projectName: string,
+  brief: string,
+): SeedSiteCopy {
+  const site = customerFacingSiteCopyBeforeLearning(projectName, brief);
+  if (briefIsDeliveryPlatform(projectName, brief)) return site;
+  return weaveDescriptionIntoSite(site, brief, projectName);
 }
 
 /** Full public-site CSS — hero + real sections, not a blank stub. */
