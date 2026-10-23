@@ -8,7 +8,9 @@ import type {
   MerchantTicket,
 } from "@/lib/seed-delivery";
 import {
+  HOMETOWN_KITCHEN_LINE,
   MERCHANT_DELIVERY_RADIUS_MILES,
+  merchantDensityLine,
   availableDispatchDrivers,
   driverPhotoId,
   kitchenFoodScoreAvg,
@@ -127,6 +129,10 @@ export function HometownRestaurantPortal({
                 ))}
               </select>
             </label>
+            <p className="mt-2 text-sm font-semibold text-brand-deep">
+              {HOMETOWN_KITCHEN_LINE}{" "}
+              {merchantDensityLine(ops.restaurants.length)}
+            </p>
             <p className="mt-2 text-sm text-muted">
               Snap 2–3 photos of the paper takeout menu or upload a PDF.
               Review the draft and Approve — five-minute sign-off, not a

@@ -191,7 +191,16 @@ export const DINER_SCHEDULE_WINDOWS = [
   "Tonight 6–7pm",
   "Tonight 7–8pm",
 ] as const;
-export const DINER_TRACK_ETA_DELIVERY = "Usually 25–35 minutes to your door.";
+/** Launch a street, not a county. Example tight market: Waukesha. */
+export const LAUNCH_MARKET_EXAMPLE = "Waukesha";
+export const MERCHANT_DENSITY_MIN = 5;
+export const MERCHANT_DENSITY_MAX = 10;
+export const NEIGHBORHOOD_DELIVERY_MINUTES = 30;
+export const HOMETOWN_NEIGHBORHOOD_PROMISE = `The food comes from the streets you walk every day. Kitchens sit together on one street, so a run stays under ${NEIGHBORHOOD_DELIVERY_MINUTES} minutes.`;
+export const HOMETOWN_DRIVER_PAY_PROMISE = `You keep 100% of the tip. Every run pays a base rate of $${TRIP_BASE_USD.toFixed(2)} plus $${TRIP_PER_MILE_USD.toFixed(2)} a mile, and the 5% commission share is on top of that.`;
+export const HOMETOWN_KITCHEN_LINE =
+  "Tickets fire on this desk the moment a diner orders. This portal is the direct line to the kitchen manager — no third-party tablet and no corporate queue.";
+export const DINER_TRACK_ETA_DELIVERY = `Usually under ${NEIGHBORHOOD_DELIVERY_MINUTES} minutes on this street.`;
 export const DINER_TRACK_ETA_ON_THE_WAY = "Usually 10–15 minutes from here.";
 export const DINER_TRACK_ETA_KITCHEN = "Usually ready in 15–20 minutes.";
 export const DINER_TRACK_DRIVER_AT_KITCHEN = "Your driver is at the kitchen.";
@@ -278,6 +287,23 @@ export const HOMETOWN_MENU_ONBOARD_BRIEF_BLOCK = `Hometown menu onboard (not POS
 - Five-minute sign-off: the parser creates a draft. Scout or restaurant owner reviews prices and modifiers, taps Approve, and the merchant goes live. Not a data-entry team. approveMenuDraft confirms every parsed item (confirmRestaurantMenuPrice still works one-by-one).
 - 86: one tap to 86 / restore an item during service so it does not sell. setMenuItemEightySixed hides 86'd items from sellableRestaurantMenu and diner find.
 - Do not build Toast / Square / Otter / Deliverect APIs, automated 15% markup rules, Red Card, or non-consented scraping. No POS certification in v1.`;
+
+export const HOMETOWN_LAUNCH_BRIEF_BLOCK = `Hometown launch (tight market, example: ${LAUNCH_MARKET_EXAMPLE}):
+- Merchant density: sign ${MERCHANT_DENSITY_MIN} to ${MERCHANT_DENSITY_MAX} popular local restaurants or specialty shops on one street or neighborhood. Do not spread thin across the county. Density makes short courier runs profitable and keeps delivery under ${NEIGHBORHOOD_DELIVERY_MINUTES} minutes.
+- Driver pay: couriers keep 100% of tips plus the base rate ($${TRIP_BASE_USD.toFixed(2)} + $${TRIP_PER_MILE_USD.toFixed(2)} per mile) and the 5% commission share. Show that split on the driver desk. No tip skimming.
+- Kitchen line: order tickets fire on the Hometown merchant portal, the direct line to the kitchen manager. No third-party tablet and no multi-tier corporate support queue.
+- Neighborhood marketing: the food comes from the streets diners walk every day, not a regional distribution grid.`;
+
+export function merchantDensityLine(kitchenCount: number): string {
+  const count = Math.max(0, Math.floor(kitchenCount));
+  if (count < MERCHANT_DENSITY_MIN) {
+    return `${count} kitchens on this street. A profitable launch holds ${MERCHANT_DENSITY_MIN}–${MERCHANT_DENSITY_MAX} before you leave the neighborhood.`;
+  }
+  if (count <= MERCHANT_DENSITY_MAX) {
+    return `${count} kitchens on this street — short runs stay under ${NEIGHBORHOOD_DELIVERY_MINUTES} minutes.`;
+  }
+  return `${count} kitchens. Hold this street before you open the next neighborhood.`;
+}
 
 export const HOMETOWN_DISPATCH_BRIEF_BLOCK = `Hometown dispatch & geofence:
 - Core dispatch + order routing only. No weather/supply algorithms, no KDS fry-fire, no Premier / 15% vs 30% visibility tiers.
@@ -736,6 +762,10 @@ export function briefHasHometownMenuOnboard(brief: string): boolean {
   );
 }
 
+export function briefHasHometownLaunch(brief: string): boolean {
+  return /Merchant density|one street or neighborhood|Waukesha/i.test(brief);
+}
+
 export function briefHasHometownDinerFlow(brief: string): boolean {
   return /leave-at-door|prior bag|missing plate|next offer|favorite kitchens|food is ready|courier-on-the-way|accepted \/ cooking \/ ready|best-of Uber Eats/i.test(
     brief,
@@ -780,6 +810,9 @@ export function withDeliveryDriverPolicyBrief(brief: string): string {
   }
   if (!briefHasHometownDinerFlow(trimmed)) {
     parts.push(HOMETOWN_DINER_FLOW_BRIEF_BLOCK);
+  }
+  if (!briefHasHometownLaunch(trimmed)) {
+    parts.push(HOMETOWN_LAUNCH_BRIEF_BLOCK);
   }
   return parts.join("\n\n");
 }

@@ -16,6 +16,7 @@ import {
   DROPOFF_WRONG_LOCATION_COPY,
   EXISTING_PLATFORM_NAMES,
   FEDERAL_MILEAGE_USD,
+  HOMETOWN_DRIVER_PAY_PROMISE,
   KITCHEN_ARRIVAL_GEOFENCE_METERS,
   MERCHANT_DELIVERY_RADIUS_MILES,
   STARTER_TOWN_CENTER,
@@ -164,6 +165,9 @@ export function HometownDriverPortal({
             ))}
           </select>
         </label>
+        <p className="mt-3 text-sm font-semibold text-foam">
+          {HOMETOWN_DRIVER_PAY_PROMISE}
+        </p>
         <p className="mt-3 text-sm text-mist">
           Same idea as DoorDash Dasher: go online, take an offer, pick up,
           drop off. One current dash plus at most one next offer — no Peak

@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { hometownRoleCopy } from "@/lib/seed-delivery";
+import {
+  HOMETOWN_DRIVER_PAY_PROMISE,
+  HOMETOWN_KITCHEN_LINE,
+  HOMETOWN_NEIGHBORHOOD_PROMISE,
+  LAUNCH_MARKET_EXAMPLE,
+  MERCHANT_DENSITY_MAX,
+  MERCHANT_DENSITY_MIN,
+  hometownRoleCopy,
+} from "@/lib/seed-delivery";
 import {
   HOMETOWN_ACCOUNT_PATH,
   HOMETOWN_PRIVACY_PATH,
@@ -31,10 +39,39 @@ export default async function HometownAppPage({
             Dinner from this town.
           </h1>
           <p className="mt-3 max-w-xl text-base leading-relaxed text-muted">
-            Order as a guest, sign in as a customer, open the kitchen desk, or
-            drive. One app covers every Hometown market.
+            {HOMETOWN_NEIGHBORHOOD_PROMISE} Order as a guest, sign in, open
+            the kitchen desk, or drive.
           </p>
         </header>
+
+        <section className="mt-8 grid gap-4 sm:grid-cols-2">
+          <article className="rounded-xl border border-brand/15 bg-foam p-4">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              One street, not the county
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              First tight market: {LAUNCH_MARKET_EXAMPLE}. Sign{" "}
+              {MERCHANT_DENSITY_MIN}–{MERCHANT_DENSITY_MAX} kitchens on a
+              single street so short runs stay profitable.
+            </p>
+          </article>
+          <article className="rounded-xl border border-brand/15 bg-foam p-4">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              Drivers see the whole rate
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {HOMETOWN_DRIVER_PAY_PROMISE}
+            </p>
+          </article>
+          <article className="rounded-xl border border-brand/15 bg-foam p-4 sm:col-span-2">
+            <h2 className="font-[family-name:var(--font-display)] text-lg font-bold text-brand-deep">
+              The kitchen desk is the line
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {HOMETOWN_KITCHEN_LINE}
+            </p>
+          </article>
+        </section>
 
         {query.error === "market" ? (
           <p
