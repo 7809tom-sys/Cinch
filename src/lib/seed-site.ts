@@ -1068,7 +1068,28 @@ export async function buildSeedShopPreview(
     }
   }
 
-  return { ...copy, css };
+  return { ...softenStoredDeliveryMenu(project, copy), css };
+}
+
+/** Stored menus can still say “ticket” after the public voice changed. */
+function softenStoredDeliveryMenu(
+  project: SeedProject,
+  copy: SeedShopCopy,
+): SeedShopCopy {
+  if (!briefIsDeliveryPlatform(project.name, project.brief)) return copy;
+  const fresh = customerFacingShopCopy(project.name, project.brief);
+  return {
+    ...copy,
+    products: copy.products.map((product) => {
+      if (!/ticket|end-to-end|live kitchen|\bsame run\b/i.test(product.detail)) {
+        return product;
+      }
+      const match =
+        fresh.products.find((row) => row.id === product.id) ??
+        fresh.products.find((row) => row.title === product.title);
+      return match ? { ...product, detail: match.detail } : product;
+    }),
+  };
 }
 
 /** Persist cart orders back into the Seed source tree. */

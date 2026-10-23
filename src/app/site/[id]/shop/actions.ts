@@ -139,7 +139,7 @@ export async function placeSeedShopOrderAction(
     const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
     const ops = await ensureDeliveryOpsInSeed(project);
     if (!ops) {
-      return { ok: false as const, error: "Hometown desk is not on this Seed yet." };
+      return { ok: false as const, error: "This town isn't taking orders yet." };
     }
     const restaurant = restaurantForShopItems(ops, items);
     const lat = optionalCoord(formData.get("dropoffLat"));
