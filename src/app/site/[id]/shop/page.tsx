@@ -11,6 +11,7 @@ import {
 import {
   dinerOrderTrack,
   findSellableMenuItems,
+  HOMETOWN_NEIGHBORHOOD_PROMISE,
   isFavoriteKitchen,
 } from "@/lib/seed-delivery";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
@@ -97,6 +98,9 @@ export default async function SeedShopPage({
             <p className="seed-shop-kicker">{shop.title}</p>
             <h1>{shop.brand}</h1>
             <p className="seed-shop-support">{shop.support}</p>
+            {deliveryPlatform ? (
+              <p className="seed-shop-support">{HOMETOWN_NEIGHBORHOOD_PROMISE}</p>
+            ) : null}
           </div>
           <div className="seed-admin-links">
             <Link href={`/site/${id}`} className="seed-admin-link" target="_top">

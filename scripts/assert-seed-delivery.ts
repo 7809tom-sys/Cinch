@@ -16,7 +16,14 @@ import {
   DROPOFF_VERIFY_FEET,
   DROPOFF_VERIFY_METERS,
   DROPOFF_WRONG_LOCATION_COPY,
+  HOMETOWN_DRIVER_PAY_PROMISE,
+  HOMETOWN_KITCHEN_LINE,
+  HOMETOWN_LAUNCH_BRIEF_BLOCK,
+  HOMETOWN_NEIGHBORHOOD_PROMISE,
   KITCHEN_ARRIVAL_GEOFENCE_METERS,
+  LAUNCH_MARKET_EXAMPLE,
+  MERCHANT_DENSITY_MAX,
+  MERCHANT_DENSITY_MIN,
   MERCHANT_DELIVERY_RADIUS_MAX_MILES,
   MERCHANT_DELIVERY_RADIUS_MILES,
   MERCHANT_DELIVERY_RADIUS_MIN_MILES,
@@ -118,6 +125,9 @@ import {
   weeklyScoutResidualExamples,
   withDeliveryDriverPolicyBrief,
   DINER_TRACK_DRIVER_AT_KITCHEN,
+  DINER_TRACK_ETA_DELIVERY,
+  merchantDensityLine,
+  NEIGHBORHOOD_DELIVERY_MINUTES,
   DINER_TRACK_FOOD_READY,
   DINER_TRACK_ON_THE_WAY,
   SCHEDULED_WINDOW_EXTRA_USD,
@@ -2163,6 +2173,34 @@ assert(
       { id: "rest-deli:soup", title: "River Market Deli · Soup and half" },
     ]).some((line) => line.productId === "rest-deli:soup"),
   "reorder last bag maps Sam’s prior plates onto shop lines",
+);
+
+assert(
+  LAUNCH_MARKET_EXAMPLE === "Waukesha" &&
+    MERCHANT_DENSITY_MIN === 5 &&
+    MERCHANT_DENSITY_MAX === 10 &&
+    NEIGHBORHOOD_DELIVERY_MINUTES === 30,
+  "launch is a dense street, example Waukesha, under 30 minutes",
+);
+assert(
+  HOMETOWN_LAUNCH_BRIEF_BLOCK.includes("100% of tips") &&
+    HOMETOWN_LAUNCH_BRIEF_BLOCK.includes("one street") &&
+    HOMETOWN_LAUNCH_BRIEF_BLOCK.includes("third-party tablet") &&
+    HOMETOWN_NEIGHBORHOOD_PROMISE.includes("streets you walk") &&
+    HOMETOWN_DRIVER_PAY_PROMISE.includes("100% of the tip") &&
+    HOMETOWN_KITCHEN_LINE.includes("kitchen manager"),
+  "launch copy covers density, pay, kitchen line, and neighborhood",
+);
+assert(
+  merchantDensityLine(4).includes("5–10") &&
+    merchantDensityLine(7).includes("7 kitchens on this street") &&
+    merchantDensityLine(12).includes("Hold this street"),
+  "density line tells a street when it is short, ready, or full",
+);
+assert(
+  DINER_TRACK_ETA_DELIVERY.includes("under 30") &&
+    withDeliveryDriverPolicyBrief("Hometown Runner").includes("Waukesha"),
+  "diner ETA and seeded briefs carry the tight-market launch",
 );
 
 if (process.exitCode) {
