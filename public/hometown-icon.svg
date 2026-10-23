@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Hometown Runner">
+  <rect width="512" height="512" rx="96" fill="#0b2e2a"/>
+  <path fill="#e8a54b" d="M256 96 96 248h48v144h88V288h48v104h88V248h48z"/>
+  <circle cx="368" cy="360" r="28" fill="#fffaf2"/>
+</svg>

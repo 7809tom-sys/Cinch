@@ -111,6 +111,15 @@ export default async function SeedShopPage({
                 Sign in
               </Link>
             ) : null}
+            {deliveryPlatform ? (
+              <Link
+                href={`/hometown/account?market=${id}`}
+                className="seed-admin-link"
+                target="_top"
+              >
+                Delete login
+              </Link>
+            ) : null}
           </div>
         </header>
         <SeedShopBoard

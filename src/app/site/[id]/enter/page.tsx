@@ -38,6 +38,10 @@ export default async function HometownRoleLoginPage({
             <Link className="font-semibold text-brand-deep underline" href={`/site/${id}/shop`}>
               order without an account
             </Link>
+            .{" "}
+            <Link className="font-semibold text-brand-deep underline" href={`/hometown/account?market=${id}`}>
+              Delete the login on this device
+            </Link>
             .
           </p>
         </header>

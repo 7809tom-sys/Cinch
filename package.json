@@ -9,6 +9,7 @@
     "lint": "eslint",
     "assert:seed-industry": "npx tsx scripts/assert-seed-industry.ts",
     "assert:seed-delivery": "npx tsx scripts/assert-seed-delivery.ts",
+    "assert:hometown-store": "npx tsx scripts/assert-hometown-store.ts",
     "assert:seed-edit-react": "npx tsx scripts/assert-seed-edit-react.ts",
     "assert:seed-engagement": "npx tsx scripts/assert-seed-engagement.ts",
     "assert:seed-writer": "npx tsx scripts/assert-seed-writer.ts",

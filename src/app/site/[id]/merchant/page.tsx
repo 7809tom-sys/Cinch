@@ -56,6 +56,12 @@ export default async function SeedMerchantPage({
             >
               Customer
             </Link>
+            <Link
+              className="inline-flex min-h-10 items-center rounded-md border border-brand/20 px-3"
+              href={`/hometown/account?market=${id}`}
+            >
+              Delete login
+            </Link>
           </nav>
         </header>
         <HometownRestaurantPortal projectId={id} ops={ops} />
