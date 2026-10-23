@@ -40,9 +40,10 @@ export default function HometownPrivacyPage() {
             complete the order.
           </p>
           <p className="text-base leading-relaxed text-muted">
-            Hometown Runner does not collect continuous GPS. Distance rules for
-            kitchen arrival and drop-off are product rules in the desk, not a
-            background location tracker.
+            A delivery is placed with a ZIP code on that street, or with a
+            one-time location pin when you tap Use my location. Hometown Runner
+            does not collect continuous GPS. Kitchen arrival and drop-off
+            distances stay on the desk for that order.
           </p>
           <p className="text-base leading-relaxed text-muted">
             We do not sell diner, kitchen, or driver lists.

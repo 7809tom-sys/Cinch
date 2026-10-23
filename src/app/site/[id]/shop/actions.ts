@@ -11,6 +11,13 @@ import {
 } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 
+function optionalCoord(value: FormDataEntryValue | null): number | undefined {
+  const raw = String(value ?? "").trim();
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 async function loadShop(projectId: string): Promise<SeedShopCopy | null> {
   const project = await getProject(projectId);
   if (!project) return null;
@@ -119,11 +126,37 @@ export async function placeSeedShopOrderAction(
   const hometownPickup =
     briefIsDeliveryPlatform(project.name, project.brief) &&
     /pickup/i.test(`${mode.id} ${mode.label}`);
-  const shippingUsd = hometownDelivery
-    ? (await import("@/lib/seed-delivery")).hometownDeliveryFeeUsd(shipToZip)
+  let shippingUsd = hometownDelivery
+    ? 0
     : hometownPickup
       ? 0
       : mode.baseRateUsd;
+  let compliantLat: number | undefined;
+  let compliantLng: number | undefined;
+  if (hometownDelivery) {
+    const { dropoffCompliance, restaurantForShopItems, restaurantGeo } =
+      await import("@/lib/seed-delivery");
+    const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
+    const ops = await ensureDeliveryOpsInSeed(project);
+    if (!ops) {
+      return { ok: false as const, error: "Hometown desk is not on this Seed yet." };
+    }
+    const restaurant = restaurantForShopItems(ops, items);
+    const lat = optionalCoord(formData.get("dropoffLat"));
+    const lng = optionalCoord(formData.get("dropoffLng"));
+    const compliance = dropoffCompliance({
+      kitchen: restaurantGeo(restaurant),
+      zip: shipToZip,
+      lat,
+      lng,
+    });
+    if (!compliance.ok) {
+      return { ok: false as const, error: compliance.error };
+    }
+    shippingUsd = compliance.feeUsd;
+    compliantLat = compliance.point.lat;
+    compliantLng = compliance.point.lng;
+  }
   const tipUsd = hometownPickup
     ? 0
     : Math.max(
@@ -202,6 +235,8 @@ export async function placeSeedShopOrderAction(
           orderId,
           customerName,
           dropoffZip: shipToZip,
+          dropoffLat: compliantLat,
+          dropoffLng: compliantLng,
           items,
           gmvUsd: subtotalUsd,
           deliveryFeeUsd: shippingUsd,

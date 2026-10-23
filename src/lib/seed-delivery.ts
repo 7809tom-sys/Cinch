@@ -924,6 +924,117 @@ export function defaultDropoffNearRestaurant(
   return { lat: kitchen.lat - 0.006, lng: kitchen.lng + 0.012 + nudge };
 }
 
+/**
+ * ZIP centroids Hometown will deliver. A diner is inside the street when
+ * this centroid, or a one-time GPS pin, sits in the fixed merchant radius.
+ * No background location.
+ */
+export type ServiceZip = {
+  zip: string;
+  lat: number;
+  lng: number;
+  place: string;
+};
+
+export const HOMETOWN_SERVICE_ZIPS: readonly ServiceZip[] = [
+  { zip: "43017", lat: 40.079, lng: -83.141, place: "Starter street" },
+  { zip: "43016", lat: 40.086, lng: -83.148, place: "Starter street" },
+  { zip: "53186", lat: 43.0116, lng: -88.2314, place: "Waukesha" },
+  { zip: "53188", lat: 43.004, lng: -88.24, place: "Waukesha" },
+  { zip: "53189", lat: 43.02, lng: -88.22, place: "Waukesha" },
+];
+
+export function normalizeZip(zip: string): string {
+  return zip.replace(/\D/g, "").slice(0, 5);
+}
+
+export function serviceZipCentroid(zip: string): ServiceZip | null {
+  const code = normalizeZip(zip);
+  if (code.length !== 5) return null;
+  return HOMETOWN_SERVICE_ZIPS.find((row) => row.zip === code) ?? null;
+}
+
+export function serviceZipsForKitchen(kitchen: GeoPoint): ServiceZip[] {
+  return HOMETOWN_SERVICE_ZIPS.filter((row) =>
+    dropoffWithinMerchantRadius(kitchen, row),
+  );
+}
+
+export type DropoffCompliance =
+  | {
+      ok: true;
+      source: "gps" | "zip";
+      point: GeoPoint;
+      miles: number;
+      feeUsd: number;
+      zip: string;
+    }
+  | { ok: false; error: string };
+
+/** One-time GPS pin, or a ZIP centroid, inside the fixed street radius. */
+export function dropoffCompliance(input: {
+  kitchen: GeoPoint;
+  zip?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  radiusMiles?: number;
+}): DropoffCompliance {
+  const radius = input.radiusMiles ?? MERCHANT_DELIVERY_RADIUS_MILES;
+  const zip = normalizeZip(input.zip ?? "");
+  const hasGps =
+    typeof input.lat === "number" &&
+    Number.isFinite(input.lat) &&
+    typeof input.lng === "number" &&
+    Number.isFinite(input.lng);
+  if (hasGps) {
+    const point = { lat: input.lat as number, lng: input.lng as number };
+    const miles = metersToMiles(haversineMeters(input.kitchen, point));
+    if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+      return {
+        ok: false,
+        error: `That pin is outside this street. Delivery stays inside ${radius} miles. Enter a ZIP on the street, or drop a closer pin.`,
+      };
+    }
+    return {
+      ok: true,
+      source: "gps",
+      point,
+      miles,
+      feeUsd: tripChargeUsd(miles),
+      zip,
+    };
+  }
+  if (zip.length !== 5) {
+    return {
+      ok: false,
+      error: "Enter a 5-digit ZIP, or use your location once.",
+    };
+  }
+  const centroid = serviceZipCentroid(zip);
+  if (!centroid) {
+    return {
+      ok: false,
+      error: `ZIP ${zip} is not on this street. Use your location once if you are within ${radius} miles, or a ZIP this kitchen delivers.`,
+    };
+  }
+  const point = { lat: centroid.lat, lng: centroid.lng };
+  const miles = metersToMiles(haversineMeters(input.kitchen, point));
+  if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+    return {
+      ok: false,
+      error: `ZIP ${zip} is outside this street's ${radius}-mile area.`,
+    };
+  }
+  return {
+    ok: true,
+    source: "zip",
+    point,
+    miles,
+    feeUsd: tripChargeUsd(miles),
+    zip,
+  };
+}
+
 /** FIXED 2-mile (1.5–2.5 allowed) merchant radius. Never expands. */
 export function dropoffWithinMerchantRadius(
   merchant: GeoPoint,
@@ -3446,16 +3557,22 @@ export function recordDeliveryOrder(
     input.fulfillment === "pickup" ? "pickup" : "delivery";
   const restaurant = restaurantForShopItems(ops, input.items);
   const kitchen = restaurantGeo(restaurant);
-  const dropoff =
-    typeof input.dropoffLat === "number" && typeof input.dropoffLng === "number"
+  const compliance =
+    fulfillment === "delivery"
+      ? dropoffCompliance({
+          kitchen,
+          zip: input.dropoffZip,
+          lat: input.dropoffLat,
+          lng: input.dropoffLng,
+        })
+      : null;
+  if (compliance && !compliance.ok) return ops;
+  const dropoff = compliance
+    ? compliance.point
+    : typeof input.dropoffLat === "number" &&
+        typeof input.dropoffLng === "number"
       ? { lat: input.dropoffLat, lng: input.dropoffLng }
       : defaultDropoffNearRestaurant(restaurant, input.dropoffZip);
-  if (
-    fulfillment === "delivery" &&
-    !dropoffWithinMerchantRadius(kitchen, dropoff)
-  ) {
-    return ops;
-  }
   const split = splitDeliveryLedger({
     gmvUsd: input.gmvUsd,
     deliveryFeeUsd: fulfillment === "pickup" ? 0 : input.deliveryFeeUsd,
