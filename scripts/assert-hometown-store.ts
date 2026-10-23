@@ -4,6 +4,7 @@
  */
 import { readFileSync } from "fs";
 import { join } from "path";
+import { NextRequest } from "next/server";
 import {
   HOMETOWN_APP_ID,
   HOMETOWN_APP_NAME,
@@ -12,6 +13,7 @@ import {
   HOMETOWN_STORE_URL,
   HOMETOWN_SUPPORT_URL,
 } from "../src/lib/hometown-store";
+import { isHometownRunnerHost, proxy } from "../src/proxy";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -66,6 +68,42 @@ assert(
   actions.includes("/site/${project.id}/shop"),
   "guest orders open the diner desk",
 );
+assert(isHometownRunnerHost("hometownrunner.com"), "apex host");
+assert(isHometownRunnerHost("www.hometownrunner.com:443"), "www host");
+assert(!isHometownRunnerHost("cinchseed.com"), "cinch host is not hometown");
+
+function proxyFor(url: string, host: string) {
+  return proxy(new NextRequest(url, { headers: { host } }));
+}
+
+const apex = proxyFor("https://hometownrunner.com/", "hometownrunner.com");
+assert(apex.headers.get("x-middleware-rewrite")?.endsWith("/hometown") === true, "apex rewrites to /hometown");
+const privacyRewrite = proxyFor(
+  "https://www.hometownrunner.com/privacy",
+  "www.hometownrunner.com",
+);
+assert(
+  privacyRewrite.headers.get("x-middleware-rewrite")?.endsWith("/hometown/privacy") === true,
+  "privacy rewrites under /hometown",
+);
+const prefixed = proxyFor(
+  "https://hometownrunner.com/hometown/account",
+  "hometownrunner.com",
+);
+assert(prefixed.status === 308, "prefixed hometown path redirects");
+assert(
+  prefixed.headers.get("location")?.endsWith("/account") === true,
+  "prefixed account path becomes /account",
+);
+const shop = proxyFor(
+  "https://hometownrunner.com/site/town/shop",
+  "hometownrunner.com",
+);
+assert(shop.headers.get("x-middleware-rewrite") == null, "market shop stays /site");
+assert(shop.headers.get("location") == null, "market shop is not redirected");
+const cinch = proxyFor("https://www.cinchseed.com/", "www.cinchseed.com");
+assert(cinch.headers.get("x-middleware-rewrite") == null, "cinch home is not rewritten");
+assert(cinch.status !== 308, "cinch home is not redirected");
 
 if (process.exitCode) {
   process.exit(process.exitCode);

@@ -2,8 +2,14 @@ import type { NextConfig } from "next";
 import { cinchHostedCloneRedirects } from "./src/lib/hosted-site";
 
 const nextConfig: NextConfig = {
-  // Playwright / local agents often hit 127.0.0.1; allow HMR + static chunks.
-  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  // Local agents hit 127.0.0.1. hometownrunner.com is mapped here only
+  // while checking the vanity host rewrite.
+  allowedDevOrigins: [
+    "127.0.0.1",
+    "localhost",
+    "hometownrunner.com",
+    "www.hometownrunner.com",
+  ],
   // unpdf embeds PDF.js. Keep it on the server so the Writer crew can read PDFs.
   serverExternalPackages: ["unpdf"],
   experimental: {
