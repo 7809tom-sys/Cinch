@@ -627,6 +627,16 @@ export type DeliveryDriver = {
    * / login / first offer do not start the clock.
    */
   firstDeliveredAt?: string | null;
+  /**
+   * Login email for this driver account. The master-admin subscription
+   * desk matches a Stripe customer to this field.
+   */
+  email?: string;
+  /**
+   * Stripe Customer id (cus_…) for the driver software subscription.
+   * The master-admin desk matches on this when the email differs.
+   */
+  stripeCustomerId?: string;
 };
 
 export type DeliveryLedgerSplit = {
@@ -2154,6 +2164,19 @@ export function ticketAssignedDriver(
   return ops.drivers.find((row) => row.id === driverId) ?? null;
 }
 
+/** Keep a driver email and Stripe customer id when they are real values. */
+function driverBillingIdentity(row: DeliveryDriver): {
+  email?: string;
+  stripeCustomerId?: string;
+} {
+  const email = row.email?.trim().toLowerCase() ?? "";
+  const stripeCustomerId = row.stripeCustomerId?.trim() ?? "";
+  const identity: { email?: string; stripeCustomerId?: string } = {};
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) identity.email = email;
+  if (stripeCustomerId.startsWith("cus_")) identity.stripeCustomerId = stripeCustomerId;
+  return identity;
+}
+
 export function normalizeDeliveryDriver(
   row: DeliveryDriver,
   now = new Date(),
@@ -2172,8 +2195,11 @@ export function normalizeDeliveryDriver(
   if (status !== "approved" && status !== "pending") {
     // frozen / suspended stay offline
   }
+  const driverRest: DeliveryDriver = { ...row };
+  delete driverRest.email;
+  delete driverRest.stripeCustomerId;
   return {
-    ...row,
+    ...driverRest,
     classification,
     softwareCadence,
     hoursOpenThisWeek,
@@ -2189,6 +2215,7 @@ export function normalizeDeliveryDriver(
     lastPayoutAt: row.lastPayoutAt ?? null,
     taxFormsSelfManaged: true,
     firstDeliveredAt: row.firstDeliveredAt ?? null,
+    ...driverBillingIdentity(row),
     existingPlatformActive:
       typeof row.existingPlatformActive === "boolean"
         ? row.existingPlatformActive

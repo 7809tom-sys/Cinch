@@ -39,6 +39,7 @@ const NAV = [
   { href: "#domains", label: "Domains" },
   { href: "#agents", label: "Agents" },
   { href: "#settings", label: "Settings" },
+  { href: "/admin/hometown-subscriptions", label: "Subscriptions" },
 ] as const;
 
 function Metric({
@@ -136,6 +137,9 @@ export default async function AdminPage() {
             <Link href="/admin/test" className="hover:text-brand-deep">
               Test
             </Link>
+            <Link href="/admin/hometown-subscriptions" className="hover:text-brand-deep">
+              Subscriptions
+            </Link>
             <form action={logoutMasterAction}>
               <button
                 type="submit"
@@ -176,6 +180,14 @@ export default async function AdminPage() {
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">
             Accounts, pricing rules, purchases, Seeds, library earnings,
             domains, and agents — the full business surface for Cinch Seed.
+            Hometown Runner driver subscriptions live on{" "}
+            <Link
+              href="/admin/hometown-subscriptions"
+              className="font-semibold text-brand-deep underline"
+            >
+              Subscriptions
+            </Link>
+            .
           </p>
 
           {durableStoreHealth.healthy ? (
