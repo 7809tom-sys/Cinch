@@ -34,8 +34,8 @@ import {
 import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
 import {
+  commitWebsiteMenuSync,
   ensureDeliveryOpsInSeed,
-  hometownMenuPhotoSaver,
   saveDeliveryOps,
 } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
@@ -243,19 +243,23 @@ export async function connectRestaurantWebsiteAction(
     ops: connected,
     restaurantId,
     force: true,
-    storePhoto: hometownMenuPhotoSaver(projectId),
   });
-  await saveDeliveryOps(
+  const committed = await commitWebsiteMenuSync({
     projectId,
-    synced.ops,
-    synced.changed
+    restaurantId,
+    ops: synced.ops,
+    crawled: synced.crawled,
+    message: synced.changed
       ? "Website crawl wrote live prices from the connected menu page"
       : "Kitchen connected a public menu page",
-  );
+  });
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   if (synced.error && !synced.changed) {
     return { ok: false as const, error: synced.error };
+  }
+  if (committed.storeError) {
+    return { ok: false as const, error: committed.storeError };
   }
   return { ok: true as const };
 }
@@ -270,21 +274,26 @@ export async function syncRestaurantMenuFromWebsiteAction(
     ops: loaded.ops,
     restaurantId,
     force: true,
-    storePhoto: hometownMenuPhotoSaver(projectId),
   });
-  if (synced.changed || synced.ops !== loaded.ops) {
-    await saveDeliveryOps(
-      projectId,
-      synced.ops,
-      synced.changed
-        ? "Website crawl updated live menu prices"
-        : "Website crawl checked the connected menu page",
-    );
-  }
+  const committed =
+    synced.changed || synced.ops !== loaded.ops
+      ? await commitWebsiteMenuSync({
+          projectId,
+          restaurantId,
+          ops: synced.ops,
+          crawled: synced.crawled,
+          message: synced.changed
+            ? "Website crawl updated live menu prices"
+            : "Website crawl checked the connected menu page",
+        })
+      : { ops: synced.ops, storeError: null as string | null };
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   if (synced.error && !synced.changed) {
     return { ok: false as const, error: synced.error };
+  }
+  if (committed.storeError) {
+    return { ok: false as const, error: committed.storeError };
   }
   return { ok: true as const };
 }

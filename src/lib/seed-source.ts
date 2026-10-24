@@ -58,7 +58,12 @@ import {
   type WriterForm,
 } from "./seed-writer";
 import { seedEmbedSnippet } from "./domain";
-import { readJsonStore, writeJsonStore } from "./kv-store";
+import {
+  isDurableStoreConfigured,
+  readJsonStore,
+  writeJsonStore,
+  type JsonStoreWriteResult,
+} from "./kv-store";
 
 export type SourceFile = {
   id: string;
@@ -98,16 +103,40 @@ function now() {
   return new Date().toISOString();
 }
 
+/**
+ * Another server may have written a newer bundle. Keep whichever copy of
+ * each Seed was updated last so a warm process does not serve a stale menu
+ * forever after a crawl landed in Redis.
+ */
+export function mergeSourceStores(
+  local: SourceStore,
+  remote: SourceStore,
+): SourceStore {
+  const byId = new Map<string, SourceBundle>();
+  for (const bundle of local.bundles) byId.set(bundle.projectId, bundle);
+  for (const bundle of remote.bundles ?? []) {
+    const current = byId.get(bundle.projectId);
+    if (!current || bundle.updatedAt > current.updatedAt) {
+      byId.set(bundle.projectId, bundle);
+    }
+  }
+  return { bundles: [...byId.values()] };
+}
+
 async function ensureSource(): Promise<SourceStore> {
-  if (memory) return memory;
+  if (memory && !isDurableStoreConfigured()) return memory;
   const loaded = await readJsonStore<SourceStore>(STORE_KEY, { bundles: [] });
-  memory = { bundles: loaded.bundles ?? [] };
+  if (!memory) {
+    memory = { bundles: loaded.bundles ?? [] };
+    return memory;
+  }
+  memory = mergeSourceStores(memory, loaded);
   return memory;
 }
 
-async function writeSource(store: SourceStore): Promise<void> {
+async function writeSource(store: SourceStore): Promise<JsonStoreWriteResult> {
   memory = store;
-  await writeJsonStore(STORE_KEY, store);
+  return writeJsonStore(STORE_KEY, store);
 }
 
 function getOrCreateBundle(

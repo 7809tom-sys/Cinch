@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
-import { ephemeralMenuStoreWarning } from "@/lib/kv-store";
+import { menuPersistenceWarning } from "@/lib/kv-store";
 import { proofAndRepairSeedSite } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 
@@ -69,7 +69,7 @@ export default async function SeedMerchantPage({
         <HometownRestaurantPortal
           projectId={id}
           ops={ops}
-          storeWarning={ephemeralMenuStoreWarning()}
+          storeWarning={await menuPersistenceWarning()}
         />
       </div>
     </main>

@@ -4,7 +4,7 @@ import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { SiteFooter } from "@/components/site-footer";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
-import { ephemeralMenuStoreWarning } from "@/lib/kv-store";
+import { menuPersistenceWarning } from "@/lib/kv-store";
 import { getPortalProjectSnapshot } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +89,7 @@ export default async function PortalRestaurantPage({
           <HometownRestaurantPortal
             projectId={project.id}
             ops={ops}
-            storeWarning={ephemeralMenuStoreWarning()}
+            storeWarning={await menuPersistenceWarning()}
           />
         </div>
       </main>

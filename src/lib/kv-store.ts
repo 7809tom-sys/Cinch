@@ -26,26 +26,31 @@ import { Redis } from "@upstash/redis";
  * file per store under `.data/`.
  */
 
-const DATA_DIR =
-  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+function dataDir(): string {
+  return isServerlessRuntime()
     ? path.join("/tmp", "cinch-seed-data")
     : path.join(process.cwd(), ".data");
+}
 
 const KEY_PREFIX = "cinchseed:";
 const HEALTHCHECK_KEY = `${KEY_PREFIX}__healthcheck__`;
 
 function redisCredentials(): { url: string; token: string; source: string } | null {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const upstashUrl = runtimeEnvValue("UPSTASH_REDIS_REST_URL");
+  const upstashToken = runtimeEnvValue("UPSTASH_REDIS_REST_TOKEN");
+  if (upstashUrl && upstashToken) {
     return {
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      url: upstashUrl,
+      token: upstashToken,
       source: "UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN",
     };
   }
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+  const kvUrl = runtimeEnvValue("KV_REST_API_URL");
+  const kvToken = runtimeEnvValue("KV_REST_API_TOKEN");
+  if (kvUrl && kvToken) {
     return {
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
+      url: kvUrl,
+      token: kvToken,
       source: "KV_REST_API_URL / KV_REST_API_TOKEN",
     };
   }
@@ -54,6 +59,44 @@ function redisCredentials(): { url: string; token: string; source: string } | nu
 
 export function isDurableStoreConfigured(): boolean {
   return redisCredentials() !== null;
+}
+
+/**
+ * Read one env var at runtime. Direct `process.env.NAME` access is inlined
+ * at build time, which can hide Vercel/Redis vars from a server warning.
+ */
+function runtimeEnvValue(name: string): string | undefined {
+  const env = process["env"] as Record<string, string | undefined>;
+  const value = env[name];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+export function isServerlessRuntime(
+  env?: Record<string, string | undefined>,
+): boolean {
+  const read = (name: string) =>
+    env ? env[name] : runtimeEnvValue(name);
+  return Boolean(
+    read("VERCEL") ||
+      read("VERCEL_ENV") ||
+      read("VERCEL_URL") ||
+      read("AWS_LAMBDA_FUNCTION_NAME") ||
+      read("LAMBDA_TASK_ROOT"),
+  );
+}
+
+function serverlessEnvSnapshot(): Record<string, string | undefined> {
+  return {
+    VERCEL: runtimeEnvValue("VERCEL"),
+    VERCEL_ENV: runtimeEnvValue("VERCEL_ENV"),
+    VERCEL_URL: runtimeEnvValue("VERCEL_URL"),
+    AWS_LAMBDA_FUNCTION_NAME: runtimeEnvValue("AWS_LAMBDA_FUNCTION_NAME"),
+    LAMBDA_TASK_ROOT: runtimeEnvValue("LAMBDA_TASK_ROOT"),
+    UPSTASH_REDIS_REST_URL: runtimeEnvValue("UPSTASH_REDIS_REST_URL"),
+    UPSTASH_REDIS_REST_TOKEN: runtimeEnvValue("UPSTASH_REDIS_REST_TOKEN"),
+    KV_REST_API_URL: runtimeEnvValue("KV_REST_API_URL"),
+    KV_REST_API_TOKEN: runtimeEnvValue("KV_REST_API_TOKEN"),
+  };
 }
 
 let redisClient: Redis | null | undefined;
@@ -88,7 +131,7 @@ export async function readJsonStore<T>(key: string, fallback: T): Promise<T> {
   }
 
   try {
-    const raw = await fs.readFile(path.join(DATA_DIR, `${key}.json`), "utf8");
+    const raw = await fs.readFile(path.join(dataDir(), `${key}.json`), "utf8");
     return JSON.parse(raw) as T;
   } catch {
     return fallback;
@@ -102,14 +145,21 @@ export type JsonStoreWriteResult = {
   error?: string;
 };
 
+let lastJsonStoreWrite: JsonStoreWriteResult | null = null;
+
+/** The most recent store write in this process, if one has happened. */
+export function lastJsonStoreWriteResult(): JsonStoreWriteResult | null {
+  return lastJsonStoreWrite;
+}
+
 /**
  * Why a connected menu can vanish on Vercel. Null when Redis is configured
  * or this process is a normal local dev machine (`.data/`).
  */
 export function ephemeralMenuStoreWarning(
-  env: Record<string, string | undefined> = process.env,
+  env: Record<string, string | undefined> = serverlessEnvSnapshot(),
 ): string | null {
-  const onServerless = Boolean(env.VERCEL || env.AWS_LAMBDA_FUNCTION_NAME);
+  const onServerless = isServerlessRuntime(env);
   const durable = Boolean(
     (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) ||
       (env.KV_REST_API_URL && env.KV_REST_API_TOKEN),
@@ -118,43 +168,124 @@ export function ephemeralMenuStoreWarning(
   return "This server has no Redis store (UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN or KV_REST_API_URL / KV_REST_API_TOKEN). A connected menu and crawled plates sit on temporary disk and disappear when Vercel starts a new server.";
 }
 
+/**
+ * Kitchen-facing reason a menu may vanish. Uses the live process env, the
+ * last write, and (when Redis credentials exist) a short round-trip.
+ */
+export async function menuPersistenceWarning(): Promise<string | null> {
+  const env = serverlessEnvSnapshot();
+  const missing = ephemeralMenuStoreWarning(env);
+  if (missing) return missing;
+  if (!isServerlessRuntime(env)) return null;
+  const last = lastJsonStoreWriteResult();
+  if (last && (!last.ok || !last.durable || last.error)) {
+    return menuStoreFailureMessage(last);
+  }
+  const health = await cachedDurableStoreHealth();
+  if (!health.healthy) {
+    const detail = health.error ? ` (${health.error})` : "";
+    return `Redis credentials are set, but a check write failed${detail}. A connected menu can disappear when Vercel starts a new server.`;
+  }
+  return null;
+}
+
+export function menuStoreFailureMessage(
+  write: JsonStoreWriteResult | null | undefined,
+): string | null {
+  if (!isServerlessRuntime()) return null;
+  if (!write) return ephemeralMenuStoreWarning(serverlessEnvSnapshot());
+  if (write.durable && write.ok) return null;
+  if (!isDurableStoreConfigured()) {
+    return ephemeralMenuStoreWarning(serverlessEnvSnapshot());
+  }
+  const detail = write.error ? ` (${write.error})` : "";
+  return `This server could not keep the menu in Redis${detail}. A connected menu disappears when Vercel starts a new server.`;
+}
+
+let healthCache: { at: number; health: DurableStoreHealth } | null = null;
+
+async function cachedDurableStoreHealth(): Promise<DurableStoreHealth> {
+  if (healthCache && Date.now() - healthCache.at < 60_000) return healthCache.health;
+  const health = await Promise.race([
+    checkDurableStoreHealth(),
+    new Promise<DurableStoreHealth>((resolve) => {
+      setTimeout(() => {
+        resolve({
+          envVarSource: "redis",
+          healthy: false,
+          error: "Redis check timed out.",
+        });
+      }, 4_000);
+    }),
+  ]);
+  healthCache = { at: Date.now(), health };
+  return health;
+}
+
 /** Persist a whole store by key. */
 export async function writeJsonStore<T>(
   key: string,
   value: T,
 ): Promise<JsonStoreWriteResult> {
+  const encoded = JSON.stringify(value);
   const redis = getRedis();
   if (redis) {
     try {
       await redis.set(KEY_PREFIX + key, value);
-      return { ok: true, durable: true };
+      const result = { ok: true, durable: true };
+      lastJsonStoreWrite = result;
+      if (encoded.length > 800_000) {
+        console.error("[kv-store] large Redis write", {
+          key,
+          bytes: encoded.length,
+        });
+      }
+      return result;
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Redis write failed.";
       console.error("[kv-store] Redis write failed; trying temporary disk", {
         key,
+        bytes: encoded.length,
         message,
       });
     }
   }
 
   try {
-    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.mkdir(dataDir(), { recursive: true });
     await fs.writeFile(
-      path.join(DATA_DIR, `${key}.json`),
-      JSON.stringify(value, null, 2),
+      path.join(dataDir(), `${key}.json`),
+      encoded,
       "utf8",
     );
-    return { ok: true, durable: false };
+    const result = {
+      ok: true as const,
+      durable: false as const,
+      error: redis
+        ? "Redis rejected the store write. The menu is on temporary disk."
+        : undefined,
+    };
+    lastJsonStoreWrite = result;
+    if (!result.durable && isServerlessRuntime()) {
+      console.error("[kv-store] menu store is not durable", {
+        key,
+        bytes: encoded.length,
+        error: result.error ?? "no Redis credentials",
+      });
+    }
+    return result;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Could not write the store file.";
     console.error("[kv-store] store write failed", { key, message });
-    return {
+    const result = {
       ok: false,
       durable: false,
       error: message,
     };
+    lastJsonStoreWrite = result;
+    return result;
   }
 }
 

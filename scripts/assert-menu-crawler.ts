@@ -8,6 +8,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { ephemeralMenuStoreWarning } from "../src/lib/kv-store";
+import { mergeSourceStores } from "../src/lib/seed-source";
 import {
   openHomeTownMenus,
   homeTownMenusAreOpen,
@@ -345,6 +346,54 @@ const blocked = await fetchRestaurantMenuPage("https://secondstreet.kitchen/menu
 assert(
   !blocked.ok && blocked.reason === "blocked" && blocked.status === 403,
   "HTTP 403 is a block, not an empty menu",
+);
+
+const merged = mergeSourceStores(
+  {
+    bundles: [
+      {
+        projectId: "hometown-home",
+        files: [],
+        revisions: [],
+        updatedAt: "2026-10-24T12:00:00.000Z",
+      },
+    ],
+  },
+  {
+    bundles: [
+      {
+        projectId: "hometown-home",
+        files: [
+          {
+            id: "file-1",
+            path: "content/delivery.ops.json",
+            language: "json",
+            content: "{\"website\":true}",
+            updatedAt: "2026-10-24T12:05:00.000Z",
+            authoredBy: null,
+            status: "ready",
+          },
+        ],
+        revisions: [],
+        updatedAt: "2026-10-24T12:05:00.000Z",
+      },
+    ],
+  },
+);
+const keptCrawl = mergeSourceStores(merged, {
+  bundles: [
+    {
+      projectId: "hometown-home",
+      files: [],
+      revisions: [],
+      updatedAt: "2026-10-24T12:01:00.000Z",
+    },
+  ],
+});
+assert(
+  merged.bundles[0]?.files[0]?.path === "content/delivery.ops.json" &&
+    keptCrawl.bundles[0]?.updatedAt === "2026-10-24T12:05:00.000Z",
+  "a newer crawled menu replaces a warm server's older copy, and an older copy does not",
 );
 
 assert(

@@ -111,6 +111,11 @@ export function HometownRestaurantPortal({
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">
+          {error}
+        </p>
+      ) : null}
       <section className="rounded-xl border border-brand/15 bg-foam p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -359,11 +364,6 @@ export function HometownRestaurantPortal({
         pending={pending}
         onAdvance={advance}
       />
-      {error ? (
-        <p className="text-sm font-semibold text-red-700" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -441,12 +441,12 @@ function MenuConfirmBoard({
         <p className="mt-2 text-sm text-muted">{restaurant.menu.parseNote}</p>
       ) : null}
       {storeWarning ? (
-        <p className="mt-3 text-sm font-semibold text-red-700" role="status">
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="status">
           {storeWarning}
         </p>
       ) : null}
       {restaurant.lastCrawlError ? (
-        <p className="mt-3 text-sm font-semibold text-red-700" role="alert">
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">
           {restaurant.lastCrawlError}
         </p>
       ) : null}

@@ -1139,13 +1139,20 @@ export async function syncRestaurantMenuFromWebsite(input: {
   ops: DeliveryOps;
   changed: boolean;
   changes: MenuCrawlChange[];
+  crawled: CrawledMenuItem[];
   error?: string;
 }> {
   const restaurant = input.ops.restaurants.find(
     (row) => row.id === input.restaurantId,
   );
   if (!restaurant) {
-    return { ops: input.ops, changed: false, changes: [], error: "Kitchen not found." };
+    return {
+      ops: input.ops,
+      changed: false,
+      changes: [],
+      crawled: [],
+      error: "Kitchen not found.",
+    };
   }
   const sourceUrl = restaurant.websiteUrl?.trim();
   if (!sourceUrl) {
@@ -1153,15 +1160,16 @@ export async function syncRestaurantMenuFromWebsite(input: {
       ops: input.ops,
       changed: false,
       changes: [],
+      crawled: [],
       error: "Connect the kitchen’s public menu page first.",
     };
   }
   if (!isPublicRestaurantWebsite(sourceUrl)) {
-    return { ops: input.ops, changed: false, changes: [] };
+    return { ops: input.ops, changed: false, changes: [], crawled: [] };
   }
   const now = input.now ?? new Date();
   if (!input.force && !restaurantDueForMenuCrawl(restaurant, now)) {
-    return { ops: input.ops, changed: false, changes: [] };
+    return { ops: input.ops, changed: false, changes: [], crawled: [] };
   }
 
   let html = input.html ?? null;
@@ -1177,6 +1185,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
         ops: stampCrawlFailure(input.ops, restaurant.id, message, now),
         changed: false,
         changes: [],
+        crawled: [],
         error: message,
       };
     }
@@ -1191,6 +1200,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
         ops: stampCrawlFailure(input.ops, restaurant.id, message, now),
         changed: false,
         changes: [],
+        crawled: [],
         error: message,
       };
     }
@@ -1208,6 +1218,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
         ops: stampCrawlFailure(input.ops, restaurant.id, message, now),
         changed: false,
         changes: [],
+        crawled: [],
         error: message,
       };
     }
@@ -1227,6 +1238,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
       ops: stampCrawlFailure(input.ops, restaurant.id, message, now),
       changed: false,
       changes: [],
+      crawled: [],
       error: message,
     };
   }
@@ -1254,6 +1266,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
     changes: applied.changes.length,
   });
   return {
+    crawled,
     ops: {
       ...input.ops,
       restaurants: input.ops.restaurants.map((row) =>
