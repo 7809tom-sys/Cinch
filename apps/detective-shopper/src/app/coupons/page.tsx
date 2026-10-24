@@ -50,9 +50,12 @@ export default async function CouponsPage() {
           >
             Detective Shopper
           </Link>
-          <nav className="flex items-center gap-5 text-sm font-medium text-mist">
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-mist">
             <Link href="/scan" className="transition-colors hover:text-foam">
               Scan
+            </Link>
+            <Link href="/list" className="transition-colors hover:text-foam">
+              List
             </Link>
             <AccountChip />
           </nav>

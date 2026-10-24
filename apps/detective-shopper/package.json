@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "npx tsx --test src/lib/shopping-list.test.ts"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",

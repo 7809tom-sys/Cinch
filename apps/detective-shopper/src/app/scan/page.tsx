@@ -20,12 +20,15 @@ export default function ScanPage() {
           >
             Detective Shopper
           </Link>
-          <nav className="flex items-center gap-5 text-sm font-medium text-mist">
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-mist">
             <Link href="/coupons" className="transition-colors hover:text-foam">
               Coupons
             </Link>
             <Link href="/recipes" className="transition-colors hover:text-foam">
               Recipes
+            </Link>
+            <Link href="/list" className="transition-colors hover:text-foam">
+              List
             </Link>
             <Link href="/admin" className="transition-colors hover:text-foam">
               Admin
