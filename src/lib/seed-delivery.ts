@@ -197,6 +197,9 @@ export const MERCHANT_DENSITY_MIN = 5;
 export const MERCHANT_DENSITY_MAX = 10;
 export const NEIGHBORHOOD_DELIVERY_MINUTES = 30;
 export const HOMETOWN_NEIGHBORHOOD_PROMISE = `The food comes from the streets you walk every day. Kitchens sit together on one street, so a run stays under ${NEIGHBORHOOD_DELIVERY_MINUTES} minutes.`;
+/** Diner and launcher line. Street math stays on the kitchen and driver desks. */
+export const HOMETOWN_PUBLIC_WELCOME =
+  "The food comes from the streets you walk every day.";
 export const HOMETOWN_DRIVER_PAY_PROMISE = `You keep 100% of the tip. Every run pays a base rate of $${TRIP_BASE_USD.toFixed(2)} plus $${TRIP_PER_MILE_USD.toFixed(2)} a mile, and the 5% commission share is on top of that.`;
 export const HOMETOWN_KITCHEN_LINE =
   "Tickets fire on this desk the moment a diner orders. This portal is the direct line to the kitchen manager — no third-party tablet and no corporate queue.";
@@ -349,22 +352,20 @@ export function hometownRoleCopy(role: HometownRole): {
 } {
   if (role === "merchant") {
     return {
-      title: "Merchant login",
-      support:
-        "Kitchen desk: snap the paper takeout menu or upload a PDF, five-minute sign-off, then 86 a plate during service. Take tickets and hand bags to a Hometown driver.",
+      title: "Kitchen",
+      support: `${HOMETOWN_KITCHEN_LINE} A launch holds ${MERCHANT_DENSITY_MIN}–${MERCHANT_DENSITY_MAX} kitchens on this street. Snap the paper menu, approve it, then 86 a plate during service.`,
       cta: "Sign in as merchant",
     };
   }
   if (role === "driver") {
     return {
-      title: "Driver login",
-      support:
-        "Go online, take offers, and get fee + tip + 5% on Stripe Connect. You manage your own tax forms.",
+      title: "Driver",
+      support: `${HOMETOWN_DRIVER_PAY_PROMISE} Go online and take runs on this street. You manage your own tax forms.`,
       cta: "Sign in as driver",
     };
   }
   return {
-    title: "Customer login",
+    title: "Dinner",
     support: "Order nearby kitchens. A driver from this town brings dinner.",
     cta: "Sign in as customer",
   };
@@ -960,6 +961,11 @@ export function serviceZipsForKitchen(kitchen: GeoPoint): ServiceZip[] {
   );
 }
 
+/** Diner-facing. Radius, ZIP catalogs, and GPS policy stay off this copy. */
+export const DINER_DROPOFF_UNREACHABLE =
+  "We can't reach that address from this kitchen tonight.";
+export const DINER_DROPOFF_NEED_ZIP = "Enter your ZIP, or use your location.";
+
 export type DropoffCompliance =
   | {
       ok: true;
@@ -990,10 +996,7 @@ export function dropoffCompliance(input: {
     const point = { lat: input.lat as number, lng: input.lng as number };
     const miles = metersToMiles(haversineMeters(input.kitchen, point));
     if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
-      return {
-        ok: false,
-        error: `That pin is outside this street. Delivery stays inside ${radius} miles. Enter a ZIP on the street, or drop a closer pin.`,
-      };
+      return { ok: false, error: DINER_DROPOFF_UNREACHABLE };
     }
     return {
       ok: true,
@@ -1007,14 +1010,14 @@ export function dropoffCompliance(input: {
   if (zip.length !== 5) {
     return {
       ok: false,
-      error: "Enter a 5-digit ZIP, or use your location once.",
+      error: DINER_DROPOFF_NEED_ZIP,
     };
   }
   const centroid = serviceZipCentroid(zip);
   if (!centroid) {
     return {
       ok: false,
-      error: `ZIP ${zip} is not on this street. Use your location once if you are within ${radius} miles, or a ZIP this kitchen delivers.`,
+      error: DINER_DROPOFF_UNREACHABLE,
     };
   }
   const point = { lat: centroid.lat, lng: centroid.lng };
@@ -1022,7 +1025,7 @@ export function dropoffCompliance(input: {
   if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
     return {
       ok: false,
-      error: `ZIP ${zip} is outside this street's ${radius}-mile area.`,
+      error: DINER_DROPOFF_UNREACHABLE,
     };
   }
   return {
@@ -3292,7 +3295,7 @@ function dinerTrackCopy(
     }
     return {
       headline: "Order placed",
-      detail: "The kitchen has your ticket.",
+      detail: "The kitchen is on it.",
     };
   }
   if (step === "delivered") {
@@ -3333,7 +3336,7 @@ function dinerTrackCopy(
   }
   return {
     headline: "Order placed",
-    detail: "The kitchen has your ticket.",
+    detail: "The kitchen is on it.",
   };
 }
 

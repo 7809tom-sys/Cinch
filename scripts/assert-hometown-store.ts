@@ -51,6 +51,13 @@ assert(
   "capacitor opens the store URL",
 );
 assert(home.includes("Open a market"), "launcher can open a town");
+assert(home.includes("HOMETOWN_PUBLIC_WELCOME"), "launcher sounds like the town");
+assert(
+  !/HOMETOWN_DRIVER_PAY_PROMISE|HOMETOWN_KITCHEN_LINE|MERCHANT_DENSITY|Market code|\bSeed\b|5%|\$4\.50/.test(
+    home,
+  ),
+  "public launcher does not teach pay, density, or Seed jargon",
+);
 assert(home.includes("HOMETOWN_PRIVACY_PATH"), "launcher links privacy");
 assert(home.includes("HOMETOWN_ACCOUNT_PATH"), "launcher links account deletion");
 assert(privacy.includes("session cookie"), "privacy describes the login cookie");

@@ -20,6 +20,8 @@ import {
   HOMETOWN_KITCHEN_LINE,
   HOMETOWN_LAUNCH_BRIEF_BLOCK,
   HOMETOWN_NEIGHBORHOOD_PROMISE,
+  HOMETOWN_PUBLIC_WELCOME,
+  hometownRoleCopy,
   KITCHEN_ARRIVAL_GEOFENCE_METERS,
   LAUNCH_MARKET_EXAMPLE,
   MERCHANT_DENSITY_MAX,
@@ -2244,6 +2246,19 @@ assert(
     !gpsOffStreet.ok &&
     !unknownZip.ok,
   "delivery is a ZIP on this street or a one-time GPS pin inside 2 miles",
+);
+assert(
+  HOMETOWN_PUBLIC_WELCOME.includes("streets you walk") &&
+    !HOMETOWN_PUBLIC_WELCOME.includes("30") &&
+    hometownRoleCopy("driver").support.includes("100% of the tip") &&
+    hometownRoleCopy("merchant").support.includes("kitchen manager") &&
+    !hometownRoleCopy("customer").support.includes("5%") &&
+    !/inside 2 miles|continuous GPS|outside this street|Trip /.test(shopBoard) &&
+    shopBoard.includes("We can bring it") &&
+    shopBoard.includes("Use my location") &&
+    shopPage.includes("HOMETOWN_PUBLIC_WELCOME") &&
+    !shopPage.includes("HOMETOWN_NEIGHBORHOOD_PROMISE"),
+  "diners see the town; kitchens and drivers learn the street at sign-in",
 );
 
 if (process.exitCode) {

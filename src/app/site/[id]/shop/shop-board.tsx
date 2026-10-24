@@ -8,7 +8,6 @@ import {
   SCHEDULED_WINDOW_EXTRA_USD,
   dropoffCompliance,
   lastBagCartLines,
-  serviceZipsForKitchen,
   type DinerOrderTrack,
 } from "@/lib/seed-delivery";
 import { toggleFavoriteKitchenAction } from "@/app/portal/[id]/delivery-actions";
@@ -138,8 +137,6 @@ export function SeedShopBoard({
           lng: gpsPin?.lng,
         })
       : null;
-  const streetZips =
-    dropKitchen && deliveryPlatform ? serviceZipsForKitchen(dropKitchen) : [];
   const shippingUsd =
     deliveryPlatform && isDelivery
       ? compliance?.ok
@@ -283,7 +280,6 @@ export function SeedShopBoard({
                   }
                 >
                   {pickup ? "Pickup" : "Delivery"}
-                  {pickup ? " · $0 trip" : ""}
                 </button>
               );
             })}
@@ -440,7 +436,7 @@ export function SeedShopBoard({
                   ? ` · Tax ${salesTax.ratePct}% $${taxUsd.toFixed(2)}`
                   : " · Tax $0.00"}
                 {deliveryPlatform && isDelivery && compliance && !compliance.ok
-                  ? " · outside this street"
+                  ? " · can't reach that address"
                   : mode
                     ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
                     : ""}
@@ -510,21 +506,10 @@ export function SeedShopBoard({
               </label>
               {deliveryPlatform && isDelivery ? (
                 <div className="seed-shop-meta">
-                  <p>
-                    This street delivers inside 2 miles. Enter a ZIP
-                    {streetZips.length > 0
-                      ? ` (${streetZips.map((row) => row.zip).join(", ")})`
-                      : ""}{" "}
-                    or use your location once. Hometown does not collect
-                    continuous GPS.
-                  </p>
+                  <p>Where should we bring dinner?</p>
                   {compliance?.ok ? (
                     <p>
-                      {compliance.source === "gps"
-                        ? "One-time pin is on this street."
-                        : `ZIP ${compliance.zip} is on this street.`}{" "}
-                      Trip {compliance.miles.toFixed(1)} mi · $
-                      {compliance.feeUsd.toFixed(2)}.
+                      We can bring it. Delivery ${compliance.feeUsd.toFixed(2)}.
                     </p>
                   ) : (
                     <p>{compliance?.error}</p>
@@ -536,10 +521,12 @@ export function SeedShopBoard({
                     onClick={() => {
                       if (!navigator.geolocation) {
                         setGpsPin(null);
-                        setGpsNote("This browser has no location. Enter a ZIP.");
+                        setGpsNote(
+                          "Location isn't available. Enter your ZIP.",
+                        );
                         return;
                       }
-                      setGpsNote("Checking this spot once…");
+                      setGpsNote("Finding this address…");
                       navigator.geolocation.getCurrentPosition(
                         (position) => {
                           setGpsPin({
@@ -551,7 +538,7 @@ export function SeedShopBoard({
                         () => {
                           setGpsPin(null);
                           setGpsNote(
-                            "Location stayed off. Enter a ZIP on this street.",
+                            "Location stayed off. Enter your ZIP.",
                           );
                         },
                         {
@@ -562,7 +549,7 @@ export function SeedShopBoard({
                       );
                     }}
                   >
-                    Use my location once
+                    Use my location
                   </button>
                   {gpsPin ? (
                     <button
@@ -604,7 +591,7 @@ export function SeedShopBoard({
                       /delivery/i.test(`${item.id} ${item.label}`)
                         ? compliance?.ok
                           ? ` · $${compliance.feeUsd.toFixed(2)}`
-                          : " · outside this street"
+                          : " · can't reach"
                         : ` · $${item.baseRateUsd.toFixed(2)}`}
                     </option>
                   ))}
@@ -623,7 +610,9 @@ export function SeedShopBoard({
                           : "Pay later / invoice"}
                   </option>
                   <option value="card">
-                    Charge card (Seed checkout — recorded as paid)
+                    {deliveryPlatform
+                      ? "Card"
+                      : "Charge card (Seed checkout — recorded as paid)"}
                   </option>
                 </select>
               </label>

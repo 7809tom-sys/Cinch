@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { HOMETOWN_STORE_PATH } from "@/lib/hometown-store";
+import {
+  HOMETOWN_STORE_PATH,
+  listHometownMarkets,
+} from "@/lib/hometown-store";
 import { deleteHometownLoginAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +21,15 @@ export default async function HometownAccountPage({
   searchParams: Promise<{ error?: string; deleted?: string; market?: string }>;
 }) {
   const query = await searchParams;
+  const markets = await listHometownMarkets();
+  const removedName =
+    markets.find((market) => market.id === query.market)?.name ?? "this town";
+  const known =
+    query.market && markets.some((market) => market.id === query.market)
+      ? markets
+      : query.market
+        ? [...markets, { id: query.market, name: removedName === "this town" ? "This town" : removedName }]
+        : markets;
 
   return (
     <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">
@@ -29,9 +41,8 @@ export default async function HometownAccountPage({
           Delete login
         </h1>
         <p className="mt-3 text-base leading-relaxed text-muted">
-          This removes the customer, merchant, or driver session stored on
-          this device for one town. It does not erase the kitchen&apos;s
-          tickets.
+          This removes the sign-in stored on this device for one town. Past
+          orders stay with the kitchen.
         </p>
 
         {query.deleted === "1" ? (
@@ -39,7 +50,7 @@ export default async function HometownAccountPage({
             className="mt-6 rounded-md border border-brand/20 bg-foam px-4 py-3 text-sm font-semibold text-brand-deep"
             role="status"
           >
-            Login removed for market {query.market || "that town"}.
+            Login removed for {removedName}.
           </p>
         ) : null}
         {query.error === "market" ? (
@@ -47,20 +58,36 @@ export default async function HometownAccountPage({
             className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
             role="alert"
           >
-            No Seed uses that market code.
+            That town isn&apos;t here.
           </p>
         ) : null}
 
         <form action={deleteHometownLoginAction} className="mt-8 space-y-4">
           <label className="block text-sm font-semibold text-brand-deep">
-            Market code
-            <input
-              name="marketCode"
-              required
-              defaultValue={query.market ?? ""}
-              autoComplete="off"
-              className={fieldClass}
-            />
+            Town
+            {known.length > 0 ? (
+              <select
+                name="marketCode"
+                required
+                defaultValue={query.market || known[0]?.id}
+                className={fieldClass}
+              >
+                {known.map((market) => (
+                  <option key={market.id} value={market.id}>
+                    {market.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                name="marketCode"
+                required
+                defaultValue={query.market ?? ""}
+                autoComplete="off"
+                placeholder="From your kitchen"
+                className={fieldClass}
+              />
+            )}
           </label>
           <button
             type="submit"

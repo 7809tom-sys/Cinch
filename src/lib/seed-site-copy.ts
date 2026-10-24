@@ -1187,7 +1187,7 @@ function withBusinessSiteDepth(
       {
         ...core,
         galleryEyebrow: "Tonight in town",
-        galleryHeadline: "Kitchens packing. Drivers moving.",
+        galleryHeadline: "Dinner from these streets.",
         gallery: [
           {
             src: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80",
@@ -1202,8 +1202,8 @@ function withBusinessSiteDepth(
             alt: "Restaurant line packing an order",
           },
         ],
-        processEyebrow: "How an order runs",
-        processHeadline: "Browse. Tip. Track the bag.",
+        processEyebrow: "How dinner arrives",
+        processHeadline: "Pick a kitchen. Tip. Watch the bag.",
         process: [
           {
             title: "Pick a kitchen nearby",
@@ -1232,7 +1232,7 @@ function withBusinessSiteDepth(
         },
         areaEyebrow: "One town",
         areaHeadline: "These streets. Tonight.",
-        areaBody: `${brand} is hyper-local. Tonight’s board is the kitchens on these streets — not a national app covering a continent.`,
+        areaBody: `${brand} is this town. Tonight’s board is the kitchens on these streets.`,
       },
       key,
     );
@@ -2188,13 +2188,13 @@ export function customerFacingSiteCopy(
           {
             category: "Pilot Kitchen",
             name: "Market sandwich",
-            detail: "The first live ticket so you can finish an order end-to-end.",
+            detail: "Market Street. The sandwich regulars order.",
             priceLabel: "$12",
           },
           {
             category: "Second Street Tacos",
             name: "Taco plate",
-            detail: "Second Street · two tacos, rice, salsa. Same town, same run.",
+            detail: "Second Street · two tacos, rice, salsa. From the street you already walk.",
             priceLabel: "$13",
           },
           {
@@ -2231,7 +2231,7 @@ export function customerFacingSiteCopy(
           },
           {
             title: "Tip the person at the door",
-            detail: "Add a tip at checkout. It goes to the driver on your run.",
+            detail: "Add a tip at checkout. It goes to the driver who brings dinner.",
           },
           {
             title: "Order last night’s bag again",
@@ -4468,10 +4468,10 @@ export function seedHomePageSource(
   const deliveryNav = showDeliveryApps
     ? `
           <li>
-            <a href="/drive">Driver portal</a>
+            <a href="/drive">Drive</a>
           </li>
           <li>
-            <a href="/merchant">Restaurant portal</a>
+            <a href="/merchant">Kitchen</a>
           </li>`
     : "";
   const services = input.services
@@ -4710,12 +4710,12 @@ ${profitPlays
               <span>Browse tonight’s kitchens. Tip the driver.</span>
             </a>
             <a href="/merchant">
-              <strong>Restaurant portal</strong>
-              <span>Kitchen desk for tonight’s tickets.</span>
+              <strong>I run a kitchen</strong>
+              <span>Sign in for your kitchen.</span>
             </a>
             <a href="/drive">
-              <strong>Driver portal</strong>
-              <span>Go online. Pick up bags on these streets.</span>
+              <strong>I drive</strong>
+              <span>Sign in to bring dinner on these streets.</span>
             </a>
           </div>`
               : clubLanding
@@ -5840,7 +5840,7 @@ export function seedRestaurantMenuProducts(
         id: "run-pilot-bowl",
         title: "Pilot Kitchen · Warm grain bowl",
         detail:
-          "Market Street · packed to go. First live kitchen on this town’s board.",
+          "Market Street · packed to go.",
         priceUsd: 14,
         sku: "RUN-PILOT-BOWL",
         stockQty: 40,
@@ -5852,7 +5852,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-pilot-sandwich",
         title: "Pilot Kitchen · Market sandwich",
-        detail: "Market Street · finish a customer ticket end-to-end.",
+        detail: "Market Street. The sandwich regulars order.",
         priceUsd: 12,
         sku: "RUN-PILOT-SAND",
         stockQty: 40,
@@ -5876,7 +5876,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-tacos-plate",
         title: "Second Street Tacos · Taco plate",
-        detail: "Second Street · two tacos, rice, salsa. Same town, same run.",
+        detail: "Second Street · two tacos, rice, salsa. From the street you already walk.",
         priceUsd: 13,
         sku: "RUN-TACOS-PLATE",
         stockQty: 36,
@@ -5900,7 +5900,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-tacos-agua",
         title: "Second Street Tacos · Agua fresca",
-        detail: "Cold drink on the taco ticket. Same run, same door.",
+        detail: "A cold drink with the tacos.",
         priceUsd: 3,
         sku: "RUN-TACOS-AGUA",
         stockQty: 60,
@@ -5924,7 +5924,7 @@ export function seedRestaurantMenuProducts(
       withInventory({
         id: "run-deli-salad",
         title: "River Market Deli · Market salad",
-        detail: "Packed cold. Same driver can take it with the soup ticket.",
+        detail: "Packed cold. Order it with the soup if you want both.",
         priceUsd: 10,
         sku: "RUN-DELI-SALAD",
         stockQty: 28,
