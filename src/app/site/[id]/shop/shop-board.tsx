@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { HometownDinerOrderDesk } from "@/components/delivery/diner-order-desk";
 import { placeSeedShopOrderAction } from "./actions";
 import {
@@ -83,6 +83,23 @@ export function SeedShopBoard({
   const [dropoffInstruction, setDropoffInstruction] = useState<
     "hand_to_customer" | "leave_at_door"
   >("hand_to_customer");
+  const [placedTracks, setPlacedTracks] = useState<DinerOrderTrack[]>([]);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`hometown-placed-${projectId}`);
+      const parsed = raw ? (JSON.parse(raw) as DinerOrderTrack[]) : [];
+      if (Array.isArray(parsed)) setPlacedTracks(parsed);
+    } catch {
+      /* This browser can still show the tracker from the order that just landed. */
+    }
+  }, [projectId]);
+  const visibleTracks = useMemo(() => {
+    const seen = new Set(placedTracks.map((row) => row.orderId));
+    return [
+      ...placedTracks,
+      ...dinerTracks.filter((row) => !seen.has(row.orderId)),
+    ];
+  }, [dinerTracks, placedTracks]);
 
   const lines = useMemo(
     () =>
@@ -213,6 +230,24 @@ export function SeedShopBoard({
         return;
       }
       setCart([]);
+      const track = "track" in result ? result.track : undefined;
+      if (track) {
+        setPlacedTracks((current) => {
+          const next = [
+            track,
+            ...current.filter((row) => row.orderId !== track.orderId),
+          ].slice(0, 8);
+          try {
+            sessionStorage.setItem(
+              `hometown-placed-${projectId}`,
+              JSON.stringify(next),
+            );
+          } catch {
+            /* The tracker still shows on this page. */
+          }
+          return next;
+        });
+      }
       setDone(
         deliveryPlatform
           ? isDelivery
@@ -703,7 +738,7 @@ export function SeedShopBoard({
       {deliveryPlatform ? (
         <HometownDinerOrderDesk
           projectId={projectId}
-          tracks={dinerTracks}
+          tracks={visibleTracks}
           onReorder={reorderBag}
         />
       ) : null}
