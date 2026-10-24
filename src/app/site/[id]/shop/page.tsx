@@ -27,6 +27,7 @@ import { assembleHometownDiner } from "@/lib/hometown-diner-model";
 import { SeedShopBoard } from "./shop-board";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Live surface for Seed-grown e-commerce (products + cart).

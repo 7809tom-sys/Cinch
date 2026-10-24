@@ -1,5 +1,9 @@
 import { ensureDeliveryOpsInSeed, saveDeliveryOps } from "./seed-delivery-io";
-import type { DeliveryOps, RestaurantMenuItem } from "./seed-delivery";
+import type {
+  DeliveryOps,
+  DeliveryRestaurant,
+  RestaurantMenuItem,
+} from "./seed-delivery";
 import { createProject, getProject, saveProject } from "./store";
 
 /** One open town on hometownrunner.com. Stable so an empty store can plant it again. */
@@ -124,13 +128,27 @@ const HOME_KITCHENS: Record<
   },
 };
 
-/** Confirm the three public kitchens. Other desks keep the starter bakery draft. */
+/** A connected site or a crawl-built plate must survive the home-town plant. */
+function kitchenHasWebsiteCrawl(row: DeliveryRestaurant): boolean {
+  if (row.websiteConnected) return true;
+  return (row.menu?.items ?? []).some(
+    (item) => item.source === "ai_crawl" && item.id.startsWith("menu-crawl-"),
+  );
+}
+
+/**
+ * Confirm the three public kitchens. Other desks keep the starter bakery draft.
+ * A kitchen that already connected a public menu keeps that crawl — planting
+ * the demo plates again was wiping George Webb (and any other live menu)
+ * on the next page load.
+ */
 export function openHomeTownMenus(ops: DeliveryOps): DeliveryOps {
   return {
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       const home = HOME_KITCHENS[row.id];
       if (!home) return row;
+      if (kitchenHasWebsiteCrawl(row)) return row;
       return {
         ...row,
         hours: home.hours,

@@ -3,10 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
+import { menuPersistenceWarning } from "@/lib/kv-store";
 import { proofAndRepairSeedSite } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export default async function SeedMerchantPage({
   params,
@@ -64,7 +66,11 @@ export default async function SeedMerchantPage({
             </Link>
           </nav>
         </header>
-        <HometownRestaurantPortal projectId={id} ops={ops} />
+        <HometownRestaurantPortal
+          projectId={id}
+          ops={ops}
+          storeWarning={await menuPersistenceWarning()}
+        />
       </div>
     </main>
   );

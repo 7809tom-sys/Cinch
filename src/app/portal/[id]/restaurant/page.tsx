@@ -4,9 +4,11 @@ import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { SiteFooter } from "@/components/site-footer";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
+import { menuPersistenceWarning } from "@/lib/kv-store";
 import { getPortalProjectSnapshot } from "../../actions";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function generateMetadata({
   params,
@@ -84,7 +86,11 @@ export default async function PortalRestaurantPage({
           diner markup. Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">
-          <HometownRestaurantPortal projectId={project.id} ops={ops} />
+          <HometownRestaurantPortal
+            projectId={project.id}
+            ops={ops}
+            storeWarning={await menuPersistenceWarning()}
+          />
         </div>
       </main>
       <SiteFooter />

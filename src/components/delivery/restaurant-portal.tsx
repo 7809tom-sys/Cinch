@@ -55,9 +55,11 @@ function ticketRestaurantNet(ops: DeliveryOps, ticket: MerchantTicket) {
 export function HometownRestaurantPortal({
   projectId,
   ops,
+  storeWarning = null,
 }: {
   projectId: string;
   ops: DeliveryOps;
+  storeWarning?: string | null;
 }) {
   const [restaurantId, setRestaurantId] = useState(
     ops.restaurants.find((row) => row.active)?.id ?? ops.restaurants[0]?.id ?? "",
@@ -109,6 +111,11 @@ export function HometownRestaurantPortal({
 
   return (
     <div className="space-y-6">
+      {error ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">
+          {error}
+        </p>
+      ) : null}
       <section className="rounded-xl border border-brand/15 bg-foam p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -321,6 +328,7 @@ export function HometownRestaurantPortal({
               syncRestaurantMenuFromWebsiteAction(projectId, restaurant.id),
             )
           }
+          storeWarning={storeWarning}
         />
       ) : null}
 
@@ -356,11 +364,6 @@ export function HometownRestaurantPortal({
         pending={pending}
         onAdvance={advance}
       />
-      {error ? (
-        <p className="text-sm font-semibold text-red-700" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -376,6 +379,7 @@ function MenuConfirmBoard({
   onUpload,
   onConnectWebsite,
   onSyncWebsite,
+  storeWarning = null,
 }: {
   restaurant: DeliveryRestaurant;
   pending: boolean;
@@ -393,6 +397,7 @@ function MenuConfirmBoard({
   ) => void;
   onConnectWebsite: (websiteUrl: string) => void;
   onSyncWebsite: () => void;
+  storeWarning?: string | null;
   onUpload: (input: {
     title: string;
     category?: string;
@@ -434,6 +439,16 @@ function MenuConfirmBoard({
       ) : null}
       {restaurant.menu?.parseNote ? (
         <p className="mt-2 text-sm text-muted">{restaurant.menu.parseNote}</p>
+      ) : null}
+      {storeWarning ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="status">
+          {storeWarning}
+        </p>
+      ) : null}
+      {restaurant.lastCrawlError ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">
+          {restaurant.lastCrawlError}
+        </p>
       ) : null}
       <form
         className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-brand/10 bg-white px-4 py-3"
@@ -496,7 +511,9 @@ function MenuConfirmBoard({
               {change.kind === "price"
                 ? `${change.itemTitle} is now $${(change.toPriceUsd ?? 0).toFixed(2)}`
                 : change.kind === "added"
-                  ? `Added ${change.itemTitle} at $${(change.toPriceUsd ?? 0).toFixed(2)}`
+                  ? change.toPriceUsd != null
+                    ? `Added ${change.itemTitle} at $${change.toPriceUsd.toFixed(2)}`
+                    : `Added ${change.itemTitle} — no price on the website`
                   : change.kind === "eighty_sixed"
                     ? `${change.itemTitle} is 86'd on the website`
                     : `${change.itemTitle} is back on the website`}
@@ -671,7 +688,15 @@ function MenuConfirmBoard({
                   : "border-brand/10 bg-white"
               }`}
             >
-              <div>
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                {item.photoUrl ? (
+                  <img
+                    src={item.photoUrl}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded-md object-cover"
+                  />
+                ) : null}
+                <div className="min-w-0">
                 <p className="text-xs font-bold tracking-wide text-muted uppercase">
                   {item.source === "ai_crawl" &&
                   item.confirmedPriceUsd != null
@@ -701,11 +726,17 @@ function MenuConfirmBoard({
                 >
                   {item.title}
                 </h3>
+                {item.description ? (
+                  <p className="mt-1 text-sm text-muted">{item.description}</p>
+                ) : null}
                 <p className="text-sm text-muted">
-                  Draft ${item.draftPriceUsd.toFixed(2)}
-                  {item.confirmedPriceUsd != null
-                    ? ` · selling at $${item.confirmedPriceUsd.toFixed(2)}`
-                    : " · not selling yet"}
+                  {item.websitePriceMissing
+                    ? "No price on the website · not selling yet"
+                    : `Draft $${item.draftPriceUsd.toFixed(2)}${
+                        item.confirmedPriceUsd != null
+                          ? ` · selling at $${item.confirmedPriceUsd.toFixed(2)}`
+                          : " · not selling yet"
+                      }`}
                   {item.eightySixed ? " · hidden from diners" : ""}
                 </p>
                 {item.modifiers?.length ? (
@@ -726,6 +757,7 @@ function MenuConfirmBoard({
                       .join(" · ")}
                   </p>
                 ) : null}
+                </div>
               </div>
               <div className="flex flex-wrap items-end gap-2">
               <form
