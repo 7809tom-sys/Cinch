@@ -49,6 +49,8 @@ export function SeedShopBoard({
     name: string;
     neighborhood: string;
     favorite: boolean;
+    hours?: string;
+    imageUrl?: string;
     lat?: number;
     lng?: number;
   }>;
@@ -287,24 +289,22 @@ export function SeedShopBoard({
         </div>
       ) : null}
       {deliveryPlatform && kitchens.length > 0 ? (
-        <section className="seed-shop-support" style={{ marginBottom: "1.25rem" }}>
-          <p style={{ fontWeight: 700 }}>Favorite kitchens</p>
-          <ul style={{ listStyle: "none", padding: 0, margin: "0.4rem 0 0" }}>
+        <section id="kitchens" className="seed-shop-support" style={{ marginBottom: "1.25rem" }}>
+          <p style={{ fontWeight: 700 }}>Kitchens</p>
+          <p className="seed-shop-support">Favorite kitchens are marked on the card.</p>
+          <ul className="seed-shop-grid" style={{ listStyle: "none", padding: 0, margin: "0.6rem 0 0" }}>
             {kitchens.map((kitchen) => (
-              <li
-                key={kitchen.id}
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "0.5rem",
-                  alignItems: "center",
-                  marginBottom: "0.35rem",
-                }}
-              >
-                <span>
-                  {kitchen.name} · {kitchen.neighborhood}
+              <li key={kitchen.id} className="seed-shop-card">
+                {kitchen.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img className="seed-shop-photo" src={kitchen.imageUrl} alt="" />
+                ) : null}
+                <h3>{kitchen.name}</h3>
+                <p>
+                  {kitchen.neighborhood}
+                  {kitchen.hours ? ` · ${kitchen.hours}` : ""}
                   {kitchen.favorite ? " · Favorite" : ""}
-                </span>
+                </p>
                 <button
                   type="button"
                   className="cta"
@@ -351,15 +351,15 @@ export function SeedShopBoard({
               <p className="seed-shop-price">
                 {formatSeedMoney(product.priceUsd, lotHold ? "lot" : "retail")}
               </p>
+              {deliveryPlatform ? null : (
               <p className="seed-shop-meta">
-                {deliveryPlatform
-                  ? `${product.sku} · live restaurant`
-                  : restaurantOrdering
+                {restaurantOrdering
                   ? `${product.sku} · ready to order`
                   : lotHold
                     ? `${product.stockQty} available`
                     : `${product.sku} · ${product.stockQty} in stock · ${product.shipClass} · ${product.weightLb} lb`}
               </p>
+              )}
               <button
                 type="button"
                 className="cta"
@@ -386,7 +386,7 @@ export function SeedShopBoard({
         {lines.length === 0 ? (
           <p className="seed-shop-cart-empty">
             {deliveryPlatform
-              ? "Add from a live restaurant in this town."
+              ? "Add a plate from a kitchen on this street."
               : restaurantOrdering
                 ? "Add menu items to build your order."
                 : lotHold

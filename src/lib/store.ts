@@ -430,6 +430,8 @@ export async function verifyConnectRequest(
 export async function createProject(input: {
   name: string;
   brief: string;
+  /** Stable id for the built-in Hometown town. A repeat call returns that Seed. */
+  id?: string | null;
   customerEmail?: string | null;
   customerName?: string | null;
   referenceUrl?: string | null;
@@ -439,6 +441,11 @@ export async function createProject(input: {
   writerForm?: WriterForm | string | null;
 }): Promise<SeedProject> {
   const store = await ensureStore();
+  const requestedId = input.id?.trim();
+  if (requestedId) {
+    const existing = store.projects.find((project) => project.id === requestedId);
+    if (existing) return existing;
+  }
   const pm = getProjectManager();
   const stamp = now();
   const customerEmail = input.customerEmail?.trim().toLowerCase() || null;
@@ -481,7 +488,7 @@ export async function createProject(input: {
   }
 
   const project: SeedProject = {
-    id: randomUUID(),
+    id: requestedId || randomUUID(),
     name: input.name.trim(),
     brief: input.brief.trim(),
     createdAt: stamp,
