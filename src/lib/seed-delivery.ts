@@ -479,6 +479,13 @@ export type RestaurantMenuItem = {
   aliases?: string[];
   description?: string;
   photoUrl?: string;
+  /**
+   * Merchant: the kitchen uploaded or pinned this photo — a crawl must not replace it.
+   * Website: the crawler stored this photo from the public menu page.
+   */
+  photoSource?: "merchant" | "website";
+  /** The public page listed the dish and no price. It does not sell until a price exists. */
+  websitePriceMissing?: boolean;
   modifiers?: MenuModifierGroup[];
   /** Hidden from diner find / sellable while 86'd during service. */
   eightySixed?: boolean;
@@ -583,6 +590,8 @@ export type DeliveryRestaurant = {
   websiteConnected?: boolean;
   lastCrawledAt?: string | null;
   nextCrawlAt?: string | null;
+  /** Specific crawl failure for the kitchen desk. Cleared after a crawl that reads dishes. */
+  lastCrawlError?: string | null;
   crawlChanges?: MenuCrawlChange[];
   /** Hybrid menu: AI draft, then merchant confirms prices. */
   menu?: RestaurantMenuDraft;
@@ -1369,6 +1378,7 @@ export function uploadRestaurantMenuItem(
     aliases,
     description: input.description?.trim() || undefined,
     photoUrl: input.photoUrl?.trim() || undefined,
+    photoSource: input.photoUrl?.trim() ? "merchant" : undefined,
     ...(modifiers && modifiers.length > 0 ? { modifiers } : {}),
   };
   return {
@@ -1422,6 +1432,7 @@ export function confirmRestaurantMenuPrice(
                   ...item,
                   confirmedPriceUsd: confirmed,
                   source: "merchant" as const,
+                  websitePriceMissing: undefined,
                 }
               : item,
           ),
@@ -1838,6 +1849,10 @@ export function reviewRestaurantMenuItem(
                 typeof patch.draftPriceUsd === "number"
                   ? money(Math.max(0, patch.draftPriceUsd))
                   : item.draftPriceUsd,
+              websitePriceMissing:
+                typeof patch.draftPriceUsd === "number"
+                  ? undefined
+                  : item.websitePriceMissing,
               ...(modifiers !== undefined ? { modifiers } : {}),
             };
           }),
@@ -1930,6 +1945,11 @@ export function normalizeDeliveryRestaurant(
               item.eightySixSource === "website"
                 ? item.eightySixSource
                 : undefined,
+            photoSource:
+              item.photoSource === "merchant" || item.photoSource === "website"
+                ? item.photoSource
+                : undefined,
+            websitePriceMissing: item.websitePriceMissing ? true : undefined,
             modifiers: Array.isArray(item.modifiers)
               ? item.modifiers
               : undefined,
@@ -1964,6 +1984,10 @@ export function normalizeDeliveryRestaurant(
     nextCrawlAt:
       typeof row.nextCrawlAt === "string" && row.nextCrawlAt.trim()
         ? row.nextCrawlAt
+        : null,
+    lastCrawlError:
+      typeof row.lastCrawlError === "string" && row.lastCrawlError.trim()
+        ? row.lastCrawlError.trim()
         : null,
     crawlChanges: Array.isArray(row.crawlChanges)
       ? row.crawlChanges.filter(

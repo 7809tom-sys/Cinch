@@ -88,6 +88,9 @@ const PLATE_PHOTOS: Array<{ test: RegExp; src: string }> = [
 ];
 
 export function hometownPlatePhoto(title: string, photoUrl?: string): string {
+  if (photoUrl?.startsWith("/site/") || photoUrl?.startsWith("/hometown/menu/")) {
+    return photoUrl;
+  }
   const hay = title.toLowerCase();
   const local = PLATE_PHOTOS.find((row) => row.test.test(hay));
   if (local) return local.src;

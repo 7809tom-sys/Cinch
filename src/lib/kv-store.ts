@@ -95,15 +95,46 @@ export async function readJsonStore<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+export type JsonStoreWriteResult = {
+  ok: boolean;
+  /** True only when the write landed in Redis, which survives a new server. */
+  durable: boolean;
+  error?: string;
+};
+
+/**
+ * Why a connected menu can vanish on Vercel. Null when Redis is configured
+ * or this process is a normal local dev machine (`.data/`).
+ */
+export function ephemeralMenuStoreWarning(
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const onServerless = Boolean(env.VERCEL || env.AWS_LAMBDA_FUNCTION_NAME);
+  const durable = Boolean(
+    (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) ||
+      (env.KV_REST_API_URL && env.KV_REST_API_TOKEN),
+  );
+  if (!onServerless || durable) return null;
+  return "This server has no Redis store (UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN or KV_REST_API_URL / KV_REST_API_TOKEN). A connected menu and crawled plates sit on temporary disk and disappear when Vercel starts a new server.";
+}
+
 /** Persist a whole store by key. */
-export async function writeJsonStore<T>(key: string, value: T): Promise<void> {
+export async function writeJsonStore<T>(
+  key: string,
+  value: T,
+): Promise<JsonStoreWriteResult> {
   const redis = getRedis();
   if (redis) {
     try {
       await redis.set(KEY_PREFIX + key, value);
-      return;
-    } catch {
-      // Fall through to the file fallback rather than silently losing writes.
+      return { ok: true, durable: true };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Redis write failed.";
+      console.error("[kv-store] Redis write failed; trying temporary disk", {
+        key,
+        message,
+      });
     }
   }
 
@@ -114,9 +145,16 @@ export async function writeJsonStore<T>(key: string, value: T): Promise<void> {
       JSON.stringify(value, null, 2),
       "utf8",
     );
-  } catch {
-    // Read-only host and no Redis configured: caller's in-memory cache
-    // keeps this instance working, but it won't survive a restart.
+    return { ok: true, durable: false };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not write the store file.";
+    console.error("[kv-store] store write failed", { key, message });
+    return {
+      ok: false,
+      durable: false,
+      error: message,
+    };
   }
 }
 

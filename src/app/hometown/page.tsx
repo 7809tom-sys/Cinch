@@ -19,6 +19,7 @@ import { getProject } from "@/lib/store";
 import { openHometownMarketAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const fieldClass =
   "mt-1 block min-h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-base text-[#1a1714]";

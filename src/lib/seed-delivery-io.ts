@@ -1,4 +1,8 @@
-import { tickHometownMenuCrawls } from "./hometown-menu-crawler";
+import {
+  tickHometownMenuCrawls,
+  type MenuPhotoStore,
+} from "./hometown-menu-crawler";
+import { storeSeedProductPhoto } from "./seed-product-media";
 import {
   DELIVERY_OPS_PATH,
   deliveryOpsJson,
@@ -16,6 +20,32 @@ export function seedNeedsDeliveryOps(
   brief: string,
 ): boolean {
   return briefIsDeliveryPlatform(projectName, brief);
+}
+
+export function hometownMenuPhotoSaver(projectId: string): MenuPhotoStore {
+  return async ({ itemId, bytes, mime }) => {
+    const stored = await storeSeedProductPhoto({
+      projectId,
+      productId: itemId,
+      file: new Blob([Buffer.from(bytes)], { type: mime }),
+      fileName: `${itemId}.${mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : mime === "image/gif" ? "gif" : "jpg"}`,
+    });
+    if (!stored.ok) {
+      console.error("[hometown-menu-crawler] could not store menu photo", {
+        itemId,
+        detail: stored.error,
+      });
+      return null;
+    }
+    if (!stored.url.startsWith("/site/")) {
+      console.error("[hometown-menu-crawler] refused a photo that is not app storage", {
+        itemId,
+        url: stored.url,
+      });
+      return null;
+    }
+    return stored.url;
+  };
 }
 
 export async function saveDeliveryOps(
@@ -60,17 +90,24 @@ export async function ensureDeliveryOpsInSeed(
   if (existing) {
     const ops = applyDriverSubscriptionPolicies(existing);
     try {
-      const ticked = await tickHometownMenuCrawls({ ops });
-      if (ticked.changed) {
+      const ticked = await tickHometownMenuCrawls({
+        ops,
+        storePhoto: hometownMenuPhotoSaver(project.id),
+      });
+      if (ticked.changed || ticked.ops !== ops) {
         await saveDeliveryOps(
           project.id,
           ticked.ops,
-          "Website crawl updated live menu prices",
+          ticked.changed
+            ? "Website crawl updated live menu prices"
+            : "Website crawl checked the connected menu page",
         );
         return ticked.ops;
       }
-    } catch {
-      /* A crawl miss must not block the kitchen desk. */
+    } catch (error) {
+      console.error("[hometown-menu-crawler] background crawl failed", {
+        detail: error instanceof Error ? error.message : "crawl",
+      });
     }
     return ops;
   }

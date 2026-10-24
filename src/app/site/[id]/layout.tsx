@@ -13,6 +13,7 @@ import {
 import { getProject, retireCinchHostedClone } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Connect Seeds (Just Putz It) must not keep a Cinch-hosted clone.

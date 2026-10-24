@@ -35,6 +35,7 @@ import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
 import {
   ensureDeliveryOpsInSeed,
+  hometownMenuPhotoSaver,
   saveDeliveryOps,
 } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
@@ -242,6 +243,7 @@ export async function connectRestaurantWebsiteAction(
     ops: connected,
     restaurantId,
     force: true,
+    storePhoto: hometownMenuPhotoSaver(projectId),
   });
   await saveDeliveryOps(
     projectId,
@@ -268,6 +270,7 @@ export async function syncRestaurantMenuFromWebsiteAction(
     ops: loaded.ops,
     restaurantId,
     force: true,
+    storePhoto: hometownMenuPhotoSaver(projectId),
   });
   if (synced.changed || synced.ops !== loaded.ops) {
     await saveDeliveryOps(
