@@ -6,6 +6,10 @@ import {
 } from "@/lib/hosted-site";
 import { writerSeedPortalPath } from "@/lib/domain";
 import { isWriterSeedKind } from "@/lib/seed-writer";
+import {
+  ensureHometownHomeTown,
+  HOMETOWN_HOME_TOWN_ID,
+} from "@/lib/hometown-home-town";
 import { getProject, retireCinchHostedClone } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +37,10 @@ export default async function SeedSiteLayout({
     permanentRedirect(knownLiveHost);
   }
 
-  const project = await getProject(id);
+  const project =
+    id === HOMETOWN_HOME_TOWN_ID
+      ? await ensureHometownHomeTown()
+      : await getProject(id);
   if (!project) notFound();
 
   if (isWriterSeedKind(project.seedKind)) {

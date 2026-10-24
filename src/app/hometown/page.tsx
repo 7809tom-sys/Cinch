@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { HOMETOWN_PUBLIC_WELCOME } from "@/lib/seed-delivery";
+import { ensureHometownHomeTown } from "@/lib/hometown-home-town";
 import {
   HOMETOWN_ACCOUNT_PATH,
   HOMETOWN_PRIVACY_PATH,
@@ -18,7 +20,14 @@ export default async function HometownAppPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const query = await searchParams;
-  const markets = await listHometownMarkets();
+  let markets = await listHometownMarkets();
+  if (markets.length === 0) {
+    await ensureHometownHomeTown();
+    markets = await listHometownMarkets();
+  }
+  if (markets.length === 1 && query.error !== "market") {
+    redirect(`/site/${markets[0].id}/shop`);
+  }
 
   return (
     <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">

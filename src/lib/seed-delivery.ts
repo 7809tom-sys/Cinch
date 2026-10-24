@@ -566,6 +566,8 @@ export type DeliveryRestaurant = {
   id: string;
   name: string;
   neighborhood: string;
+  /** Public hours, such as "Today 11am–9pm". */
+  hours?: string;
   /** Originating scout — locked when the restaurant first goes active. */
   scoutId: string;
   /** Kitchen owner — may scout other restaurants after one delivery; never keeps own 5%. */
@@ -2509,6 +2511,34 @@ export function driverCanDispatch(driver: DeliveryDriver): boolean {
     driverOnboardingComplete(driver) &&
     driver.online
   );
+}
+
+/** Live diner bags use restaurantId:itemId. Catalog SKUs are not on that board. */
+export function deliveryCartLinesFromShop(
+  ops: Pick<DeliveryOps, "restaurants">,
+  lines: Array<{ productId?: string; qty?: number }>,
+): Array<{ productId: string; title: string; priceUsd: number; qty: number }> {
+  const sellable = findSellableMenuItems(ops);
+  const out: Array<{
+    productId: string;
+    title: string;
+    priceUsd: number;
+    qty: number;
+  }> = [];
+  for (const line of lines) {
+    const plate = sellable.find(
+      (item) => `${item.restaurantId}:${item.itemId}` === line.productId,
+    );
+    const qty = Math.min(20, Math.floor(line.qty ?? 0));
+    if (!plate || qty < 1) continue;
+    out.push({
+      productId: `${plate.restaurantId}:${plate.itemId}`,
+      title: `${plate.restaurantName} · ${plate.title}`,
+      priceUsd: plate.priceUsd,
+      qty,
+    });
+  }
+  return out;
 }
 
 export function restaurantForShopItems(
