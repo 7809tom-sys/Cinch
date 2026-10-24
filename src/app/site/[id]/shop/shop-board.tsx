@@ -1,16 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { HometownDinerOrderDesk } from "@/components/delivery/diner-order-desk";
 import { placeSeedShopOrderAction } from "./actions";
-import {
-  DINER_SCHEDULE_WINDOWS,
-  SCHEDULED_WINDOW_EXTRA_USD,
-  dropoffCompliance,
-  lastBagCartLines,
-  type DinerOrderTrack,
-} from "@/lib/seed-delivery";
-import { toggleFavoriteKitchenAction } from "@/app/portal/[id]/delivery-actions";
 import {
   formatSeedMoney,
   type SeedSalesTaxSettings,
@@ -28,9 +19,6 @@ export function SeedShopBoard({
   salesTax,
   restaurantOrdering = false,
   lotHold = false,
-  deliveryPlatform = false,
-  dinerTracks = [],
-  kitchens = [],
 }: {
   projectId: string;
   products: SeedShopProduct[];
@@ -41,46 +29,13 @@ export function SeedShopBoard({
   restaurantOrdering?: boolean;
   /** Used-car lot: hold / drive / dealer delivery — never UPS a car. */
   lotHold?: boolean;
-  /** Hometown Runner: customer app — tip goes 100% to the driver. */
-  deliveryPlatform?: boolean;
-  dinerTracks?: DinerOrderTrack[];
-  kitchens?: Array<{
-    id: string;
-    name: string;
-    neighborhood: string;
-    favorite: boolean;
-    lat?: number;
-    lng?: number;
-  }>;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
-  const [shippingModeId, setShippingModeId] = useState(
-    deliveryPlatform
-      ? shippingModes.find((item) => /delivery/i.test(`${item.id} ${item.label}`))
-          ?.id ??
-        shippingModes[0]?.id ??
-        ""
-      : (shippingModes[0]?.id ?? ""),
-  );
-  const [shipToState, setShipToState] = useState(
-    salesTax.nexusStates[0] ?? "NY",
-  );
+  const [shippingModeId, setShippingModeId] = useState(shippingModes[0]?.id ?? "");
+  const [shipToState, setShipToState] = useState(salesTax.nexusStates[0] ?? "NY");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const [tipUsd, setTipUsd] = useState(deliveryPlatform ? 4 : 0);
-  const [dropoffZip, setDropoffZip] = useState(deliveryPlatform ? "43017" : "10001");
-  const [gpsPin, setGpsPin] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
-  const [gpsNote, setGpsNote] = useState<string | null>(null);
-  const [findQuery, setFindQuery] = useState("");
-  const [scheduledWindow, setScheduledWindow] = useState<string>(
-    DINER_SCHEDULE_WINDOWS[0],
-  );
-  const [dropoffInstruction, setDropoffInstruction] = useState<
-    "hand_to_customer" | "leave_at_door"
-  >("hand_to_customer");
 
   const lines = useMemo(
     () =>
@@ -106,44 +61,8 @@ export function SeedShopBoard({
     ) ??
     shippingModes[0];
   const isDelivery =
-    (restaurantOrdering || deliveryPlatform) &&
-    /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
-  const dropKitchen = useMemo(() => {
-    if (!deliveryPlatform || kitchens.length === 0) return null;
-    const blob = lines
-      .map((line) => `${line.product.id} ${line.product.title}`)
-      .join(" ")
-      .toLowerCase();
-    const keyed = lines
-      .map((line) => kitchens.find((row) => row.id === line.product.id.split(":")[0]))
-      .find((row) => row);
-    if (keyed?.lat != null && keyed.lng != null) {
-      return { lat: keyed.lat, lng: keyed.lng };
-    }
-    const named = /taco|street/.test(blob)
-      ? kitchens.find((row) => row.id === "rest-tacos")
-      : /deli|river/.test(blob)
-        ? kitchens.find((row) => row.id === "rest-deli")
-        : kitchens.find((row) => row.id === "rest-pilot") ?? kitchens[0];
-    if (named?.lat == null || named.lng == null) return null;
-    return { lat: named.lat, lng: named.lng };
-  }, [deliveryPlatform, kitchens, lines]);
-  const compliance =
-    deliveryPlatform && isDelivery && dropKitchen
-      ? dropoffCompliance({
-          kitchen: dropKitchen,
-          zip: dropoffZip,
-          lat: gpsPin?.lat,
-          lng: gpsPin?.lng,
-        })
-      : null;
-  const shippingUsd =
-    deliveryPlatform && isDelivery
-      ? compliance?.ok
-        ? compliance.feeUsd
-        : 0
-      : (mode?.baseRateUsd ?? 0);
-  const checkoutTipUsd = deliveryPlatform && isDelivery ? tipUsd : 0;
+    restaurantOrdering && /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
+  const shippingUsd = mode?.baseRateUsd ?? 0;
   const taxApplies =
     salesTax.enabled &&
     !salesTax.taxInclusive &&
@@ -151,10 +70,9 @@ export function SeedShopBoard({
   const taxUsd = taxApplies
     ? Math.round(subtotal * (salesTax.ratePct / 100) * 100) / 100
     : 0;
-  const total =
-    Math.round((subtotal + taxUsd + shippingUsd + checkoutTipUsd) * 100) / 100;
+  const total = Math.round((subtotal + taxUsd + shippingUsd) * 100) / 100;
 
-  function addQty(productId: string, qty: number) {
+  function add(productId: string) {
     const product = products.find((item) => item.id === productId);
     if (!product || product.stockQty < 1) return;
     setDone(null);
@@ -163,7 +81,7 @@ export function SeedShopBoard({
       const existing = prev.find((line) => line.productId === productId);
       const nextQty = Math.min(
         product.stockQty,
-        Math.min(20, (existing?.qty ?? 0) + qty),
+        Math.min(20, (existing?.qty ?? 0) + 1),
       );
       if (existing) {
         return prev.map((line) =>
@@ -174,36 +92,13 @@ export function SeedShopBoard({
     });
   }
 
-  function add(productId: string) {
-    addQty(productId, 1);
-  }
-
-  function reorderBag(track: DinerOrderTrack) {
-    setDone(null);
-    setError(null);
-    for (const line of lastBagCartLines(track, products)) {
-      addQty(line.productId, line.qty);
-    }
-    setShippingModeId(
-      track.fulfillment === "pickup"
-        ? shippingModes.find((mode) => /pickup/i.test(`${mode.id} ${mode.label}`))
-            ?.id ?? shippingModeId
-        : shippingModes.find((mode) =>
-            /delivery/i.test(`${mode.id} ${mode.label}`),
-          )?.id ?? shippingModeId,
-    );
-    setDone("Prior bag is back in your bag — checkout when you are ready.");
-  }
-
   function onCheckout(formData: FormData) {
     setError(null);
     setDone(null);
     formData.set("cartJson", JSON.stringify(cart));
     formData.set("shippingModeId", mode?.id ?? shippingModeId);
     formData.set("shipToState", shipToState);
-    formData.set("tipUsd", String(checkoutTipUsd));
-    formData.set("scheduledWindow", scheduledWindow);
-    formData.set("dropoffInstruction", dropoffInstruction);
+    formData.set("tipUsd", "0");
     startTransition(async () => {
       const result = await placeSeedShopOrderAction(projectId, formData);
       if (!result.ok) {
@@ -212,11 +107,7 @@ export function SeedShopBoard({
       }
       setCart([]);
       setDone(
-        deliveryPlatform
-          ? isDelivery
-            ? `Order placed — $${result.totalUsd.toFixed(2)}. The kitchen is on it. Watch for food is ready, then your courier is on the way.`
-            : `Pickup placed — $${result.totalUsd.toFixed(2)}. The kitchen is cooking — we will say when the food is ready.`
-          : restaurantOrdering
+        restaurantOrdering
           ? `Order placed — $${result.totalUsd.toFixed(2)} (tax $${result.taxUsd.toFixed(2)}${
               result.shippingUsd > 0
                 ? `, delivery $${result.shippingUsd.toFixed(2)}`
@@ -233,128 +124,31 @@ export function SeedShopBoard({
     });
   }
 
-  const visibleProducts = useMemo(() => {
-    const needle = findQuery.trim().toLowerCase();
-    if (!needle || !deliveryPlatform) return products;
-    return products.filter((product) =>
-      `${product.title} ${product.detail} ${product.sku}`
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [deliveryPlatform, findQuery, products]);
-
   return (
     <>
-      {deliveryPlatform ? (
-        <label className="seed-shop-support" style={{ display: "block", marginBottom: "1rem" }}>
-          Find an item
-          <input
-            type="search"
-            value={findQuery}
-            onChange={(event) => setFindQuery(event.target.value)}
-            placeholder="grain bowl, tacos, soup…"
-            className="seed-shop-checkout"
-            style={{ display: "block", marginTop: "0.35rem", maxWidth: "22rem" }}
-          />
-        </label>
-      ) : null}
-      {deliveryPlatform ? (
-        <div className="seed-shop-support" style={{ marginBottom: "1rem" }}>
-          <p style={{ fontWeight: 700, marginBottom: "0.4rem" }}>
-            Pickup or delivery
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-            {shippingModes.map((item) => {
-              const pickup = /pickup|counter/i.test(`${item.id} ${item.label}`);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="cta"
-                  aria-pressed={shippingModeId === item.id}
-                  onClick={() => setShippingModeId(item.id)}
-                  style={
-                    shippingModeId === item.id
-                      ? undefined
-                      : { background: "transparent", color: "inherit", border: "1px solid currentColor" }
-                  }
-                >
-                  {pickup ? "Pickup" : "Delivery"}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-      {deliveryPlatform && kitchens.length > 0 ? (
-        <section className="seed-shop-support" style={{ marginBottom: "1.25rem" }}>
-          <p style={{ fontWeight: 700 }}>Favorite kitchens</p>
-          <ul style={{ listStyle: "none", padding: 0, margin: "0.4rem 0 0" }}>
-            {kitchens.map((kitchen) => (
-              <li
-                key={kitchen.id}
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "0.5rem",
-                  alignItems: "center",
-                  marginBottom: "0.35rem",
-                }}
-              >
-                <span>
-                  {kitchen.name} · {kitchen.neighborhood}
-                  {kitchen.favorite ? " · Favorite" : ""}
-                </span>
-                <button
-                  type="button"
-                  className="cta"
-                  onClick={() =>
-                    startTransition(async () => {
-                      await toggleFavoriteKitchenAction(projectId, kitchen.id);
-                    })
-                  }
-                >
-                  {kitchen.favorite ? "Unfavorite" : "Favorite this kitchen"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-      {deliveryPlatform && visibleProducts.length === 0 ? (
-        <p className="seed-shop-support">No plates match that search. Try another word.</p>
-      ) : null}
       <div className="seed-shop-grid">
-        {visibleProducts.map((product) => (
+        {products.map((product) => (
           <article
             key={product.id}
             className={lotHold ? "seed-shop-card seed-lot-card" : "seed-shop-card"}
           >
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="seed-shop-photo"
-                src={product.imageUrl}
-                alt={product.title}
-              />
+              <img className="seed-shop-photo" src={product.imageUrl} alt={product.title} />
             ) : (
               <div className="seed-shop-photo-empty" aria-hidden>
                 Photo coming soon
               </div>
             )}
             <div className={lotHold ? "seed-lot-card-body" : undefined}>
-              {lotHold ? (
-                <p className="seed-lot-badge">Inspected · on the lot</p>
-              ) : null}
+              {lotHold ? <p className="seed-lot-badge">Inspected · on the lot</p> : null}
               <h3>{product.title}</h3>
               <p>{product.detail}</p>
               <p className="seed-shop-price">
                 {formatSeedMoney(product.priceUsd, lotHold ? "lot" : "retail")}
               </p>
               <p className="seed-shop-meta">
-                {deliveryPlatform
-                  ? `${product.sku} · live restaurant`
-                  : restaurantOrdering
+                {restaurantOrdering
                   ? `${product.sku} · ready to order`
                   : lotHold
                     ? `${product.stockQty} available`
@@ -374,24 +168,14 @@ export function SeedShopBoard({
       </div>
 
       <section className="seed-shop-cart" id="cart">
-        <h2>
-          {deliveryPlatform
-            ? "Your bag"
-            : restaurantOrdering
-              ? "Your order"
-              : lotHold
-                ? "Hold list"
-                : "Cart"}
-        </h2>
+        <h2>{restaurantOrdering ? "Your order" : lotHold ? "Hold list" : "Cart"}</h2>
         {lines.length === 0 ? (
           <p className="seed-shop-cart-empty">
-            {deliveryPlatform
-              ? "Add from a live restaurant in this town."
-              : restaurantOrdering
-                ? "Add menu items to build your order."
-                : lotHold
-                  ? "Ask about a unit to hold it or book a drive."
-                  : "Your cart is empty."}
+            {restaurantOrdering
+              ? "Add menu items to build your order."
+              : lotHold
+                ? "Ask about a unit to hold it or book a drive."
+                : "Your cart is empty."}
           </p>
         ) : (
           <>
@@ -435,15 +219,8 @@ export function SeedShopBoard({
                 {taxApplies
                   ? ` · Tax ${salesTax.ratePct}% $${taxUsd.toFixed(2)}`
                   : " · Tax $0.00"}
-                {deliveryPlatform && isDelivery && compliance && !compliance.ok
-                  ? " · can't reach that address"
-                  : mode
-                    ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
-                    : ""}
-                {deliveryPlatform && isDelivery
-                  ? ` · Tip $${checkoutTipUsd.toFixed(2)}`
-                  : ""}{" "}
-                · Total ${total.toFixed(2)}
+                {mode ? ` · ${mode.label} $${shippingUsd.toFixed(2)}` : ""} · Total $
+                {total.toFixed(2)}
               </p>
             )}
             {needsLtl && !restaurantOrdering && !lotHold ? (
@@ -451,10 +228,7 @@ export function SeedShopBoard({
                 Cart includes LTL freight items — choose an LTL mode below.
               </p>
             ) : null}
-            <form
-              className="seed-shop-checkout"
-              action={(formData) => onCheckout(formData)}
-            >
+            <form className="seed-shop-checkout" action={(formData) => onCheckout(formData)}>
               <label>
                 Name
                 <input name="customerName" type="text" required />
@@ -464,7 +238,7 @@ export function SeedShopBoard({
                 <input name="contact" type="text" required />
               </label>
               <label>
-                {deliveryPlatform || restaurantOrdering
+                {restaurantOrdering
                   ? isDelivery
                     ? "Delivery state"
                     : "Pickup state"
@@ -483,99 +257,21 @@ export function SeedShopBoard({
                 />
               </label>
               <label>
-                {deliveryPlatform || restaurantOrdering
+                {restaurantOrdering
                   ? isDelivery
                     ? "Delivery ZIP"
                     : "Pickup ZIP"
                   : lotHold
                     ? "Your ZIP"
                     : "Ship-to ZIP"}
-                <input
-                  name="shipToZip"
-                  type="text"
-                  required
-                  value={deliveryPlatform ? dropoffZip : undefined}
-                  defaultValue={deliveryPlatform ? undefined : "10001"}
-                  onChange={
-                    deliveryPlatform
-                      ? (event) =>
-                          setDropoffZip(event.target.value.replace(/\D/g, "").slice(0, 10))
-                      : undefined
-                  }
-                />
+                <input name="shipToZip" type="text" required defaultValue="10001" />
               </label>
-              {deliveryPlatform && isDelivery ? (
-                <div className="seed-shop-meta">
-                  <p>Where should we bring dinner?</p>
-                  {compliance?.ok ? (
-                    <p>
-                      We can bring it. Delivery ${compliance.feeUsd.toFixed(2)}.
-                    </p>
-                  ) : (
-                    <p>{compliance?.error}</p>
-                  )}
-                  {gpsNote ? <p>{gpsNote}</p> : null}
-                  <button
-                    type="button"
-                    className="seed-admin-link"
-                    onClick={() => {
-                      if (!navigator.geolocation) {
-                        setGpsPin(null);
-                        setGpsNote(
-                          "Location isn't available. Enter your ZIP.",
-                        );
-                        return;
-                      }
-                      setGpsNote("Finding this address…");
-                      navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                          setGpsPin({
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude,
-                          });
-                          setGpsNote(null);
-                        },
-                        () => {
-                          setGpsPin(null);
-                          setGpsNote(
-                            "Location stayed off. Enter your ZIP.",
-                          );
-                        },
-                        {
-                          enableHighAccuracy: true,
-                          maximumAge: 0,
-                          timeout: 8000,
-                        },
-                      );
-                    }}
-                  >
-                    Use my location
-                  </button>
-                  {gpsPin ? (
-                    <button
-                      type="button"
-                      className="seed-admin-link"
-                      onClick={() => setGpsPin(null)}
-                    >
-                      Use ZIP instead
-                    </button>
-                  ) : null}
-                  {gpsPin ? (
-                    <>
-                      <input type="hidden" name="dropoffLat" value={gpsPin.lat} />
-                      <input type="hidden" name="dropoffLng" value={gpsPin.lng} />
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
               <label>
-                {deliveryPlatform
-                  ? "Pickup or Hometown delivery"
-                  : restaurantOrdering
-                    ? "Pickup or delivery"
-                    : lotHold
-                      ? "How you'll get the car"
-                      : "Shipping"}
+                {restaurantOrdering
+                  ? "Pickup or delivery"
+                  : lotHold
+                    ? "How you'll get the car"
+                    : "Shipping"}
                 <select
                   name="shippingModeId"
                   value={mode?.id ?? shippingModeId}
@@ -584,15 +280,8 @@ export function SeedShopBoard({
                   {shippingModes.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.label}
-                      {restaurantOrdering || lotHold || deliveryPlatform
-                        ? ""
-                        : ` (${item.kind})`}
-                      {deliveryPlatform &&
-                      /delivery/i.test(`${item.id} ${item.label}`)
-                        ? compliance?.ok
-                          ? ` · $${compliance.feeUsd.toFixed(2)}`
-                          : " · can't reach"
-                        : ` · $${item.baseRateUsd.toFixed(2)}`}
+                      {restaurantOrdering || lotHold ? "" : ` (${item.kind})`} · $
+                      {item.baseRateUsd.toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -601,94 +290,27 @@ export function SeedShopBoard({
                 Payment
                 <select name="paymentMethod" defaultValue="invoice">
                   <option value="invoice">
-                    {deliveryPlatform
-                      ? "Pay on delivery"
-                      : restaurantOrdering
-                        ? "Pay at pickup / on delivery"
-                        : lotHold
-                          ? "Finance or pay at the lot"
-                          : "Pay later / invoice"}
+                    {restaurantOrdering
+                      ? "Pay at pickup / on delivery"
+                      : lotHold
+                        ? "Finance or pay at the lot"
+                        : "Pay later / invoice"}
                   </option>
                   <option value="card">
-                    {deliveryPlatform
-                      ? "Card"
-                      : "Charge card (Seed checkout — recorded as paid)"}
+                    Charge card (Seed checkout — recorded as paid)
                   </option>
                 </select>
               </label>
-              {deliveryPlatform ? (
-                <label>
-                  When
-                  <select
-                    name="scheduledWindow"
-                    value={scheduledWindow}
-                    onChange={(event) => setScheduledWindow(event.target.value)}
-                  >
-                    {DINER_SCHEDULE_WINDOWS.map((window) => (
-                      <option key={window} value={window}>
-                        {window}
-                        {SCHEDULED_WINDOW_EXTRA_USD === 0
-                          ? " · no extra charge"
-                          : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {deliveryPlatform && isDelivery ? (
-                <label>
-                  At the door
-                  <select
-                    name="dropoffInstruction"
-                    value={dropoffInstruction}
-                    onChange={(event) =>
-                      setDropoffInstruction(
-                        event.target.value === "leave_at_door"
-                          ? "leave_at_door"
-                          : "hand_to_customer",
-                      )
-                    }
-                  >
-                    <option value="hand_to_customer">Hand it to me</option>
-                    <option value="leave_at_door">Leave at the door</option>
-                  </select>
-                </label>
-              ) : null}
-              {deliveryPlatform && isDelivery ? (
-                <label>
-                  Tip for the driver
-                  <input
-                    name="tipUsd"
-                    type="number"
-                    min={0}
-                    step={0.5}
-                    value={tipUsd}
-                    onChange={(event) =>
-                      setTipUsd(Math.max(0, Number(event.target.value) || 0))
-                    }
-                  />
-                </label>
-              ) : null}
-              <button
-                type="submit"
-                className="cta"
-                disabled={pending || (deliveryPlatform && isDelivery && compliance?.ok !== true)}
-              >
+              <button type="submit" className="cta" disabled={pending}>
                 {pending
-                  ? deliveryPlatform
-                    ? "Sending to Hometown…"
-                    : restaurantOrdering
+                  ? restaurantOrdering
                     ? "Sending ticket…"
                     : lotHold
                       ? "Saving hold…"
                       : "Placing order…"
-                  : deliveryPlatform
-                    ? "Place order"
-                    : restaurantOrdering
-                    ? "Place order"
-                    : lotHold
-                      ? "Hold this unit"
-                      : "Place order"}
+                  : lotHold
+                    ? "Hold this unit"
+                    : "Place order"}
               </button>
             </form>
           </>
@@ -700,13 +322,6 @@ export function SeedShopBoard({
         ) : null}
         {done ? <p className="seed-shop-support">{done}</p> : null}
       </section>
-      {deliveryPlatform ? (
-        <HometownDinerOrderDesk
-          projectId={projectId}
-          tracks={dinerTracks}
-          onReorder={reorderBag}
-        />
-      ) : null}
     </>
   );
 }

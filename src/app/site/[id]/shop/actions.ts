@@ -58,24 +58,52 @@ export async function placeSeedShopOrderAction(
   }
 
   let items: SeedShopCopy["orders"][number]["items"] = [];
+  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
+  const hometownOrder = briefIsDeliveryPlatform(project.name, project.brief);
+  let menuOps: Awaited<
+    ReturnType<typeof import("@/lib/seed-delivery-io").ensureDeliveryOpsInSeed>
+  > = null;
+  if (hometownOrder && cartRaw.includes(":")) {
+    const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
+    menuOps = await ensureDeliveryOpsInSeed(project);
+  }
   try {
     const parsed = JSON.parse(cartRaw) as Array<{
       productId: string;
       qty: number;
     }>;
+    const { sellableRestaurantMenu } = await import("@/lib/seed-delivery");
     items = parsed
       .map((line) => {
-        const product = shop.products.find((item) => item.id === line.productId);
-        if (!product || line.qty < 1) return null;
-        const qty = Math.min(
-          product.stockQty,
-          Math.min(20, Math.floor(line.qty)),
-        );
+        const qty = Math.min(20, Math.floor(line.qty));
         if (qty < 1) return null;
+        const product = shop.products.find((item) => item.id === line.productId);
+        if (product) {
+          const capped = Math.min(product.stockQty, qty);
+          if (capped < 1) return null;
+          return {
+            productId: product.id,
+            title: product.title,
+            priceUsd: product.priceUsd,
+            qty: capped,
+          };
+        }
+        if (!menuOps) return null;
+        const splitAt = line.productId.indexOf(":");
+        if (splitAt < 1) return null;
+        const restaurantId = line.productId.slice(0, splitAt);
+        const itemId = line.productId.slice(splitAt + 1);
+        const restaurant = menuOps.restaurants.find((row) => row.id === restaurantId);
+        const plate = restaurant
+          ? sellableRestaurantMenu(restaurant).find((row) => row.id === itemId)
+          : undefined;
+        if (!restaurant || !plate) return null;
         return {
-          productId: product.id,
-          title: product.title,
-          priceUsd: product.priceUsd,
+          productId: line.productId,
+          title: plate.title.includes(restaurant.name)
+            ? plate.title
+            : `${restaurant.name} · ${plate.title}`,
+          priceUsd: plate.priceUsd,
           qty,
         };
       })
@@ -119,7 +147,6 @@ export async function placeSeedShopOrderAction(
   const taxUsd = taxApplies
     ? Math.round(subtotalUsd * (shop.salesTax.ratePct / 100) * 100) / 100
     : 0;
-  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
   const hometownDelivery =
     briefIsDeliveryPlatform(project.name, project.brief) &&
     /delivery/i.test(`${mode.id} ${mode.label}`);
