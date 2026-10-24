@@ -9,6 +9,7 @@ import {
   getMasterSession,
   isMasterEmail,
 } from "@/lib/master-auth";
+import { durableStoreWarning } from "@/lib/kv-store";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import {
   briefAsksForEcommerce,
@@ -83,6 +84,12 @@ export default async function SeedBusinessAdminPage({
     <>
       <style dangerouslySetInnerHTML={{ __html: admin.css }} />
       <main className="seed-admin">
+        {durableStoreWarning() ? (
+          <p className="seed-admin-support" role="status">
+            <strong>Durable storage not connected. </strong>
+            {durableStoreWarning()}
+          </p>
+        ) : null}
         <header className="seed-admin-top">
           <div>
             <p className="seed-admin-kicker">{admin.title}</p>

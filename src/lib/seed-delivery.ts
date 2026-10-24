@@ -579,6 +579,15 @@ export type DeliveryRestaurant = {
   scoutId: string;
   /** Kitchen owner — may scout other restaurants after one delivery; never keeps own 5%. */
   ownerDriverId?: string | null;
+  /**
+   * Hometown merchant login that owns this kitchen. Seeded demo kitchens
+   * leave this empty. A new signup gets its own row and never sees the others.
+   */
+  ownerEmail?: string | null;
+  /** Street address the kitchen typed on the welcome page. */
+  address?: string;
+  /** False until this account leaves the new-kitchen welcome. */
+  onboardingComplete?: boolean;
   /** Restaurant Stripe Connect — food net lands here. */
   connectAccountId?: string;
   active: boolean;
@@ -1199,6 +1208,43 @@ export function defaultRestaurantWebsiteUrl(name: string): string {
     .replace(/[^a-z0-9]+/g, "")
     .slice(0, 24) || "kitchen";
   return `https://${slug}.example.com/menu`;
+}
+
+/** Lines like "George Webb Burger    8.50" or "Chili $4.25" from a PDF's text. */
+export function parsePricedMenuText(text: string): ParsedMenuJson {
+  const items: ParsedMenuItem[] = [];
+  let category = "Menu";
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.replace(/\s+/g, " ").trim();
+    if (!line) continue;
+    const priced =
+      line.match(/^(.+?)\s+\$\s*(\d{1,4}(?:\.\d{2})?)\s*$/) ||
+      line.match(/^(.+?)\s{2,}(\d{1,4}(?:\.\d{2})?)\s*$/) ||
+      line.match(/^(.+?)\s+(\d{1,4}\.\d{2})\s*$/);
+    if (priced) {
+      const name = priced[1].replace(/[.\s]+$/g, "").trim();
+      const price = Number(priced[2]);
+      if (
+        name.length >= 2 &&
+        name.length <= 80 &&
+        Number.isFinite(price) &&
+        price >= 0 &&
+        price <= 500
+      ) {
+        items.push({ category, item_name: name, price });
+      }
+      continue;
+    }
+    if (
+      line.length <= 40 &&
+      !/\d/.test(line) &&
+      /[A-Za-z]/.test(line) &&
+      !/^page\b/i.test(line)
+    ) {
+      category = line.replace(/:$/, "").trim() || category;
+    }
+  }
+  return { items };
 }
 
 /** AI crawl of the restaurant website — draft prices the merchant must confirm. */
@@ -1931,39 +1977,53 @@ export function setMenuItemEightySixed(
 export function normalizeDeliveryRestaurant(
   row: DeliveryRestaurant,
 ): DeliveryRestaurant {
+  const ownerEmail = row.ownerEmail?.trim().toLowerCase() || null;
+  const ownerProvisioned = Boolean(ownerEmail);
   const websiteUrl =
-    row.websiteUrl?.trim() || defaultRestaurantWebsiteUrl(row.name);
-  const menu =
-    row.menu && Array.isArray(row.menu.items) && row.menu.items.length > 0
-      ? {
-          ...row.menu,
-          items: row.menu.items.map((item) => ({
-            ...item,
-            eightySixed: Boolean(item.eightySixed),
-            eightySixSource:
-              item.eightySixSource === "merchant" ||
-              item.eightySixSource === "website"
-                ? item.eightySixSource
-                : undefined,
-            photoSource:
-              item.photoSource === "merchant" || item.photoSource === "website"
-                ? item.photoSource
-                : undefined,
-            websitePriceMissing: item.websitePriceMissing ? true : undefined,
-            modifiers: Array.isArray(item.modifiers)
-              ? item.modifiers
+    row.websiteUrl?.trim() ||
+    (ownerProvisioned ? "" : defaultRestaurantWebsiteUrl(row.name || "Kitchen"));
+  const explicitMenu =
+    row.menu &&
+    Array.isArray(row.menu.items) &&
+    (row.menu.items.length > 0 || ownerProvisioned);
+  const menu = explicitMenu
+    ? {
+        ...row.menu,
+        sourceUrl: row.menu?.sourceUrl?.trim() || websiteUrl,
+        crawledAt: row.menu?.crawledAt || new Date().toISOString(),
+        items: (row.menu?.items ?? []).map((item) => ({
+          ...item,
+          eightySixed: Boolean(item.eightySixed),
+          eightySixSource:
+            item.eightySixSource === "merchant" ||
+            item.eightySixSource === "website"
+              ? item.eightySixSource
               : undefined,
-          })),
-          uploadedFiles: Array.isArray(row.menu.uploadedFiles)
-            ? row.menu.uploadedFiles.filter(
-                (name): name is string =>
-                  typeof name === "string" && Boolean(name.trim()),
-              )
+          photoSource:
+            item.photoSource === "merchant" || item.photoSource === "website"
+              ? item.photoSource
+              : undefined,
+          websitePriceMissing: item.websitePriceMissing ? true : undefined,
+          modifiers: Array.isArray(item.modifiers) ? item.modifiers : undefined,
+        })),
+        uploadedFiles: Array.isArray(row.menu?.uploadedFiles)
+          ? row.menu.uploadedFiles.filter(
+              (name): name is string =>
+                typeof name === "string" && Boolean(name.trim()),
+            )
+          : undefined,
+        parseNote:
+          typeof row.menu?.parseNote === "string" && row.menu.parseNote.trim()
+            ? row.menu.parseNote.trim()
             : undefined,
-          parseNote:
-            typeof row.menu.parseNote === "string" && row.menu.parseNote.trim()
-              ? row.menu.parseNote.trim()
-              : undefined,
+        approvedAt: row.menu?.approvedAt ?? null,
+      }
+    : ownerProvisioned
+      ? {
+          sourceUrl: "",
+          crawledAt: new Date().toISOString(),
+          items: [],
+          approvedAt: null,
         }
       : crawlRestaurantMenuDraft({
           restaurantName: row.name,
@@ -1973,8 +2033,13 @@ export function normalizeDeliveryRestaurant(
     ...row,
     paused: Boolean(row.paused),
     ownerDriverId: row.ownerDriverId ?? null,
-    connectAccountId:
-      row.connectAccountId?.trim() || defaultRestaurantConnectAccountId(row.id),
+    ownerEmail,
+    address: typeof row.address === "string" ? row.address.trim() : "",
+    onboardingComplete: Boolean(row.onboardingComplete),
+    connectAccountId: ownerProvisioned
+      ? row.connectAccountId?.trim() || undefined
+      : row.connectAccountId?.trim() ||
+        defaultRestaurantConnectAccountId(row.id),
     websiteUrl,
     websiteConnected: Boolean(row.websiteConnected),
     lastCrawledAt:

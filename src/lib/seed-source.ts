@@ -59,7 +59,6 @@ import {
 } from "./seed-writer";
 import { seedEmbedSnippet } from "./domain";
 import {
-  isDurableStoreConfigured,
   readJsonStore,
   writeJsonStore,
   type JsonStoreWriteResult,
@@ -104,9 +103,10 @@ function now() {
 }
 
 /**
- * Another server may have written a newer bundle. Keep whichever copy of
- * each Seed was updated last so a warm process does not serve a stale menu
- * forever after a crawl landed in Redis.
+ * Another server, or another copy of this module, may have written a newer
+ * bundle. Keep whichever copy of each Seed was updated last so a warm
+ * process does not serve a stale kitchen after a save landed on disk or Redis.
+ * A failed read comes back empty and leaves the copy already in memory.
  */
 export function mergeSourceStores(
   local: SourceStore,
@@ -124,13 +124,13 @@ export function mergeSourceStores(
 }
 
 async function ensureSource(): Promise<SourceStore> {
-  if (memory && !isDurableStoreConfigured()) return memory;
   const loaded = await readJsonStore<SourceStore>(STORE_KEY, { bundles: [] });
+  const fresh = { bundles: loaded.bundles ?? [] };
   if (!memory) {
-    memory = { bundles: loaded.bundles ?? [] };
+    memory = fresh;
     return memory;
   }
-  memory = mergeSourceStores(memory, loaded);
+  memory = mergeSourceStores(memory, fresh);
   return memory;
 }
 

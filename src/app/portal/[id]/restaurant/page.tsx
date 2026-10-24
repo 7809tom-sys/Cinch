@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SeedNotOnAccount } from "@/components/seed-not-on-account";
+import { KitchenWelcome } from "@/components/delivery/kitchen-welcome";
 import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { SiteFooter } from "@/components/site-footer";
+import { prepareMerchantDesk } from "@/lib/hometown-kitchen-session";
+import { getHometownRoleSession } from "@/lib/hometown-role";
+import { durableStoreWarning, menuPersistenceWarning } from "@/lib/kv-store";
+import { isMasterEmail } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
-import { menuPersistenceWarning } from "@/lib/kv-store";
 import { getPortalProjectSnapshot } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +40,13 @@ export default async function PortalRestaurantPage({
 
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/portal/${project.id}`);
+  const role = await getHometownRoleSession(project.id);
+  const kitchenAccount =
+    role?.role === "merchant" && !isMasterEmail(role.email)
+      ? await prepareMerchantDesk(project.id, role.email)
+      : null;
+  const crawlWarning = await menuPersistenceWarning();
+  const storageWarning = crawlWarning ?? durableStoreWarning();
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -86,11 +97,41 @@ export default async function PortalRestaurantPage({
           diner markup. Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">
-          <HometownRestaurantPortal
-            projectId={project.id}
-            ops={ops}
-            storeWarning={await menuPersistenceWarning()}
-          />
+          {role?.role === "merchant" &&
+          !isMasterEmail(role.email) &&
+          !kitchenAccount?.ok ? (
+            <p className="text-sm font-semibold text-red-700" role="alert">
+              {kitchenAccount?.error ?? "That kitchen isn't on this account."}
+            </p>
+          ) : kitchenAccount?.ok && kitchenAccount.mode === "welcome" ? (
+            <KitchenWelcome
+              projectId={project.id}
+              email={kitchenAccount.email}
+              restaurant={kitchenAccount.restaurant}
+              storageWarning={storageWarning ?? kitchenAccount.storageWarning}
+              saveError={kitchenAccount.saveError}
+            />
+          ) : (
+            <HometownRestaurantPortal
+              projectId={project.id}
+              ops={
+                kitchenAccount?.ok && kitchenAccount.mode === "desk"
+                  ? kitchenAccount.ops
+                  : ops
+              }
+              canPickKitchen={
+                kitchenAccount?.ok && kitchenAccount.mode === "desk"
+                  ? kitchenAccount.canPickKitchen
+                  : ops.restaurants.length > 1
+              }
+              storageWarning={
+                kitchenAccount?.ok
+                  ? storageWarning ?? kitchenAccount.storageWarning
+                  : storageWarning
+              }
+              storeWarning={durableStoreWarning() ? null : crawlWarning}
+            />
+          )}
         </div>
       </main>
       <SiteFooter />

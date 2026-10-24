@@ -20,20 +20,20 @@ export function geminiMenuVisionModels(preferred?: string): string[] {
 export function kitchenFacingVisionError(raw: string): string {
   const compact = raw.replace(/\s+/g, " ").trim();
   if (/No Gemini or Claude vision key is wired/i.test(compact)) {
-    return "No Gemini or Claude vision key is wired. Wrote the Seed paper-menu fixture so you can still review prices and modifiers.";
+    return "No Gemini or Claude vision key is wired. The menu was not saved. Add plates by hand or paste the restaurant's menu link.";
   }
   if (
     /not found for API version|models\/gemini-1\.5|is not found for API/i.test(
       compact,
     )
   ) {
-    return "Gemini Flash on this key is outdated. Wrote the Seed paper-menu fixture so you can still review prices and modifiers.";
+    return "Gemini Flash on this key is outdated. The menu was not saved. Update the vision key, or add plates by hand.";
   }
   if (/Those files had no photo or PDF bytes/i.test(compact)) {
     return compact;
   }
   if (/returned no plates/i.test(compact)) {
-    return "Vision parse did not find plates on that upload. Wrote the Seed paper-menu fixture so you can still review prices and modifiers.";
+    return "Vision parse did not find plates on that upload. The menu was not saved.";
   }
-  return "Vision parse could not read that upload. Wrote the Seed paper-menu fixture so you can still review prices and modifiers.";
+  return "Vision parse could not read that upload. The menu was not saved.";
 }
