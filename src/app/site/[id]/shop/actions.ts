@@ -9,6 +9,10 @@ import {
   saveSeedShopCopy,
   type SeedShopCopy,
 } from "@/lib/seed-site";
+import {
+  HOMETOWN_HOME_TOWN_ID,
+  ensureHometownHomeTown,
+} from "@/lib/hometown-home-town";
 import { getProject } from "@/lib/store";
 
 function optionalCoord(value: FormDataEntryValue | null): number | undefined {
@@ -31,7 +35,10 @@ export async function placeSeedShopOrderAction(
   projectId: string,
   formData: FormData,
 ) {
-  const project = await getProject(projectId);
+  let project = await getProject(projectId);
+  if (!project && projectId === HOMETOWN_HOME_TOWN_ID) {
+    project = await ensureHometownHomeTown();
+  }
   if (!project) return { ok: false as const, error: "Seed not found." };
 
   const shop = await loadShop(projectId);
@@ -225,7 +232,7 @@ export async function placeSeedShopOrderAction(
 
   if (briefIsDeliveryPlatform(project.name, project.brief)) {
     const { randomUUID } = await import("crypto");
-    const { fulfillmentFromShippingMode, recordDeliveryOrder } = await import(
+    const { dinerOrderTrack, recordDeliveryOrder } = await import(
       "@/lib/seed-delivery"
     );
     const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
@@ -234,9 +241,7 @@ export async function placeSeedShopOrderAction(
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
       const orderId = shop.orders[0]?.id ?? randomUUID();
-      await saveDeliveryOps(
-        projectId,
-        recordDeliveryOrder(ops, {
+      const nextOps = recordDeliveryOrder(ops, {
           ledgerId: randomUUID(),
           ticketId: randomUUID(),
           runId: randomUUID(),
@@ -255,12 +260,33 @@ export async function placeSeedShopOrderAction(
           dropoffInstruction: hometownPickup
             ? undefined
             : dropoffInstruction,
-        }),
+      });
+      const track = dinerOrderTrack(nextOps, orderId);
+      if (!track) {
+        return {
+          ok: false as const,
+          error: "We can't reach that address from this kitchen tonight.",
+        };
+      }
+      await saveDeliveryOps(
+        projectId,
+        nextOps,
         "Wrote Hometown Runner ledger from a customer order",
       );
       revalidatePath(`/site/${projectId}/merchant`);
       revalidatePath(`/site/${projectId}/drive`);
       revalidatePath(`/site/${projectId}/admin`);
+      revalidatePath(`/site/${projectId}/shop`);
+      revalidatePath(`/hometown`);
+      return {
+        ok: true as const,
+        totalUsd,
+        taxUsd,
+        shippingUsd,
+        tipUsd,
+        orderId,
+        track,
+      };
     }
   }
 

@@ -2,22 +2,39 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HOMETOWN_PUBLIC_WELCOME } from "@/lib/seed-delivery";
 import { ensureHometownHomeTown } from "@/lib/hometown-home-town";
+import { seedRestaurantFulfillmentModes } from "@/lib/seed-site-copy";
 import {
   HOMETOWN_ACCOUNT_PATH,
   HOMETOWN_PRIVACY_PATH,
   listHometownMarkets,
 } from "@/lib/hometown-store";
+import {
+  assembleHometownDiner,
+  sampleHometownDinner,
+} from "@/lib/hometown-diner-model";
+import { HometownDiner } from "@/components/delivery/hometown-diner";
+import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
+import { buildSeedShopPreview } from "@/lib/seed-site";
+import { getProject } from "@/lib/store";
 import { openHometownMarketAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const fieldClass =
-  "mt-1 block min-h-11 w-full rounded-md border border-brand/20 bg-white px-3 text-base text-brand-deep";
+  "mt-1 block min-h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-base text-[#1a1714]";
+
+const EMPTY_TAX = {
+  enabled: false,
+  ratePct: 0,
+  taxInclusive: false,
+  nexusStates: [] as string[],
+  notes: "",
+};
 
 export default async function HometownAppPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; town?: string; kitchen?: string }>;
 }) {
   const query = await searchParams;
   let markets = await listHometownMarkets();
@@ -28,73 +45,87 @@ export default async function HometownAppPage({
   if (markets.length === 1 && query.error !== "market") {
     redirect(`/site/${markets[0].id}/shop`);
   }
+  const selected =
+    markets.find((market) => market.id === query.town) ?? markets[0] ?? null;
+
+  let model = sampleHometownDinner({
+    welcome: HOMETOWN_PUBLIC_WELCOME,
+    accountHref: HOMETOWN_ACCOUNT_PATH,
+    privacyHref: HOMETOWN_PRIVACY_PATH,
+  });
+
+  if (selected) {
+    const project = await getProject(selected.id);
+    if (project) {
+      const [ops, shop] = await Promise.all([
+        ensureDeliveryOpsInSeed(project),
+        buildSeedShopPreview(project),
+      ]);
+      if (ops) {
+        const townName = project.name.replace(/\s+seed$/i, "").trim() || project.name;
+        model = assembleHometownDiner({
+          preview: false,
+          welcome: HOMETOWN_PUBLIC_WELCOME,
+          townName,
+          projectId: project.id,
+          ops,
+          storefront: shop?.products ?? [],
+          shippingModes: shop?.shippingModes?.length
+            ? shop.shippingModes
+            : seedRestaurantFulfillmentModes(),
+          salesTax: shop?.salesTax ?? EMPTY_TAX,
+          towns: markets.map((market) => ({
+            id: market.id,
+            name: market.name,
+            href: `/hometown?town=${encodeURIComponent(market.id)}`,
+            selected: market.id === project.id,
+          })),
+          signInHref: `/site/${project.id}/enter`,
+          merchantHref: `/site/${project.id}/enter?role=merchant`,
+          driverHref: `/site/${project.id}/enter?role=driver`,
+          accountHref: `${HOMETOWN_ACCOUNT_PATH}?market=${project.id}`,
+          privacyHref: HOMETOWN_PRIVACY_PATH,
+          websiteHref: `/site/${project.id}`,
+        });
+      }
+    }
+  }
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">
-      <div className="mx-auto w-full max-w-3xl">
-        <header>
-          <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
-            Hometown Runner
-          </p>
-          <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl font-extrabold text-brand-deep">
-            Dinner from this town.
-          </h1>
-          <p className="mt-3 max-w-xl text-base leading-relaxed text-muted">
-            {HOMETOWN_PUBLIC_WELCOME} Pick a town and order.
-          </p>
-        </header>
-
-        {query.error === "market" ? (
-          <p
-            className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
-            role="alert"
-          >
-            That town isn&apos;t open. Pick one below.
-          </p>
-        ) : null}
-
-        {markets.length > 0 ? (
-          <section className="mt-8">
-            <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-              Towns
-            </h2>
-            <ul className="mt-3 divide-y divide-brand/15 rounded-xl border border-brand/15 bg-foam">
-              {markets.map((market) => (
-                <li
-                  key={market.id}
-                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                >
-                  <p className="font-semibold text-brand-deep">{market.name}</p>
-                  <Link
-                    href={`/site/${market.id}/shop`}
-                    className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam"
-                  >
-                    Order
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : (
-          <p className="mt-8 rounded-xl border border-brand/15 bg-foam px-4 py-4 text-sm text-muted">
-            Dinner isn&apos;t listed for a town here yet.
-          </p>
-        )}
-
-        <section className="mt-8 rounded-xl border border-brand/15 bg-foam p-5">
-          <h2 className="font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
+    <div className="bg-[#f6f3ee] text-[#1a1714]">
+      {query.error === "market" ? (
+        <p
+          className="mx-auto w-full max-w-6xl px-4 pt-4 text-sm font-semibold text-[#8a3b24]"
+          role="alert"
+        >
+          That town isn&apos;t open. Pick one below.
+        </p>
+      ) : null}
+      <HometownDiner
+        key={model.projectId ?? "sample"}
+        model={model}
+        initialKitchenId={query.kitchen ?? null}
+      />
+      <section
+        id="open-market"
+        className="mx-auto w-full max-w-6xl px-4 pb-16"
+      >
+        <div className="scroll-mt-24 rounded-3xl bg-white p-5 shadow-[0_10px_30px_rgba(26,23,20,0.06)] sm:p-6">
+          <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold text-[#0b2e2a]">
             Open a market
           </h2>
-          <p className="mt-2 text-sm text-muted">Choose your town.</p>
-          <form action={openHometownMarketAction} className="mt-4 space-y-4">
-            <label className="block text-sm font-semibold text-brand-deep">
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#5c564f]">
+            Choose your town, then order dinner, run a kitchen, or drive.
+          </p>
+          <form action={openHometownMarketAction} className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm font-semibold text-[#1a1714]">
               Town
               {markets.length > 0 ? (
                 <select
                   name="marketCode"
                   required
                   className={fieldClass}
-                  defaultValue={markets[0]?.id}
+                  defaultValue={selected?.id ?? markets[0]?.id}
                 >
                   {markets.map((market) => (
                     <option key={market.id} value={market.id}>
@@ -112,7 +143,7 @@ export default async function HometownAppPage({
                 />
               )}
             </label>
-            <label className="block text-sm font-semibold text-brand-deep">
+            <label className="block text-sm font-semibold text-[#1a1714]">
               I&apos;m here to
               <select name="destination" className={fieldClass} defaultValue="shop">
                 <option value="shop">Order dinner</option>
@@ -123,14 +154,13 @@ export default async function HometownAppPage({
             </label>
             <button
               type="submit"
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-accent px-4 text-sm font-bold text-brand-deep sm:w-auto"
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#e8a54b] px-5 text-sm font-bold text-[#1a1714] sm:col-span-2 sm:w-fit"
             >
               Continue
             </button>
           </form>
-        </section>
-
-        <footer className="mt-10 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-brand-deep">
+        </div>
+        <footer className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-[#0b2e2a]">
           <Link href={HOMETOWN_PRIVACY_PATH} className="underline">
             Privacy
           </Link>
@@ -141,7 +171,7 @@ export default async function HometownAppPage({
             Terms
           </Link>
         </footer>
-      </div>
-    </main>
+      </section>
+    </div>
   );
 }

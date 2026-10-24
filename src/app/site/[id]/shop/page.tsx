@@ -9,19 +9,21 @@ import {
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import {
-  dinerOrderTrack,
   findSellableMenuItems,
   HOMETOWN_PUBLIC_WELCOME,
-  restaurantGeo,
-  isFavoriteKitchen,
 } from "@/lib/seed-delivery";
 import {
   ensureHometownHomeTown,
   HOMETOWN_HOME_TOWN_ID,
 } from "@/lib/hometown-home-town";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
-import { customerFacingHeadline, customerFacingHeroImage } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
+import { HometownDiner } from "@/components/delivery/hometown-diner";
+import {
+  HOMETOWN_ACCOUNT_PATH,
+  HOMETOWN_PRIVACY_PATH,
+} from "@/lib/hometown-store";
+import { assembleHometownDiner } from "@/lib/hometown-diner-model";
 import { SeedShopBoard } from "./shop-board";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +34,13 @@ export const dynamic = "force-dynamic";
  */
 export default async function SeedShopPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ kitchen?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const project =
     id === HOMETOWN_HOME_TOWN_ID
       ? await ensureHometownHomeTown()
@@ -58,33 +63,16 @@ export default async function SeedShopPage({
   const deliveryPlatform =
     seedIndustryKey(project.name, project.brief) === "delivery";
   let products = shop.products;
-  let dinerTracks: NonNullable<ReturnType<typeof dinerOrderTrack>>[] = [];
-  let kitchens: Array<{
-    id: string;
-    name: string;
-    neighborhood: string;
-    favorite: boolean;
-    hours?: string;
-    imageUrl?: string;
-  }> = [];
   if (deliveryPlatform) {
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
       const found = findSellableMenuItems(ops);
-      const hoursFor = new Map(
-        ops.restaurants.map((row) => [row.id, row.hours] as const),
-      );
       products = found.map((item) => ({
         id: `${item.restaurantId}:${item.itemId}`,
         title: item.title,
-        detail: [
-          item.restaurantName,
-          item.neighborhood,
-          hoursFor.get(item.restaurantId),
-          item.description,
-        ]
-          .filter(Boolean)
-          .join(" · "),
+        detail: `${item.restaurantName} · ${item.neighborhood}${
+          item.aliases.length ? ` · ${item.aliases.join(", ")}` : ""
+        }`,
         priceUsd: item.priceUsd,
         sku: item.itemId,
         stockQty: 20,
@@ -92,60 +80,34 @@ export default async function SeedShopPage({
         shipClass: "parcel" as const,
         imageUrl: item.photoUrl ?? "",
       }));
-      dinerTracks = [
-        ...new Set(ops.tickets.map((row) => row.orderId)),
-      ]
-        .map((orderId) => dinerOrderTrack(ops, orderId))
-        .filter((row): row is NonNullable<typeof row> => Boolean(row));
-      const selling = new Set(found.map((item) => item.restaurantId));
-      kitchens = ops.restaurants
-        .filter((row) => row.active && selling.has(row.id))
-        .map((row) => ({
-          id: row.id,
-          name: row.name,
-          neighborhood: row.neighborhood,
-          hours: row.hours,
-          imageUrl: found.find((item) => item.restaurantId === row.id)?.photoUrl,
-          favorite: isFavoriteKitchen(ops, row.id),
-          lat: restaurantGeo(row).lat,
-          lng: restaurantGeo(row).lng,
-        }));
+      const townName = project.name.replace(/\s+seed$/i, "").trim() || project.name;
+      const model = assembleHometownDiner({
+        preview: false,
+        welcome: HOMETOWN_PUBLIC_WELCOME,
+        townName,
+        projectId: id,
+        ops,
+        storefront: shop.products,
+        shippingModes: shop.shippingModes,
+        salesTax: shop.salesTax,
+        towns: [],
+        signInHref: `/site/${id}/enter`,
+        merchantHref: `/site/${id}/enter?role=merchant`,
+        driverHref: `/site/${id}/enter?role=driver`,
+        accountHref: `${HOMETOWN_ACCOUNT_PATH}?market=${id}`,
+        privacyHref: HOMETOWN_PRIVACY_PATH,
+        websiteHref: `/site/${id}`,
+      });
+      return (
+        <HometownDiner model={model} initialKitchenId={query.kitchen ?? null} />
+      );
     }
   }
-
-  const heroImage = deliveryPlatform
-    ? customerFacingHeroImage(project.brief, project.name)
-    : "";
-  const heroHeadline = deliveryPlatform
-    ? customerFacingHeadline(project.name, project.brief)
-    : "";
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: shop.css }} />
       <main className={lotHold ? "seed-shop seed-shop-lot" : "seed-shop"}>
-        {deliveryPlatform ? (
-          <section className="seed-hero" id="top" style={{ minHeight: "28rem" }}>
-            <div
-              className="seed-hero-media"
-              style={{ backgroundImage: `url("${heroImage}")` }}
-              aria-hidden
-            />
-            <div className="seed-hero-scrim" aria-hidden />
-            <div className="seed-hero-copy">
-              <p className="brand">{shop.brand}</p>
-              <h1>{heroHeadline}</h1>
-              <p className="support">{HOMETOWN_PUBLIC_WELCOME}</p>
-              <a className="cta" href="#kitchens">
-                See the kitchens
-              </a>
-              <p className="seed-hero-apps">
-                <a href={`/site/${id}/enter?role=merchant`}>Run a kitchen</a>
-                <a href={`/site/${id}/enter?role=driver`}>Drive</a>
-              </p>
-            </div>
-          </section>
-        ) : null}
         <header className="seed-shop-top">
           <div>
             <p className="seed-shop-kicker">{shop.title}</p>
@@ -187,9 +149,6 @@ export default async function SeedShopPage({
           salesTax={shop.salesTax}
           restaurantOrdering={restaurantOrdering}
           lotHold={lotHold}
-          deliveryPlatform={deliveryPlatform}
-          dinerTracks={dinerTracks}
-          kitchens={kitchens}
         />
       </main>
     </>
