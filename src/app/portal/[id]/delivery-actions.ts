@@ -5,6 +5,12 @@ import {
   connectRestaurantWebsite,
   syncRestaurantMenuFromWebsite,
 } from "@/lib/hometown-menu-crawler";
+import { publishOwnerKitchen } from "@/lib/hometown-kitchen-access";
+import {
+  requireDriverActor,
+  requireKitchenWrite,
+  requireMenuIngest,
+} from "@/lib/hometown-kitchen-session";
 import {
   acceptDriverRun,
   advanceDriverArrived,
@@ -16,6 +22,7 @@ import {
   inferredMenuUploadKind,
   ingestMenuPhotos,
   menuUploadFileNames,
+  parsePricedMenuText,
   rateDinerOrder,
   reviewRestaurantMenuItem,
   setMenuItemEightySixed,
@@ -25,6 +32,7 @@ import {
   setDriverOnline,
   setMerchantTicketStatus,
   setRestaurantPaused,
+  type DeliveryOps,
   type DropoffInstruction,
   type GeoPoint,
   type MenuModifierGroup,
@@ -33,10 +41,12 @@ import {
 } from "@/lib/seed-delivery";
 import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
+import { extractPdfDocumentText } from "@/lib/pdf-text";
+import { isDurableStoreConfigured } from "@/lib/kv-store";
 import {
   commitWebsiteMenuSync,
   ensureDeliveryOpsInSeed,
-  saveDeliveryOps,
+  saveDeliveryOps as persistDeliveryOps,
 } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 
@@ -60,6 +70,46 @@ async function loadOps(projectId: string) {
   return { ok: true as const, ops };
 }
 
+async function saveDeliveryOps(
+  projectId: string,
+  ops: DeliveryOps,
+  message: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const result = await persistDeliveryOps(projectId, ops, message);
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: result.error?.trim() || "Could not save this kitchen.",
+      };
+    }
+    if (result.error && !result.durable && isDurableStoreConfigured()) {
+      return { ok: false, error: result.error };
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Could not save this kitchen.",
+    };
+  }
+}
+
+async function pricedMenuFromPdf(input: MenuUploadInput) {
+  for (const file of input.attachments ?? []) {
+    const pdf = /pdf/i.test(file.type ?? "") || /\.pdf$/i.test(file.name);
+    if (!pdf || !file.dataBase64?.trim()) continue;
+    const text = await extractPdfDocumentText(
+      Buffer.from(file.dataBase64.replace(/\s/g, ""), "base64"),
+    );
+    if (!text) continue;
+    const parsed = parsePricedMenuText(text);
+    if (parsed.items.length > 0) return parsed;
+  }
+  return null;
+}
+
 export async function uploadRestaurantMenuItemAction(
   projectId: string,
   restaurantId: string,
@@ -73,11 +123,11 @@ export async function uploadRestaurantMenuItemAction(
     modifiers?: MenuModifierGroup[];
   },
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
   const title = input.title.trim();
   if (!title) return { ok: false as const, error: "Name the plate." };
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     uploadRestaurantMenuItem(loaded.ops, restaurantId, {
       title,
@@ -93,6 +143,7 @@ export async function uploadRestaurantMenuItemAction(
     }),
     "Merchant uploaded a menu item",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -105,7 +156,7 @@ export async function confirmRestaurantMenuPriceAction(
   priceUsd: number,
   review?: { modifierText?: string },
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
   const reviewed =
     review?.modifierText !== undefined
@@ -114,11 +165,12 @@ export async function confirmRestaurantMenuPriceAction(
           modifierText: review.modifierText,
         })
       : loaded.ops;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     confirmRestaurantMenuPrice(reviewed, restaurantId, itemId, priceUsd),
     "Merchant confirmed a crawled menu price",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -129,7 +181,7 @@ export async function ingestMenuPhotosAction(
   restaurantId: string,
   input: MenuUploadInput = {},
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireMenuIngest(projectId, restaurantId);
   if (!loaded.ok) return loaded;
   const checked = validatePaperMenuUpload(input);
   if (!checked.ok) return checked;
@@ -140,6 +192,7 @@ export async function ingestMenuPhotosAction(
     fileNames,
     kind: inferredMenuUploadKind(input),
   };
+  const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
   const canVision =
     !nextInput.useFixture &&
     !nextInput.parsed &&
@@ -148,39 +201,59 @@ export async function ingestMenuPhotosAction(
 
   if (canVision) {
     const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
-    if (vision.ok) {
+    if (vision.ok && vision.parsed.items.length > 0) {
       nextInput = {
         ...nextInput,
         parsed: vision.parsed,
+        useFixture: false,
         parseNote: `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Review prices and modifiers, then Approve.`,
       };
     } else {
+      const fromPdf = await pricedMenuFromPdf(nextInput);
+      if (!fromPdf) {
+        return {
+          ok: false as const,
+          error: kitchenFacingVisionError(
+            vision.ok ? "Vision returned no plates." : vision.error,
+          ),
+        };
+      }
       nextInput = {
         ...nextInput,
-        useFixture: true,
-        parseNote: kitchenFacingVisionError(vision.error),
+        parsed: fromPdf,
+        useFixture: false,
+        parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
       };
     }
-  } else if (
-    nextInput.useFixture ||
-    (!nextInput.parsed && !nextInput.rawJson?.trim())
-  ) {
+  } else if (!nextInput.parsed && !nextInput.rawJson?.trim() && !nextInput.useFixture) {
+    const fromPdf = await pricedMenuFromPdf(nextInput);
+    if (!fromPdf) {
+      return {
+        ok: false as const,
+        error: kitchenFacingVisionError(
+          "No Gemini or Claude vision key is wired.",
+        ),
+      };
+    }
     nextInput = {
       ...nextInput,
-      useFixture: true,
-      parseNote:
-        nextInput.parseNote?.trim() ||
-        (fileNames.length
-          ? `Saved ${fileNames.join(", ")}. Seed parse writes a paper-menu fixture until a vision API key is wired. Review prices and modifiers, then Approve.`
-          : "Seed paper-menu fixture ready for review."),
+      parsed: fromPdf,
+      useFixture: false,
+      parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
+    };
+  } else if (restaurant?.ownerEmail?.trim() && nextInput.useFixture && !nextInput.parsed) {
+    return {
+      ok: false as const,
+      error: "That upload was not read. Nothing was added to your menu.",
     };
   }
 
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     ingestMenuPhotos(loaded.ops, restaurantId, nextInput),
     "Scout or merchant ingested a paper-menu draft",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -198,13 +271,14 @@ export async function reviewRestaurantMenuItemAction(
     modifiers?: MenuModifierGroup[];
   },
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     reviewRestaurantMenuItem(loaded.ops, restaurantId, itemId, patch),
     "Merchant reviewed a draft price or modifiers",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -214,13 +288,29 @@ export async function approveMenuDraftAction(
   projectId: string,
   restaurantId: string,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
-  await saveDeliveryOps(
+  const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
+  if (restaurant?.ownerEmail?.trim()) {
+    if (!restaurant.name.trim() || !(restaurant.address ?? "").trim()) {
+      return {
+        ok: false as const,
+        error: "Add the restaurant name and address before approving the menu.",
+      };
+    }
+    if ((restaurant.menu?.items ?? []).length === 0) {
+      return {
+        ok: false as const,
+        error: "Add at least one plate before approving the menu.",
+      };
+    }
+  }
+  const saved = await saveDeliveryOps(
     projectId,
-    approveMenuDraft(loaded.ops, restaurantId),
+    publishOwnerKitchen(approveMenuDraft(loaded.ops, restaurantId), restaurantId),
     "Scout or owner approved the menu draft",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -231,7 +321,7 @@ export async function connectRestaurantWebsiteAction(
   restaurantId: string,
   websiteUrl: string,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
   const connected = connectRestaurantWebsite(
     loaded.ops,
@@ -268,7 +358,7 @@ export async function syncRestaurantMenuFromWebsiteAction(
   projectId: string,
   restaurantId: string,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
   const synced = await syncRestaurantMenuFromWebsite({
     ops: loaded.ops,
@@ -304,15 +394,16 @@ export async function setMenuItemEightySixedAction(
   itemId: string,
   eightySixed: boolean,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     setMenuItemEightySixed(loaded.ops, restaurantId, itemId, eightySixed),
     eightySixed
       ? "Merchant 86'd a plate during service"
       : "Merchant restored a plate",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -323,15 +414,20 @@ export async function assignRestaurantScoutAction(
   restaurantId: string,
   driverId: string,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
+  const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
+  if (restaurant?.ownerEmail?.trim() && loaded.actor?.scope === "driver") {
+    return { ok: false as const, error: "That kitchen isn't on this account." };
+  }
   const result = assignRestaurantScout(loaded.ops, restaurantId, driverId);
   if (!result.ok) return result;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     result.ops,
     "Scout signed an unsigned kitchen",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -341,13 +437,14 @@ export async function setRestaurantPausedAction(
   restaurantId: string,
   paused: boolean,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     setRestaurantPaused(loaded.ops, restaurantId, paused),
     paused ? "Restaurant paused incoming orders" : "Restaurant is open",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -361,11 +458,14 @@ export async function setMerchantTicketStatusAction(
   if (!loaded.ok) return loaded;
   const ticket = loaded.ops.tickets.find((row) => row.id === ticketId);
   if (!ticket) return { ok: false as const, error: "Order not found." };
-  await saveDeliveryOps(
+  const allowed = await requireKitchenWrite(projectId, ticket.restaurantId);
+  if (!allowed.ok) return allowed;
+  const saved = await saveDeliveryOps(
     projectId,
-    setMerchantTicketStatus(loaded.ops, ticketId, status),
+    setMerchantTicketStatus(allowed.ops, ticketId, status),
     `Restaurant marked order ${status}`,
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -375,13 +475,14 @@ export async function setDriverOnlineAction(
   driverId: string,
   online: boolean,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     setDriverOnline(loaded.ops, driverId, online),
     online ? "Driver went online" : "Driver went offline",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -391,11 +492,12 @@ export async function acceptDriverRunAction(
   runId: string,
   driverId: string,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
   const result = acceptDriverRun(loaded.ops, runId, driverId);
   if (!result.ok) return result;
-  await saveDeliveryOps(projectId, result.ops, "Driver accepted an offer");
+  const saved = await saveDeliveryOps(projectId, result.ops, "Driver accepted an offer");
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -406,15 +508,16 @@ export async function advanceDriverArrivedAction(
   driverId: string,
   location: GeoPoint,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
   const result = advanceDriverArrived(loaded.ops, runId, driverId, location);
   if (!result.ok) return result;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     result.ops,
     "Driver arrived — kitchen stages the bag",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -425,11 +528,12 @@ export async function toggleFavoriteKitchenAction(
 ) {
   const loaded = await loadOps(projectId);
   if (!loaded.ok) return loaded;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     toggleFavoriteKitchen(loaded.ops, restaurantId),
     "Diner toggled a favorite kitchen",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -444,7 +548,8 @@ export async function flagDinerIssueAction(
   if (!loaded.ok) return loaded;
   const result = flagDinerIssue(loaded.ops, orderId, input);
   if (!result.ok) return result;
-  await saveDeliveryOps(projectId, result.ops, "Diner flagged a missing item");
+  const saved = await saveDeliveryOps(projectId, result.ops, "Diner flagged a missing item");
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -459,7 +564,8 @@ export async function rateDinerOrderAction(
   if (!loaded.ok) return loaded;
   const result = rateDinerOrder(loaded.ops, orderId, input);
   if (!result.ok) return result;
-  await saveDeliveryOps(projectId, result.ops, "Diner rated a bag");
+  const saved = await saveDeliveryOps(projectId, result.ops, "Diner rated a bag");
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
   return { ok: true as const };
@@ -476,7 +582,7 @@ export async function advanceDriverRunAction(
     photoNote?: string | null;
   } | null,
 ) {
-  const loaded = await loadOps(projectId);
+  const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
   const result = advanceDriverRun(
     loaded.ops,
@@ -487,11 +593,12 @@ export async function advanceDriverRunAction(
     dropoff,
   );
   if (!result.ok) return result;
-  await saveDeliveryOps(
+  const saved = await saveDeliveryOps(
     projectId,
     result.ops,
     next === "picked_up" ? "Driver confirmed pickup" : "Driver completed drop-off",
   );
+  if (!saved.ok) return saved;
   revalidateDelivery(projectId);
   return { ok: true as const };
 }

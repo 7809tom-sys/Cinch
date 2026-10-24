@@ -169,6 +169,20 @@ export function ephemeralMenuStoreWarning(
 }
 
 /**
+ * Shown on the kitchen desk and admin pages when Redis / Vercel KV is absent.
+ * On Vercel this matches the ephemeral menu warning. Locally it names the file
+ * fallback so a missing production store is obvious before deploy.
+ */
+export function durableStoreWarning(): string | null {
+  if (isDurableStoreConfigured()) return null;
+  const ephemeral = ephemeralMenuStoreWarning();
+  if (ephemeral) {
+    return "Durable storage is not connected. Hometown kitchens and menu uploads are on a temporary disk and disappear the next time this server restarts. Connect Upstash Redis (UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN) or Vercel KV (KV_REST_API_URL and KV_REST_API_TOKEN) on this Vercel project, then redeploy.";
+  }
+  return "Durable storage is not connected. This machine is using a local file. On Vercel, connect Upstash Redis or Vercel KV or new kitchens and menu uploads will not survive a restart.";
+}
+
+/**
  * Kitchen-facing reason a menu may vanish. Uses the live process env, the
  * last write, and (when Redis credentials exist) a short round-trip.
  */

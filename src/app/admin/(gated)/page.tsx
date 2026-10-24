@@ -219,8 +219,9 @@ export default async function AdminPage() {
           ) : (
             <div className="mt-6 max-w-2xl rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent-deep">
               <strong>Durable storage not connected.</strong> Accounts, Seeds,
-              access codes, and settings are only saved to a temporary file
-              and will be lost the next time this app is redeployed. Add an
+              access codes, settings, and Hometown Runner kitchens and menu
+              uploads are only saved to a temporary file and will be lost the
+              next time this app is redeployed or the server goes cold. Add an
               Upstash for Redis database from your Vercel project&apos;s{" "}
               <strong>Storage</strong> tab (or upstash.com), then set{" "}
               <code className="rounded bg-black/5 px-1 py-0.5">

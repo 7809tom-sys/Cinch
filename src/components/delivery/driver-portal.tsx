@@ -722,7 +722,8 @@ function ScoutPaperMenuDesk({
       </h3>
       <p className="mt-1 text-sm text-muted">
         Upload 2–3 photos or a PDF. Vision parse runs when a Gemini or Claude
-        key is wired; Seed parse writes a fixture draft if not. Glance at
+        key is wired. If the file can&apos;t be read, the desk shows the error
+        and does not add placeholder plates. Glance at
         the prices and modifiers, then Approve — five-minute sign-off. The
         kitchen 86s plates on the merchant tablet during service.
       </p>

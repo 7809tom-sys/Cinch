@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import type {
   DeliveryDriver,
@@ -33,6 +34,7 @@ import {
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
+import { startKitchenPayoutsAction } from "@/app/site/[id]/merchant/actions";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import {
   formatModifierLines,
@@ -55,17 +57,28 @@ function ticketRestaurantNet(ops: DeliveryOps, ticket: MerchantTicket) {
 export function HometownRestaurantPortal({
   projectId,
   ops,
+  canPickKitchen = false,
+  storageWarning = null,
   storeWarning = null,
 }: {
   projectId: string;
   ops: DeliveryOps;
+  /** Master admin, or an account that owns more than one kitchen. */
+  canPickKitchen?: boolean;
+  storageWarning?: string | null;
   storeWarning?: string | null;
 }) {
   const [restaurantId, setRestaurantId] = useState(
-    ops.restaurants.find((row) => row.active)?.id ?? ops.restaurants[0]?.id ?? "",
+    ops.restaurants.length === 1
+      ? ops.restaurants[0].id
+      : (ops.restaurants.find((row) => row.active)?.id ??
+        ops.restaurants[0]?.id ??
+        ""),
   );
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const showPicker = canPickKitchen && ops.restaurants.length > 1;
 
   const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
   const tickets = useMemo(
@@ -98,8 +111,18 @@ export function HometownRestaurantPortal({
   ) {
     setError(null);
     startTransition(async () => {
-      const result = await fn();
-      if (!result.ok) setError(result.error);
+      try {
+        const result = await fn();
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        router.refresh();
+      } catch (caught) {
+        setError(
+          caught instanceof Error ? caught.message : "Could not save this kitchen.",
+        );
+      }
     });
   }
 
@@ -111,6 +134,14 @@ export function HometownRestaurantPortal({
 
   return (
     <div className="space-y-6">
+      {storageWarning ? (
+        <p
+          className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950"
+          role="status"
+        >
+          {storageWarning}
+        </p>
+      ) : null}
       {error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800" role="alert">
           {error}
@@ -122,20 +153,26 @@ export function HometownRestaurantPortal({
             <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
               Restaurant portal
             </p>
-            <label className="mt-2 block text-sm font-semibold text-brand-deep">
-              Store
-              <select
-                className="mt-1 block min-h-11 w-full min-w-56 rounded-md border border-brand/20 bg-white px-3 text-base"
-                value={restaurantId}
-                onChange={(event) => setRestaurantId(event.target.value)}
-              >
-                {ops.restaurants.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name} · {row.neighborhood}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {showPicker ? (
+              <label className="mt-2 block text-sm font-semibold text-brand-deep">
+                Store
+                <select
+                  className="mt-1 block min-h-11 w-full min-w-56 rounded-md border border-brand/20 bg-white px-3 text-base"
+                  value={restaurantId}
+                  onChange={(event) => setRestaurantId(event.target.value)}
+                >
+                  {ops.restaurants.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name} · {row.neighborhood}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="mt-2 text-lg font-extrabold text-brand-deep">
+                {restaurant?.name?.trim() || "Your kitchen"}
+              </p>
+            )}
             <p className="mt-2 text-sm font-semibold text-brand-deep">
               {HOMETOWN_KITCHEN_LINE}{" "}
               {merchantDensityLine(ops.restaurants.length)}
@@ -261,6 +298,32 @@ export function HometownRestaurantPortal({
               <p className="mt-1 text-xs text-muted">
                 Food net lands here. Scout and driver have their own accounts.
               </p>
+            </div>
+          ) : restaurant ? (
+            <div className="rounded-lg border border-brand/10 bg-white px-3 py-3">
+              <dt className="text-xs font-bold tracking-wide text-muted uppercase">
+                Your Stripe
+              </dt>
+              <dd className="mt-2">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    setError(null);
+                    startTransition(async () => {
+                      const result = await startKitchenPayoutsAction(
+                        projectId,
+                        restaurant.id,
+                      );
+                      if (!result.ok) setError(result.error);
+                      else if (result.url) window.location.href = result.url;
+                    });
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+                >
+                  Connect payouts
+                </button>
+              </dd>
             </div>
           ) : null}
         </dl>
@@ -422,9 +485,9 @@ function MenuConfirmBoard({
       </h2>
       <p className="mt-2 text-sm text-muted">
         Upload 2–3 photos of the paper takeout menu or a PDF. Review prices
-        and modifiers, then Approve. Not a data-entry team. Seed parse
-        writes a paper-menu fixture until a vision API key is wired — not
-        a live Gemini or Claude call. Website crawl from{" "}
+        and modifiers, then Approve. Not a data-entry team. If the photo or
+        PDF can&apos;t be read, this desk shows the error and does not write
+        a paper-menu fixture. Website crawl from{" "}
         {restaurant.menu?.sourceUrl ?? restaurant.websiteUrl} is the
         fallback. Connect a live public menu URL and Hometown keeps
         prices and 86s current — no Toast / Square / Otter / Deliverect

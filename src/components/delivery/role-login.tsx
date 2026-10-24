@@ -70,12 +70,15 @@ export function HometownRoleLogin({
                   type="email"
                   required
                   autoComplete="username"
+                  placeholder={
+                    role === "merchant" ? "you@restaurant.com" : undefined
+                  }
                   defaultValue={
                     role === "customer"
                       ? "diner@town.test"
-                      : role === "merchant"
-                        ? "kitchen@town.test"
-                        : "driver@town.test"
+                      : role === "driver"
+                        ? "driver@town.test"
+                        : undefined
                   }
                   className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 bg-white px-3 text-base"
                 />
