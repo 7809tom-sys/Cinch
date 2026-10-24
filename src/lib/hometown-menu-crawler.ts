@@ -22,7 +22,7 @@ import {
 export const HOMETOWN_MENU_CRAWL_INTERVAL_MS = 15 * 60 * 1000;
 
 /** Sync now / Connect. Slow public sites (and www → apex redirects) need this. */
-export const MENU_PAGE_FETCH_TIMEOUT_MS = 25_000;
+export const MENU_PAGE_FETCH_TIMEOUT_MS = 20_000;
 export const MENU_PAGE_FETCH_ATTEMPTS = 2;
 /** Background 15-minute pass. Short so a diner page load is not held open. */
 export const MENU_PAGE_TICK_TIMEOUT_MS = 8_000;
@@ -952,7 +952,7 @@ export async function downloadPublicMenuPhoto(
   if (/logo|icon|sprite|favicon|pixel|spacer/i.test(url)) return null;
   const fetchImage = fetchImpl ?? fetch;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12_000);
+  const timer = setTimeout(() => controller.abort(), 6_000);
   try {
     const response = await fetchImage(url, {
       method: "GET",
@@ -1243,7 +1243,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
         crawled,
         storePhoto: input.storePhoto,
         fetchImpl: input.fetchImpl,
-        budgetMs: input.force ? 25_000 : 8_000,
+        budgetMs: input.force ? 10_000 : 4_000,
       })
     : applied.restaurant;
   console.info("[hometown-menu-crawler]", {
