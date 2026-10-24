@@ -57,7 +57,7 @@ export function HometownDinerOrderDesk({
         plates. Pickup bags skip the courier.
       </p>
       <label className="seed-shop-support" style={{ display: "block" }}>
-        Your name on the ticket
+        Your name on the order
         <input
           type="search"
           value={lookup}

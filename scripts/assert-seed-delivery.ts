@@ -20,6 +20,8 @@ import {
   HOMETOWN_KITCHEN_LINE,
   HOMETOWN_LAUNCH_BRIEF_BLOCK,
   HOMETOWN_NEIGHBORHOOD_PROMISE,
+  HOMETOWN_PUBLIC_WELCOME,
+  hometownRoleCopy,
   KITCHEN_ARRIVAL_GEOFENCE_METERS,
   LAUNCH_MARKET_EXAMPLE,
   MERCHANT_DENSITY_MAX,
@@ -47,6 +49,7 @@ import {
   driverSoftwareAnnualUsd,
   driverSoftwareFeeUsd,
   driverSoftwareFreeUntil,
+  dropoffCompliance,
   dropoffWithinMerchantRadius,
   firstSuccessfulDriveAt,
   freezeDeliveryDriver,
@@ -1454,6 +1457,8 @@ const afterOrder = recordDeliveryOrder(ops, {
   orderId: "ord-test",
   customerName: "Sam",
   dropoffZip: "10002",
+  dropoffLat: 40.0755,
+  dropoffLng: -83.13,
   createdAt: "2026-09-24T12:00:00.000Z",
   items: [
     {
@@ -1980,6 +1985,8 @@ const stackedFirst = recordDeliveryOrder(ops, {
   orderId: "ord-stack-a",
   customerName: "Stack A",
   dropoffZip: "10001",
+  dropoffLat: 40.0755,
+  dropoffLng: -83.13,
   items: [
     {
       productId: "run-pilot-bowl",
@@ -2000,6 +2007,8 @@ const stackedSecond = recordDeliveryOrder(stackedFirst, {
   orderId: "ord-stack-b",
   customerName: "Stack B",
   dropoffZip: "10001",
+  dropoffLat: 40.0755,
+  dropoffLng: -83.13,
   items: [
     {
       productId: "run-pilot-sandwich",
@@ -2035,6 +2044,8 @@ if (stackedAccept.ok) {
       orderId: "ord-stack-c",
       customerName: "Stack C",
       dropoffZip: "10001",
+      dropoffLat: 40.0755,
+      dropoffLng: -83.13,
       items: [
         {
           productId: "run-pilot-drink",
@@ -2201,6 +2212,53 @@ assert(
   DINER_TRACK_ETA_DELIVERY.includes("under 30") &&
     withDeliveryDriverPolicyBrief("Hometown Runner").includes("Waukesha"),
   "diner ETA and seeded briefs carry the tight-market launch",
+);
+const pilotPin = restaurantGeo(pilotKitchen ?? { id: "rest-pilot" });
+const zipOnStreet = dropoffCompliance({ kitchen: pilotPin, zip: "43017" });
+const waukeshaOnOhio = dropoffCompliance({ kitchen: pilotPin, zip: "53186" });
+const waukeshaKitchen = { lat: 43.0116, lng: -88.2314 };
+const zipInWaukesha = dropoffCompliance({
+  kitchen: waukeshaKitchen,
+  zip: "53186",
+});
+const gpsOnStreet = dropoffCompliance({
+  kitchen: pilotPin,
+  zip: "99999",
+  lat: 40.08,
+  lng: -83.143,
+});
+const gpsOffStreet = dropoffCompliance({
+  kitchen: pilotPin,
+  zip: "43017",
+  lat: 40.2,
+  lng: -83.5,
+});
+const unknownZip = dropoffCompliance({ kitchen: pilotPin, zip: "10001" });
+assert(
+  zipOnStreet.ok &&
+    zipOnStreet.source === "zip" &&
+    zipOnStreet.miles <= MERCHANT_DELIVERY_RADIUS_MILES &&
+    !waukeshaOnOhio.ok &&
+    zipInWaukesha.ok &&
+    zipInWaukesha.source === "zip" &&
+    gpsOnStreet.ok &&
+    gpsOnStreet.source === "gps" &&
+    !gpsOffStreet.ok &&
+    !unknownZip.ok,
+  "delivery is a ZIP on this street or a one-time GPS pin inside 2 miles",
+);
+assert(
+  HOMETOWN_PUBLIC_WELCOME.includes("streets you walk") &&
+    !HOMETOWN_PUBLIC_WELCOME.includes("30") &&
+    hometownRoleCopy("driver").support.includes("100% of the tip") &&
+    hometownRoleCopy("merchant").support.includes("kitchen manager") &&
+    !hometownRoleCopy("customer").support.includes("5%") &&
+    !/inside 2 miles|continuous GPS|outside this street|Trip /.test(shopBoard) &&
+    shopBoard.includes("We can bring it") &&
+    shopBoard.includes("Use my location") &&
+    shopPage.includes("HOMETOWN_PUBLIC_WELCOME") &&
+    !shopPage.includes("HOMETOWN_NEIGHBORHOOD_PROMISE"),
+  "diners see the town; kitchens and drivers learn the street at sign-in",
 );
 
 if (process.exitCode) {

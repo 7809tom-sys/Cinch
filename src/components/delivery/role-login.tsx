@@ -18,20 +18,30 @@ export function HometownRoleLogin({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [openRole, setOpenRole] = useState<HometownRole | null>(
+    initialRole ?? null,
+  );
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted">
-        Three distinct logins — customer, merchant, and driver. Each role opens
-        its own app.
+        Order dinner, or sign in for your kitchen or your runs. A kitchen and
+        a driver see how this street works on their card.
       </p>
       <div className="grid gap-4 md:grid-cols-3">
         {ROLES.map((role) => {
           const copy = hometownRoleCopy(role);
+          const support =
+            role === "customer" || openRole === role
+              ? copy.support
+              : role === "merchant"
+                ? "For a kitchen on this street."
+                : "For a driver on this street.";
           return (
             <form
               key={role}
               className="flex flex-col rounded-xl border border-brand/15 bg-foam p-5"
+              onFocus={() => setOpenRole(role)}
               onSubmit={(event) => {
                 event.preventDefault();
                 const formData = new FormData(event.currentTarget);
@@ -52,7 +62,7 @@ export function HometownRoleLogin({
               <h2 className="mt-2 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
                 {copy.title}
               </h2>
-              <p className="mt-2 flex-1 text-sm text-muted">{copy.support}</p>
+              <p className="mt-2 flex-1 text-sm text-muted">{support}</p>
               <label className="mt-4 block text-sm font-semibold text-brand-deep">
                 Email
                 <input

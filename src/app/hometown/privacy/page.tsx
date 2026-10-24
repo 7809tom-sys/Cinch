@@ -7,8 +7,7 @@ import {
 
 export const metadata = {
   title: "Privacy — Hometown Runner",
-  description:
-    "What Hometown Runner stores on this device and with your town's Seed.",
+  description: "What Hometown Runner stores on this device for your town.",
 };
 
 export default function HometownPrivacyPage() {
@@ -35,14 +34,12 @@ export default function HometownPrivacyPage() {
           <p className="text-base leading-relaxed text-muted">
             A customer, merchant, or driver sign-in saves an email and role in
             a session cookie on this device for that town. Guest orders do not
-            require that cookie. Menu plates, tickets, and the delivery ledger
-            stay with that town&apos;s Seed so the kitchen and drivers can
-            complete the order.
+            require that cookie. Menus and orders stay with that town so the
+            kitchen can finish dinner.
           </p>
           <p className="text-base leading-relaxed text-muted">
-            Hometown Runner does not collect continuous GPS. Distance rules for
-            kitchen arrival and drop-off are product rules in the desk, not a
-            background location tracker.
+            A delivery uses your ZIP, or a one-time location pin when you tap
+            Use my location. Hometown Runner does not collect continuous GPS.
           </p>
           <p className="text-base leading-relaxed text-muted">
             We do not sell diner, kitchen, or driver lists.
@@ -58,9 +55,8 @@ export default function HometownPrivacyPage() {
             <Link href={HOMETOWN_ACCOUNT_PATH} className="font-semibold text-brand-deep underline">
               Delete login
             </Link>
-            . That removes the role session for the market code you enter.
-            Order history on the Seed remains until the Seed owner deletes the
-            town.
+            . That removes the sign-in stored on this device for the town you
+            choose. Past orders stay with the kitchen.
           </p>
         </section>
 

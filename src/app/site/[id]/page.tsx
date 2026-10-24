@@ -386,14 +386,14 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
                 </a>
                 {merchantHref ? (
                   <a href={`${enterHref ?? merchantHref}?role=merchant`}>
-                    <strong>Restaurant portal</strong>
-                    <span>Kitchen desk for tonight’s tickets.</span>
+                    <strong>I run a kitchen</strong>
+                    <span>Sign in for your kitchen.</span>
                   </a>
                 ) : null}
                 {driveHref ? (
                   <a href={`${enterHref ?? driveHref}?role=driver`}>
-                    <strong>Driver portal</strong>
-                    <span>Go online. Pick up bags on these streets.</span>
+                    <strong>I drive</strong>
+                    <span>Sign in to bring dinner on these streets.</span>
                   </a>
                 ) : null}
               </div>

@@ -11,7 +11,8 @@ import {
 import {
   dinerOrderTrack,
   findSellableMenuItems,
-  HOMETOWN_NEIGHBORHOOD_PROMISE,
+  HOMETOWN_PUBLIC_WELCOME,
+  restaurantGeo,
   isFavoriteKitchen,
 } from "@/lib/seed-delivery";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
@@ -85,6 +86,8 @@ export default async function SeedShopPage({
           name: row.name,
           neighborhood: row.neighborhood,
           favorite: isFavoriteKitchen(ops, row.id),
+          lat: restaurantGeo(row).lat,
+          lng: restaurantGeo(row).lng,
         }));
     }
   }
@@ -99,7 +102,7 @@ export default async function SeedShopPage({
             <h1>{shop.brand}</h1>
             <p className="seed-shop-support">{shop.support}</p>
             {deliveryPlatform ? (
-              <p className="seed-shop-support">{HOMETOWN_NEIGHBORHOOD_PROMISE}</p>
+              <p className="seed-shop-support">{HOMETOWN_PUBLIC_WELCOME}</p>
             ) : null}
           </div>
           <div className="seed-admin-links">

@@ -6,7 +6,7 @@ import { placeSeedShopOrderAction } from "./actions";
 import {
   DINER_SCHEDULE_WINDOWS,
   SCHEDULED_WINDOW_EXTRA_USD,
-  hometownDeliveryFeeUsd,
+  dropoffCompliance,
   lastBagCartLines,
   type DinerOrderTrack,
 } from "@/lib/seed-delivery";
@@ -49,6 +49,8 @@ export function SeedShopBoard({
     name: string;
     neighborhood: string;
     favorite: boolean;
+    lat?: number;
+    lng?: number;
   }>;
 }) {
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -67,7 +69,11 @@ export function SeedShopBoard({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [tipUsd, setTipUsd] = useState(deliveryPlatform ? 4 : 0);
-  const [dropoffZip, setDropoffZip] = useState("10001");
+  const [dropoffZip, setDropoffZip] = useState(deliveryPlatform ? "43017" : "10001");
+  const [gpsPin, setGpsPin] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [gpsNote, setGpsNote] = useState<string | null>(null);
   const [findQuery, setFindQuery] = useState("");
   const [scheduledWindow, setScheduledWindow] = useState<string>(
     DINER_SCHEDULE_WINDOWS[0],
@@ -102,9 +108,40 @@ export function SeedShopBoard({
   const isDelivery =
     (restaurantOrdering || deliveryPlatform) &&
     /delivery/i.test(`${mode?.id ?? ""} ${mode?.label ?? ""}`);
+  const dropKitchen = useMemo(() => {
+    if (!deliveryPlatform || kitchens.length === 0) return null;
+    const blob = lines
+      .map((line) => `${line.product.id} ${line.product.title}`)
+      .join(" ")
+      .toLowerCase();
+    const keyed = lines
+      .map((line) => kitchens.find((row) => row.id === line.product.id.split(":")[0]))
+      .find((row) => row);
+    if (keyed?.lat != null && keyed.lng != null) {
+      return { lat: keyed.lat, lng: keyed.lng };
+    }
+    const named = /taco|street/.test(blob)
+      ? kitchens.find((row) => row.id === "rest-tacos")
+      : /deli|river/.test(blob)
+        ? kitchens.find((row) => row.id === "rest-deli")
+        : kitchens.find((row) => row.id === "rest-pilot") ?? kitchens[0];
+    if (named?.lat == null || named.lng == null) return null;
+    return { lat: named.lat, lng: named.lng };
+  }, [deliveryPlatform, kitchens, lines]);
+  const compliance =
+    deliveryPlatform && isDelivery && dropKitchen
+      ? dropoffCompliance({
+          kitchen: dropKitchen,
+          zip: dropoffZip,
+          lat: gpsPin?.lat,
+          lng: gpsPin?.lng,
+        })
+      : null;
   const shippingUsd =
     deliveryPlatform && isDelivery
-      ? hometownDeliveryFeeUsd(dropoffZip)
+      ? compliance?.ok
+        ? compliance.feeUsd
+        : 0
       : (mode?.baseRateUsd ?? 0);
   const checkoutTipUsd = deliveryPlatform && isDelivery ? tipUsd : 0;
   const taxApplies =
@@ -243,7 +280,6 @@ export function SeedShopBoard({
                   }
                 >
                   {pickup ? "Pickup" : "Delivery"}
-                  {pickup ? " · $0 trip" : ""}
                 </button>
               );
             })}
@@ -399,9 +435,11 @@ export function SeedShopBoard({
                 {taxApplies
                   ? ` · Tax ${salesTax.ratePct}% $${taxUsd.toFixed(2)}`
                   : " · Tax $0.00"}
-                {mode
-                  ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
-                  : ""}
+                {deliveryPlatform && isDelivery && compliance && !compliance.ok
+                  ? " · can't reach that address"
+                  : mode
+                    ? ` · ${mode.label} $${shippingUsd.toFixed(2)}`
+                    : ""}
                 {deliveryPlatform && isDelivery
                   ? ` · Tip $${checkoutTipUsd.toFixed(2)}`
                   : ""}{" "}
@@ -466,6 +504,70 @@ export function SeedShopBoard({
                   }
                 />
               </label>
+              {deliveryPlatform && isDelivery ? (
+                <div className="seed-shop-meta">
+                  <p>Where should we bring dinner?</p>
+                  {compliance?.ok ? (
+                    <p>
+                      We can bring it. Delivery ${compliance.feeUsd.toFixed(2)}.
+                    </p>
+                  ) : (
+                    <p>{compliance?.error}</p>
+                  )}
+                  {gpsNote ? <p>{gpsNote}</p> : null}
+                  <button
+                    type="button"
+                    className="seed-admin-link"
+                    onClick={() => {
+                      if (!navigator.geolocation) {
+                        setGpsPin(null);
+                        setGpsNote(
+                          "Location isn't available. Enter your ZIP.",
+                        );
+                        return;
+                      }
+                      setGpsNote("Finding this address…");
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          setGpsPin({
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                          });
+                          setGpsNote(null);
+                        },
+                        () => {
+                          setGpsPin(null);
+                          setGpsNote(
+                            "Location stayed off. Enter your ZIP.",
+                          );
+                        },
+                        {
+                          enableHighAccuracy: true,
+                          maximumAge: 0,
+                          timeout: 8000,
+                        },
+                      );
+                    }}
+                  >
+                    Use my location
+                  </button>
+                  {gpsPin ? (
+                    <button
+                      type="button"
+                      className="seed-admin-link"
+                      onClick={() => setGpsPin(null)}
+                    >
+                      Use ZIP instead
+                    </button>
+                  ) : null}
+                  {gpsPin ? (
+                    <>
+                      <input type="hidden" name="dropoffLat" value={gpsPin.lat} />
+                      <input type="hidden" name="dropoffLng" value={gpsPin.lng} />
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
               <label>
                 {deliveryPlatform
                   ? "Pickup or Hometown delivery"
@@ -484,13 +586,13 @@ export function SeedShopBoard({
                       {item.label}
                       {restaurantOrdering || lotHold || deliveryPlatform
                         ? ""
-                        : ` (${item.kind})`}{" "}
-                      · $
-                      {(deliveryPlatform &&
+                        : ` (${item.kind})`}
+                      {deliveryPlatform &&
                       /delivery/i.test(`${item.id} ${item.label}`)
-                        ? hometownDeliveryFeeUsd(dropoffZip)
-                        : item.baseRateUsd
-                      ).toFixed(2)}
+                        ? compliance?.ok
+                          ? ` · $${compliance.feeUsd.toFixed(2)}`
+                          : " · can't reach"
+                        : ` · $${item.baseRateUsd.toFixed(2)}`}
                     </option>
                   ))}
                 </select>
@@ -508,7 +610,9 @@ export function SeedShopBoard({
                           : "Pay later / invoice"}
                   </option>
                   <option value="card">
-                    Charge card (Seed checkout — recorded as paid)
+                    {deliveryPlatform
+                      ? "Card"
+                      : "Charge card (Seed checkout — recorded as paid)"}
                   </option>
                 </select>
               </label>
@@ -565,7 +669,11 @@ export function SeedShopBoard({
                   />
                 </label>
               ) : null}
-              <button type="submit" className="cta" disabled={pending}>
+              <button
+                type="submit"
+                className="cta"
+                disabled={pending || (deliveryPlatform && isDelivery && compliance?.ok !== true)}
+              >
                 {pending
                   ? deliveryPlatform
                     ? "Sending to Hometown…"

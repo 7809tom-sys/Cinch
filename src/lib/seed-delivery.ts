@@ -197,6 +197,9 @@ export const MERCHANT_DENSITY_MIN = 5;
 export const MERCHANT_DENSITY_MAX = 10;
 export const NEIGHBORHOOD_DELIVERY_MINUTES = 30;
 export const HOMETOWN_NEIGHBORHOOD_PROMISE = `The food comes from the streets you walk every day. Kitchens sit together on one street, so a run stays under ${NEIGHBORHOOD_DELIVERY_MINUTES} minutes.`;
+/** Diner and launcher line. Street math stays on the kitchen and driver desks. */
+export const HOMETOWN_PUBLIC_WELCOME =
+  "The food comes from the streets you walk every day.";
 export const HOMETOWN_DRIVER_PAY_PROMISE = `You keep 100% of the tip. Every run pays a base rate of $${TRIP_BASE_USD.toFixed(2)} plus $${TRIP_PER_MILE_USD.toFixed(2)} a mile, and the 5% commission share is on top of that.`;
 export const HOMETOWN_KITCHEN_LINE =
   "Tickets fire on this desk the moment a diner orders. This portal is the direct line to the kitchen manager — no third-party tablet and no corporate queue.";
@@ -349,22 +352,20 @@ export function hometownRoleCopy(role: HometownRole): {
 } {
   if (role === "merchant") {
     return {
-      title: "Merchant login",
-      support:
-        "Kitchen desk: snap the paper takeout menu or upload a PDF, five-minute sign-off, then 86 a plate during service. Take tickets and hand bags to a Hometown driver.",
+      title: "Kitchen",
+      support: `${HOMETOWN_KITCHEN_LINE} A launch holds ${MERCHANT_DENSITY_MIN}–${MERCHANT_DENSITY_MAX} kitchens on this street. Snap the paper menu, approve it, then 86 a plate during service.`,
       cta: "Sign in as merchant",
     };
   }
   if (role === "driver") {
     return {
-      title: "Driver login",
-      support:
-        "Go online, take offers, and get fee + tip + 5% on Stripe Connect. You manage your own tax forms.",
+      title: "Driver",
+      support: `${HOMETOWN_DRIVER_PAY_PROMISE} Go online and take runs on this street. You manage your own tax forms.`,
       cta: "Sign in as driver",
     };
   }
   return {
-    title: "Customer login",
+    title: "Dinner",
     support: "Order nearby kitchens. A driver from this town brings dinner.",
     cta: "Sign in as customer",
   };
@@ -922,6 +923,119 @@ export function defaultDropoffNearRestaurant(
   const digits = zip.replace(/\D/g, "");
   const nudge = digits.length >= 2 ? (Number(digits.slice(-2)) % 8) * 0.001 : 0.008;
   return { lat: kitchen.lat - 0.006, lng: kitchen.lng + 0.012 + nudge };
+}
+
+/**
+ * ZIP centroids Hometown will deliver. A diner is inside the street when
+ * this centroid, or a one-time GPS pin, sits in the fixed merchant radius.
+ * No background location.
+ */
+export type ServiceZip = {
+  zip: string;
+  lat: number;
+  lng: number;
+  place: string;
+};
+
+export const HOMETOWN_SERVICE_ZIPS: readonly ServiceZip[] = [
+  { zip: "43017", lat: 40.079, lng: -83.141, place: "Starter street" },
+  { zip: "43016", lat: 40.086, lng: -83.148, place: "Starter street" },
+  { zip: "53186", lat: 43.0116, lng: -88.2314, place: "Waukesha" },
+  { zip: "53188", lat: 43.004, lng: -88.24, place: "Waukesha" },
+  { zip: "53189", lat: 43.02, lng: -88.22, place: "Waukesha" },
+];
+
+export function normalizeZip(zip: string): string {
+  return zip.replace(/\D/g, "").slice(0, 5);
+}
+
+export function serviceZipCentroid(zip: string): ServiceZip | null {
+  const code = normalizeZip(zip);
+  if (code.length !== 5) return null;
+  return HOMETOWN_SERVICE_ZIPS.find((row) => row.zip === code) ?? null;
+}
+
+export function serviceZipsForKitchen(kitchen: GeoPoint): ServiceZip[] {
+  return HOMETOWN_SERVICE_ZIPS.filter((row) =>
+    dropoffWithinMerchantRadius(kitchen, row),
+  );
+}
+
+/** Diner-facing. Radius, ZIP catalogs, and GPS policy stay off this copy. */
+export const DINER_DROPOFF_UNREACHABLE =
+  "We can't reach that address from this kitchen tonight.";
+export const DINER_DROPOFF_NEED_ZIP = "Enter your ZIP, or use your location.";
+
+export type DropoffCompliance =
+  | {
+      ok: true;
+      source: "gps" | "zip";
+      point: GeoPoint;
+      miles: number;
+      feeUsd: number;
+      zip: string;
+    }
+  | { ok: false; error: string };
+
+/** One-time GPS pin, or a ZIP centroid, inside the fixed street radius. */
+export function dropoffCompliance(input: {
+  kitchen: GeoPoint;
+  zip?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  radiusMiles?: number;
+}): DropoffCompliance {
+  const radius = input.radiusMiles ?? MERCHANT_DELIVERY_RADIUS_MILES;
+  const zip = normalizeZip(input.zip ?? "");
+  const hasGps =
+    typeof input.lat === "number" &&
+    Number.isFinite(input.lat) &&
+    typeof input.lng === "number" &&
+    Number.isFinite(input.lng);
+  if (hasGps) {
+    const point = { lat: input.lat as number, lng: input.lng as number };
+    const miles = metersToMiles(haversineMeters(input.kitchen, point));
+    if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+      return { ok: false, error: DINER_DROPOFF_UNREACHABLE };
+    }
+    return {
+      ok: true,
+      source: "gps",
+      point,
+      miles,
+      feeUsd: tripChargeUsd(miles),
+      zip,
+    };
+  }
+  if (zip.length !== 5) {
+    return {
+      ok: false,
+      error: DINER_DROPOFF_NEED_ZIP,
+    };
+  }
+  const centroid = serviceZipCentroid(zip);
+  if (!centroid) {
+    return {
+      ok: false,
+      error: DINER_DROPOFF_UNREACHABLE,
+    };
+  }
+  const point = { lat: centroid.lat, lng: centroid.lng };
+  const miles = metersToMiles(haversineMeters(input.kitchen, point));
+  if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+    return {
+      ok: false,
+      error: DINER_DROPOFF_UNREACHABLE,
+    };
+  }
+  return {
+    ok: true,
+    source: "zip",
+    point,
+    miles,
+    feeUsd: tripChargeUsd(miles),
+    zip,
+  };
 }
 
 /** FIXED 2-mile (1.5–2.5 allowed) merchant radius. Never expands. */
@@ -3181,7 +3295,7 @@ function dinerTrackCopy(
     }
     return {
       headline: "Order placed",
-      detail: "The kitchen has your ticket.",
+      detail: "The kitchen is on it.",
     };
   }
   if (step === "delivered") {
@@ -3222,7 +3336,7 @@ function dinerTrackCopy(
   }
   return {
     headline: "Order placed",
-    detail: "The kitchen has your ticket.",
+    detail: "The kitchen is on it.",
   };
 }
 
@@ -3446,16 +3560,22 @@ export function recordDeliveryOrder(
     input.fulfillment === "pickup" ? "pickup" : "delivery";
   const restaurant = restaurantForShopItems(ops, input.items);
   const kitchen = restaurantGeo(restaurant);
-  const dropoff =
-    typeof input.dropoffLat === "number" && typeof input.dropoffLng === "number"
+  const compliance =
+    fulfillment === "delivery"
+      ? dropoffCompliance({
+          kitchen,
+          zip: input.dropoffZip,
+          lat: input.dropoffLat,
+          lng: input.dropoffLng,
+        })
+      : null;
+  if (compliance && !compliance.ok) return ops;
+  const dropoff = compliance
+    ? compliance.point
+    : typeof input.dropoffLat === "number" &&
+        typeof input.dropoffLng === "number"
       ? { lat: input.dropoffLat, lng: input.dropoffLng }
       : defaultDropoffNearRestaurant(restaurant, input.dropoffZip);
-  if (
-    fulfillment === "delivery" &&
-    !dropoffWithinMerchantRadius(kitchen, dropoff)
-  ) {
-    return ops;
-  }
   const split = splitDeliveryLedger({
     gmvUsd: input.gmvUsd,
     deliveryFeeUsd: fulfillment === "pickup" ? 0 : input.deliveryFeeUsd,
