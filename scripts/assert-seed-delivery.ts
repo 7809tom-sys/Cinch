@@ -1741,7 +1741,11 @@ assert(
 );
 assert(shopAction.includes("recordDeliveryOrder"), "customer checkout writes the ledger");
 const shopBoard = readFileSync(
-  join(process.cwd(), "src/app/site/[id]/shop/shop-board.tsx"),
+  join(process.cwd(), "src/components/delivery/hometown-diner.tsx"),
+  "utf8",
+);
+const dinerModel = readFileSync(
+  join(process.cwd(), "src/lib/hometown-diner-model.ts"),
   "utf8",
 );
 const shopPage = readFileSync(
@@ -1751,6 +1755,7 @@ const shopPage = readFileSync(
 assert(
   /Find an item/.test(shopBoard) &&
     /findSellableMenuItems/.test(shopPage) &&
+    /findSellableMenuItems/.test(dinerModel) &&
     /products = found\.map/.test(shopPage) &&
     !/if \(found\.length > 0\)/.test(shopPage),
   "diner shop finds confirmed and uploaded plates",
@@ -2106,8 +2111,8 @@ assert(
     /leave_at_door/.test(shopBoard) &&
     /scheduledWindow/.test(shopBoard) &&
     /Pickup or delivery/.test(shopBoard) &&
-    /dinerOrderTrack/.test(shopPage) &&
-    /isFavoriteKitchen/.test(shopPage),
+    /dinerOrderTrack/.test(dinerModel) &&
+    /isFavoriteKitchen/.test(dinerModel),
   "diner shop tracks, reorders, favorites, cheap windows, pickup vs delivery, and leave-at-door",
 );
 assert(

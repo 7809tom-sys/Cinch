@@ -122,11 +122,12 @@ assert(cinch.headers.get("x-middleware-rewrite") == null, "cinch home is not rew
 assert(cinch.status !== 308, "cinch home is not redirected");
 
 const shopPage = read("src/app/site/[id]/shop/page.tsx");
+const diner = read("src/components/delivery/hometown-diner.tsx");
 assert(home.includes("ensureHometownHomeTown"), "empty launcher plants the home town");
 assert(home.includes("markets.length === 1"), "one open town skips the chooser");
-assert(shopPage.includes("Run a kitchen"), "shop keeps kitchen sign-up");
-assert(shopPage.includes(">Drive<"), "shop keeps drive sign-up");
-assert(shopPage.includes("seed-hero"), "shop uses the Seed hero");
+assert(shopPage.includes("<HometownDiner"), "shop opens the dinner screen");
+assert(diner.includes("Run a kitchen"), "dinner screen keeps kitchen sign-up");
+assert(diner.includes("model.driverHref"), "dinner screen keeps drive sign-up");
 assert(HOMETOWN_HOME_TOWN_ID === "hometown-home", "stable home town id");
 const starter = starterDeliveryOps("Hometown Runner");
 const streetTacos = starter.restaurants

@@ -9,7 +9,10 @@ import {
   saveSeedShopCopy,
   type SeedShopCopy,
 } from "@/lib/seed-site";
-import { HOMETOWN_HOME_TOWN_ID } from "@/lib/hometown-home-town";
+import {
+  HOMETOWN_HOME_TOWN_ID,
+  ensureHometownHomeTown,
+} from "@/lib/hometown-home-town";
 import { getProject } from "@/lib/store";
 
 function optionalCoord(value: FormDataEntryValue | null): number | undefined {
@@ -34,7 +37,6 @@ export async function placeSeedShopOrderAction(
 ) {
   let project = await getProject(projectId);
   if (!project && projectId === HOMETOWN_HOME_TOWN_ID) {
-    const { ensureHometownHomeTown } = await import("@/lib/hometown-home-town");
     project = await ensureHometownHomeTown();
   }
   if (!project) return { ok: false as const, error: "Seed not found." };
@@ -230,13 +232,14 @@ export async function placeSeedShopOrderAction(
 
   if (briefIsDeliveryPlatform(project.name, project.brief)) {
     const { randomUUID } = await import("crypto");
-    const { recordDeliveryOrder } = await import("@/lib/seed-delivery");
+    const { dinerOrderTrack, recordDeliveryOrder } = await import(
+      "@/lib/seed-delivery"
+    );
     const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
       "@/lib/seed-delivery-io"
     );
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
-      const { dinerOrderTrack } = await import("@/lib/seed-delivery");
       const orderId = shop.orders[0]?.id ?? randomUUID();
       const nextOps = recordDeliveryOrder(ops, {
           ledgerId: randomUUID(),
@@ -257,7 +260,7 @@ export async function placeSeedShopOrderAction(
           dropoffInstruction: hometownPickup
             ? undefined
             : dropoffInstruction,
-        });
+      });
       const track = dinerOrderTrack(nextOps, orderId);
       if (!track) {
         return {
@@ -274,6 +277,7 @@ export async function placeSeedShopOrderAction(
       revalidatePath(`/site/${projectId}/drive`);
       revalidatePath(`/site/${projectId}/admin`);
       revalidatePath(`/site/${projectId}/shop`);
+      revalidatePath(`/hometown`);
       return {
         ok: true as const,
         totalUsd,
