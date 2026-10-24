@@ -57,29 +57,40 @@ export async function placeSeedShopOrderAction(
     };
   }
 
+  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
+  const deliveryPlatform = briefIsDeliveryPlatform(project.name, project.brief);
+
   let items: SeedShopCopy["orders"][number]["items"] = [];
   try {
     const parsed = JSON.parse(cartRaw) as Array<{
       productId: string;
       qty: number;
     }>;
-    items = parsed
-      .map((line) => {
-        const product = shop.products.find((item) => item.id === line.productId);
-        if (!product || line.qty < 1) return null;
-        const qty = Math.min(
-          product.stockQty,
-          Math.min(20, Math.floor(line.qty)),
-        );
-        if (qty < 1) return null;
-        return {
-          productId: product.id,
-          title: product.title,
-          priceUsd: product.priceUsd,
-          qty,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    if (deliveryPlatform) {
+      const { deliveryCartLinesFromShop } = await import("@/lib/seed-delivery");
+      const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
+      const ops = await ensureDeliveryOpsInSeed(project);
+      items = ops ? deliveryCartLinesFromShop(ops, parsed) : [];
+    }
+    if (!deliveryPlatform) {
+      items = parsed
+        .map((line) => {
+          const product = shop.products.find((item) => item.id === line.productId);
+          if (!product || line.qty < 1) return null;
+          const qty = Math.min(
+            product.stockQty,
+            Math.min(20, Math.floor(line.qty)),
+          );
+          if (qty < 1) return null;
+          return {
+            productId: product.id,
+            title: product.title,
+            priceUsd: product.priceUsd,
+            qty,
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    }
   } catch {
     return { ok: false as const, error: "Cart is invalid." };
   }
@@ -119,13 +130,10 @@ export async function placeSeedShopOrderAction(
   const taxUsd = taxApplies
     ? Math.round(subtotalUsd * (shop.salesTax.ratePct / 100) * 100) / 100
     : 0;
-  const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
   const hometownDelivery =
-    briefIsDeliveryPlatform(project.name, project.brief) &&
-    /delivery/i.test(`${mode.id} ${mode.label}`);
+    deliveryPlatform && /delivery/i.test(`${mode.id} ${mode.label}`);
   const hometownPickup =
-    briefIsDeliveryPlatform(project.name, project.brief) &&
-    /pickup/i.test(`${mode.id} ${mode.label}`);
+    deliveryPlatform && /pickup/i.test(`${mode.id} ${mode.label}`);
   let shippingUsd = hometownDelivery
     ? 0
     : hometownPickup
