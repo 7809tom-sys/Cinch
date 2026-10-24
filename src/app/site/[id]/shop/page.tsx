@@ -12,6 +12,10 @@ import {
   findSellableMenuItems,
   HOMETOWN_PUBLIC_WELCOME,
 } from "@/lib/seed-delivery";
+import {
+  ensureHometownHomeTown,
+  HOMETOWN_HOME_TOWN_ID,
+} from "@/lib/hometown-home-town";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 import { HometownDiner } from "@/components/delivery/hometown-diner";
@@ -37,7 +41,10 @@ export default async function SeedShopPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const project = await getProject(id);
+  const project =
+    id === HOMETOWN_HOME_TOWN_ID
+      ? await ensureHometownHomeTown()
+      : await getProject(id);
   if (!project) notFound();
 
   if (!seedOffersCustomerShop(project.name, project.brief)) {

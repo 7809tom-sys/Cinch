@@ -54,6 +54,7 @@ export function HometownDiner({
   const pickupMode = model.shippingModes.find((mode) =>
     /pickup|counter/i.test(`${mode.id} ${mode.label}`),
   );
+  const [placedTracks, setPlacedTracks] = useState<DinerOrderTrack[]>([]);
   const [view, setView] = useState<View>(
     initialKitchenId && model.kitchens.some((row) => row.id === initialKitchenId)
       ? "kitchen"
@@ -305,6 +306,13 @@ export function HometownDiner({
         return;
       }
       setCart([]);
+      const track = "track" in result ? result.track : undefined;
+      if (track) {
+        setPlacedTracks((current) => [
+          track,
+          ...current.filter((row) => row.orderId !== track.orderId),
+        ]);
+      }
       setDone(
         isDelivery
           ? `Order placed — ${money(result.totalUsd)}. The kitchen is on it. Watch for food is ready, then your courier is on the way.`
@@ -903,7 +911,12 @@ export function HometownDiner({
             {model.projectId ? (
               <HometownDinerOrderDesk
                 projectId={model.projectId}
-                tracks={model.tracks}
+                tracks={[
+                  ...placedTracks,
+                  ...model.tracks.filter(
+                    (row) => !placedTracks.some((placed) => placed.orderId === row.orderId),
+                  ),
+                ]}
                 onReorder={reorderBag}
               />
             ) : (

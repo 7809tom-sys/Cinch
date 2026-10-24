@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { HOMETOWN_PUBLIC_WELCOME } from "@/lib/seed-delivery";
+import { ensureHometownHomeTown } from "@/lib/hometown-home-town";
 import { seedRestaurantFulfillmentModes } from "@/lib/seed-site-copy";
 import {
   HOMETOWN_ACCOUNT_PATH,
@@ -35,7 +37,14 @@ export default async function HometownAppPage({
   searchParams: Promise<{ error?: string; town?: string; kitchen?: string }>;
 }) {
   const query = await searchParams;
-  const markets = await listHometownMarkets();
+  let markets = await listHometownMarkets();
+  if (markets.length === 0) {
+    await ensureHometownHomeTown();
+    markets = await listHometownMarkets();
+  }
+  if (markets.length === 1 && query.error !== "market") {
+    redirect(`/site/${markets[0].id}/shop`);
+  }
   const selected =
     markets.find((market) => market.id === query.town) ?? markets[0] ?? null;
 

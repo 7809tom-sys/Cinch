@@ -14,6 +14,15 @@ import {
   HOMETOWN_SUPPORT_URL,
 } from "../src/lib/hometown-store";
 import { isHometownRunnerHost, proxy } from "../src/proxy";
+import {
+  deliveryCartLinesFromShop,
+  starterDeliveryOps,
+} from "../src/lib/seed-delivery";
+import {
+  HOMETOWN_HOME_TOWN_ID,
+  homeTownMenusAreOpen,
+  openHomeTownMenus,
+} from "../src/lib/hometown-home-town";
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -111,6 +120,47 @@ assert(shop.headers.get("location") == null, "market shop is not redirected");
 const cinch = proxyFor("https://www.cinchseed.com/", "www.cinchseed.com");
 assert(cinch.headers.get("x-middleware-rewrite") == null, "cinch home is not rewritten");
 assert(cinch.status !== 308, "cinch home is not redirected");
+
+const shopPage = read("src/app/site/[id]/shop/page.tsx");
+const diner = read("src/components/delivery/hometown-diner.tsx");
+assert(home.includes("ensureHometownHomeTown"), "empty launcher plants the home town");
+assert(home.includes("markets.length === 1"), "one open town skips the chooser");
+assert(shopPage.includes("<HometownDiner"), "shop opens the dinner screen");
+assert(diner.includes("Run a kitchen"), "dinner screen keeps kitchen sign-up");
+assert(diner.includes("model.driverHref"), "dinner screen keeps drive sign-up");
+assert(HOMETOWN_HOME_TOWN_ID === "hometown-home", "stable home town id");
+const starter = starterDeliveryOps("Hometown Runner");
+const streetTacos = starter.restaurants
+  .find((row) => row.id === "rest-tacos")
+  ?.menu?.items.find((item) => /taco/i.test(item.title));
+assert(streetTacos?.confirmedPriceUsd == null, "starter taco crawl stays a draft");
+const opened = openHomeTownMenus(starter);
+assert(homeTownMenusAreOpen(opened), "home town menus are open");
+const tacoLine = deliveryCartLinesFromShop(opened, [
+  { productId: "rest-tacos:menu-taco-plate", qty: 1 },
+]);
+assert(
+  tacoLine[0]?.priceUsd === 13 && tacoLine[0].title.includes("Taco plate"),
+  "checkout prices the live taco plate",
+);
+assert(
+  deliveryCartLinesFromShop(starter, [
+    { productId: "rest-tacos:menu-taco-plate", qty: 1 },
+  ]).length === 0,
+  "unconfirmed taco crawl is not a checkout line",
+);
+for (const kitchenId of ["rest-pilot", "rest-tacos", "rest-deli"]) {
+  const row = opened.restaurants.find((item) => item.id === kitchenId);
+  const plates = (row?.menu?.items ?? []).filter(
+    (item) => item.confirmedPriceUsd != null && item.photoUrl,
+  );
+  assert(Boolean(row?.hours) && plates.length > 0, `${kitchenId} has hours, prices, and photos`);
+}
+const bakery = opened.restaurants.find((row) => row.id === "rest-bakery");
+assert(
+  bakery?.menu?.items.every((item) => item.confirmedPriceUsd == null) === true,
+  "bakery stays off the public menu",
+);
 
 if (process.exitCode) {
   process.exit(process.exitCode);

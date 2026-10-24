@@ -9,6 +9,10 @@ import {
   saveSeedShopCopy,
   type SeedShopCopy,
 } from "@/lib/seed-site";
+import {
+  HOMETOWN_HOME_TOWN_ID,
+  ensureHometownHomeTown,
+} from "@/lib/hometown-home-town";
 import { getProject } from "@/lib/store";
 
 function optionalCoord(value: FormDataEntryValue | null): number | undefined {
@@ -31,7 +35,10 @@ export async function placeSeedShopOrderAction(
   projectId: string,
   formData: FormData,
 ) {
-  const project = await getProject(projectId);
+  let project = await getProject(projectId);
+  if (!project && projectId === HOMETOWN_HOME_TOWN_ID) {
+    project = await ensureHometownHomeTown();
+  }
   if (!project) return { ok: false as const, error: "Seed not found." };
 
   const shop = await loadShop(projectId);
@@ -57,57 +64,40 @@ export async function placeSeedShopOrderAction(
     };
   }
 
-  let items: SeedShopCopy["orders"][number]["items"] = [];
   const { briefIsDeliveryPlatform } = await import("@/lib/seed-site-copy");
-  const hometownOrder = briefIsDeliveryPlatform(project.name, project.brief);
-  let menuOps: Awaited<
-    ReturnType<typeof import("@/lib/seed-delivery-io").ensureDeliveryOpsInSeed>
-  > = null;
-  if (hometownOrder && cartRaw.includes(":")) {
-    const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
-    menuOps = await ensureDeliveryOpsInSeed(project);
-  }
+  const deliveryPlatform = briefIsDeliveryPlatform(project.name, project.brief);
+
+  let items: SeedShopCopy["orders"][number]["items"] = [];
   try {
     const parsed = JSON.parse(cartRaw) as Array<{
       productId: string;
       qty: number;
     }>;
-    const { sellableRestaurantMenu } = await import("@/lib/seed-delivery");
-    items = parsed
-      .map((line) => {
-        const qty = Math.min(20, Math.floor(line.qty));
-        if (qty < 1) return null;
-        const product = shop.products.find((item) => item.id === line.productId);
-        if (product) {
-          const capped = Math.min(product.stockQty, qty);
-          if (capped < 1) return null;
+    if (deliveryPlatform) {
+      const { deliveryCartLinesFromShop } = await import("@/lib/seed-delivery");
+      const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
+      const ops = await ensureDeliveryOpsInSeed(project);
+      items = ops ? deliveryCartLinesFromShop(ops, parsed) : [];
+    }
+    if (!deliveryPlatform) {
+      items = parsed
+        .map((line) => {
+          const product = shop.products.find((item) => item.id === line.productId);
+          if (!product || line.qty < 1) return null;
+          const qty = Math.min(
+            product.stockQty,
+            Math.min(20, Math.floor(line.qty)),
+          );
+          if (qty < 1) return null;
           return {
             productId: product.id,
             title: product.title,
             priceUsd: product.priceUsd,
-            qty: capped,
+            qty,
           };
-        }
-        if (!menuOps) return null;
-        const splitAt = line.productId.indexOf(":");
-        if (splitAt < 1) return null;
-        const restaurantId = line.productId.slice(0, splitAt);
-        const itemId = line.productId.slice(splitAt + 1);
-        const restaurant = menuOps.restaurants.find((row) => row.id === restaurantId);
-        const plate = restaurant
-          ? sellableRestaurantMenu(restaurant).find((row) => row.id === itemId)
-          : undefined;
-        if (!restaurant || !plate) return null;
-        return {
-          productId: line.productId,
-          title: plate.title.includes(restaurant.name)
-            ? plate.title
-            : `${restaurant.name} · ${plate.title}`,
-          priceUsd: plate.priceUsd,
-          qty,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
+        })
+        .filter((item): item is NonNullable<typeof item> => Boolean(item));
+    }
   } catch {
     return { ok: false as const, error: "Cart is invalid." };
   }
@@ -148,11 +138,9 @@ export async function placeSeedShopOrderAction(
     ? Math.round(subtotalUsd * (shop.salesTax.ratePct / 100) * 100) / 100
     : 0;
   const hometownDelivery =
-    briefIsDeliveryPlatform(project.name, project.brief) &&
-    /delivery/i.test(`${mode.id} ${mode.label}`);
+    deliveryPlatform && /delivery/i.test(`${mode.id} ${mode.label}`);
   const hometownPickup =
-    briefIsDeliveryPlatform(project.name, project.brief) &&
-    /pickup/i.test(`${mode.id} ${mode.label}`);
+    deliveryPlatform && /pickup/i.test(`${mode.id} ${mode.label}`);
   let shippingUsd = hometownDelivery
     ? 0
     : hometownPickup
@@ -244,7 +232,7 @@ export async function placeSeedShopOrderAction(
 
   if (briefIsDeliveryPlatform(project.name, project.brief)) {
     const { randomUUID } = await import("crypto");
-    const { fulfillmentFromShippingMode, recordDeliveryOrder } = await import(
+    const { dinerOrderTrack, recordDeliveryOrder } = await import(
       "@/lib/seed-delivery"
     );
     const { ensureDeliveryOpsInSeed, saveDeliveryOps } = await import(
@@ -253,9 +241,7 @@ export async function placeSeedShopOrderAction(
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
       const orderId = shop.orders[0]?.id ?? randomUUID();
-      await saveDeliveryOps(
-        projectId,
-        recordDeliveryOrder(ops, {
+      const nextOps = recordDeliveryOrder(ops, {
           ledgerId: randomUUID(),
           ticketId: randomUUID(),
           runId: randomUUID(),
@@ -274,12 +260,33 @@ export async function placeSeedShopOrderAction(
           dropoffInstruction: hometownPickup
             ? undefined
             : dropoffInstruction,
-        }),
+      });
+      const track = dinerOrderTrack(nextOps, orderId);
+      if (!track) {
+        return {
+          ok: false as const,
+          error: "We can't reach that address from this kitchen tonight.",
+        };
+      }
+      await saveDeliveryOps(
+        projectId,
+        nextOps,
         "Wrote Hometown Runner ledger from a customer order",
       );
       revalidatePath(`/site/${projectId}/merchant`);
       revalidatePath(`/site/${projectId}/drive`);
       revalidatePath(`/site/${projectId}/admin`);
+      revalidatePath(`/site/${projectId}/shop`);
+      revalidatePath(`/hometown`);
+      return {
+        ok: true as const,
+        totalUsd,
+        taxUsd,
+        shippingUsd,
+        tipUsd,
+        orderId,
+        track,
+      };
     }
   }
 
