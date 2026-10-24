@@ -12,14 +12,14 @@ export default function Home() {
   return (
     <div className="min-h-full bg-background text-foreground">
       <header className="absolute inset-x-0 top-0 z-20">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-5 sm:px-8">
           <a
             href="#top"
             className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-foam"
           >
             Detective Shopper
           </a>
-          <nav className="flex items-center gap-6 text-sm font-medium text-mist">
+          <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium text-mist sm:gap-x-6">
             <a href="/scan" className="transition-colors hover:text-foam">
               Scan
             </a>
@@ -28,6 +28,9 @@ export default function Home() {
             </a>
             <a href="/recipes" className="transition-colors hover:text-foam">
               Recipes
+            </a>
+            <a href="/list" className="transition-colors hover:text-foam">
+              List
             </a>
             <a
               href="/scan"

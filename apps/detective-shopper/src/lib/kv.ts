@@ -40,5 +40,13 @@ export async function kvPipeline(commands: Command[]): Promise<unknown[]> {
     throw new Error(`KV pipeline failed (${response.status}).`);
   }
   const data = (await response.json()) as Array<{ result?: unknown; error?: string }>;
-  return data.map((entry) => entry.result);
+  if (!Array.isArray(data)) {
+    throw new Error("KV pipeline returned an unexpected response.");
+  }
+  return data.map((entry) => {
+    if (entry?.error) {
+      throw new Error(`KV command failed: ${entry.error}`);
+    }
+    return entry?.result;
+  });
 }
