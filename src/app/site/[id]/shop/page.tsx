@@ -9,14 +9,17 @@ import {
   seedShopUsesRestaurantFulfillment,
 } from "@/lib/seed-site";
 import {
-  dinerOrderTrack,
   findSellableMenuItems,
   HOMETOWN_PUBLIC_WELCOME,
-  restaurantGeo,
-  isFavoriteKitchen,
 } from "@/lib/seed-delivery";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
+import { HometownDiner } from "@/components/delivery/hometown-diner";
+import {
+  HOMETOWN_ACCOUNT_PATH,
+  HOMETOWN_PRIVACY_PATH,
+} from "@/lib/hometown-store";
+import { assembleHometownDiner } from "@/lib/hometown-diner-model";
 import { SeedShopBoard } from "./shop-board";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +30,13 @@ export const dynamic = "force-dynamic";
  */
 export default async function SeedShopPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ kitchen?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const project = await getProject(id);
   if (!project) notFound();
 
@@ -50,13 +56,6 @@ export default async function SeedShopPage({
   const deliveryPlatform =
     seedIndustryKey(project.name, project.brief) === "delivery";
   let products = shop.products;
-  let dinerTracks: NonNullable<ReturnType<typeof dinerOrderTrack>>[] = [];
-  let kitchens: Array<{
-    id: string;
-    name: string;
-    neighborhood: string;
-    favorite: boolean;
-  }> = [];
   if (deliveryPlatform) {
     const ops = await ensureDeliveryOpsInSeed(project);
     if (ops) {
@@ -74,21 +73,27 @@ export default async function SeedShopPage({
         shipClass: "parcel" as const,
         imageUrl: item.photoUrl ?? "",
       }));
-      dinerTracks = [
-        ...new Set(ops.tickets.map((row) => row.orderId)),
-      ]
-        .map((orderId) => dinerOrderTrack(ops, orderId))
-        .filter((row): row is NonNullable<typeof row> => Boolean(row));
-      kitchens = ops.restaurants
-        .filter((row) => row.active)
-        .map((row) => ({
-          id: row.id,
-          name: row.name,
-          neighborhood: row.neighborhood,
-          favorite: isFavoriteKitchen(ops, row.id),
-          lat: restaurantGeo(row).lat,
-          lng: restaurantGeo(row).lng,
-        }));
+      const townName = project.name.replace(/\s+seed$/i, "").trim() || project.name;
+      const model = assembleHometownDiner({
+        preview: false,
+        welcome: HOMETOWN_PUBLIC_WELCOME,
+        townName,
+        projectId: id,
+        ops,
+        storefront: shop.products,
+        shippingModes: shop.shippingModes,
+        salesTax: shop.salesTax,
+        towns: [],
+        signInHref: `/site/${id}/enter`,
+        merchantHref: `/site/${id}/enter?role=merchant`,
+        driverHref: `/site/${id}/enter?role=driver`,
+        accountHref: `${HOMETOWN_ACCOUNT_PATH}?market=${id}`,
+        privacyHref: HOMETOWN_PRIVACY_PATH,
+        websiteHref: `/site/${id}`,
+      });
+      return (
+        <HometownDiner model={model} initialKitchenId={query.kitchen ?? null} />
+      );
     }
   }
 
@@ -137,9 +142,6 @@ export default async function SeedShopPage({
           salesTax={shop.salesTax}
           restaurantOrdering={restaurantOrdering}
           lotHold={lotHold}
-          deliveryPlatform={deliveryPlatform}
-          dinerTracks={dinerTracks}
-          kitchens={kitchens}
         />
       </main>
     </>
