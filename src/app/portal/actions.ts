@@ -25,6 +25,8 @@ import {
   establishMasterSession,
   getMasterSession,
   isMasterEmail,
+  masterIdentityVerified,
+  verifyMasterPasswordLogin,
 } from "@/lib/master-auth";
 import {
   listMessagesForCustomer,
@@ -151,6 +153,10 @@ export async function signUpCustomerAction(formData: FormData) {
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
   const name = String(formData.get("name") ?? "").trim();
 
+  if (isMasterEmail(email) && !verifyMasterPasswordLogin(email, password)) {
+    return { ok: false as const, error: "Email or password is incorrect." };
+  }
+
   const result = await signUpWithPassword({
     email,
     password,
@@ -233,12 +239,7 @@ export async function loginCustomerWithAccessCodeAction(formData: FormData) {
   }
 
   await establishCustomerSession(customer.id);
-  await maybeGrantMasterAdmin(customer.email, customer.name);
   revalidatePath("/portal");
-  revalidatePath("/admin");
-  if (isMasterEmail(customer.email)) {
-    redirect("/admin");
-  }
   redirect("/portal");
 }
 
@@ -337,12 +338,16 @@ export async function getPortalProjectSnapshot(projectId: string) {
     };
   }
 
-  const project = await getProject(projectId);
+  const [project, master] = await Promise.all([
+    getProject(projectId),
+    getMasterSession(),
+  ]);
   const owns =
     project &&
     (customerOwnsProject(customer, projectId) ||
       project.customerEmail === customer.email ||
-      isMasterEmail(customer.email));
+      masterIdentityVerified(customer) ||
+      Boolean(master && isMasterEmail(master.email)));
   if (!project || !owns) {
     return {
       customer,
@@ -552,12 +557,16 @@ export async function getPortalSourceSnapshot(projectId: string) {
     return { customer: null, project: null, source: null, unauthorized: true };
   }
 
-  const project = await getProject(projectId);
+  const [project, master] = await Promise.all([
+    getProject(projectId),
+    getMasterSession(),
+  ]);
   const owns =
     project &&
     (customerOwnsProject(customer, projectId) ||
       project.customerEmail === customer.email ||
-      isMasterEmail(customer.email));
+      masterIdentityVerified(customer) ||
+      Boolean(master && isMasterEmail(master.email)));
 
   if (!project || !owns) {
     return { customer, project: null, source: null, unauthorized: true };
@@ -948,7 +957,7 @@ async function canManageSeedWebsite(projectId: string) {
     customer &&
       (customerOwnsProject(customer, projectId) ||
         project.customerEmail === customer.email ||
-        isMasterEmail(customer.email)),
+        masterIdentityVerified(customer)),
   );
   const ownsAsMaster = Boolean(master && isMasterEmail(master.email));
   if (!ownsAsCustomer && !ownsAsMaster) {

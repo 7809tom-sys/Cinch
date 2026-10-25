@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
+import { prepareDriverDesk } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { proofAndRepairSeedSite } from "@/lib/seed-site";
@@ -24,6 +25,13 @@ export default async function SeedDrivePage({
   }
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/site/${id}`);
+  const bound =
+    session.scope === "master"
+      ? null
+      : await prepareDriverDesk(id, session.email);
+  if (bound && !bound.ok) redirect(`/site/${id}`);
+  const deskOps = bound && bound.ok ? bound.ops : ops;
+  const boundDriverId = bound && bound.ok ? bound.driver.id : null;
 
   return (
     <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">
@@ -64,7 +72,16 @@ export default async function SeedDrivePage({
             </Link>
           </nav>
         </header>
-        <HometownDriverPortal projectId={id} ops={ops} />
+        {bound && bound.ok && bound.saveError ? (
+          <p className="mb-4 text-sm font-semibold text-red-700" role="alert">
+            {bound.saveError}
+          </p>
+        ) : null}
+        <HometownDriverPortal
+          projectId={id}
+          ops={deskOps}
+          boundDriverId={boundDriverId}
+        />
       </div>
     </main>
   );

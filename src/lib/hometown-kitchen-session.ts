@@ -3,19 +3,27 @@ import {
   actorCanDrive,
   actorCanIngestMenu,
   actorCanWriteKitchen,
+  ensureDriverAccount,
   ensureOwnerKitchen,
   kitchensOwnedBy,
   scopeOpsToRestaurants,
   type KitchenActor,
 } from "./hometown-kitchen-access";
-import { getHometownRoleSession } from "./hometown-role";
+import {
+  getHometownRoleSession,
+  kitchenActorFromHometownSession,
+} from "./hometown-role";
 import { durableStoreWarning, isDurableStoreConfigured } from "./kv-store";
-import { getMasterSession, isMasterEmail } from "./master-auth";
+import {
+  getMasterSession,
+  isMasterEmail,
+  masterIdentityVerified,
+} from "./master-auth";
 import {
   ensureDeliveryOpsInSeed,
   saveDeliveryOps,
 } from "./seed-delivery-io";
-import type { DeliveryOps, DeliveryRestaurant } from "./seed-delivery";
+import type { DeliveryDriver, DeliveryOps, DeliveryRestaurant } from "./seed-delivery";
 import { getProject } from "./store";
 
 /**
@@ -26,15 +34,8 @@ export async function resolveKitchenActor(
   projectId: string,
 ): Promise<KitchenActor | null> {
   const role = await getHometownRoleSession(projectId);
-  if (role?.role === "merchant") {
-    return {
-      email: role.email,
-      scope: isMasterEmail(role.email) ? "master" : "owner",
-    };
-  }
-  if (role?.role === "driver") {
-    return { email: role.email, scope: "driver" };
-  }
+  const fromRole = kitchenActorFromHometownSession(role);
+  if (fromRole) return fromRole;
 
   const [master, customer] = await Promise.all([
     getMasterSession(),
@@ -43,7 +44,7 @@ export async function resolveKitchenActor(
   if (master && isMasterEmail(master.email)) {
     return { email: master.email, scope: "master" };
   }
-  if (customer && isMasterEmail(customer.email)) {
+  if (customer && masterIdentityVerified(customer)) {
     return { email: customer.email, scope: "master" };
   }
   if (customer) {
@@ -130,15 +131,16 @@ export type MerchantDesk =
     }
   | { ok: false; error: string };
 
-/** New emails get their own blank kitchen. Masters keep the full desk. */
+/** New emails get their own blank kitchen. Verified masters keep the full desk. */
 export async function prepareMerchantDesk(
   projectId: string,
   email: string,
+  scope: "master" | "owner" = "owner",
 ): Promise<MerchantDesk> {
   const loaded = await loadMarketOps(projectId);
   if (!loaded.ok) return loaded;
   const storageWarning = durableStoreWarning();
-  if (isMasterEmail(email)) {
+  if (scope === "master") {
     return {
       ok: true,
       mode: "desk",
@@ -195,6 +197,51 @@ export async function prepareMerchantDesk(
     ops: scoped,
     canPickKitchen: owned.length > 1,
     storageWarning,
+    saveError,
+  };
+}
+
+export type DriverDesk =
+  | {
+      ok: true;
+      email: string;
+      ops: DeliveryOps;
+      driver: DeliveryDriver;
+      saveError: string | null;
+    }
+  | { ok: false; error: string };
+
+/** A signed-in driver gets the record for their email, created on first sign-in. */
+export async function prepareDriverDesk(
+  projectId: string,
+  email: string,
+): Promise<DriverDesk> {
+  const loaded = await loadMarketOps(projectId);
+  if (!loaded.ok) return loaded;
+  const ensured = ensureDriverAccount(loaded.ops, email);
+  let saveError: string | null = null;
+  if (ensured.created) {
+    try {
+      const saved = await saveDeliveryOps(
+        projectId,
+        ensured.ops,
+        "Opened a driver account",
+      );
+      if (!saved.ok) {
+        saveError = saved.error?.trim() || "Could not save this driver.";
+      } else if (saved.error && !saved.durable && isDurableStoreConfigured()) {
+        saveError = saved.error;
+      }
+    } catch (error) {
+      saveError =
+        error instanceof Error ? error.message : "Could not save this driver.";
+    }
+  }
+  return {
+    ok: true,
+    email,
+    ops: ensured.ops,
+    driver: ensured.driver,
     saveError,
   };
 }

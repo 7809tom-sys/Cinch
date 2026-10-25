@@ -7,7 +7,6 @@ import { SiteFooter } from "@/components/site-footer";
 import { prepareMerchantDesk } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { durableStoreWarning, menuPersistenceWarning } from "@/lib/kv-store";
-import { isMasterEmail } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getPortalProjectSnapshot } from "../../actions";
 
@@ -42,8 +41,8 @@ export default async function PortalRestaurantPage({
   if (!ops) redirect(`/portal/${project.id}`);
   const role = await getHometownRoleSession(project.id);
   const kitchenAccount =
-    role?.role === "merchant" && !isMasterEmail(role.email)
-      ? await prepareMerchantDesk(project.id, role.email)
+    role?.role === "merchant" && role.scope !== "master"
+      ? await prepareMerchantDesk(project.id, role.email, "owner")
       : null;
   const crawlWarning = await menuPersistenceWarning();
   const storageWarning = crawlWarning ?? durableStoreWarning();
@@ -98,7 +97,7 @@ export default async function PortalRestaurantPage({
         </p>
         <div className="mt-8">
           {role?.role === "merchant" &&
-          !isMasterEmail(role.email) &&
+          role.scope !== "master" &&
           !kitchenAccount?.ok ? (
             <p className="text-sm font-semibold text-red-700" role="alert">
               {kitchenAccount?.error ?? "That kitchen isn't on this account."}

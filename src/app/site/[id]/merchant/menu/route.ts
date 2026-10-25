@@ -5,7 +5,6 @@ import {
 } from "@/lib/hometown-kitchen-access";
 import { resolveKitchenActor } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
-import { isMasterEmail } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 
@@ -38,7 +37,7 @@ export async function GET(
   }
 
   const actor = await resolveKitchenActor(id);
-  const master = isMasterEmail(session.email);
+  const master = session.scope === "master";
   const visible = master
     ? ops.restaurants
     : kitchensOwnedBy(ops, session.email);

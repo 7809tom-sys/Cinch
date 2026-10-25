@@ -4,7 +4,11 @@ import { SiteFooter } from "@/components/site-footer";
 import { AgentStatusDot } from "@/components/agent-status-switch";
 import { getAgent } from "@/lib/agents";
 import { liveWebsiteUrl } from "@/lib/domain";
-import { isMasterEmail } from "@/lib/master-auth";
+import {
+  getMasterSession,
+  isMasterEmail,
+  masterIdentityVerified,
+} from "@/lib/master-auth";
 import { logoutCustomerAction, getPortalHomeSnapshot } from "./actions";
 import { MessagesPanel } from "./messages-panel";
 import { PasskeyPanel } from "./passkey-panel";
@@ -18,10 +22,12 @@ export const metadata = {
 };
 
 export default async function PortalHomePage() {
-  const { customer, projects, passkeys, messages } =
-    await getPortalHomeSnapshot();
+  const [{ customer, projects, passkeys, messages }, master] =
+    await Promise.all([getPortalHomeSnapshot(), getMasterSession()]);
   if (!customer) redirect("/login");
-  const isAdmin = isMasterEmail(customer.email);
+  const isAdmin = Boolean(
+    (master && isMasterEmail(master.email)) || masterIdentityVerified(customer),
+  );
 
   return (
     <div className="min-h-full bg-background text-foreground">

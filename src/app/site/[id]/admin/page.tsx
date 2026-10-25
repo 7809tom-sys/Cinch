@@ -7,7 +7,7 @@ import {
 import {
   establishMasterSession,
   getMasterSession,
-  isMasterEmail,
+  masterIdentityVerified,
 } from "@/lib/master-auth";
 import { durableStoreWarning } from "@/lib/kv-store";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
@@ -47,7 +47,7 @@ export default async function SeedBusinessAdminPage({
   ]);
 
   let masterSession = master;
-  if (!masterSession && customer && isMasterEmail(customer.email)) {
+  if (!masterSession && customer && masterIdentityVerified(customer)) {
     await establishMasterSession({
       email: customer.email,
       name: customer.name || customer.email.split("@")[0] || customer.email,
@@ -55,9 +55,7 @@ export default async function SeedBusinessAdminPage({
     masterSession = await getMasterSession();
   }
 
-  const isMaster = Boolean(
-    masterSession || (customer && isMasterEmail(customer.email)),
-  );
+  const isMaster = Boolean(masterSession || masterIdentityVerified(customer));
   const isOwner = Boolean(
     customer &&
       (customerOwnsProject(customer, project.id) ||

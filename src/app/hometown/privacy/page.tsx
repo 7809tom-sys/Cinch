@@ -32,10 +32,10 @@ export default function HometownPrivacyPage() {
             What the app stores
           </h2>
           <p className="text-base leading-relaxed text-muted">
-            A customer, merchant, or driver sign-in saves an email and role in
-            a session cookie on this device for that town. Guest orders do not
-            require that cookie. Menus and orders stay with that town so the
-            kitchen can finish dinner.
+            A customer, merchant, or driver sign-in saves a signed session cookie
+            on this device for that town. The password is not stored in that
+            cookie. Guest orders do not require that cookie. Menus and orders
+            stay with that town so the kitchen can finish dinner.
           </p>
           <p className="text-base leading-relaxed text-muted">
             A delivery uses your ZIP, or a one-time location pin when you tap

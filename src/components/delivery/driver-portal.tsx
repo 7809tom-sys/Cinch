@@ -58,12 +58,16 @@ import type { MenuUploadInput } from "@/lib/seed-delivery";
 export function HometownDriverPortal({
   projectId,
   ops,
+  boundDriverId = null,
 }: {
   projectId: string;
   ops: DeliveryOps;
+  /** Public driver sign-in. Scout and dash stay on this driver. */
+  boundDriverId?: string | null;
 }) {
   const [driverId, setDriverId] = useState(
-    ops.drivers.find((row) => row.status === "approved")?.id ??
+    boundDriverId ??
+      ops.drivers.find((row) => row.status === "approved")?.id ??
       ops.drivers[0]?.id ??
       "",
   );
@@ -154,17 +158,29 @@ export function HometownDriverPortal({
         <label className="mt-3 block text-sm font-semibold">
           Who’s dashing
           <select
-            className="mt-1 block min-h-11 w-full min-w-56 rounded-md border-0 bg-white px-3 text-base text-brand-deep"
+            className="mt-1 block min-h-11 w-full min-w-56 rounded-md border-0 bg-white px-3 text-base text-brand-deep disabled:opacity-80"
             value={driverId}
-            onChange={(event) => setDriverId(event.target.value)}
+            disabled={Boolean(boundDriverId)}
+            onChange={(event) => {
+              if (boundDriverId) return;
+              setDriverId(event.target.value);
+            }}
           >
-            {ops.drivers.map((row) => (
+            {(boundDriverId
+              ? ops.drivers.filter((row) => row.id === boundDriverId)
+              : ops.drivers
+            ).map((row) => (
               <option key={row.id} value={row.id}>
                 {row.name} · {row.status}
               </option>
             ))}
           </select>
         </label>
+        {boundDriverId ? (
+          <p className="mt-2 text-sm text-mist">
+            Scout and dash stay on the driver you signed in as.
+          </p>
+        ) : null}
         <p className="mt-3 text-sm font-semibold text-foam">
           {HOMETOWN_DRIVER_PAY_PROMISE}
         </p>

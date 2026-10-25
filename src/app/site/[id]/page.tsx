@@ -4,7 +4,7 @@ import { customerOwnsProject, getCurrentCustomer } from "@/lib/customer-auth";
 import {
   establishMasterSession,
   getMasterSession,
-  isMasterEmail,
+  masterIdentityVerified,
 } from "@/lib/master-auth";
 import {
   buildSeedSitePreview,
@@ -88,10 +88,10 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
     getMasterSession(),
   ]);
 
-  // Portal login for a master-email account may only set the customer cookie.
-  // Promote to a real master session so Cinch build-room links still work.
+  // A customer session becomes master only after a password, Google, or passkey
+  // is already on the account. The email string alone does not.
   let masterSession = master;
-  if (!masterSession && customer && isMasterEmail(customer.email)) {
+  if (!masterSession && customer && masterIdentityVerified(customer)) {
     await establishMasterSession({
       email: customer.email,
       name: customer.name || customer.email.split("@")[0] || customer.email,
@@ -100,7 +100,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   }
 
   const isMaster = Boolean(
-    masterSession || (customer && isMasterEmail(customer.email)),
+    masterSession || masterIdentityVerified(customer),
   );
   const isOwner = Boolean(
     customer &&
