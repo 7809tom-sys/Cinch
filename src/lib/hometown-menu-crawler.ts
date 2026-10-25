@@ -952,7 +952,7 @@ export async function downloadPublicMenuPhoto(
   if (/logo|icon|sprite|favicon|pixel|spacer/i.test(url)) return null;
   const fetchImage = fetchImpl ?? fetch;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6_000);
+  const timer = setTimeout(() => controller.abort(), 12_000);
   try {
     const response = await fetchImage(url, {
       method: "GET",
@@ -1000,23 +1000,31 @@ export async function storeCrawledMenuPhotos(input: {
   const items = input.restaurant.menu?.items ?? [];
   if (items.length === 0) return input.restaurant;
   const deadline = Date.now() + (input.budgetMs ?? 20_000);
-  let storedCount = 0;
-  const nextItems: RestaurantMenuItem[] = [];
+  const wanted: { item: RestaurantMenuItem; imageUrl: string }[] = [];
   for (const item of items) {
+    if (wanted.length >= MAX_MENU_PHOTOS_PER_CRAWL) break;
     const crawled = input.crawled.find(
       (row) => normalizeMenuTitle(row.title) === normalizeMenuTitle(item.title),
     );
-    if (
-      !crawled?.imageUrl ||
-      menuPhotoIsPinned(item) ||
-      storedCount >= MAX_MENU_PHOTOS_PER_CRAWL ||
-      Date.now() > deadline
-    ) {
-      nextItems.push(item);
-      continue;
-    }
-    const photo = await downloadPublicMenuPhoto(crawled.imageUrl, input.fetchImpl);
-    if (!photo) {
+    if (!crawled?.imageUrl || menuPhotoIsPinned(item)) continue;
+    wanted.push({ item, imageUrl: crawled.imageUrl });
+  }
+  const downloaded = await Promise.all(
+    wanted.map(async (row) => ({
+      item: row.item,
+      photo: await downloadPublicMenuPhoto(row.imageUrl, input.fetchImpl),
+    })),
+  );
+  const photoById = new Map(
+    downloaded
+      .filter((row) => row.photo)
+      .map((row) => [row.item.id, row.photo!] as const),
+  );
+  let storedCount = 0;
+  const nextItems: RestaurantMenuItem[] = [];
+  for (const item of items) {
+    const photo = photoById.get(item.id);
+    if (!photo || storedCount >= MAX_MENU_PHOTOS_PER_CRAWL || Date.now() > deadline) {
       nextItems.push(item);
       continue;
     }
@@ -1255,7 +1263,7 @@ export async function syncRestaurantMenuFromWebsite(input: {
         crawled,
         storePhoto: input.storePhoto,
         fetchImpl: input.fetchImpl,
-        budgetMs: input.force ? 10_000 : 4_000,
+        budgetMs: input.force ? 20_000 : 6_000,
       })
     : applied.restaurant;
   console.info("[hometown-menu-crawler]", {
