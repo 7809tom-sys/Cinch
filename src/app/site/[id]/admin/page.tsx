@@ -24,6 +24,7 @@ import { SeedAdminSchedule } from "./schedule-panel";
 import { SeedAdminCommerceOps } from "./commerce-ops";
 import { SeedDeliveryLedger } from "./delivery-ledger";
 import { TestingBanner } from "@/components/delivery/testing-banner";
+import { HometownCornerLabel } from "@/components/delivery/hometown-corner";
 import {
   KitchenTestingToggle,
   SiteTestingSwitch,
@@ -102,6 +103,7 @@ export default async function SeedBusinessAdminPage({
     <>
       <style dangerouslySetInnerHTML={{ __html: admin.css }} />
       <main className="seed-admin">
+        {delivery ? <HometownCornerLabel /> : null}
         {delivery && hometownSiteTesting(delivery) ? (
           <TestingBanner />
         ) : null}

@@ -19,6 +19,7 @@ export function SiteOwnerChrome({
   portalHref,
   editHref,
   showPublishControls,
+  cornerLabel = "Your Seed",
 }: {
   projectId: string;
   projectName: string;
@@ -30,6 +31,8 @@ export function SiteOwnerChrome({
   editHref: string | null;
   /** Owners (and masters) can publish / list from the live preview. */
   showPublishControls: boolean;
+  /** Hometown Runner uses its own name. Other Seeds keep “Your Seed”. */
+  cornerLabel?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -76,7 +79,7 @@ export function SiteOwnerChrome({
     <div className="seed-owner-chrome" role="region" aria-label="Seed owner controls">
       <style dangerouslySetInnerHTML={{ __html: OWNER_CHROME_CSS }} />
       <div className="seed-owner-chrome-inner">
-        <p className="seed-owner-chrome-label">Your Seed</p>
+        <p className="seed-owner-chrome-label">{cornerLabel}</p>
         <div className="seed-owner-chrome-actions">
           {showPublishControls ? (
             <>

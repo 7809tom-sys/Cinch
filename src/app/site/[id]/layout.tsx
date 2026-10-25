@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import {
   forbidsCinchHostedSite,
@@ -11,8 +12,30 @@ import {
   HOMETOWN_HOME_TOWN_ID,
 } from "@/lib/hometown-home-town";
 import { getProject, retireCinchHostedClone } from "@/lib/store";
+import { briefIsDeliveryPlatform } from "@/lib/seed-site-copy";
+import { HOMETOWN_CORNER_LABEL } from "@/lib/hometown-brand";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const project =
+    id === HOMETOWN_HOME_TOWN_ID
+      ? await ensureHometownHomeTown()
+      : await getProject(id);
+  if (!project || !briefIsDeliveryPlatform(project.name, project.brief)) {
+    return {};
+  }
+  return {
+    title: HOMETOWN_CORNER_LABEL,
+    applicationName: HOMETOWN_CORNER_LABEL,
+    appleWebApp: { capable: true, title: HOMETOWN_CORNER_LABEL },
+  };
+}
 export const maxDuration = 60;
 
 /**

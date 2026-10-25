@@ -21,6 +21,7 @@ import {
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import type { DeliveryRestaurant } from "@/lib/seed-delivery";
 import { TestingBanner } from "@/components/delivery/testing-banner";
+import { HometownCornerLabel } from "@/components/delivery/hometown-corner";
 import { KitchenTestingToggle } from "@/components/delivery/testing-switch";
 
 const fieldClass =
@@ -87,6 +88,7 @@ export function KitchenWelcome({
 
   return (
     <div className="space-y-6">
+      <HometownCornerLabel />
       {siteTesting ? <TestingBanner /> : restaurant.testing ? (
         <TestingBanner kitchen />
       ) : null}

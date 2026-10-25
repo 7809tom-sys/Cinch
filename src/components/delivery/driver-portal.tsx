@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
+import { HometownCornerLabel } from "@/components/delivery/hometown-corner";
 import { hometownSiteTesting, recordIsTest } from "@/lib/hometown-testing";
 import type {
   DeliveryOps,
@@ -159,6 +160,7 @@ export function HometownDriverPortal({
 
   return (
     <div className="space-y-6">
+      <HometownCornerLabel />
       {hometownSiteTesting(ops) ? <TestingBanner /> : null}
       <section className="rounded-xl border border-brand/15 bg-brand-deep p-5 text-foam">
         <p className="text-xs font-bold tracking-[0.14em] text-accent uppercase">

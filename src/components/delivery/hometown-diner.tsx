@@ -8,6 +8,7 @@ import { toggleFavoriteKitchenAction } from "@/app/portal/[id]/delivery-actions"
 import { placeSeedShopOrderAction } from "@/app/site/[id]/shop/actions";
 import type { HometownDinerModel, HometownPlate } from "@/lib/hometown-diner-model";
 import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
+import { HometownCornerLabel } from "@/components/delivery/hometown-corner";
 import {
   DINER_SCHEDULE_WINDOWS,
   SCHEDULED_WINDOW_EXTRA_USD,
@@ -361,6 +362,7 @@ export function HometownDiner({
 
   return (
     <div className="min-h-dvh bg-[#f6f3ee] text-[#1a1714]">
+      <HometownCornerLabel />
       {model.siteTesting !== false ? (
         <div className="mx-auto w-full max-w-6xl px-4 pt-3">
           <TestingBanner />

@@ -26,6 +26,7 @@ import {
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
+import { HOMETOWN_CORNER_LABEL } from "@/lib/hometown-brand";
 
 export const dynamic = "force-dynamic";
 
@@ -144,6 +145,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
             portalHref={isOwner || isMaster ? `/portal/${project.id}` : null}
             editHref={isOwner || isMaster ? `/portal/${project.id}/edit` : null}
             adminHref={businessAdminHref}
+            cornerLabel={deliveryPlatform ? HOMETOWN_CORNER_LABEL : undefined}
           />
         ) : null}
       </>
@@ -447,6 +449,7 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
           portalHref={isOwner || isMaster ? `/portal/${project.id}` : null}
           editHref={isOwner || isMaster ? `/portal/${project.id}/edit` : null}
           adminHref={businessAdminHref}
+          cornerLabel={deliveryPlatform ? HOMETOWN_CORNER_LABEL : undefined}
         />
       ) : null}
     </>
