@@ -101,6 +101,16 @@ export function driverDocumentsComplete(
   return DRIVER_DOC_SLOTS.every((slot) => Boolean(documents?.[slot.id]));
 }
 
+export function canReadDriverDocument(input: {
+  viewerEmail: string;
+  viewerIsMaster: boolean;
+  driverEmail?: string | null;
+}): boolean {
+  if (input.viewerIsMaster) return true;
+  const driverEmail = (input.driverEmail ?? "").trim().toLowerCase();
+  return driverEmail.length > 0 && driverEmail === input.viewerEmail.trim().toLowerCase();
+}
+
 export function driverDocumentSummary(
   documents: DriverDocuments | null | undefined,
 ): string {

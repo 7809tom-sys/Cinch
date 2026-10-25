@@ -124,6 +124,14 @@ export function DriverDocumentDesk({
                 />
               </label>
               {saved ? (
+                <a
+                  className="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-brand-deep"
+                  href={`/site/${projectId}/drive/documents/${driverId}/${slot.id}`}
+                >
+                  View
+                </a>
+              ) : null}
+              {saved ? (
                 <button
                   type="button"
                   className="mt-3 min-h-10 text-sm font-semibold text-red-800"
