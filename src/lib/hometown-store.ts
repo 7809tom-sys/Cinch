@@ -5,6 +5,7 @@ import { listProjects } from "./store";
 /** iOS bundle id and Android application id for the store shell. */
 export const HOMETOWN_APP_ID = "com.hometownrunner.app";
 export const HOMETOWN_APP_NAME = "Hometown Runner";
+export { HOMETOWN_CORNER_LABEL } from "./hometown-brand";
 
 /** Stable start URL the native shell loads. One binary, every town. */
 export const HOMETOWN_STORE_PATH = "/hometown";

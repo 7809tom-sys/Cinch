@@ -41,6 +41,7 @@ import {
 } from "@/app/site/[id]/merchant/actions";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
+import { HometownCornerLabel } from "@/components/delivery/hometown-corner";
 import { KitchenTestingToggle } from "@/components/delivery/testing-switch";
 import {
   hometownSiteTesting,
@@ -145,6 +146,7 @@ export function HometownRestaurantPortal({
 
   return (
     <div className="space-y-6">
+      <HometownCornerLabel />
       {hometownSiteTesting(ops) ? (
         <TestingBanner />
       ) : kitchenIsTesting(restaurant) ? (
