@@ -10,6 +10,8 @@ import {
   isMasterEmail,
 } from "@/lib/master-auth";
 import { durableStoreWarning } from "@/lib/kv-store";
+import { getHometownRoleSession } from "@/lib/hometown-role";
+import { opsVisibleToRestaurantAccount } from "@/lib/hometown-restaurant-view";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import {
   briefAsksForEcommerce,
@@ -78,7 +80,17 @@ export default async function SeedBusinessAdminPage({
     ? await buildSeedShopPreview(project)
     : null;
   const orders = shop?.orders ?? [];
-  const delivery = await ensureDeliveryOpsInSeed(project);
+  const loadedDelivery = await ensureDeliveryOpsInSeed(project);
+  const hometownRole = await getHometownRoleSession(id);
+  const delivery =
+    loadedDelivery && !isMaster
+      ? opsVisibleToRestaurantAccount(
+          loadedDelivery,
+          hometownRole?.role === "merchant"
+            ? hometownRole.email
+            : (customer?.email ?? ""),
+        )
+      : loadedDelivery;
 
   return (
     <>

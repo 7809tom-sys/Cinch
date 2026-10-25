@@ -585,7 +585,11 @@ export function HometownDiner({
               <h2 className="mt-6 font-[family-name:var(--font-display)] text-xl font-bold">
                 Kitchens nearby
               </h2>
-              {visibleKitchens.length === 0 ? (
+              {model.kitchens.length === 0 ? (
+                <p className="mt-3 text-sm text-[#5c564f]">
+                  No kitchens are listed on this account.
+                </p>
+              ) : visibleKitchens.length === 0 ? (
                 <p className="mt-3 text-sm text-[#5c564f]">
                   No plates match that search. Try another word.
                 </p>

@@ -13,6 +13,9 @@ import {
   sampleHometownDinner,
 } from "@/lib/hometown-diner-model";
 import { HometownDiner } from "@/components/delivery/hometown-diner";
+import { getHometownRoleSession } from "@/lib/hometown-role";
+import { opsVisibleToRestaurantAccount } from "@/lib/hometown-restaurant-view";
+import { isMasterEmail } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { buildSeedShopPreview } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -63,13 +66,18 @@ export default async function HometownAppPage({
         buildSeedShopPreview(project),
       ]);
       if (ops) {
+        const role = await getHometownRoleSession(project.id);
+        const visibleOps =
+          role?.role === "merchant" && !isMasterEmail(role.email)
+            ? opsVisibleToRestaurantAccount(ops, role.email)
+            : ops;
         const townName = project.name.replace(/\s+seed$/i, "").trim() || project.name;
         model = assembleHometownDiner({
           preview: false,
           welcome: HOMETOWN_PUBLIC_WELCOME,
           townName,
           projectId: project.id,
-          ops,
+          ops: visibleOps,
           storefront: shop?.products ?? [],
           shippingModes: shop?.shippingModes?.length
             ? shop.shippingModes

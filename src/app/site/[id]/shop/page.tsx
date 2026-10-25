@@ -24,6 +24,9 @@ import {
   HOMETOWN_PRIVACY_PATH,
 } from "@/lib/hometown-store";
 import { assembleHometownDiner } from "@/lib/hometown-diner-model";
+import { getHometownRoleSession } from "@/lib/hometown-role";
+import { opsVisibleToRestaurantAccount } from "@/lib/hometown-restaurant-view";
+import { isMasterEmail } from "@/lib/master-auth";
 import { SeedShopBoard } from "./shop-board";
 
 export const dynamic = "force-dynamic";
@@ -65,8 +68,13 @@ export default async function SeedShopPage({
     seedIndustryKey(project.name, project.brief) === "delivery";
   let products = shop.products;
   if (deliveryPlatform) {
-    const ops = await ensureDeliveryOpsInSeed(project);
-    if (ops) {
+    const loaded = await ensureDeliveryOpsInSeed(project);
+    if (loaded) {
+      const role = await getHometownRoleSession(id);
+      const ops =
+        role?.role === "merchant" && !isMasterEmail(role.email)
+          ? opsVisibleToRestaurantAccount(loaded, role.email)
+          : loaded;
       const found = findSellableMenuItems(ops);
       products = found.map((item) => ({
         id: `${item.restaurantId}:${item.itemId}`,

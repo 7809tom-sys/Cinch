@@ -41,10 +41,17 @@ export default async function PortalRestaurantPage({
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/portal/${project.id}`);
   const role = await getHometownRoleSession(project.id);
-  const kitchenAccount =
-    role?.role === "merchant" && !isMasterEmail(role.email)
-      ? await prepareMerchantDesk(project.id, role.email)
-      : null;
+  /**
+   * The hometown merchant cookie is optional here. This page used to
+   * render every seeded kitchen (Pilot Kitchen and the rest) whenever
+   * that cookie was missing. A restaurant account — merchant cookie or
+   * the portal sign-in — only ever loads its own kitchen. Master admin
+   * still receives the full market via prepareMerchantDesk.
+   */
+  const restaurantEmail =
+    role?.role === "merchant" ? role.email : customer.email;
+  const kitchenAccount = await prepareMerchantDesk(project.id, restaurantEmail);
+  const masterView = isMasterEmail(restaurantEmail);
   const crawlWarning = await menuPersistenceWarning();
   const storageWarning = crawlWarning ?? durableStoreWarning();
 
@@ -97,13 +104,11 @@ export default async function PortalRestaurantPage({
           diner markup. Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">
-          {role?.role === "merchant" &&
-          !isMasterEmail(role.email) &&
-          !kitchenAccount?.ok ? (
+          {!kitchenAccount.ok ? (
             <p className="text-sm font-semibold text-red-700" role="alert">
-              {kitchenAccount?.error ?? "That kitchen isn't on this account."}
+              {kitchenAccount.error}
             </p>
-          ) : kitchenAccount?.ok && kitchenAccount.mode === "welcome" ? (
+          ) : kitchenAccount.mode === "welcome" && !masterView ? (
             <KitchenWelcome
               projectId={project.id}
               email={kitchenAccount.email}
@@ -111,27 +116,17 @@ export default async function PortalRestaurantPage({
               storageWarning={storageWarning ?? kitchenAccount.storageWarning}
               saveError={kitchenAccount.saveError}
             />
-          ) : (
+          ) : kitchenAccount.mode === "desk" ? (
             <HometownRestaurantPortal
               projectId={project.id}
-              ops={
-                kitchenAccount?.ok && kitchenAccount.mode === "desk"
-                  ? kitchenAccount.ops
-                  : ops
-              }
-              canPickKitchen={
-                kitchenAccount?.ok && kitchenAccount.mode === "desk"
-                  ? kitchenAccount.canPickKitchen
-                  : ops.restaurants.length > 1
-              }
+              ops={kitchenAccount.ops}
+              canPickKitchen={kitchenAccount.canPickKitchen}
               storageWarning={
-                kitchenAccount?.ok
-                  ? storageWarning ?? kitchenAccount.storageWarning
-                  : storageWarning
+                storageWarning ?? kitchenAccount.storageWarning
               }
               storeWarning={durableStoreWarning() ? null : crawlWarning}
             />
-          )}
+          ) : null}
         </div>
       </main>
       <SiteFooter />

@@ -149,8 +149,12 @@ export async function placeSeedShopOrderAction(
   let compliantLat: number | undefined;
   let compliantLng: number | undefined;
   if (hometownDelivery) {
-    const { dropoffCompliance, restaurantForShopItems, restaurantGeo } =
-      await import("@/lib/seed-delivery");
+    const {
+      deliveryReachMiles,
+      dropoffCompliance,
+      restaurantForShopItems,
+      restaurantGeo,
+    } = await import("@/lib/seed-delivery");
     const { ensureDeliveryOpsInSeed } = await import("@/lib/seed-delivery-io");
     const ops = await ensureDeliveryOpsInSeed(project);
     if (!ops) {
@@ -159,11 +163,14 @@ export async function placeSeedShopOrderAction(
     const restaurant = restaurantForShopItems(ops, items);
     const lat = optionalCoord(formData.get("dropoffLat"));
     const lng = optionalCoord(formData.get("dropoffLng"));
+    const reach = deliveryReachMiles(restaurant);
     const compliance = dropoffCompliance({
       kitchen: restaurantGeo(restaurant),
       zip: shipToZip,
       lat,
       lng,
+      radiusMiles: reach.miles,
+      clampRadius: !reach.approximate,
     });
     if (!compliance.ok) {
       return { ok: false as const, error: compliance.error };

@@ -265,7 +265,11 @@ export function assembleHometownDiner(input: {
       paused: restaurant.paused,
       rating: kitchenFoodScoreAvg(input.ops, restaurant.id),
       ratingCount: scores.length,
-      heroImage: hometownPlatePhoto(restaurant.name, plates[0]?.imageUrl),
+      heroImage:
+        restaurant.coverImageUrl?.startsWith("/site/") ||
+        restaurant.coverImageUrl?.startsWith("/hometown/")
+          ? restaurant.coverImageUrl
+          : hometownPlatePhoto(restaurant.name, plates[0]?.imageUrl),
       categories,
       plates,
     };
