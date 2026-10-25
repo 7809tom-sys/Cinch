@@ -1247,6 +1247,28 @@ export function parsePricedMenuText(text: string): ParsedMenuJson {
   return { items };
 }
 
+/**
+ * Owner kitchens never receive the Pilot / taco / deli fixture draft.
+ * A missing menu stays empty until the restaurant adds plates.
+ */
+export function menuDraftForRestaurant(
+  row: Pick<DeliveryRestaurant, "name" | "websiteUrl" | "ownerEmail" | "menu">,
+): RestaurantMenuDraft {
+  if (row.menu) return row.menu;
+  if (row.ownerEmail?.trim()) {
+    return {
+      sourceUrl: "",
+      crawledAt: new Date().toISOString(),
+      items: [],
+      approvedAt: null,
+    };
+  }
+  return crawlRestaurantMenuDraft({
+    restaurantName: row.name,
+    websiteUrl: row.websiteUrl,
+  });
+}
+
 /** AI crawl of the restaurant website — draft prices the merchant must confirm. */
 export function crawlRestaurantMenuDraft(input: {
   restaurantName: string;
@@ -1431,12 +1453,7 @@ export function uploadRestaurantMenuItem(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       const existing = menu.items.some((item) => item.id === id);
       return {
         ...row,
@@ -1462,12 +1479,7 @@ export function confirmRestaurantMenuPrice(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       return {
         ...row,
         menu: {
@@ -1830,12 +1842,7 @@ export function ingestMenuPhotos(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       const incomingIds = new Set(drafts.map((item) => item.id));
       const kept = menu.items.filter((item) => !incomingIds.has(item.id));
       return {
@@ -1949,12 +1956,7 @@ export function setMenuItemEightySixed(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       return {
         ...row,
         menu: {
