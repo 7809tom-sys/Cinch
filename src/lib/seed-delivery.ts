@@ -404,7 +404,8 @@ export type VisionMenuModifierGroup = {
 export type VisionMenuItemJson = {
   category: string;
   item_name: string;
-  price: number;
+  /** Null when the page or photo shows the dish and no price. */
+  price: number | null;
   description?: string;
   modifiers?: VisionMenuModifierGroup[];
 };
@@ -412,9 +413,12 @@ export type VisionMenuItemJson = {
 export type ParsedMenuItem = {
   category: string;
   item_name: string;
-  price: number;
+  /** Null when the source showed the dish and no price. Never a guessed amount. */
+  price: number | null;
   description?: string;
   modifiers?: MenuModifierGroup[];
+  /** Stored Hometown URL when an embedded image matched this dish by name. */
+  photoUrl?: string;
 };
 export type ParsedMenuJson = {
   items: ParsedMenuItem[];
@@ -455,6 +459,8 @@ export type MenuUploadInput = {
   parsed?: ParsedMenuJson | VisionMenuItemJson | VisionMenuItemJson[];
   /** Shown on the kitchen desk after parse (fixture vs vision). */
   parseNote?: string;
+  /** Photos from the upload that were not attached to a plate. */
+  photoReview?: MenuPhotoFlag[];
 };
 export type MenuEightySixSource = "merchant" | "website";
 export type MenuCrawlChangeKind =
@@ -501,6 +507,17 @@ export type RestaurantMenuDraft = {
   /** File names received with the last paper-menu parse. */
   uploadedFiles?: string[];
   parseNote?: string;
+  /**
+   * Dish photos found on a page, PDF, or upload that were not confidently
+   * matched to one plate. Stored when possible. Never attached to a guess.
+   */
+  photoReview?: MenuPhotoFlag[];
+};
+export type MenuPhotoFlag = {
+  sourceUrl: string;
+  nearTitle?: string;
+  reason: "unmatched" | "shared" | "menu-page";
+  storedUrl?: string;
 };
 export type FoundMenuItem = {
   restaurantId: string;
@@ -1214,12 +1231,40 @@ export function defaultRestaurantWebsiteUrl(name: string): string {
   return `https://${slug}.example.com/menu`;
 }
 
+function isMenuSectionHeader(line: string): boolean {
+  if (line.length > 40 || /\d/.test(line) || /^page\b/i.test(line)) return false;
+  if (line.endsWith(":")) return true;
+  if (line === line.toUpperCase() && /[A-Z]/.test(line)) return true;
+  const words = line.split(/\s+/);
+  return words.length === 1 && line.length <= 24 && !/-/.test(line);
+}
+
+function looksLikeUnpricedDish(line: string): boolean {
+  if (line.length < 3 || line.length > 70) return false;
+  if (/[$]/.test(line) || /\d/.test(line)) return false;
+  if (/[.]/.test(line)) return false;
+  const words = line.split(/\s+/).filter(Boolean);
+  return words.length >= 2 && words.length <= 8 && /[A-Za-z]/.test(line);
+}
+
+/** A price printed on the menu, in cents. Blank, calorie, and garbage values stay null. */
+export function readShownMenuPrice(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "string" && !/\d/.test(raw)) return null;
+  const numeric =
+    typeof raw === "number"
+      ? raw
+      : Number(String(raw).replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(numeric) || numeric <= 0 || numeric > 500) return null;
+  return money(numeric);
+}
+
 /** Lines like "George Webb Burger    8.50" or "Chili $4.25" from a PDF's text. */
 export function parsePricedMenuText(text: string): ParsedMenuJson {
   const items: ParsedMenuItem[] = [];
   let category = "Menu";
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+/g, " ").trim();
+    const line = rawLine.replace(/[ \t]+/g, " ").trim();
     if (!line) continue;
     const priced =
       line.match(/^(.+?)\s+\$\s*(\d{1,4}(?:\.\d{2})?)\s*$/) ||
@@ -1227,25 +1272,29 @@ export function parsePricedMenuText(text: string): ParsedMenuJson {
       line.match(/^(.+?)\s+(\d{1,4}\.\d{2})\s*$/);
     if (priced) {
       const name = priced[1].replace(/[.\s]+$/g, "").trim();
-      const price = Number(priced[2]);
-      if (
-        name.length >= 2 &&
-        name.length <= 80 &&
-        Number.isFinite(price) &&
-        price >= 0 &&
-        price <= 500
-      ) {
+      const price = readShownMenuPrice(priced[2]);
+      if (name.length >= 2 && name.length <= 80 && price != null) {
         items.push({ category, item_name: name, price });
       }
       continue;
     }
-    if (
-      line.length <= 40 &&
-      !/\d/.test(line) &&
-      /[A-Za-z]/.test(line) &&
-      !/^page\b/i.test(line)
-    ) {
+    if (isMenuSectionHeader(line)) {
       category = line.replace(/:$/, "").trim() || category;
+      continue;
+    }
+    if (looksLikeUnpricedDish(line)) {
+      items.push({ category, item_name: line, price: null });
+      continue;
+    }
+    const previous = items[items.length - 1];
+    if (
+      previous &&
+      !previous.description &&
+      line.length >= 8 &&
+      line.length <= 240 &&
+      /[.]$/.test(line)
+    ) {
+      previous.description = line;
     }
   }
   return { items };
@@ -1773,7 +1822,7 @@ export function normalizeParsedMenuJson(raw: unknown): ParsedMenuJson {
       modifiers?: unknown;
     };
     const name = String(item.item_name ?? "").trim();
-    const price = money(Math.max(0, Number(item.price) || 0));
+    const price = readShownMenuPrice(item.price);
     if (!name) continue;
     const description = String(item.description ?? "").trim();
     const modifiers = Array.isArray(item.modifiers)
@@ -1818,13 +1867,17 @@ export function parsedItemToDraft(
     id: parsedMenuItemId(item.item_name),
     title: item.item_name,
     category: item.category,
-    draftPriceUsd: money(item.price),
+    draftPriceUsd: item.price == null ? 0 : money(item.price),
     confirmedPriceUsd: null,
     source,
     description: item.description,
     modifiers: item.modifiers,
     aliases: [item.item_name, item.category].filter(Boolean),
     eightySixed: false,
+    websitePriceMissing: item.price == null ? true : undefined,
+    ...(item.photoUrl
+      ? { photoUrl: item.photoUrl, photoSource: "merchant" as const }
+      : {}),
   };
 }
 
@@ -1858,6 +1911,7 @@ export function ingestMenuPhotos(
           approvedAt: null,
           uploadedFiles: uploadedFiles.length ? uploadedFiles : menu.uploadedFiles,
           parseNote: input.parseNote?.trim() || menu.parseNote,
+          photoReview: input.photoReview ?? menu.photoReview,
           items: [...kept, ...drafts],
         },
       };
@@ -1930,6 +1984,7 @@ export function approveMenuDraft(
   const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
   for (const item of restaurant?.menu?.items ?? []) {
     const override = priceOverrides[item.id];
+    if (item.websitePriceMissing && typeof override !== "number") continue;
     const price =
       typeof override === "number" ? override : (item.draftPriceUsd ?? 0);
     next = confirmRestaurantMenuPrice(next, restaurantId, item.id, price);
@@ -2022,6 +2077,14 @@ export function normalizeDeliveryRestaurant(
           typeof row.menu?.parseNote === "string" && row.menu.parseNote.trim()
             ? row.menu.parseNote.trim()
             : undefined,
+        photoReview: Array.isArray(row.menu?.photoReview)
+          ? row.menu.photoReview.filter(
+              (flag) =>
+                flag &&
+                typeof flag.sourceUrl === "string" &&
+                flag.sourceUrl.trim().length > 0,
+            )
+          : undefined,
         approvedAt: row.menu?.approvedAt ?? null,
       }
     : ownerProvisioned

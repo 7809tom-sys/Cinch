@@ -690,7 +690,7 @@ function MenuConfirmBoard({
             name="priceUsd"
             type="number"
             min={0}
-            step={0.25}
+            step={0.01}
             required
             className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 px-3"
           />
@@ -841,7 +841,7 @@ function MenuConfirmBoard({
                     name="priceUsd"
                     type="number"
                     min={0}
-                    step={0.25}
+                    step={0.01}
                     defaultValue={
                       item.confirmedPriceUsd ?? item.draftPriceUsd
                     }

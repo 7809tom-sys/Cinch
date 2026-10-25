@@ -357,10 +357,12 @@ export function KitchenWelcome({
               name="priceUsd"
               type="number"
               min={0}
-              step={0.25}
+              step={0.01}
               required
+              placeholder="10.99"
               className={fieldClass}
             />
+            <span className="mt-1 block text-xs font-normal text-muted">Any cent amount</span>
           </label>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="plate-category">
             Category
@@ -394,6 +396,13 @@ export function KitchenWelcome({
         {restaurant.menu?.parseNote ? (
           <p className="mt-3 text-sm text-muted">{restaurant.menu.parseNote}</p>
         ) : null}
+        {restaurant.menu?.photoReview?.length ? (
+          <p className="mt-2 text-sm text-amber-800">
+            {restaurant.menu.photoReview.length} photo
+            {restaurant.menu.photoReview.length === 1 ? "" : "s"} saved but not
+            matched to a plate. Attach the right one before it goes on the menu.
+          </p>
+        ) : null}
         {restaurant.menu?.uploadedFiles?.length ? (
           <p className="mt-2 text-sm font-semibold text-brand-deep">
             Received {restaurant.menu.uploadedFiles.join(", ")}
@@ -411,7 +420,9 @@ export function KitchenWelcome({
                 </p>
                 <p className="mt-1 font-bold text-brand-deep">{item.title}</p>
                 <p className="text-sm text-muted">
-                  ${item.draftPriceUsd.toFixed(2)}
+                  {item.websitePriceMissing
+                    ? "No price on the menu yet"
+                    : `$${item.draftPriceUsd.toFixed(2)}`}
                   {item.description ? ` · ${item.description}` : ""}
                 </p>
               </li>
