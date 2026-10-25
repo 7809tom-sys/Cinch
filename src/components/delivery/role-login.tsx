@@ -1,6 +1,11 @@
 "use client";
 
-import { useState, useTransition, type TransitionStartFunction } from "react";
+import {
+  useId,
+  useState,
+  useTransition,
+  type TransitionStartFunction,
+} from "react";
 import {
   hometownRoleCopy,
   type HometownRole,
@@ -16,6 +21,87 @@ const MODES: { id: SignMode; label: string }[] = [
   { id: "sign-up", label: "Create account" },
   { id: "reset", label: "Set-password code" },
 ];
+
+function EyeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+      <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+      <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+      <path d="m2 2 20 20" />
+    </svg>
+  );
+}
+
+function PasswordField({
+  label,
+  name,
+  autoComplete,
+}: {
+  label: string;
+  name: string;
+  autoComplete: "current-password" | "new-password";
+}) {
+  const [visible, setVisible] = useState(false);
+  const inputId = useId();
+  return (
+    <div className="mt-3">
+      <label
+        htmlFor={inputId}
+        className="block text-sm font-semibold text-brand-deep"
+      >
+        {label}
+      </label>
+      <div className="relative mt-1">
+        <input
+          id={inputId}
+          name={name}
+          type={visible ? "text" : "password"}
+          required
+          minLength={8}
+          autoComplete={autoComplete}
+          className="block min-h-11 w-full rounded-md border border-brand/20 bg-white px-3 pr-12 text-base"
+        />
+        <button
+          type="button"
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+          onClick={() => setVisible((current) => !current)}
+          className="absolute top-0 right-0 inline-flex h-11 w-11 items-center justify-center rounded-md text-brand-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
+        >
+          {visible ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function RoleCard({
   projectId,
@@ -117,29 +203,18 @@ function RoleCard({
           />
         </label>
       ) : null}
-      <label className="mt-3 block text-sm font-semibold text-brand-deep">
-        {mode === "sign-in" ? "Password" : "New password"}
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
-          className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 bg-white px-3 text-base"
-        />
-      </label>
+      <PasswordField
+        key={`${mode}-password`}
+        label={mode === "sign-in" ? "Password" : "New password"}
+        name="password"
+        autoComplete={mode === "sign-in" ? "current-password" : "new-password"}
+      />
       {mode !== "sign-in" ? (
-        <label className="mt-3 block text-sm font-semibold text-brand-deep">
-          Confirm password
-          <input
-            name="confirmPassword"
-            type="password"
-            required
-            minLength={8}
-            autoComplete="new-password"
-            className="mt-1 block min-h-11 w-full rounded-md border border-brand/20 bg-white px-3 text-base"
-          />
-        </label>
+        <PasswordField
+          label="Confirm password"
+          name="confirmPassword"
+          autoComplete="new-password"
+        />
       ) : null}
       {role !== "customer" ? (
         <p className="mt-3 text-sm text-muted">
