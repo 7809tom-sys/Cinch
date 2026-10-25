@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { prepareMerchantDesk } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { durableStoreWarning, menuPersistenceWarning } from "@/lib/kv-store";
+import { getMasterSession, masterIdentityVerified } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getPortalProjectSnapshot } from "../../actions";
 
@@ -40,10 +41,27 @@ export default async function PortalRestaurantPage({
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/portal/${project.id}`);
   const role = await getHometownRoleSession(project.id);
-  const kitchenAccount =
-    role?.role === "merchant" && role.scope !== "master"
-      ? await prepareMerchantDesk(project.id, role.email, "owner")
-      : null;
+  /**
+   * The hometown merchant cookie is optional here. This page used to
+   * render every seeded kitchen (Pilot Kitchen and the rest) whenever
+   * that cookie was missing. A restaurant account — merchant cookie or
+   * the portal sign-in — only ever loads its own kitchen. A verified
+   * master session still receives the full market. The email string alone
+   * does not, and a merchant cookie wins over a leftover master session.
+   */
+  const restaurantEmail =
+    role?.role === "merchant" ? role.email : customer.email;
+  const signedMaster =
+    role?.scope === "master" ||
+    Boolean(await getMasterSession()) ||
+    masterIdentityVerified(customer);
+  const masterView =
+    role?.role === "merchant" ? role.scope === "master" : signedMaster;
+  const kitchenAccount = await prepareMerchantDesk(
+    project.id,
+    restaurantEmail,
+    masterView ? "master" : "owner",
+  );
   const crawlWarning = await menuPersistenceWarning();
   const storageWarning = crawlWarning ?? durableStoreWarning();
 
@@ -96,13 +114,11 @@ export default async function PortalRestaurantPage({
           diner markup. Fee and tip go to the driver on Stripe Connect.
         </p>
         <div className="mt-8">
-          {role?.role === "merchant" &&
-          role.scope !== "master" &&
-          !kitchenAccount?.ok ? (
+          {!kitchenAccount.ok ? (
             <p className="text-sm font-semibold text-red-700" role="alert">
-              {kitchenAccount?.error ?? "That kitchen isn't on this account."}
+              {kitchenAccount.error}
             </p>
-          ) : kitchenAccount?.ok && kitchenAccount.mode === "welcome" ? (
+          ) : kitchenAccount.mode === "welcome" && !masterView ? (
             <KitchenWelcome
               projectId={project.id}
               email={kitchenAccount.email}
@@ -110,27 +126,17 @@ export default async function PortalRestaurantPage({
               storageWarning={storageWarning ?? kitchenAccount.storageWarning}
               saveError={kitchenAccount.saveError}
             />
-          ) : (
+          ) : kitchenAccount.mode === "desk" ? (
             <HometownRestaurantPortal
               projectId={project.id}
-              ops={
-                kitchenAccount?.ok && kitchenAccount.mode === "desk"
-                  ? kitchenAccount.ops
-                  : ops
-              }
-              canPickKitchen={
-                kitchenAccount?.ok && kitchenAccount.mode === "desk"
-                  ? kitchenAccount.canPickKitchen
-                  : ops.restaurants.length > 1
-              }
+              ops={kitchenAccount.ops}
+              canPickKitchen={kitchenAccount.canPickKitchen}
               storageWarning={
-                kitchenAccount?.ok
-                  ? storageWarning ?? kitchenAccount.storageWarning
-                  : storageWarning
+                storageWarning ?? kitchenAccount.storageWarning
               }
               storeWarning={durableStoreWarning() ? null : crawlWarning}
             />
-          )}
+          ) : null}
         </div>
       </main>
       <SiteFooter />

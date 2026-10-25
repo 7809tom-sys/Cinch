@@ -8,8 +8,13 @@ import {
   setRestaurantConnectAccount,
 } from "@/lib/hometown-kitchen-access";
 import { requireKitchenWrite } from "@/lib/hometown-kitchen-session";
+import {
+  kitchenProfileGapMessage,
+  kitchenProfileGaps,
+} from "@/lib/kitchen-profile-gaps";
 import { isDurableStoreConfigured } from "@/lib/kv-store";
 import { saveDeliveryOps } from "@/lib/seed-delivery-io";
+import { storeSeedProductPhoto } from "@/lib/seed-product-media";
 import type { DeliveryOps } from "@/lib/seed-delivery";
 
 function revalidateKitchen(projectId: string) {
@@ -48,10 +53,18 @@ async function commit(
 export async function saveKitchenProfileAction(
   projectId: string,
   restaurantId: string,
-  input: { name: string; address: string },
+  input: {
+    name: string;
+    address: string;
+    hours?: string;
+    phone?: string;
+    deliveryRadiusMinutes?: number | null;
+  },
 ) {
   const name = input.name.trim();
   const address = input.address.trim();
+  const hours = (input.hours ?? "").trim();
+  const phone = (input.phone ?? "").trim();
   if (name.length < 2) {
     return { ok: false as const, error: "Add the restaurant name." };
   }
@@ -62,8 +75,47 @@ export async function saveKitchenProfileAction(
   if (!loaded.ok) return loaded;
   const saved = await commit(
     projectId,
-    saveKitchenProfile(loaded.ops, restaurantId, { name, address }),
-    "Kitchen saved its name and address",
+    saveKitchenProfile(loaded.ops, restaurantId, {
+      name,
+      address,
+      hours,
+      phone,
+      deliveryRadiusMinutes: input.deliveryRadiusMinutes,
+    }),
+    "Kitchen saved its name, address, hours, and phone",
+  );
+  if (!saved.ok) return saved;
+  revalidateKitchen(projectId);
+  return { ok: true as const };
+}
+
+export async function uploadKitchenCoverAction(
+  projectId: string,
+  restaurantId: string,
+  formData: FormData,
+) {
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
+  if (!loaded.ok) return loaded;
+  const file = formData.get("cover");
+  if (!(file instanceof File) || file.size <= 0) {
+    return { ok: false as const, error: "Choose a header image." };
+  }
+  const stored = await storeSeedProductPhoto({
+    projectId,
+    productId: `cover-${restaurantId}`,
+    file,
+    fileName: file.name,
+  });
+  if (!stored.ok) return stored;
+  const saved = await commit(
+    projectId,
+    {
+      ...loaded.ops,
+      restaurants: loaded.ops.restaurants.map((row) =>
+        row.id === restaurantId ? { ...row, coverImageUrl: stored.url } : row,
+      ),
+    },
+    "Kitchen saved its header image",
   );
   if (!saved.ok) return saved;
   revalidateKitchen(projectId);
@@ -77,11 +129,9 @@ export async function finishKitchenWelcomeAction(
   const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
   const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
-  if (!restaurant?.name.trim() || !(restaurant.address ?? "").trim()) {
-    return {
-      ok: false as const,
-      error: "Add the restaurant name and address first.",
-    };
+  const gaps = kitchenProfileGaps(restaurant ?? {});
+  if (gaps.length > 0) {
+    return { ok: false as const, error: kitchenProfileGapMessage(gaps) };
   }
   const saved = await commit(
     projectId,

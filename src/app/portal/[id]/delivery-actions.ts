@@ -3,12 +3,24 @@
 import { revalidatePath } from "next/cache";
 import {
   connectRestaurantWebsite,
+  downloadPublicMenuPhoto,
+  fetchRestaurantMenuPage,
+  isStoredMenuPhotoUrl,
   syncRestaurantMenuFromWebsite,
 } from "@/lib/hometown-menu-crawler";
 import {
   actorMayOperateDriver,
   publishOwnerKitchen,
 } from "@/lib/hometown-kitchen-access";
+import {
+  applyCrawledRestaurantProfile,
+  parseRestaurantProfile,
+  type RestaurantProfileDraft,
+} from "@/lib/hometown-restaurant-profile";
+import {
+  kitchenProfileGapMessage,
+  kitchenProfileGaps,
+} from "@/lib/kitchen-profile-gaps";
 import {
   requireDriverActor,
   requireKitchenWrite,
@@ -25,7 +37,6 @@ import {
   inferredMenuUploadKind,
   ingestMenuPhotos,
   menuUploadFileNames,
-  parsePricedMenuText,
   rateDinerOrder,
   reviewRestaurantMenuItem,
   setMenuItemEightySixed,
@@ -44,11 +55,18 @@ import {
 } from "@/lib/seed-delivery";
 import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
-import { extractPdfDocumentText } from "@/lib/pdf-text";
+import {
+  countDocumentExtraction,
+  extractMenuDocument,
+  readUploadedMenu,
+  type ExtractedMenuImage,
+} from "@/lib/menu-document-extract";
+import type { MenuPhotoFlag, ParsedMenuJson } from "@/lib/seed-delivery";
 import { isDurableStoreConfigured } from "@/lib/kv-store";
 import {
   commitWebsiteMenuSync,
   ensureDeliveryOpsInSeed,
+  hometownMenuPhotoSaver,
   saveDeliveryOps as persistDeliveryOps,
 } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
@@ -108,18 +126,45 @@ async function saveDeliveryOps(
   }
 }
 
-async function pricedMenuFromPdf(input: MenuUploadInput) {
-  for (const file of input.attachments ?? []) {
-    const pdf = /pdf/i.test(file.type ?? "") || /\.pdf$/i.test(file.name);
-    if (!pdf || !file.dataBase64?.trim()) continue;
-    const text = await extractPdfDocumentText(
-      Buffer.from(file.dataBase64.replace(/\s/g, ""), "base64"),
-    );
-    if (!text) continue;
-    const parsed = parsePricedMenuText(text);
-    if (parsed.items.length > 0) return parsed;
+async function storeExtractedMenuImages(
+  projectId: string,
+  restaurantId: string,
+  parsed: ParsedMenuJson,
+  matched: { itemName: string; image: ExtractedMenuImage }[],
+  flagged: { image: ExtractedMenuImage; reason: MenuPhotoFlag["reason"] }[],
+): Promise<{ parsed: ParsedMenuJson; photoReview: MenuPhotoFlag[] }> {
+  const store = hometownMenuPhotoSaver(projectId);
+  const photoByName = new Map<string, string>();
+  for (const row of matched) {
+    const stored = await store({
+      itemId: `upload-${restaurantId}-${row.itemName}`,
+      bytes: row.image.bytes,
+      mime: row.image.mime,
+    });
+    if (stored) photoByName.set(row.itemName, stored);
   }
-  return null;
+  const photoReview: MenuPhotoFlag[] = [];
+  for (const row of flagged) {
+    const stored = await store({
+      itemId: `upload-review-${restaurantId}-${row.image.name}`,
+      bytes: row.image.bytes,
+      mime: row.image.mime,
+    });
+    photoReview.push({
+      sourceUrl: row.image.name,
+      reason: row.reason,
+      ...(stored ? { storedUrl: stored } : {}),
+    });
+  }
+  return {
+    parsed: {
+      items: parsed.items.map((item) => {
+        const photoUrl = photoByName.get(item.item_name);
+        return photoUrl ? { ...item, photoUrl } : item;
+      }),
+    },
+    photoReview,
+  };
 }
 
 export async function uploadRestaurantMenuItemAction(
@@ -211,18 +256,12 @@ export async function ingestMenuPhotosAction(
     !nextInput.rawJson?.trim() &&
     (nextInput.attachments ?? []).some((file) => file.dataBase64?.trim());
 
-  if (canVision) {
-    const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
-    if (vision.ok && vision.parsed.items.length > 0) {
-      nextInput = {
-        ...nextInput,
-        parsed: vision.parsed,
-        useFixture: false,
-        parseNote: `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Review prices and modifiers, then Approve.`,
-      };
-    } else {
-      const fromPdf = await pricedMenuFromPdf(nextInput);
-      if (!fromPdf) {
+  if (!nextInput.parsed && !nextInput.rawJson?.trim() && !nextInput.useFixture) {
+    let extracted = await extractMenuDocument(nextInput);
+    let parseNote = `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`;
+    if (!extracted && canVision) {
+      const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
+      if (!vision.ok || vision.parsed.items.length === 0) {
         return {
           ok: false as const,
           error: kitchenFacingVisionError(
@@ -230,16 +269,10 @@ export async function ingestMenuPhotosAction(
           ),
         };
       }
-      nextInput = {
-        ...nextInput,
-        parsed: fromPdf,
-        useFixture: false,
-        parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
-      };
+      extracted = await readUploadedMenu(nextInput, vision.parsed);
+      parseNote = `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Printed prices only. Review, then Approve.`;
     }
-  } else if (!nextInput.parsed && !nextInput.rawJson?.trim() && !nextInput.useFixture) {
-    const fromPdf = await pricedMenuFromPdf(nextInput);
-    if (!fromPdf) {
+    if (!extracted) {
       return {
         ok: false as const,
         error: kitchenFacingVisionError(
@@ -247,11 +280,20 @@ export async function ingestMenuPhotosAction(
         ),
       };
     }
+    console.info("[hometown-menu-upload]", countDocumentExtraction(extracted));
+    const stored = await storeExtractedMenuImages(
+      projectId,
+      restaurantId,
+      extracted.parsed,
+      extracted.matched,
+      extracted.flagged,
+    );
     nextInput = {
       ...nextInput,
-      parsed: fromPdf,
+      parsed: stored.parsed,
+      photoReview: stored.photoReview,
       useFixture: false,
-      parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
+      parseNote,
     };
   } else if (restaurant?.ownerEmail?.trim() && nextInput.useFixture && !nextInput.parsed) {
     return {
@@ -304,11 +346,9 @@ export async function approveMenuDraftAction(
   if (!loaded.ok) return loaded;
   const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
   if (restaurant?.ownerEmail?.trim()) {
-    if (!restaurant.name.trim() || !(restaurant.address ?? "").trim()) {
-      return {
-        ok: false as const,
-        error: "Add the restaurant name and address before approving the menu.",
-      };
+    const gaps = kitchenProfileGaps(restaurant);
+    if (gaps.length > 0) {
+      return { ok: false as const, error: kitchenProfileGapMessage(gaps) };
     }
     if ((restaurant.menu?.items ?? []).length === 0) {
       return {
@@ -332,6 +372,7 @@ export async function connectRestaurantWebsiteAction(
   projectId: string,
   restaurantId: string,
   websiteUrl: string,
+  typed: RestaurantProfileDraft = { name: "", address: "", hours: "", phone: "" },
 ) {
   const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
@@ -341,29 +382,84 @@ export async function connectRestaurantWebsiteAction(
     websiteUrl,
   );
   if ("error" in connected) return { ok: false as const, error: connected.error };
+  const fetched = await fetchRestaurantMenuPage(websiteUrl);
+  const profile = fetched.ok
+    ? parseRestaurantProfile(fetched.html, fetched.finalUrl)
+    : {};
   const synced = await syncRestaurantMenuFromWebsite({
     ops: connected,
     restaurantId,
     force: true,
+    followLinks: true,
+    html: fetched.ok ? fetched.html : undefined,
   });
+  const current = synced.ops.restaurants.find((row) => row.id === restaurantId);
+  const applied = current
+    ? applyCrawledRestaurantProfile(current, profile, typed)
+    : null;
+  let filled = applied?.filled ?? [];
+  let nextRestaurant = applied?.restaurant;
+  if (nextRestaurant && applied?.headerSourceUrl && !nextRestaurant.coverImageUrl) {
+    const photo = await downloadPublicMenuPhoto(
+      applied.headerSourceUrl,
+      undefined,
+      { minBytes: 400, allowLogo: true },
+    );
+    const stored = photo
+      ? await hometownMenuPhotoSaver(projectId)({
+          itemId: `cover-${restaurantId}`,
+          bytes: photo.bytes,
+          mime: photo.mime,
+        })
+      : null;
+    if (stored && isStoredMenuPhotoUrl(stored)) {
+      nextRestaurant = { ...nextRestaurant, coverImageUrl: stored };
+    } else {
+      filled = filled.filter((label) => label !== "header image");
+    }
+  }
+  const profileOps = nextRestaurant
+    ? {
+        ...synced.ops,
+        restaurants: synced.ops.restaurants.map((row) =>
+          row.id === restaurantId ? nextRestaurant! : row,
+        ),
+      }
+    : synced.ops;
   const committed = await commitWebsiteMenuSync({
     projectId,
     restaurantId,
-    ops: synced.ops,
+    ops: profileOps,
     crawled: synced.crawled,
-    message: synced.changed
-      ? "Website crawl wrote live prices from the connected menu page"
-      : "Kitchen connected a public menu page",
+    message: filled.length
+      ? `Website filled ${filled.join(", ")}`
+      : synced.changed
+        ? "Website crawl wrote live prices from the connected menu page"
+        : "Kitchen connected a public menu page",
   });
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
-  if (synced.error && !synced.changed) {
+  const kept = applied?.kept ?? [];
+  const notice = [
+    filled.length ? `Filled from the website: ${filled.join(", ")}.` : "",
+    kept.length ? `Kept what you typed: ${kept.join(", ")}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (synced.error && !synced.changed && filled.length === 0) {
     return { ok: false as const, error: synced.error };
   }
-  if (committed.storeError) {
+  if (committed.storeError && filled.length === 0) {
     return { ok: false as const, error: committed.storeError };
   }
-  return { ok: true as const };
+  return {
+    ok: true as const,
+    notice:
+      notice ||
+      (synced.error
+        ? "Menu link saved. Hometown did not find dishes on that page."
+        : "Menu link saved."),
+  };
 }
 
 export async function syncRestaurantMenuFromWebsiteAction(

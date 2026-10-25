@@ -175,6 +175,13 @@ export const SCOUT_MIN_DELIVERIES_PER_MONTH = 1;
 export const MERCHANT_DELIVERY_RADIUS_MIN_MILES = 1.5;
 export const MERCHANT_DELIVERY_RADIUS_MAX_MILES = 2.5;
 export const MERCHANT_DELIVERY_RADIUS_MILES = 2;
+/**
+ * When a kitchen sets a drive-time radius, Hometown converts minutes to
+ * miles as a straight line at this speed. It is not a routing service.
+ */
+export const DELIVERY_RADIUS_APPROX_MPH = 25;
+export const DELIVERY_RADIUS_APPROX_LABEL =
+  "Approximate: straight-line distance at 25 mph, not a driving route.";
 /** Kitchen arrival geofence — stage the bag when the driver enters. */
 export const KITCHEN_ARRIVAL_GEOFENCE_METERS = 300;
 /** Drop-off verification — Complete Delivery is blocked outside this. */
@@ -404,7 +411,8 @@ export type VisionMenuModifierGroup = {
 export type VisionMenuItemJson = {
   category: string;
   item_name: string;
-  price: number;
+  /** Null when the page or photo shows the dish and no price. */
+  price: number | null;
   description?: string;
   modifiers?: VisionMenuModifierGroup[];
 };
@@ -412,9 +420,12 @@ export type VisionMenuItemJson = {
 export type ParsedMenuItem = {
   category: string;
   item_name: string;
-  price: number;
+  /** Null when the source showed the dish and no price. Never a guessed amount. */
+  price: number | null;
   description?: string;
   modifiers?: MenuModifierGroup[];
+  /** Stored Hometown URL when an embedded image matched this dish by name. */
+  photoUrl?: string;
 };
 export type ParsedMenuJson = {
   items: ParsedMenuItem[];
@@ -455,6 +466,8 @@ export type MenuUploadInput = {
   parsed?: ParsedMenuJson | VisionMenuItemJson | VisionMenuItemJson[];
   /** Shown on the kitchen desk after parse (fixture vs vision). */
   parseNote?: string;
+  /** Photos from the upload that were not attached to a plate. */
+  photoReview?: MenuPhotoFlag[];
 };
 export type MenuEightySixSource = "merchant" | "website";
 export type MenuCrawlChangeKind =
@@ -501,6 +514,17 @@ export type RestaurantMenuDraft = {
   /** File names received with the last paper-menu parse. */
   uploadedFiles?: string[];
   parseNote?: string;
+  /**
+   * Dish photos found on a page, PDF, or upload that were not confidently
+   * matched to one plate. Stored when possible. Never attached to a guess.
+   */
+  photoReview?: MenuPhotoFlag[];
+};
+export type MenuPhotoFlag = {
+  sourceUrl: string;
+  nearTitle?: string;
+  reason: "unmatched" | "shared" | "menu-page";
+  storedUrl?: string;
 };
 export type FoundMenuItem = {
   restaurantId: string;
@@ -575,6 +599,10 @@ export type DeliveryRestaurant = {
   neighborhood: string;
   /** Public hours, such as "Today 11am–9pm". */
   hours?: string;
+  /** Public phone the kitchen typed or confirmed from its website. */
+  phone?: string;
+  /** Header/cover stored in Hometown. Never a hotlinked restaurant URL. */
+  coverImageUrl?: string;
   /** Originating scout — locked when the restaurant first goes active. */
   scoutId: string;
   /** Kitchen owner — may scout other restaurants after one delivery; never keeps own 5%. */
@@ -586,6 +614,11 @@ export type DeliveryRestaurant = {
   ownerEmail?: string | null;
   /** Street address the kitchen typed on the welcome page. */
   address?: string;
+  /**
+   * Drive-time delivery area in minutes. Unset keeps the fixed 2-mile rule.
+   * Converted with DELIVERY_RADIUS_APPROX_MPH, not a live route.
+   */
+  deliveryRadiusMinutes?: number;
   /** False until this account leaves the new-kitchen welcome. */
   onboardingComplete?: boolean;
   /** Restaurant Stripe Connect — food net lands here. */
@@ -1007,15 +1040,33 @@ export type DropoffCompliance =
     }
   | { ok: false; error: string };
 
-/** One-time GPS pin, or a ZIP centroid, inside the fixed street radius. */
+/** Minutes the kitchen chose, as straight-line miles at 25 mph. Null keeps the 2-mile rule. */
+export function deliveryReachMiles(restaurant: {
+  deliveryRadiusMinutes?: number | null;
+}): { miles: number; approximate: boolean; minutes?: number } {
+  const minutes = restaurant.deliveryRadiusMinutes;
+  if (typeof minutes === "number" && Number.isFinite(minutes) && minutes > 0) {
+    return {
+      miles: (minutes * DELIVERY_RADIUS_APPROX_MPH) / 60,
+      approximate: true,
+      minutes,
+    };
+  }
+  return { miles: MERCHANT_DELIVERY_RADIUS_MILES, approximate: false };
+}
+
+/** One-time GPS pin, or a ZIP centroid, inside the kitchen's delivery area. */
 export function dropoffCompliance(input: {
   kitchen: GeoPoint;
   zip?: string | null;
   lat?: number | null;
   lng?: number | null;
   radiusMiles?: number;
+  /** False when the kitchen set a drive time. The 1.5–2.5 mile clamp stays on for the default. */
+  clampRadius?: boolean;
 }): DropoffCompliance {
   const radius = input.radiusMiles ?? MERCHANT_DELIVERY_RADIUS_MILES;
+  const clamp = input.clampRadius !== false;
   const zip = normalizeZip(input.zip ?? "");
   const hasGps =
     typeof input.lat === "number" &&
@@ -1025,7 +1076,7 @@ export function dropoffCompliance(input: {
   if (hasGps) {
     const point = { lat: input.lat as number, lng: input.lng as number };
     const miles = metersToMiles(haversineMeters(input.kitchen, point));
-    if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+    if (!withinDeliveryRadius(input.kitchen, point, radius, clamp)) {
       return { ok: false, error: DINER_DROPOFF_UNREACHABLE };
     }
     return {
@@ -1052,7 +1103,7 @@ export function dropoffCompliance(input: {
   }
   const point = { lat: centroid.lat, lng: centroid.lng };
   const miles = metersToMiles(haversineMeters(input.kitchen, point));
-  if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+  if (!withinDeliveryRadius(input.kitchen, point, radius, clamp)) {
     return {
       ok: false,
       error: DINER_DROPOFF_UNREACHABLE,
@@ -1066,6 +1117,16 @@ export function dropoffCompliance(input: {
     feeUsd: tripChargeUsd(miles),
     zip,
   };
+}
+
+function withinDeliveryRadius(
+  merchant: GeoPoint,
+  dropoff: GeoPoint,
+  radiusMiles: number,
+  clamp: boolean,
+): boolean {
+  if (!clamp) return metersToMiles(haversineMeters(merchant, dropoff)) <= radiusMiles;
+  return dropoffWithinMerchantRadius(merchant, dropoff, radiusMiles);
 }
 
 /** FIXED 2-mile (1.5–2.5 allowed) merchant radius. Never expands. */
@@ -1210,12 +1271,40 @@ export function defaultRestaurantWebsiteUrl(name: string): string {
   return `https://${slug}.example.com/menu`;
 }
 
+function isMenuSectionHeader(line: string): boolean {
+  if (line.length > 40 || /\d/.test(line) || /^page\b/i.test(line)) return false;
+  if (line.endsWith(":")) return true;
+  if (line === line.toUpperCase() && /[A-Z]/.test(line)) return true;
+  const words = line.split(/\s+/);
+  return words.length === 1 && line.length <= 24 && !/-/.test(line);
+}
+
+function looksLikeUnpricedDish(line: string): boolean {
+  if (line.length < 3 || line.length > 70) return false;
+  if (/[$]/.test(line) || /\d/.test(line)) return false;
+  if (/[.]/.test(line)) return false;
+  const words = line.split(/\s+/).filter(Boolean);
+  return words.length >= 2 && words.length <= 8 && /[A-Za-z]/.test(line);
+}
+
+/** A price printed on the menu, in cents. Blank, calorie, and garbage values stay null. */
+export function readShownMenuPrice(raw: unknown): number | null {
+  if (raw == null || raw === "") return null;
+  if (typeof raw === "string" && !/\d/.test(raw)) return null;
+  const numeric =
+    typeof raw === "number"
+      ? raw
+      : Number(String(raw).replace(/[^0-9.]/g, ""));
+  if (!Number.isFinite(numeric) || numeric <= 0 || numeric > 500) return null;
+  return money(numeric);
+}
+
 /** Lines like "George Webb Burger    8.50" or "Chili $4.25" from a PDF's text. */
 export function parsePricedMenuText(text: string): ParsedMenuJson {
   const items: ParsedMenuItem[] = [];
   let category = "Menu";
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/\s+/g, " ").trim();
+    const line = rawLine.replace(/[ \t]+/g, " ").trim();
     if (!line) continue;
     const priced =
       line.match(/^(.+?)\s+\$\s*(\d{1,4}(?:\.\d{2})?)\s*$/) ||
@@ -1223,28 +1312,54 @@ export function parsePricedMenuText(text: string): ParsedMenuJson {
       line.match(/^(.+?)\s+(\d{1,4}\.\d{2})\s*$/);
     if (priced) {
       const name = priced[1].replace(/[.\s]+$/g, "").trim();
-      const price = Number(priced[2]);
-      if (
-        name.length >= 2 &&
-        name.length <= 80 &&
-        Number.isFinite(price) &&
-        price >= 0 &&
-        price <= 500
-      ) {
+      const price = readShownMenuPrice(priced[2]);
+      if (name.length >= 2 && name.length <= 80 && price != null) {
         items.push({ category, item_name: name, price });
       }
       continue;
     }
-    if (
-      line.length <= 40 &&
-      !/\d/.test(line) &&
-      /[A-Za-z]/.test(line) &&
-      !/^page\b/i.test(line)
-    ) {
+    if (isMenuSectionHeader(line)) {
       category = line.replace(/:$/, "").trim() || category;
+      continue;
+    }
+    if (looksLikeUnpricedDish(line)) {
+      items.push({ category, item_name: line, price: null });
+      continue;
+    }
+    const previous = items[items.length - 1];
+    if (
+      previous &&
+      !previous.description &&
+      line.length >= 8 &&
+      line.length <= 240 &&
+      /[.]$/.test(line)
+    ) {
+      previous.description = line;
     }
   }
   return { items };
+}
+
+/**
+ * Owner kitchens never receive the Pilot / taco / deli fixture draft.
+ * A missing menu stays empty until the restaurant adds plates.
+ */
+export function menuDraftForRestaurant(
+  row: Pick<DeliveryRestaurant, "name" | "websiteUrl" | "ownerEmail" | "menu">,
+): RestaurantMenuDraft {
+  if (row.menu) return row.menu;
+  if (row.ownerEmail?.trim()) {
+    return {
+      sourceUrl: "",
+      crawledAt: new Date().toISOString(),
+      items: [],
+      approvedAt: null,
+    };
+  }
+  return crawlRestaurantMenuDraft({
+    restaurantName: row.name,
+    websiteUrl: row.websiteUrl,
+  });
 }
 
 /** AI crawl of the restaurant website — draft prices the merchant must confirm. */
@@ -1431,12 +1546,7 @@ export function uploadRestaurantMenuItem(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       const existing = menu.items.some((item) => item.id === id);
       return {
         ...row,
@@ -1462,12 +1572,7 @@ export function confirmRestaurantMenuPrice(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       return {
         ...row,
         menu: {
@@ -1757,7 +1862,7 @@ export function normalizeParsedMenuJson(raw: unknown): ParsedMenuJson {
       modifiers?: unknown;
     };
     const name = String(item.item_name ?? "").trim();
-    const price = money(Math.max(0, Number(item.price) || 0));
+    const price = readShownMenuPrice(item.price);
     if (!name) continue;
     const description = String(item.description ?? "").trim();
     const modifiers = Array.isArray(item.modifiers)
@@ -1802,13 +1907,17 @@ export function parsedItemToDraft(
     id: parsedMenuItemId(item.item_name),
     title: item.item_name,
     category: item.category,
-    draftPriceUsd: money(item.price),
+    draftPriceUsd: item.price == null ? 0 : money(item.price),
     confirmedPriceUsd: null,
     source,
     description: item.description,
     modifiers: item.modifiers,
     aliases: [item.item_name, item.category].filter(Boolean),
     eightySixed: false,
+    websitePriceMissing: item.price == null ? true : undefined,
+    ...(item.photoUrl
+      ? { photoUrl: item.photoUrl, photoSource: "merchant" as const }
+      : {}),
   };
 }
 
@@ -1830,12 +1939,7 @@ export function ingestMenuPhotos(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       const incomingIds = new Set(drafts.map((item) => item.id));
       const kept = menu.items.filter((item) => !incomingIds.has(item.id));
       return {
@@ -1847,6 +1951,7 @@ export function ingestMenuPhotos(
           approvedAt: null,
           uploadedFiles: uploadedFiles.length ? uploadedFiles : menu.uploadedFiles,
           parseNote: input.parseNote?.trim() || menu.parseNote,
+          photoReview: input.photoReview ?? menu.photoReview,
           items: [...kept, ...drafts],
         },
       };
@@ -1919,6 +2024,7 @@ export function approveMenuDraft(
   const restaurant = ops.restaurants.find((row) => row.id === restaurantId);
   for (const item of restaurant?.menu?.items ?? []) {
     const override = priceOverrides[item.id];
+    if (item.websitePriceMissing && typeof override !== "number") continue;
     const price =
       typeof override === "number" ? override : (item.draftPriceUsd ?? 0);
     next = confirmRestaurantMenuPrice(next, restaurantId, item.id, price);
@@ -1949,12 +2055,7 @@ export function setMenuItemEightySixed(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId) return row;
-      const menu =
-        row.menu ??
-        crawlRestaurantMenuDraft({
-          restaurantName: row.name,
-          websiteUrl: row.websiteUrl,
-        });
+      const menu = menuDraftForRestaurant(row);
       return {
         ...row,
         menu: {
@@ -2016,6 +2117,14 @@ export function normalizeDeliveryRestaurant(
           typeof row.menu?.parseNote === "string" && row.menu.parseNote.trim()
             ? row.menu.parseNote.trim()
             : undefined,
+        photoReview: Array.isArray(row.menu?.photoReview)
+          ? row.menu.photoReview.filter(
+              (flag) =>
+                flag &&
+                typeof flag.sourceUrl === "string" &&
+                flag.sourceUrl.trim().length > 0,
+            )
+          : undefined,
         approvedAt: row.menu?.approvedAt ?? null,
       }
     : ownerProvisioned
@@ -2035,6 +2144,20 @@ export function normalizeDeliveryRestaurant(
     ownerDriverId: row.ownerDriverId ?? null,
     ownerEmail,
     address: typeof row.address === "string" ? row.address.trim() : "",
+    hours: typeof row.hours === "string" ? row.hours.trim() : "",
+    deliveryRadiusMinutes:
+      typeof row.deliveryRadiusMinutes === "number" &&
+      Number.isFinite(row.deliveryRadiusMinutes) &&
+      row.deliveryRadiusMinutes > 0
+        ? Math.round(row.deliveryRadiusMinutes)
+        : undefined,
+    phone: typeof row.phone === "string" ? row.phone.trim() : "",
+    coverImageUrl:
+      typeof row.coverImageUrl === "string" &&
+      (row.coverImageUrl.startsWith("/site/") ||
+        row.coverImageUrl.startsWith("/hometown/"))
+        ? row.coverImageUrl
+        : undefined,
     onboardingComplete: Boolean(row.onboardingComplete),
     connectAccountId: ownerProvisioned
       ? row.connectAccountId?.trim() || undefined
@@ -3713,6 +3836,8 @@ export function recordDeliveryOrder(
           zip: input.dropoffZip,
           lat: input.dropoffLat,
           lng: input.dropoffLng,
+          radiusMiles: deliveryReachMiles(restaurant).miles,
+          clampRadius: !deliveryReachMiles(restaurant).approximate,
         })
       : null;
   if (compliance && !compliance.ok) return ops;

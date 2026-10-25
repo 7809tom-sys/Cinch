@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
 import { SiteFooter } from "@/components/site-footer";
+import { getHometownRoleSession } from "@/lib/hometown-role";
+import { getMasterSession, masterIdentityVerified } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getPortalProjectSnapshot } from "../../actions";
 
@@ -32,6 +34,14 @@ export default async function PortalDriverPage({
 
   const ops = await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/portal/${project.id}`);
+  const role = await getHometownRoleSession(project.id);
+  const master =
+    role?.scope === "master" ||
+    Boolean(await getMasterSession()) ||
+    masterIdentityVerified(customer);
+  if (!master && role?.role !== "driver") {
+    redirect(`/portal/${project.id}/restaurant`);
+  }
 
   return (
     <div className="min-h-full bg-background text-foreground">

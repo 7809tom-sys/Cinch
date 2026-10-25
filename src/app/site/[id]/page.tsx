@@ -23,6 +23,7 @@ import {
   customerFacingSiteCopy,
   seedIndustryKey,
 } from "@/lib/seed-site-copy";
+import { getHometownRoleSession } from "@/lib/hometown-role";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
 
@@ -82,6 +83,9 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
     : null;
   const driveHref = deliveryPlatform ? `/site/${project.id}/drive` : null;
   const enterHref = deliveryPlatform ? `/site/${project.id}/enter` : null;
+  const hometownRole = deliveryPlatform
+    ? await getHometownRoleSession(project.id)
+    : null;
 
   const [customer, master] = await Promise.all([
     getCurrentCustomer(),
@@ -102,6 +106,14 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   const isMaster = Boolean(
     masterSession || masterIdentityVerified(customer),
   );
+  if (
+    deliveryPlatform &&
+    hometownRole?.role === "merchant" &&
+    hometownRole.scope !== "master" &&
+    !isMaster
+  ) {
+    preview.menuItems = [];
+  }
   const isOwner = Boolean(
     customer &&
       (customerOwnsProject(customer, project.id) ||
