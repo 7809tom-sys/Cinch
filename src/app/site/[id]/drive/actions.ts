@@ -17,6 +17,8 @@ import {
   type DriverDocSlotId,
   type DriverDocStatus,
 } from "@/lib/hometown-driver-docs";
+import { parseDriverW9Input, sanitizeDriverW9 } from "@/lib/hometown-driver-w9";
+import { openDriverW9, sealDriverW9 } from "@/lib/hometown-driver-w9-seal";
 import { saveDeliveryOps } from "@/lib/seed-delivery-io";
 import type { DeliveryDriver } from "@/lib/seed-delivery";
 
@@ -194,4 +196,67 @@ export async function signDriverDocumentsAction(
   revalidatePath(`/portal/${projectId}/drive`);
   revalidatePath(`/site/${projectId}/admin`);
   return { ok: true as const };
+}
+
+export async function saveDriverW9Action(
+  projectId: string,
+  driverId: string,
+  input: {
+    legalName: string;
+    businessName: string;
+    classification: string;
+    address: string;
+    tinKind: string;
+    tin: string;
+    certifiedName: string;
+    certifiedOn: string;
+    certified: boolean;
+  },
+) {
+  const loaded = await loadWritableDriver(projectId, driverId);
+  if (!loaded.ok) return loaded;
+  const parsed = parseDriverW9Input(input);
+  if (!parsed.ok) return parsed;
+  const status = sanitizeDriverW9(parsed.record);
+  if (!status) return { ok: false as const, error: "Check the W-9 and try again." };
+  const key = driverDocKey(loaded.driver.email || loaded.driver.id);
+  await getDriverDocStore().put({
+    driverKey: key,
+    slot: "w9",
+    bytes: sealDriverW9(parsed.record),
+    mime: "application/octet-stream",
+  });
+  const saved = await saveDeliveryOps(
+    projectId,
+    {
+      ...loaded.ops,
+      drivers: loaded.ops.drivers.map((row) =>
+        row.id === driverId ? { ...row, w9: status } : row,
+      ),
+    },
+    "Driver saved W-9 status",
+  );
+  if (!saved.ok) {
+    return { ok: false as const, error: saved.error?.trim() || "Could not save the W-9." };
+  }
+  revalidatePath(`/site/${projectId}/drive`);
+  revalidatePath(`/portal/${projectId}/drive`);
+  revalidatePath(`/site/${projectId}/enter`);
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+export async function revealDriverW9Action(projectId: string, driverId: string) {
+  const loaded = await loadWritableDriver(projectId, driverId);
+  if (!loaded.ok) return loaded;
+  if (!isMasterEmail(loaded.email)) {
+    return { ok: false as const, error: "Only the master admin can reveal a tax ID." };
+  }
+  const stored = await getDriverDocStore().read(
+    driverDocKey(loaded.driver.email || loaded.driver.id),
+    "w9",
+  );
+  const opened = stored ? openDriverW9(stored.bytes) : null;
+  if (!opened) return { ok: false as const, error: "No tax ID is stored for this driver." };
+  return { ok: true as const, tin: opened.tin, tinKind: opened.tinKind };
 }

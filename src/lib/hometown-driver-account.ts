@@ -57,6 +57,7 @@ export function blankSignedInDriver(email: string, now = new Date()): DeliveryDr
       lastPayoutAt: null,
       taxFormsSelfManaged: true,
       firstDeliveredAt: null,
+      packetRequired: true,
     },
     now,
   );

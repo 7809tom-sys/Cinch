@@ -153,11 +153,19 @@ export function HometownRestaurantPortal({
         <TestingBanner kitchen />
       ) : null}
       {restaurant ? (
-        <KitchenTestingToggle
-          projectId={projectId}
-          restaurantId={restaurant.id}
-          on={restaurant.testing === true}
-        />
+        <>
+          <KitchenTestingToggle
+            projectId={projectId}
+            restaurantId={restaurant.id}
+            on={restaurant.testing === true}
+          />
+          <a
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-deep underline"
+            href={`/site/${projectId}/table-tent/${restaurant.id}`}
+          >
+            Print QR table tent
+          </a>
+        </>
       ) : null}
       {storageWarning ? (
         <p

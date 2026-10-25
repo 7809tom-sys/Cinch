@@ -29,7 +29,7 @@ export type DriverDocSignature = {
   statement: typeof DRIVER_DOC_STATEMENT;
 };
 
-export type DriverPrivateName = DriverDocSlotId | "signature";
+export type DriverPrivateName = DriverDocSlotId | "signature" | "w9";
 
 export const DRIVER_DOC_MAX_BYTES = 8 * 1024 * 1024;
 

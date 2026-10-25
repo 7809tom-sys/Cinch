@@ -6,7 +6,7 @@ export function TestingBanner({
 }) {
   return (
     <p
-      className="rounded-md border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-950"
+      className="rounded-md border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-950 print:hidden"
       role="status"
       data-testing-banner="true"
     >
