@@ -13,7 +13,7 @@ import {
 export const PAPER_MENU_VISION_SYSTEM = `You parse paper takeout menus from photos or a PDF.
 Reply with JSON only: { "items": [ { "category", "item_name", "price", "description", "modifiers": [ { "group", "required", "options" } ] } ] }.
 modifiers options are a string or { "name", "price" }. Required groups (size, protein, cheese) set required true. Add-ons are required false.
-Do not invent a whole restaurant if the pages are blank. Prices are numbers in USD.`;
+Do not invent a whole restaurant if the pages are blank. Prices are numbers in USD with exact cents when the menu prints them. If a dish is shown and no price is printed, set price to null. Never guess a price. A calorie count is not a price. A logo or the photo of the whole menu is not a dish photo.`;
 
 export function parsedMenuFromVisionText(text: string): ParsedMenuJson {
   return normalizeParsedMenuJson(JSON.parse(extractJsonText(text)));

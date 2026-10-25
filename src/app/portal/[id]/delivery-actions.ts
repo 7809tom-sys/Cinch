@@ -16,6 +16,10 @@ import {
 import { hometownMenuPhotoSaver } from "@/lib/seed-delivery-io";
 import { publishOwnerKitchen } from "@/lib/hometown-kitchen-access";
 import {
+  kitchenProfileGapMessage,
+  kitchenProfileGaps,
+} from "@/lib/kitchen-profile-gaps";
+import {
   requireDriverActor,
   requireKitchenWrite,
   requireMenuIngest,
@@ -31,7 +35,6 @@ import {
   inferredMenuUploadKind,
   ingestMenuPhotos,
   menuUploadFileNames,
-  parsePricedMenuText,
   rateDinerOrder,
   reviewRestaurantMenuItem,
   setMenuItemEightySixed,
@@ -50,7 +53,12 @@ import {
 } from "@/lib/seed-delivery";
 import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
-import { extractPdfDocumentText } from "@/lib/pdf-text";
+import {
+  extractMenuDocument,
+  planUploadedMenuPhotos,
+  type ExtractedMenuImage,
+} from "@/lib/menu-document-extract";
+import type { MenuPhotoFlag, ParsedMenuJson } from "@/lib/seed-delivery";
 import { isDurableStoreConfigured } from "@/lib/kv-store";
 import {
   commitWebsiteMenuSync,
@@ -105,18 +113,49 @@ async function saveDeliveryOps(
   }
 }
 
-async function pricedMenuFromPdf(input: MenuUploadInput) {
-  for (const file of input.attachments ?? []) {
-    const pdf = /pdf/i.test(file.type ?? "") || /\.pdf$/i.test(file.name);
-    if (!pdf || !file.dataBase64?.trim()) continue;
-    const text = await extractPdfDocumentText(
-      Buffer.from(file.dataBase64.replace(/\s/g, ""), "base64"),
-    );
-    if (!text) continue;
-    const parsed = parsePricedMenuText(text);
-    if (parsed.items.length > 0) return parsed;
+async function storeExtractedMenuImages(
+  projectId: string,
+  restaurantId: string,
+  parsed: ParsedMenuJson,
+  matched: { itemName: string; image: ExtractedMenuImage }[],
+  flagged: { image: ExtractedMenuImage; reason: MenuPhotoFlag["reason"] }[],
+): Promise<{ parsed: ParsedMenuJson; photoReview: MenuPhotoFlag[] }> {
+  const store = hometownMenuPhotoSaver(projectId);
+  const photoByName = new Map<string, string>();
+  for (const row of matched) {
+    const stored = await store({
+      itemId: `upload-${restaurantId}-${row.itemName}`,
+      bytes: row.image.bytes,
+      mime: row.image.mime,
+    });
+    if (stored) photoByName.set(row.itemName, stored);
   }
-  return null;
+  const photoReview: MenuPhotoFlag[] = [];
+  for (const row of flagged) {
+    const stored = await store({
+      itemId: `upload-review-${restaurantId}-${row.image.name}`,
+      bytes: row.image.bytes,
+      mime: row.image.mime,
+    });
+    photoReview.push({
+      sourceUrl: row.image.name,
+      reason: row.reason,
+      ...(stored ? { storedUrl: stored } : {}),
+    });
+  }
+  return {
+    parsed: {
+      items: parsed.items.map((item) => {
+        const photoUrl = photoByName.get(item.item_name);
+        return photoUrl ? { ...item, photoUrl } : item;
+      }),
+    },
+    photoReview,
+  };
+}
+
+async function pricedMenuFromPdf(input: MenuUploadInput) {
+  return extractMenuDocument(input);
 }
 
 export async function uploadRestaurantMenuItemAction(
@@ -211,9 +250,18 @@ export async function ingestMenuPhotosAction(
   if (canVision) {
     const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
     if (vision.ok && vision.parsed.items.length > 0) {
+      const photos = planUploadedMenuPhotos(nextInput, vision.parsed.items);
+      const stored = await storeExtractedMenuImages(
+        projectId,
+        restaurantId,
+        vision.parsed,
+        photos.matched,
+        photos.flagged,
+      );
       nextInput = {
         ...nextInput,
-        parsed: vision.parsed,
+        parsed: stored.parsed,
+        photoReview: stored.photoReview,
         useFixture: false,
         parseNote: `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Review prices and modifiers, then Approve.`,
       };
@@ -227,9 +275,17 @@ export async function ingestMenuPhotosAction(
           ),
         };
       }
+      const stored = await storeExtractedMenuImages(
+        projectId,
+        restaurantId,
+        fromPdf.parsed,
+        fromPdf.matched,
+        fromPdf.flagged,
+      );
       nextInput = {
         ...nextInput,
-        parsed: fromPdf,
+        parsed: stored.parsed,
+        photoReview: stored.photoReview,
         useFixture: false,
         parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
       };
@@ -244,9 +300,17 @@ export async function ingestMenuPhotosAction(
         ),
       };
     }
+    const stored = await storeExtractedMenuImages(
+      projectId,
+      restaurantId,
+      fromPdf.parsed,
+      fromPdf.matched,
+      fromPdf.flagged,
+    );
     nextInput = {
       ...nextInput,
-      parsed: fromPdf,
+      parsed: stored.parsed,
+      photoReview: stored.photoReview,
       useFixture: false,
       parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
     };
@@ -301,11 +365,9 @@ export async function approveMenuDraftAction(
   if (!loaded.ok) return loaded;
   const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
   if (restaurant?.ownerEmail?.trim()) {
-    if (!restaurant.name.trim() || !(restaurant.address ?? "").trim()) {
-      return {
-        ok: false as const,
-        error: "Add the restaurant name and address before approving the menu.",
-      };
+    const gaps = kitchenProfileGaps(restaurant);
+    if (gaps.length > 0) {
+      return { ok: false as const, error: kitchenProfileGapMessage(gaps) };
     }
     if ((restaurant.menu?.items ?? []).length === 0) {
       return {
@@ -347,6 +409,7 @@ export async function connectRestaurantWebsiteAction(
     ops: connected,
     restaurantId,
     force: true,
+    followLinks: true,
     html: fetched.ok ? fetched.html : undefined,
   });
   const current = synced.ops.restaurants.find((row) => row.id === restaurantId);

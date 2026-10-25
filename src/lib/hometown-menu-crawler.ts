@@ -16,6 +16,7 @@ import {
   type DeliveryOps,
   type DeliveryRestaurant,
   type MenuCrawlChange,
+  type MenuPhotoFlag,
   type RestaurantMenuItem,
 } from "./seed-delivery";
 
@@ -31,7 +32,8 @@ export const MENU_PAGE_USER_AGENT =
 
 const MIN_MENU_PHOTO_BYTES = 4_096;
 const MAX_MENU_PHOTO_BYTES = 1.8 * 1024 * 1024;
-const MAX_MENU_PHOTOS_PER_CRAWL = 8;
+/** Extra menu and online-ordering pages followed from the page the kitchen pasted. */
+const MAX_MENU_FOLLOW_LINKS = 4;
 
 export type CrawledMenuItem = {
   title: string;
@@ -42,6 +44,18 @@ export type CrawledMenuItem = {
   available: boolean;
   /** Absolute image URL on the menu site. Not stored on the plate until downloaded. */
   imageUrl?: string;
+  /** Which page this dish was read from. Ordering pages can fill a missing price. */
+  sourceKind?: "web" | "ordering";
+};
+
+export type MenuSourceCounts = {
+  source: "web" | "ordering" | "pdf" | "photo";
+  dishesFound: number;
+  pricesFound: number;
+  pricesCaptured: number;
+  imagesFound: number;
+  imagesCaptured: number;
+  imagesFlagged: number;
 };
 
 export type { MenuCrawlChange };
@@ -277,7 +291,7 @@ function walkJsonLd(
     const title = cleanDishTitle(String(rec.name ?? ""));
     const offers = asArray(rec.offers)[0] as Record<string, unknown> | undefined;
     const price = parsePrice(offers?.price ?? rec.price);
-    if (looksLikePlate(title) && price != null) {
+    if (looksLikePlate(title) && !/gift\s*card/i.test(title)) {
       into.push({
         title,
         category: nextSection,
@@ -498,8 +512,12 @@ function disambiguateTitles(items: CrawledMenuItem[]): CrawledMenuItem[] {
   });
 }
 
-function parseHeadingMenu(html: string, pageUrl?: string): CrawledMenuItem[] {
+function parseHeadingMenu(
+  html: string,
+  pageUrl?: string,
+): { items: CrawledMenuItem[]; photoReview: MenuPhotoFlag[] } {
   const stripped = stripChrome(html);
+  const photoReview: MenuPhotoFlag[] = [];
   const h1re = /<h1\b[^>]*>([\s\S]*?)<\/h1>/gi;
   const headings: { category: string; contentStart: number; headingStart: number }[] =
     [];
@@ -547,51 +565,102 @@ function parseHeadingMenu(html: string, pageUrl?: string): CrawledMenuItem[] {
       const block = `${row.attrs} ${chunk}`;
       const images = collectImages(chunk).filter((image) => !isSkippableMenuImage(image));
       const matched = images.find((image) => imageMatchesTitle(image, row.title));
+      const imageUrl = matched
+        ? resolveMenuAssetUrl(matched.src, pageUrl)
+        : undefined;
+      for (const image of images) {
+        if (image === matched) continue;
+        const sourceUrl = resolveMenuAssetUrl(image.src, pageUrl);
+        if (!sourceUrl) continue;
+        photoReview.push({
+          sourceUrl,
+          nearTitle: row.title,
+          reason: "unmatched",
+        });
+      }
       items.push({
         title: row.title,
         category: heading.category || "Plates",
         priceUsd: priceFromBlock(block),
         description: descriptionFrom(chunk, row.title),
         available: availabilityFrom(row.attrs, textOf(chunk)),
-        imageUrl: matched
-          ? resolveMenuAssetUrl(matched.src, pageUrl)
-          : undefined,
+        imageUrl,
       });
     }
   }
-  return items;
+  return { items, photoReview };
 }
 
 function assignNearbyImages(
   items: CrawledMenuItem[],
   html: string,
-  pageUrl?: string,
-): CrawledMenuItem[] {
+  pageUrl: string | undefined,
+  photoReview: MenuPhotoFlag[],
+): { items: CrawledMenuItem[]; photoReview: MenuPhotoFlag[] } {
   const images = collectImages(stripChrome(html)).filter(
     (image) => !isSkippableMenuImage(image),
   );
   const claim = new Map<string, string>();
+  const attached = new Set(
+    items
+      .map((item) => item.imageUrl)
+      .filter((url): url is string => Boolean(url)),
+  );
+  const review = dedupePhotoFlags(photoReview);
   for (const image of images) {
     const absolute = resolveMenuAssetUrl(image.src, pageUrl);
-    if (!absolute) continue;
+    if (!absolute || attached.has(absolute)) continue;
     const claimants = items.filter(
       (item) => !item.imageUrl && imageMatchesTitle(image, item.title),
     );
-    if (claimants.length !== 1) continue;
+    if (claimants.length > 1) {
+      review.push({ sourceUrl: absolute, reason: "shared" });
+      continue;
+    }
+    if (claimants.length !== 1) {
+      if (!review.some((flag) => flag.sourceUrl === absolute)) {
+        review.push({ sourceUrl: absolute, reason: "unmatched" });
+      }
+      continue;
+    }
     const titleKey = normalizeMenuTitle(claimants[0]!.title);
     const previous = claim.get(titleKey);
     if (!previous || fileMatchKey(absolute).length > fileMatchKey(previous).length) {
       claim.set(titleKey, absolute);
     }
   }
-  return items.map((item) => {
+  const next = items.map((item) => {
     if (item.imageUrl) return item;
     const imageUrl = claim.get(normalizeMenuTitle(item.title));
     return imageUrl ? { ...item, imageUrl } : item;
   });
+  const used = new Set(
+    next.map((item) => item.imageUrl).filter((url): url is string => Boolean(url)),
+  );
+  return {
+    items: next,
+    photoReview: dedupePhotoFlags(
+      review.filter((flag) => !used.has(flag.sourceUrl)),
+    ),
+  };
 }
 
-function mergeCrawled(items: CrawledMenuItem[]): CrawledMenuItem[] {
+function dedupePhotoFlags(flags: MenuPhotoFlag[]): MenuPhotoFlag[] {
+  const byUrl = new Map<string, MenuPhotoFlag>();
+  for (const flag of flags) {
+    const existing = byUrl.get(flag.sourceUrl);
+    if (!existing) {
+      byUrl.set(flag.sourceUrl, flag);
+      continue;
+    }
+    if (existing.reason === "unmatched" && flag.reason === "shared") {
+      byUrl.set(flag.sourceUrl, { ...existing, reason: "shared" });
+    }
+  }
+  return [...byUrl.values()];
+}
+
+export function mergeCrawledMenuItems(items: CrawledMenuItem[]): CrawledMenuItem[] {
   const byKey = new Map<string, CrawledMenuItem>();
   for (const item of items) {
     const key = `${normalizeMenuTitle(item.category)}::${normalizeMenuTitle(item.title)}`;
@@ -601,6 +670,7 @@ function mergeCrawled(items: CrawledMenuItem[]): CrawledMenuItem[] {
         byKey.set(key, item);
         continue;
       }
+      const priceFromLater = existing.priceUsd == null && item.priceUsd != null;
       byKey.set(key, {
         ...existing,
         priceUsd: existing.priceUsd ?? item.priceUsd,
@@ -608,29 +678,266 @@ function mergeCrawled(items: CrawledMenuItem[]): CrawledMenuItem[] {
         imageUrl: existing.imageUrl || item.imageUrl,
         available: existing.available && item.available,
         category: existing.category || item.category,
+        sourceKind: priceFromLater ? item.sourceKind : existing.sourceKind,
       });
     }
   }
   return [...byKey.values()];
 }
 
-export function parseRestaurantMenuHtml(
+function walkEmbeddedMenu(
+  node: unknown,
+  into: CrawledMenuItem[],
+  pageUrl?: string,
+  depth = 0,
+) {
+  if (!node || depth > 8) return;
+  if (Array.isArray(node)) {
+    for (const child of node) walkEmbeddedMenu(child, into, pageUrl, depth + 1);
+    return;
+  }
+  if (typeof node !== "object") return;
+  const rec = node as Record<string, unknown>;
+  const title = cleanDishTitle(
+    String(rec.name ?? rec.title ?? rec.item_name ?? rec.itemName ?? ""),
+  );
+  const priceField =
+    rec.price ?? rec.priceUsd ?? rec.unitPrice ?? rec.unit_price ?? rec.amount;
+  const hasPriceField = priceField != null && priceField !== "";
+  const description =
+    typeof rec.description === "string" ? cleanTitle(rec.description) : undefined;
+  const menuish = Boolean(
+    hasPriceField ||
+      rec.item_name ||
+      rec.itemName ||
+      rec.category ||
+      rec.image ||
+      rec.imageUrl,
+  );
+  if (
+    looksLikePlate(title) &&
+    !/gift\s*card/i.test(title) &&
+    menuish &&
+    (hasPriceField || description)
+  ) {
+    const price = hasPriceField ? parsePrice(priceField) : null;
+    into.push({
+      title,
+      category:
+        typeof rec.category === "string" && rec.category.trim()
+          ? cleanTitle(rec.category)
+          : "Plates",
+      priceUsd: price,
+      description,
+      available: availabilityFrom(rec.availability, `${description ?? ""} ${title}`),
+      imageUrl: jsonLdImageUrl(rec.image ?? rec.imageUrl ?? rec.photo, pageUrl),
+      sourceKind: "ordering",
+    });
+  }
+  for (const key of [
+    "items",
+    "products",
+    "menu",
+    "menus",
+    "categories",
+    "menuItems",
+    "itemListElement",
+    "sections",
+    "entries",
+    "data",
+    "results",
+  ]) {
+    if (rec[key] && typeof rec[key] === "object") {
+      walkEmbeddedMenu(rec[key], into, pageUrl, depth + 1);
+    }
+  }
+}
+
+function parseEmbeddedMenuJson(html: string, pageUrl?: string): CrawledMenuItem[] {
+  const items: CrawledMenuItem[] = [];
+  const re =
+    /<script[^>]*type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html))) {
+    try {
+      walkEmbeddedMenu(JSON.parse(match[1] ?? ""), items, pageUrl);
+    } catch {
+      /* not menu JSON */
+    }
+  }
+  return items;
+}
+
+export function menuFollowLinks(html: string, pageUrl: string): string[] {
+  let page: URL;
+  try {
+    page = new URL(pageUrl);
+  } catch {
+    return [];
+  }
+  const found: string[] = [];
+  const re = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html))) {
+    const absolute = resolveMenuAssetUrl(match[1] ?? "", pageUrl);
+    if (!absolute) continue;
+    let target: URL;
+    try {
+      target = new URL(absolute);
+    } catch {
+      continue;
+    }
+    if (target.href.split("#")[0] === page.href.split("#")[0]) continue;
+    const label = textOf(match[2] ?? "");
+    const blob = `${target.href} ${label}`;
+    if (/gift\s*card/i.test(blob)) continue;
+    const orderingHost =
+      /order\.online|toasttab\.com|doordash\.com|grubhub\.com|chownow\.com|squareup\.com|clover\.com|olo\.com/i.test(
+        target.hostname,
+      );
+    const sameHost = target.hostname === page.hostname;
+    const menuPath = /\/menu\b|\/order\b|online-order|order-online/i.test(
+      target.pathname + target.search,
+    );
+    const menuLabel = /order online|view menu|our menu|full menu|current menu/i.test(
+      label,
+    );
+    if (orderingHost || (sameHost && (menuPath || menuLabel))) {
+      found.push(target.href.split("#")[0]!);
+    }
+  }
+  return [...new Set(found)].slice(0, MAX_MENU_FOLLOW_LINKS);
+}
+
+export function countMenuExtraction(
+  dishes: CrawledMenuItem[],
+  photoReview: MenuPhotoFlag[],
+  source: MenuSourceCounts["source"],
+): MenuSourceCounts {
+  const pricesFound = dishes.filter((item) => item.priceUsd != null).length;
+  const matched = new Set(
+    dishes.map((item) => item.imageUrl).filter((url): url is string => Boolean(url)),
+  );
+  const flagged = new Set(photoReview.map((flag) => flag.sourceUrl));
+  for (const url of matched) flagged.delete(url);
+  return {
+    source,
+    dishesFound: dishes.length,
+    pricesFound,
+    pricesCaptured: pricesFound,
+    imagesFound: matched.size + flagged.size,
+    imagesCaptured: matched.size,
+    imagesFlagged: flagged.size,
+  };
+}
+
+function orderingLocationLabel(pageUrl?: string): string | undefined {
+  if (!pageUrl) return undefined;
+  try {
+    const store = new URL(pageUrl).pathname.match(/\/store\/([^/]+)/)?.[1];
+    if (!store) return undefined;
+    const label = decodeURIComponent(store)
+      .replace(/-\d+$/, "")
+      .replace(/-/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return label || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * DoorDash storefront pages embed item name, displayPrice, and imgUrl in the
+ * server HTML. A calorie line never reaches this path. Prices stay null when
+ * the field is missing.
+ */
+function parseOrderingStorefront(html: string, pageUrl?: string): CrawledMenuItem[] {
+  const location = orderingLocationLabel(pageUrl);
+  const items: CrawledMenuItem[] = [];
+  const seen = new Set<string>();
+  const patterns = [
+    /\\"name\\":\\"([^\\"]{2,90})\\"([\s\S]{0,900}?)\\"displayPrice\\":\\"\$*(\d+(?:\.\d{2})?)\\"/g,
+    /"name":"([^"]{2,90})"([\s\S]{0,900}?)"displayPrice":"\$*(\d+(?:\.\d{2})?)"/g,
+  ];
+  for (const re of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(html))) {
+      const title = cleanDishTitle(
+        (match[1] ?? "").replace(/\\u0026/g, "&").replace(/\\\//g, "/"),
+      );
+      if (!looksLikePlate(title) || /gift\s*card/i.test(title)) continue;
+      const key = normalizeMenuTitle(title);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const price = parsePrice(match[3]);
+      const tail = match[2] ?? "";
+      const after = html.slice(match.index, match.index + 1400);
+      const img =
+        /\\"imgUrl\\":\\"(https:[^\\"]+)\\"/.exec(after)?.[1] ??
+        /"imgUrl":"(https:[^"]+)"/.exec(after)?.[1];
+      const imageUrl = img
+        ? resolveMenuAssetUrl(img.replace(/\\\//g, "/"), pageUrl)
+        : undefined;
+      const description = /\\"description\\":\\"([^\\"]{3,240})\\"/.exec(tail)?.[1] ??
+        /"description":"([^"]{3,240})"/.exec(tail)?.[1];
+      items.push({
+        title,
+        category: location || "Plates",
+        priceUsd: price,
+        description: description
+          ? cleanTitle(description.replace(/\\u0026/g, "&").replace(/\\\//g, "/"))
+          : undefined,
+        available: true,
+        imageUrl,
+        sourceKind: "ordering",
+      });
+    }
+  }
+  return items;
+}
+
+export function parseRestaurantMenuPage(
   html: string,
   sourceUrl?: string,
-): CrawledMenuItem[] {
+): { dishes: CrawledMenuItem[]; photoReview: MenuPhotoFlag[] } {
+  const storefront = parseOrderingStorefront(html, sourceUrl);
+  if (storefront.length >= 5) {
+    return { dishes: storefront, photoReview: [] };
+  }
   const fromJson: CrawledMenuItem[] = [];
   for (const block of collectJsonLd(html)) {
     walkJsonLd(block, fromJson, "Plates", sourceUrl);
   }
-  const fromHeadings = parseHeadingMenu(html, sourceUrl);
+  const headings = parseHeadingMenu(html, sourceUrl);
   const fromText =
-    fromHeadings.length > 0
+    headings.items.length > 0
       ? []
       : parsePlainMenuLines(stripTags(stripChrome(html)));
-  const merged = mergeCrawled(
-    disambiguateTitles([...fromHeadings, ...fromJson, ...fromText]),
+  const embedded = parseEmbeddedMenuJson(html, sourceUrl);
+  const merged = mergeCrawledMenuItems(
+    disambiguateTitles([
+      ...headings.items,
+      ...fromJson,
+      ...fromText,
+      ...embedded,
+      ...storefront,
+    ]),
   );
-  return assignNearbyImages(merged, html, sourceUrl);
+  const assigned = assignNearbyImages(
+    merged,
+    html,
+    sourceUrl,
+    headings.photoReview,
+  );
+  return { dishes: assigned.items, photoReview: assigned.photoReview };
+}
+
+export function parseRestaurantMenuHtml(
+  html: string,
+  sourceUrl?: string,
+): CrawledMenuItem[] {
+  return parseRestaurantMenuPage(html, sourceUrl).dishes;
 }
 
 function logCrawlFailure(url: string, failure: {
@@ -800,6 +1107,7 @@ export function applyWebsiteMenuSync(input: {
   crawled: CrawledMenuItem[];
   sourceUrl: string;
   crawledAt?: string;
+  photoReview?: MenuPhotoFlag[];
 }): {
   restaurant: DeliveryRestaurant;
   changes: MenuCrawlChange[];
@@ -901,6 +1209,7 @@ export function applyWebsiteMenuSync(input: {
         items: nextItems,
         approvedAt: input.restaurant.menu?.approvedAt ?? crawledAt,
         uploadedFiles: input.restaurant.menu?.uploadedFiles,
+        photoReview: input.photoReview ?? input.restaurant.menu?.photoReview,
         parseNote:
           changes.length > 0
             ? `Website crawl updated ${changes.length} plate${changes.length === 1 ? "" : "s"} from ${input.sourceUrl}.${priceNote}`
@@ -999,6 +1308,7 @@ export async function downloadPublicMenuPhoto(
 export async function storeCrawledMenuPhotos(input: {
   restaurant: DeliveryRestaurant;
   crawled: CrawledMenuItem[];
+  photoReview?: MenuPhotoFlag[];
   storePhoto?: MenuPhotoStore;
   fetchImpl?: MenuFetchImpl;
   budgetMs?: number;
@@ -1009,7 +1319,6 @@ export async function storeCrawledMenuPhotos(input: {
   const deadline = Date.now() + (input.budgetMs ?? 20_000);
   const wanted: { item: RestaurantMenuItem; imageUrl: string }[] = [];
   for (const item of items) {
-    if (wanted.length >= MAX_MENU_PHOTOS_PER_CRAWL) break;
     const crawled = input.crawled.find(
       (row) => normalizeMenuTitle(row.title) === normalizeMenuTitle(item.title),
     );
@@ -1031,7 +1340,7 @@ export async function storeCrawledMenuPhotos(input: {
   const nextItems: RestaurantMenuItem[] = [];
   for (const item of items) {
     const photo = photoById.get(item.id);
-    if (!photo || storedCount >= MAX_MENU_PHOTOS_PER_CRAWL || Date.now() > deadline) {
+    if (!photo || Date.now() > deadline) {
       nextItems.push(item);
       continue;
     }
@@ -1065,10 +1374,53 @@ export async function storeCrawledMenuPhotos(input: {
       photoSource: "website",
     });
   }
+  const reviewFlags = input.photoReview ?? input.restaurant.menu?.photoReview ?? [];
+  const storedReview: MenuPhotoFlag[] = [];
+  for (const flag of reviewFlags) {
+    if (Date.now() > deadline) {
+      storedReview.push(flag);
+      continue;
+    }
+    if (flag.storedUrl && isStoredMenuPhotoUrl(flag.storedUrl)) {
+      storedReview.push(flag);
+      continue;
+    }
+    if (!/^https?:\/\//i.test(flag.sourceUrl)) {
+      storedReview.push(flag);
+      continue;
+    }
+    const photo = await downloadPublicMenuPhoto(flag.sourceUrl, input.fetchImpl);
+    if (!photo) {
+      storedReview.push(flag);
+      continue;
+    }
+    let storedUrl: string | null = null;
+    try {
+      storedUrl = await input.storePhoto({
+        itemId: `review-${menuItemIdFromTitle(flag.nearTitle || flag.sourceUrl)}`,
+        bytes: photo.bytes,
+        mime: photo.mime,
+      });
+    } catch (error) {
+      console.error("[hometown-menu-crawler] review photo store failed", {
+        url: flag.sourceUrl,
+        detail: error instanceof Error ? error.message : "store",
+      });
+    }
+    storedReview.push(
+      storedUrl && isStoredMenuPhotoUrl(storedUrl)
+        ? { ...flag, storedUrl }
+        : flag,
+    );
+  }
   return {
     ...input.restaurant,
     menu: input.restaurant.menu
-      ? { ...input.restaurant.menu, items: nextItems }
+      ? {
+          ...input.restaurant.menu,
+          items: nextItems,
+          photoReview: storedReview.length > 0 ? storedReview : undefined,
+        }
       : input.restaurant.menu,
   };
 }
@@ -1148,6 +1500,8 @@ export async function syncRestaurantMenuFromWebsite(input: {
   fetchHtml?: MenuCrawlFetch;
   html?: string | null;
   force?: boolean;
+  /** Fetch menu and online-ordering links found on the page. */
+  followLinks?: boolean;
   storePhoto?: MenuPhotoStore;
   fetchImpl?: MenuFetchImpl;
 }): Promise<{
@@ -1241,7 +1595,46 @@ export async function syncRestaurantMenuFromWebsite(input: {
     finalUrl = fetched.finalUrl || sourceUrl;
   }
 
-  const crawled = parseRestaurantMenuHtml(html, finalUrl);
+  const pages: { html: string; url: string; ordering: boolean }[] = [
+    { html, url: finalUrl, ordering: false },
+  ];
+  if (input.followLinks) {
+    for (const link of menuFollowLinks(html, finalUrl)) {
+      const followed = await fetchRestaurantMenuPage(link, {
+        attempts: 1,
+        timeoutMs: input.force ? MENU_PAGE_FETCH_TIMEOUT_MS : MENU_PAGE_TICK_TIMEOUT_MS,
+        fetchImpl: input.fetchImpl,
+      });
+      if (!followed.ok) continue;
+      let ordering = false;
+      try {
+        ordering = new URL(followed.finalUrl).hostname !== new URL(finalUrl).hostname;
+      } catch {
+        ordering = true;
+      }
+      pages.push({
+        html: followed.html,
+        url: followed.finalUrl || link,
+        ordering,
+      });
+    }
+  }
+  const parsedPages = pages.map((page) => {
+    const parsed = parseRestaurantMenuPage(page.html, page.url);
+    return {
+      ...parsed,
+      dishes: parsed.dishes.map((dish) => ({
+        ...dish,
+        sourceKind: dish.sourceKind ?? (page.ordering ? "ordering" : "web"),
+      })),
+    };
+  });
+  const crawled = mergeCrawledMenuItems(
+    parsedPages.flatMap((page) => page.dishes),
+  );
+  const photoReview = dedupePhotoFlags(
+    parsedPages.flatMap((page) => page.photoReview),
+  );
   if (crawled.length === 0) {
     const message = "Hometown read the page but found no dishes.";
     console.error("[hometown-menu-crawler]", {
@@ -1263,21 +1656,29 @@ export async function syncRestaurantMenuFromWebsite(input: {
     crawled,
     sourceUrl,
     crawledAt: now.toISOString(),
+    photoReview,
   });
   const withPhotos = input.storePhoto
     ? await storeCrawledMenuPhotos({
         restaurant: applied.restaurant,
         crawled,
+        photoReview,
         storePhoto: input.storePhoto,
         fetchImpl: input.fetchImpl,
-        budgetMs: input.force ? 20_000 : 6_000,
+        budgetMs: input.force ? 45_000 : 6_000,
       })
     : applied.restaurant;
+  const webDishes = crawled.filter((item) => item.sourceKind !== "ordering");
+  const orderingDishes = crawled.filter((item) => item.sourceKind === "ordering");
   console.info("[hometown-menu-crawler]", {
     url: finalUrl,
+    pages: pages.length,
     dishes: crawled.length,
     priced: crawled.filter((item) => item.priceUsd != null).length,
     photos: crawled.filter((item) => item.imageUrl).length,
+    photosFlagged: photoReview.length,
+    web: countMenuExtraction(webDishes, photoReview, "web"),
+    ordering: countMenuExtraction(orderingDishes, [], "ordering"),
     changes: applied.changes.length,
   });
   return {

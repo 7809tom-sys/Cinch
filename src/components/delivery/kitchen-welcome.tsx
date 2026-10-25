@@ -14,6 +14,10 @@ import {
   startKitchenPayoutsAction,
   uploadKitchenCoverAction,
 } from "@/app/site/[id]/merchant/actions";
+import {
+  kitchenProfileGapMessage,
+  kitchenProfileGaps,
+} from "@/lib/kitchen-profile-gaps";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import type { DeliveryRestaurant } from "@/lib/seed-delivery";
 
@@ -121,7 +125,7 @@ export function KitchenWelcome({
         ) : null}
         <form
           className="mt-4 grid gap-3 sm:grid-cols-2"
-          key={`${restaurant.name}|${restaurant.address}|${restaurant.hours}|${restaurant.phone}|${restaurant.coverImageUrl}`}
+          key={`${restaurant.name}|${restaurant.address}|${restaurant.hours}|${restaurant.phone}|${restaurant.deliveryRadiusMinutes ?? ""}|${restaurant.coverImageUrl}`}
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -132,6 +136,7 @@ export function KitchenWelcome({
                   address: String(form.get("address") ?? ""),
                   hours: String(form.get("hours") ?? ""),
                   phone: String(form.get("phone") ?? ""),
+                  deliveryRadiusMinutes: Number(form.get("deliveryRadiusMinutes")) || null,
                 }),
               "Restaurant info saved.",
             );
@@ -169,6 +174,24 @@ export function KitchenWelcome({
               placeholder="Mon–Sat 11am–9pm"
               className={fieldClass}
             />
+          </label>
+          <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-radius">
+            Delivery area (minutes)
+            <input
+              id="kitchen-radius"
+              name="deliveryRadiusMinutes"
+              type="number"
+              min={5}
+              max={90}
+              step={1}
+              defaultValue={restaurant.deliveryRadiusMinutes ?? ""}
+              placeholder="20"
+              className={fieldClass}
+            />
+            <span className="mt-1 block text-xs font-normal text-muted">
+              Optional. Approximate drive time: a straight line at 25 mph, not a
+              driving route. Leave blank to keep the 2-mile area.
+            </span>
           </label>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-phone">
             Phone
@@ -357,10 +380,12 @@ export function KitchenWelcome({
               name="priceUsd"
               type="number"
               min={0}
-              step={0.25}
+              step={0.01}
               required
+              placeholder="10.99"
               className={fieldClass}
             />
+            <span className="mt-1 block text-xs font-normal text-muted">Any cent amount</span>
           </label>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="plate-category">
             Category
@@ -391,8 +416,20 @@ export function KitchenWelcome({
           Approve sends the confirmed plates live on your kitchen. Until then
           diners don&apos;t see this restaurant.
         </p>
+        {kitchenProfileGaps(restaurant).length > 0 ? (
+          <p className="mt-3 text-sm font-semibold text-amber-800">
+            {kitchenProfileGapMessage(kitchenProfileGaps(restaurant))}
+          </p>
+        ) : null}
         {restaurant.menu?.parseNote ? (
           <p className="mt-3 text-sm text-muted">{restaurant.menu.parseNote}</p>
+        ) : null}
+        {restaurant.menu?.photoReview?.length ? (
+          <p className="mt-2 text-sm text-amber-800">
+            {restaurant.menu.photoReview.length} photo
+            {restaurant.menu.photoReview.length === 1 ? "" : "s"} saved but not
+            matched to a plate. Attach the right one before it goes on the menu.
+          </p>
         ) : null}
         {restaurant.menu?.uploadedFiles?.length ? (
           <p className="mt-2 text-sm font-semibold text-brand-deep">
@@ -411,7 +448,9 @@ export function KitchenWelcome({
                 </p>
                 <p className="mt-1 font-bold text-brand-deep">{item.title}</p>
                 <p className="text-sm text-muted">
-                  ${item.draftPriceUsd.toFixed(2)}
+                  {item.websitePriceMissing
+                    ? "No price on the menu yet"
+                    : `$${item.draftPriceUsd.toFixed(2)}`}
                   {item.description ? ` · ${item.description}` : ""}
                 </p>
               </li>
@@ -459,9 +498,19 @@ export function KitchenWelcome({
         >
           Connect payouts
         </button>
+        {kitchenProfileGaps(restaurant).length > 0 ? (
+          <p className="mt-3 text-sm font-semibold text-amber-800">
+            {kitchenProfileGapMessage(kitchenProfileGaps(restaurant))}
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            Name, address, and hours are saved. Approving a priced plate can
+            take this kitchen live.
+          </p>
+        )}
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || kitchenProfileGaps(restaurant).length > 0}
           onClick={() =>
             run(
               () => finishKitchenWelcomeAction(projectId, restaurant.id),
