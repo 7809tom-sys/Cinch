@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { prepareDriverAccount } from "@/lib/hometown-kitchen-session";
 import {
   establishHometownRoleSession,
   hometownRoleHome,
@@ -22,6 +23,10 @@ export async function signInHometownRoleAction(
   }
   if (password.length < 4) {
     return { ok: false as const, error: "Password must be at least 4 characters." };
+  }
+  if (roleRaw === "driver") {
+    const prepared = await prepareDriverAccount(projectId, email);
+    if (!prepared.ok) return { ok: false as const, error: prepared.error };
   }
   await establishHometownRoleSession({
     role: roleRaw,

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
 import { SiteFooter } from "@/components/site-footer";
+import { prepareDriverAccount } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { isMasterEmail } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
@@ -32,9 +33,14 @@ export default async function PortalDriverPage({
   if (!customer) redirect("/login");
   if (!project) return <SeedNotOnAccount />;
 
-  const ops = await ensureDeliveryOpsInSeed(project);
-  if (!ops) redirect(`/portal/${project.id}`);
   const role = await getHometownRoleSession(project.id);
+  const account =
+    role?.role === "driver"
+      ? await prepareDriverAccount(project.id, role.email)
+      : null;
+  const fallback = await ensureDeliveryOpsInSeed(project);
+  const ops = account?.ok ? account.ops : fallback;
+  if (!ops) redirect(`/portal/${project.id}`);
   const master =
     isMasterEmail(customer.email) || isMasterEmail(role?.email);
   if (!master && role?.role !== "driver") {
@@ -90,6 +96,14 @@ export default async function PortalDriverPage({
             ops={ops}
             viewerEmail={role?.email || customer.email}
             viewerIsMaster={master}
+            initialDriverId={
+              account?.ok &&
+              account.driver &&
+              role?.email &&
+              account.driver.email?.toLowerCase() === role.email.toLowerCase()
+                ? account.driver.id
+                : undefined
+            }
           />
         </div>
       </main>

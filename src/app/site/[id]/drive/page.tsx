@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
+import { prepareDriverAccount } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { isMasterEmail } from "@/lib/master-auth";
@@ -23,8 +24,13 @@ export default async function SeedDrivePage({
   if (session?.role !== "driver") {
     redirect(`/site/${id}/enter?role=driver`);
   }
-  const ops = await ensureDeliveryOpsInSeed(project);
+  const account = await prepareDriverAccount(id, session.email);
+  const ops = account.ok ? account.ops : await ensureDeliveryOpsInSeed(project);
   if (!ops) redirect(`/site/${id}`);
+  const accountDriverId =
+    account.ok && account.driver?.email?.toLowerCase() === session.email.toLowerCase()
+      ? account.driver.id
+      : undefined;
 
   return (
     <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">
@@ -70,6 +76,7 @@ export default async function SeedDrivePage({
           ops={ops}
           viewerEmail={session.email}
           viewerIsMaster={isMasterEmail(session.email)}
+          initialDriverId={accountDriverId}
         />
       </div>
     </main>

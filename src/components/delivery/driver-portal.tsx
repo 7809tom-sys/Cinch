@@ -64,15 +64,22 @@ export function HometownDriverPortal({
   ops,
   viewerEmail = "",
   viewerIsMaster = false,
+  initialDriverId = "",
 }: {
   projectId: string;
   ops: DeliveryOps;
   viewerEmail?: string;
   viewerIsMaster?: boolean;
+  /** The signed-in driver's row. Seeded dispatch stays on the picker. */
+  initialDriverId?: string;
 }) {
+  const signedInId = ops.drivers.some((row) => row.id === initialDriverId)
+    ? initialDriverId
+    : "";
   const [driverId, setDriverId] = useState(
-    ops.drivers.find((row) => row.status === "approved")?.id ??
-      ops.drivers[0]?.id ??
+    signedInId ||
+      ops.drivers.find((row) => row.status === "approved")?.id ||
+      ops.drivers[0]?.id ||
       "",
   );
   const [weeklyGmv, setWeeklyGmv] = useState(DEFAULT_WEEKLY_GMV_EXAMPLE);

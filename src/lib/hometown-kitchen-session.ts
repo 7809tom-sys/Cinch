@@ -11,11 +11,12 @@ import {
 import { getHometownRoleSession } from "./hometown-role";
 import { durableStoreWarning, isDurableStoreConfigured } from "./kv-store";
 import { getMasterSession, isMasterEmail } from "./master-auth";
+import { ensureSignedInDriver } from "./hometown-driver-account";
 import {
   ensureDeliveryOpsInSeed,
   saveDeliveryOps,
 } from "./seed-delivery-io";
-import type { DeliveryOps, DeliveryRestaurant } from "./seed-delivery";
+import type { DeliveryDriver, DeliveryOps, DeliveryRestaurant } from "./seed-delivery";
 import { getProject } from "./store";
 
 /**
@@ -129,6 +130,54 @@ export type MerchantDesk =
       saveError: string | null;
     }
   | { ok: false; error: string };
+
+/**
+ * Driver sign-up and the driver portal share one account row.
+ * The master keeps the seeded driver list and does not get a new row.
+ */
+export async function prepareDriverAccount(
+  projectId: string,
+  email: string,
+): Promise<
+  | { ok: true; ops: DeliveryOps; driver: DeliveryDriver | null }
+  | { ok: false; error: string }
+> {
+  const loaded = await loadMarketOps(projectId);
+  if (!loaded.ok) return loaded;
+  if (isMasterEmail(email)) {
+    return {
+      ok: true,
+      ops: loaded.ops,
+      driver: null,
+    };
+  }
+  const ensured = ensureSignedInDriver(loaded.ops, email);
+  if (!ensured.created) {
+    return { ok: true, ops: ensured.ops, driver: ensured.driver };
+  }
+  try {
+    const saved = await saveDeliveryOps(
+      projectId,
+      ensured.ops,
+      "Opened a driver account",
+    );
+    if (!saved.ok) {
+      return {
+        ok: false,
+        error: saved.error?.trim() || "Could not save this driver account.",
+      };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not save this driver account.",
+    };
+  }
+  return { ok: true, ops: ensured.ops, driver: ensured.driver };
+}
 
 /** New emails get their own blank kitchen. Masters keep the full desk. */
 export async function prepareMerchantDesk(
