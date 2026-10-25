@@ -21,6 +21,16 @@ export type DriverDocStatus = {
 
 export type DriverDocuments = Partial<Record<DriverDocSlotId, DriverDocStatus>>;
 
+export const DRIVER_DOC_STATEMENT = "These documents are mine and accurate";
+
+export type DriverDocSignature = {
+  name: string;
+  signedAt: string;
+  statement: typeof DRIVER_DOC_STATEMENT;
+};
+
+export type DriverPrivateName = DriverDocSlotId | "signature";
+
 export const DRIVER_DOC_MAX_BYTES = 8 * 1024 * 1024;
 
 const ALLOWED = new Set([
@@ -95,10 +105,28 @@ export function sanitizeDriverDocuments(value: unknown): DriverDocuments | undef
   return Object.keys(documents).length > 0 ? documents : undefined;
 }
 
-export function driverDocumentsComplete(
+export function driverSlotsComplete(
   documents: DriverDocuments | null | undefined,
 ): boolean {
   return DRIVER_DOC_SLOTS.every((slot) => Boolean(documents?.[slot.id]));
+}
+
+export function sanitizeDriverSignature(value: unknown): DriverDocSignature | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const row = value as Partial<DriverDocSignature>;
+  const name = typeof row.name === "string" ? row.name.trim() : "";
+  const signedAt = typeof row.signedAt === "string" ? row.signedAt.trim() : "";
+  if (name.length < 2 || !signedAt || row.statement !== DRIVER_DOC_STATEMENT) {
+    return undefined;
+  }
+  return { name: name.slice(0, 120), signedAt, statement: DRIVER_DOC_STATEMENT };
+}
+
+export function driverDocumentsComplete(
+  documents: DriverDocuments | null | undefined,
+  signature?: DriverDocSignature | null,
+): boolean {
+  return driverSlotsComplete(documents) && Boolean(sanitizeDriverSignature(signature));
 }
 
 export function canReadDriverDocument(input: {
@@ -115,6 +143,15 @@ export function driverDocumentSummary(
   documents: DriverDocuments | null | undefined,
 ): string {
   const uploaded = DRIVER_DOC_SLOTS.filter((slot) => documents?.[slot.id]).length;
-  if (uploaded === DRIVER_DOC_SLOTS.length) return "Documents complete";
+  if (uploaded === DRIVER_DOC_SLOTS.length) return "Documents 4 of 4";
   return `Documents ${uploaded} of ${DRIVER_DOC_SLOTS.length}`;
+}
+
+export function driverPacketSummary(
+  documents: DriverDocuments | null | undefined,
+  signature?: DriverDocSignature | null,
+): string {
+  const signed = sanitizeDriverSignature(signature) ? "Signed" : "Unsigned";
+  if (driverDocumentsComplete(documents, signature)) return `Documents complete · ${signed}`;
+  return `${driverDocumentSummary(documents)} · ${signed}`;
 }

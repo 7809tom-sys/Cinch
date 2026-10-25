@@ -6,8 +6,10 @@
  */
 import { readFileSync } from "fs";
 import {
+  DRIVER_DOC_STATEMENT,
   driverDocumentSummary,
   driverDocumentsComplete,
+  driverPacketSummary,
   sanitizeDriverDocuments,
   validateDriverDocFile,
 } from "../src/lib/hometown-driver-docs";
@@ -42,7 +44,10 @@ const text = validateDriverDocFile({
 assert(!huge.ok && !text.ok, "an oversized file and a text file are rejected");
 
 const empty = driverDocumentsComplete(undefined);
-assert(empty === false && driverDocumentSummary(undefined) === "Documents 0 of 4", "a new driver is missing every card");
+assert(
+  empty === false && driverDocumentSummary(undefined) === "Documents 0 of 4",
+  "a new driver is missing every card",
+);
 
 const partial = sanitizeDriverDocuments({
   "license-front": {
@@ -67,10 +72,17 @@ const full = {
   "insurance-front": { ...partial!["license-front"]!, fileName: "ins-front.jpg" },
   "insurance-back": { ...partial!["license-front"]!, fileName: "ins-back.jpg" },
 };
+const signature = {
+  name: "Maya Chen",
+  signedAt: "2026-10-25T00:00:00.000Z",
+  statement: DRIVER_DOC_STATEMENT,
+} as const;
 assert(
-  driverDocumentsComplete(full) &&
-    driverDocumentSummary(full) === "Documents complete",
-  "four uploaded slots are complete",
+  driverDocumentsComplete(full) === false &&
+    driverDocumentsComplete(full, signature) &&
+    driverPacketSummary(full, signature) === "Documents complete · Signed" &&
+    driverPacketSummary(full) === "Documents 4 of 4 · Unsigned",
+  "four cards stay unsigned until the statement is signed",
 );
 
 async function main() {
@@ -86,12 +98,17 @@ await store.remove(key, "license-front");
 
 const ops = starterDeliveryOps("Hometown Runner");
 const maya = ops.drivers[0]!;
-const saved = normalizeDeliveryDriver({ ...maya, documents: full });
+const saved = normalizeDeliveryDriver({
+  ...maya,
+  documents: full,
+  documentSignature: signature,
+});
 assert(
   !JSON.stringify(saved.documents).includes("http") &&
     saved.documents?.["license-front"]?.fileName === "front.jpg" &&
-    driverDocumentsComplete(saved.documents),
-  "the driver record stores status and not a file URL",
+    driverDocumentsComplete(saved.documents, saved.documentSignature) &&
+    saved.documentSignature?.statement === DRIVER_DOC_STATEMENT,
+  "the driver record stores status and the signed statement, not a file URL",
 );
 
 const action = readFileSync("src/app/site/[id]/drive/actions.ts", "utf8");

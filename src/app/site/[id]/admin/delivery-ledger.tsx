@@ -27,7 +27,7 @@ import {
   freezeDeliveryDriverAction,
 } from "./actions";
 import { TestingBadge } from "@/components/delivery/testing-banner";
-import { driverDocumentSummary } from "@/lib/hometown-driver-docs";
+import { driverPacketSummary } from "@/lib/hometown-driver-docs";
 import { recordIsTest } from "@/lib/hometown-testing";
 
 export function SeedDeliveryLedger({
@@ -345,7 +345,7 @@ export function SeedDeliveryLedger({
                 <h3>{driver.name}</h3>
                 <p className="seed-run-meta">
                   License {driver.licenseOk ? "ok" : "missing"} ·{" "}
-                  {driverDocumentSummary(driver.documents)} · insurance{" "}
+                  {driverPacketSummary(driver.documents, driver.documentSignature)} · insurance{" "}
                   {driver.insuranceOk ? "ok" : "expired"} ·{" "}
                   {driver.classification === "full_time"
                     ? "full-time $79/mo"

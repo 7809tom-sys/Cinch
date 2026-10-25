@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import path from "path";
 import { del, get, put } from "@vercel/blob";
-import type { DriverDocSlotId } from "./hometown-driver-docs";
+import type { DriverPrivateName } from "./hometown-driver-docs";
 
 /**
  * Private bytes for one driver slot. The store was created in Vercel as
@@ -18,15 +18,15 @@ export type StoredDriverDoc = {
 export type DriverDocStore = {
   put(input: {
     driverKey: string;
-    slot: DriverDocSlotId;
+    slot: DriverPrivateName;
     bytes: Uint8Array;
     mime: string;
   }): Promise<void>;
-  read(driverKey: string, slot: DriverDocSlotId): Promise<StoredDriverDoc | null>;
-  remove(driverKey: string, slot: DriverDocSlotId): Promise<void>;
+  read(driverKey: string, slot: DriverPrivateName): Promise<StoredDriverDoc | null>;
+  remove(driverKey: string, slot: DriverPrivateName): Promise<void>;
 };
 
-export function driverDocPath(driverKey: string, slot: DriverDocSlotId): string {
+export function driverDocPath(driverKey: string, slot: DriverPrivateName): string {
   return `drivers/${driverKey}/${slot}`;
 }
 
@@ -92,7 +92,7 @@ export function memoryDriverDocStore(): DriverDocStore {
 }
 
 export function fileDriverDocStore(root: string): DriverDocStore {
-  function filePath(driverKey: string, slot: DriverDocSlotId): string {
+  function filePath(driverKey: string, slot: DriverPrivateName): string {
     return path.join(root, driverKey, slot);
   }
   return {
