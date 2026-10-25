@@ -947,9 +947,15 @@ export function isStoredMenuPhotoUrl(url: string): boolean {
 export async function downloadPublicMenuPhoto(
   url: string,
   fetchImpl?: MenuFetchImpl,
+  options?: { minBytes?: number; allowLogo?: boolean },
 ): Promise<{ mime: string; bytes: Uint8Array } | null> {
   if (!isPublicRestaurantWebsite(url)) return null;
-  if (/logo|icon|sprite|favicon|pixel|spacer/i.test(url)) return null;
+  if (
+    !options?.allowLogo &&
+    /logo|icon|sprite|favicon|pixel|spacer/i.test(url)
+  ) {
+    return null;
+  }
   const fetchImage = fetchImpl ?? fetch;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12_000);
@@ -972,7 +978,8 @@ export async function downloadPublicMenuPhoto(
       return null;
     }
     const buffer = new Uint8Array(await response.arrayBuffer());
-    if (buffer.length < MIN_MENU_PHOTO_BYTES || buffer.length > MAX_MENU_PHOTO_BYTES) {
+    const minBytes = options?.minBytes ?? MIN_MENU_PHOTO_BYTES;
+    if (buffer.length < minBytes || buffer.length > MAX_MENU_PHOTO_BYTES) {
       return null;
     }
     const mime = sniffImageMime(buffer);

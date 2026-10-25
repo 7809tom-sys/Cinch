@@ -3,8 +3,17 @@
 import { revalidatePath } from "next/cache";
 import {
   connectRestaurantWebsite,
+  downloadPublicMenuPhoto,
+  fetchRestaurantMenuPage,
+  isStoredMenuPhotoUrl,
   syncRestaurantMenuFromWebsite,
 } from "@/lib/hometown-menu-crawler";
+import {
+  applyCrawledRestaurantProfile,
+  parseRestaurantProfile,
+  type RestaurantProfileDraft,
+} from "@/lib/hometown-restaurant-profile";
+import { hometownMenuPhotoSaver } from "@/lib/seed-delivery-io";
 import { publishOwnerKitchen } from "@/lib/hometown-kitchen-access";
 import {
   requireDriverActor,
@@ -320,6 +329,7 @@ export async function connectRestaurantWebsiteAction(
   projectId: string,
   restaurantId: string,
   websiteUrl: string,
+  typed: RestaurantProfileDraft = { name: "", address: "", hours: "", phone: "" },
 ) {
   const loaded = await requireKitchenWrite(projectId, restaurantId);
   if (!loaded.ok) return loaded;
@@ -329,29 +339,83 @@ export async function connectRestaurantWebsiteAction(
     websiteUrl,
   );
   if ("error" in connected) return { ok: false as const, error: connected.error };
+  const fetched = await fetchRestaurantMenuPage(websiteUrl);
+  const profile = fetched.ok
+    ? parseRestaurantProfile(fetched.html, fetched.finalUrl)
+    : {};
   const synced = await syncRestaurantMenuFromWebsite({
     ops: connected,
     restaurantId,
     force: true,
+    html: fetched.ok ? fetched.html : undefined,
   });
+  const current = synced.ops.restaurants.find((row) => row.id === restaurantId);
+  const applied = current
+    ? applyCrawledRestaurantProfile(current, profile, typed)
+    : null;
+  let filled = applied?.filled ?? [];
+  let nextRestaurant = applied?.restaurant;
+  if (nextRestaurant && applied?.headerSourceUrl && !nextRestaurant.coverImageUrl) {
+    const photo = await downloadPublicMenuPhoto(
+      applied.headerSourceUrl,
+      undefined,
+      { minBytes: 400, allowLogo: true },
+    );
+    const stored = photo
+      ? await hometownMenuPhotoSaver(projectId)({
+          itemId: `cover-${restaurantId}`,
+          bytes: photo.bytes,
+          mime: photo.mime,
+        })
+      : null;
+    if (stored && isStoredMenuPhotoUrl(stored)) {
+      nextRestaurant = { ...nextRestaurant, coverImageUrl: stored };
+    } else {
+      filled = filled.filter((label) => label !== "header image");
+    }
+  }
+  const profileOps = nextRestaurant
+    ? {
+        ...synced.ops,
+        restaurants: synced.ops.restaurants.map((row) =>
+          row.id === restaurantId ? nextRestaurant! : row,
+        ),
+      }
+    : synced.ops;
   const committed = await commitWebsiteMenuSync({
     projectId,
     restaurantId,
-    ops: synced.ops,
+    ops: profileOps,
     crawled: synced.crawled,
-    message: synced.changed
-      ? "Website crawl wrote live prices from the connected menu page"
-      : "Kitchen connected a public menu page",
+    message: filled.length
+      ? `Website filled ${filled.join(", ")}`
+      : synced.changed
+        ? "Website crawl wrote live prices from the connected menu page"
+        : "Kitchen connected a public menu page",
   });
   revalidateDelivery(projectId);
   revalidatePath(`/site/${projectId}/shop`);
-  if (synced.error && !synced.changed) {
+  const kept = applied?.kept ?? [];
+  const notice = [
+    filled.length ? `Filled from the website: ${filled.join(", ")}.` : "",
+    kept.length ? `Kept what you typed: ${kept.join(", ")}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  if (synced.error && !synced.changed && filled.length === 0) {
     return { ok: false as const, error: synced.error };
   }
-  if (committed.storeError) {
+  if (committed.storeError && filled.length === 0) {
     return { ok: false as const, error: committed.storeError };
   }
-  return { ok: true as const };
+  return {
+    ok: true as const,
+    notice:
+      notice ||
+      (synced.error
+        ? "Menu link saved. Hometown did not find dishes on that page."
+        : "Menu link saved."),
+  };
 }
 
 export async function syncRestaurantMenuFromWebsiteAction(

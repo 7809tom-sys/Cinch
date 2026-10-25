@@ -92,10 +92,12 @@ export function ensureOwnerKitchen(
 export function saveKitchenProfile(
   ops: DeliveryOps,
   restaurantId: string,
-  input: { name: string; address: string },
+  input: { name: string; address: string; hours?: string; phone?: string },
 ): DeliveryOps {
   const name = input.name.trim();
   const address = input.address.trim();
+  const hours = (input.hours ?? "").trim();
+  const phone = (input.phone ?? "").trim();
   return {
     ...ops,
     restaurants: ops.restaurants.map((row) =>
@@ -104,6 +106,8 @@ export function saveKitchenProfile(
             ...row,
             name,
             address,
+            hours,
+            phone,
             neighborhood: address.slice(0, 80),
           }
         : row,

@@ -12,6 +12,7 @@ import {
   finishKitchenWelcomeAction,
   saveKitchenProfileAction,
   startKitchenPayoutsAction,
+  uploadKitchenCoverAction,
 } from "@/app/site/[id]/merchant/actions";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import type { DeliveryRestaurant } from "@/lib/seed-delivery";
@@ -44,7 +45,9 @@ export function KitchenWelcome({
     : "Welcome.";
 
   function run(
-    fn: () => Promise<{ ok: true; url?: string } | { ok: false; error: string }>,
+    fn: () => Promise<
+      { ok: true; url?: string; notice?: string } | { ok: false; error: string }
+    >,
     success?: string,
   ) {
     setError(null);
@@ -61,7 +64,11 @@ export function KitchenWelcome({
           return;
         }
         router.refresh();
-        if (success) setNotice(success);
+        const notice =
+          "notice" in result && typeof result.notice === "string"
+            ? result.notice
+            : success;
+        if (notice) setNotice(notice);
       } catch (caught) {
         setError(
           caught instanceof Error ? caught.message : "Could not save this kitchen.",
@@ -99,10 +106,22 @@ export function KitchenWelcome({
           Step 1
         </p>
         <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl font-bold text-brand-deep">
-          Restaurant name and address
+          Restaurant info
         </h3>
+        <p className="mt-2 text-sm text-muted">
+          Name, address, hours, phone, and a header image. The menu stays
+          empty until you add plates.
+        </p>
+        {restaurant.coverImageUrl ? (
+          <img
+            src={restaurant.coverImageUrl}
+            alt=""
+            className="mt-4 aspect-[16/6] w-full rounded-lg object-cover"
+          />
+        ) : null}
         <form
           className="mt-4 grid gap-3 sm:grid-cols-2"
+          key={`${restaurant.name}|${restaurant.address}|${restaurant.hours}|${restaurant.phone}|${restaurant.coverImageUrl}`}
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -111,8 +130,10 @@ export function KitchenWelcome({
                 saveKitchenProfileAction(projectId, restaurant.id, {
                   name: String(form.get("name") ?? ""),
                   address: String(form.get("address") ?? ""),
+                  hours: String(form.get("hours") ?? ""),
+                  phone: String(form.get("phone") ?? ""),
                 }),
-              "Name and address saved.",
+              "Restaurant info saved.",
             );
           }}
         >
@@ -139,12 +160,62 @@ export function KitchenWelcome({
               className={fieldClass}
             />
           </label>
+          <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-hours">
+            Hours
+            <input
+              id="kitchen-hours"
+              name="hours"
+              defaultValue={restaurant.hours ?? ""}
+              placeholder="Mon–Sat 11am–9pm"
+              className={fieldClass}
+            />
+          </label>
+          <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-phone">
+            Phone
+            <input
+              id="kitchen-phone"
+              name="phone"
+              type="tel"
+              defaultValue={restaurant.phone ?? ""}
+              placeholder="(555) 010-1000"
+              autoComplete="tel"
+              className={fieldClass}
+            />
+          </label>
           <button
             type="submit"
             disabled={pending}
             className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60 sm:col-span-2 sm:w-fit"
           >
             Save restaurant
+          </button>
+        </form>
+        <form
+          className="mt-4 flex flex-wrap items-end gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const data = new FormData(form);
+            run(() => uploadKitchenCoverAction(projectId, restaurant.id, data), "Header image saved.");
+          }}
+        >
+          <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-cover">
+            Header image
+            <input
+              id="kitchen-cover"
+              name="cover"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              required
+              className="mt-1 block w-full text-sm"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex min-h-11 items-center rounded-md bg-brand-deep px-4 text-sm font-semibold text-foam disabled:opacity-60"
+          >
+            Save header
           </button>
         </form>
       </section>
@@ -157,21 +228,30 @@ export function KitchenWelcome({
           Get the menu in
         </h3>
         <p className="mt-2 text-sm text-muted">
-          Paste the restaurant website, upload a photo or PDF of the paper
-          menu, or add plates by hand. If a file can&apos;t be read, you&apos;ll
-          see the error here and no placeholder plates are added.
+          Paste the restaurant website and Hometown fills any empty name,
+          address, hours, phone, and header from that page. Anything you
+          already typed stays. You can edit every field before you save it.
+          Upload a photo or PDF of the paper menu, or add plates by hand.
+          If a file can&apos;t be read, you&apos;ll see the error here and no
+          placeholder plates are added.
         </p>
         <form
           className="mt-4 flex flex-wrap items-end gap-3"
           onSubmit={(event) => {
             event.preventDefault();
+            const form = event.currentTarget;
             const websiteUrl = String(
-              (event.currentTarget.elements.namedItem("websiteUrl") as HTMLInputElement)
-                .value ?? "",
+              (form.elements.namedItem("websiteUrl") as HTMLInputElement).value ?? "",
             ).trim();
-            run(
-              () => connectRestaurantWebsiteAction(projectId, restaurant.id, websiteUrl),
-              "Menu link saved.",
+            const field = (id: string) =>
+              (document.getElementById(id) as HTMLInputElement | null)?.value ?? "";
+            run(() =>
+              connectRestaurantWebsiteAction(projectId, restaurant.id, websiteUrl, {
+                name: field("kitchen-name"),
+                address: field("kitchen-address"),
+                hours: field("kitchen-hours"),
+                phone: field("kitchen-phone"),
+              }),
             );
           }}
         >

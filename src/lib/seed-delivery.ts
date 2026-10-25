@@ -575,6 +575,10 @@ export type DeliveryRestaurant = {
   neighborhood: string;
   /** Public hours, such as "Today 11am–9pm". */
   hours?: string;
+  /** Public phone the kitchen typed or confirmed from its website. */
+  phone?: string;
+  /** Header/cover stored in Hometown. Never a hotlinked restaurant URL. */
+  coverImageUrl?: string;
   /** Originating scout — locked when the restaurant first goes active. */
   scoutId: string;
   /** Kitchen owner — may scout other restaurants after one delivery; never keeps own 5%. */
@@ -2037,6 +2041,14 @@ export function normalizeDeliveryRestaurant(
     ownerDriverId: row.ownerDriverId ?? null,
     ownerEmail,
     address: typeof row.address === "string" ? row.address.trim() : "",
+    hours: typeof row.hours === "string" ? row.hours.trim() : "",
+    phone: typeof row.phone === "string" ? row.phone.trim() : "",
+    coverImageUrl:
+      typeof row.coverImageUrl === "string" &&
+      (row.coverImageUrl.startsWith("/site/") ||
+        row.coverImageUrl.startsWith("/hometown/"))
+        ? row.coverImageUrl
+        : undefined,
     onboardingComplete: Boolean(row.onboardingComplete),
     connectAccountId: ownerProvisioned
       ? row.connectAccountId?.trim() || undefined
