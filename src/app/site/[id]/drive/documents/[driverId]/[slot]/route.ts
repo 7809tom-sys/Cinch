@@ -21,7 +21,8 @@ export async function GET(
   context: { params: Promise<{ id: string; driverId: string; slot: string }> },
 ) {
   const { id, driverId, slot } = await context.params;
-  if (!isDriverDocSlot(slot)) {
+  const fileName = isDriverDocSlot(slot) ? slot : slot === "signature" ? slot : null;
+  if (!fileName) {
     return new NextResponse("Not found", { status: 404 });
   }
   const loaded = await requireDriverActor(id);
@@ -38,7 +39,7 @@ export async function GET(
   if (!allowed) return new NextResponse("Not found", { status: 404 });
   const stored = await getDriverDocStore().read(
     driverDocKey(driver.email || driver.id),
-    slot,
+    fileName,
   );
   if (!stored) return new NextResponse("Not found", { status: 404 });
   return new NextResponse(Buffer.from(stored.bytes), {

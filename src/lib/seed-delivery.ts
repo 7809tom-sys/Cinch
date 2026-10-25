@@ -1,6 +1,8 @@
 import { shouldStampTest } from "./hometown-testing";
 import {
   sanitizeDriverDocuments,
+  sanitizeDriverSignature,
+  type DriverDocSignature,
   type DriverDocuments,
 } from "./hometown-driver-docs";
 
@@ -698,6 +700,8 @@ export type DeliveryDriver = {
   stripeCustomerId?: string;
   /** Slot status only. File bytes stay in private storage. */
   documents?: DriverDocuments;
+  /** Name, time, and statement. The drawing stays in private storage. */
+  documentSignature?: DriverDocSignature;
 };
 
 export type DeliveryLedgerSplit = {
@@ -2454,6 +2458,7 @@ export function normalizeDeliveryDriver(
         : Boolean(row.licenseOk && row.insuranceOk),
     ...driverPhotoId(row),
     documents: sanitizeDriverDocuments(row.documents),
+    documentSignature: sanitizeDriverSignature(row.documentSignature),
   };
 }
 

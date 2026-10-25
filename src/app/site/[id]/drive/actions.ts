@@ -8,8 +8,11 @@ import {
   getDriverDocStore,
 } from "@/lib/hometown-driver-doc-store";
 import {
+  DRIVER_DOC_STATEMENT,
+  driverSlotsComplete,
   isDriverDocSlot,
   sanitizeDriverDocuments,
+  sanitizeDriverSignature,
   validateDriverDocFile,
   type DriverDocSlotId,
   type DriverDocStatus,
@@ -89,7 +92,9 @@ export async function uploadDriverDocumentAction(
     {
       ...loaded.ops,
       drivers: loaded.ops.drivers.map((row) =>
-        row.id === driverId ? withDocuments(row, documents) : row,
+        row.id === driverId
+          ? { ...withDocuments(row, documents), documentSignature: undefined }
+          : row,
       ),
     },
     `Driver uploaded ${slot}`,
@@ -122,13 +127,68 @@ export async function removeDriverDocumentAction(
     {
       ...loaded.ops,
       drivers: loaded.ops.drivers.map((row) =>
-        row.id === driverId ? withDocuments(row, documents) : row,
+        row.id === driverId
+          ? { ...withDocuments(row, documents), documentSignature: undefined }
+          : row,
       ),
     },
     `Driver removed ${slot}`,
   );
   if (!saved.ok) {
     return { ok: false as const, error: saved.error?.trim() || "Could not remove that document." };
+  }
+  revalidatePath(`/site/${projectId}/drive`);
+  revalidatePath(`/portal/${projectId}/drive`);
+  revalidatePath(`/site/${projectId}/admin`);
+  return { ok: true as const };
+}
+
+export async function signDriverDocumentsAction(
+  projectId: string,
+  driverId: string,
+  input: { name: string; signedOn: string; pngBase64: string },
+) {
+  const loaded = await loadWritableDriver(projectId, driverId);
+  if (!loaded.ok) return loaded;
+  if (!driverSlotsComplete(loaded.driver.documents)) {
+    return { ok: false as const, error: "Upload all four cards before you sign." };
+  }
+  const name = input.name.trim();
+  const signedOn = input.signedOn.trim();
+  if (name.length < 2) return { ok: false as const, error: "Type your full name." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(signedOn)) {
+    return { ok: false as const, error: "Add the date." };
+  }
+  const raw = input.pngBase64.replace(/^data:image\/png;base64,/, "").replace(/\s/g, "");
+  const bytes = Buffer.from(raw, "base64");
+  if (bytes.length < 80) return { ok: false as const, error: "Draw your signature." };
+  const key = driverDocKey(loaded.driver.email || loaded.driver.id);
+  await getDriverDocStore().put({
+    driverKey: key,
+    slot: "signature",
+    bytes,
+    mime: "image/png",
+  });
+  const documentSignature = sanitizeDriverSignature({
+    name,
+    signedAt: new Date(`${signedOn}T00:00:00.000Z`).toISOString(),
+    statement: DRIVER_DOC_STATEMENT,
+  });
+  if (!documentSignature) {
+    return { ok: false as const, error: "Could not save the signature." };
+  }
+  const saved = await saveDeliveryOps(
+    projectId,
+    {
+      ...loaded.ops,
+      drivers: loaded.ops.drivers.map((row) =>
+        row.id === driverId ? { ...row, documentSignature } : row,
+      ),
+    },
+    "Driver signed the document packet",
+  );
+  if (!saved.ok) {
+    return { ok: false as const, error: saved.error?.trim() || "Could not save the signature." };
   }
   revalidatePath(`/site/${projectId}/drive`);
   revalidatePath(`/portal/${projectId}/drive`);

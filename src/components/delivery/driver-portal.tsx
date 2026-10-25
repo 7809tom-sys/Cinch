@@ -174,6 +174,7 @@ export function HometownDriverPortal({
           projectId={projectId}
           driverId={driver.id}
           documents={driver.documents}
+          signature={driver.documentSignature}
         />
       ) : null}
       <section className="rounded-xl border border-brand/15 bg-brand-deep p-5 text-foam">
