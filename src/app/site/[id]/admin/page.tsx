@@ -22,6 +22,7 @@ import {
 import { getProject } from "@/lib/store";
 import { SeedAdminSchedule } from "./schedule-panel";
 import { SeedAdminCommerceOps } from "./commerce-ops";
+import { DispatchLiveMap } from "@/components/delivery/dispatch-live-map";
 import { SeedDeliveryLedger } from "./delivery-ledger";
 
 export const dynamic = "force-dynamic";
@@ -171,6 +172,7 @@ export default async function SeedBusinessAdminPage({
           />
         </section>
 
+        {delivery ? <DispatchLiveMap projectId={id} /> : null}
         {delivery ? <SeedDeliveryLedger projectId={id} ops={delivery} /> : null}
 
         {admin.commerce ? (

@@ -52,6 +52,7 @@ import {
   ingestMenuPhotosAction,
   setDriverOnlineAction,
 } from "@/app/portal/[id]/delivery-actions";
+import { DriverLocationShare } from "@/components/delivery/driver-location-share";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import type { MenuUploadInput } from "@/lib/seed-delivery";
 
@@ -541,6 +542,12 @@ export function HometownDriverPortal({
                     </button>
                   </div>
                 )}
+                <DriverLocationShare
+                  projectId={projectId}
+                  runId={run.id}
+                  driverId={driverId}
+                  dropoff={dropoff}
+                />
               </li>
               );
             })}

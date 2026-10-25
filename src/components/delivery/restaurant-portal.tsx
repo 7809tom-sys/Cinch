@@ -39,6 +39,7 @@ import {
   saveKitchenProfileAction,
   startKitchenPayoutsAction,
 } from "@/app/site/[id]/merchant/actions";
+import { DispatchLiveMap } from "@/components/delivery/dispatch-live-map";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import {
   formatModifierLines,
@@ -151,6 +152,7 @@ export function HometownRestaurantPortal({
           {error}
         </p>
       ) : null}
+      <DispatchLiveMap projectId={projectId} />
       <section className="rounded-xl border border-brand/15 bg-foam p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

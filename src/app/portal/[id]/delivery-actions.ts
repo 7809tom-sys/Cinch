@@ -69,6 +69,7 @@ import {
   hometownMenuPhotoSaver,
   saveDeliveryOps as persistDeliveryOps,
 } from "@/lib/seed-delivery-io";
+import { clearDriverLocation } from "@/lib/hometown-driver-location";
 import { getProject } from "@/lib/store";
 
 function revalidateDelivery(projectId: string) {
@@ -576,6 +577,12 @@ export async function setMerchantTicketStatusAction(
     `Restaurant marked order ${status}`,
   );
   if (!saved.ok) return saved;
+  if (status === "declined" || status === "completed") {
+    const runs = allowed.ops.runs.filter((row) => row.orderId === ticket.orderId);
+    await Promise.all(
+      runs.map((row) => clearDriverLocation(projectId, row.id)),
+    );
+  }
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
@@ -717,6 +724,9 @@ export async function advanceDriverRunAction(
     next === "picked_up" ? "Driver confirmed pickup" : "Driver completed drop-off",
   );
   if (!saved.ok) return saved;
+  if (next === "delivered") {
+    await clearDriverLocation(projectId, runId);
+  }
   revalidateDelivery(projectId);
   return { ok: true as const };
 }
