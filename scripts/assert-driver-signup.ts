@@ -80,6 +80,7 @@ const portalDrive = readFileSync("src/app/portal/[id]/drive/page.tsx", "utf8");
 const portal = readFileSync("src/components/delivery/driver-portal.tsx", "utf8");
 const desk = readFileSync("src/components/delivery/driver-documents.tsx", "utf8");
 const session = readFileSync("src/lib/hometown-kitchen-session.ts", "utf8");
+const homeTown = readFileSync("src/lib/hometown-home-town.ts", "utf8");
 assert(
   enter.includes("DriverDocumentDesk") &&
     enterAction.includes("prepareDriverAccount") &&
@@ -104,7 +105,8 @@ assert(
 assert(
   session.includes("loadMarketOps(projectId, { crawl: false })") &&
     siteDrive.includes("crawlMenus: false") &&
-    portalDrive.includes("crawl: false"),
+    portalDrive.includes("crawl: false") &&
+    homeTown.includes("ensureDeliveryOpsInSeed(project, { crawl: false })"),
   "driver sign-up and the driver portals do not wait on a menu crawl",
 );
 
