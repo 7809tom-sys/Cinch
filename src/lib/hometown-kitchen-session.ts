@@ -91,7 +91,7 @@ export async function requireMenuIngest(projectId: string, restaurantId: string)
 }
 
 export async function requireDriverActor(projectId: string) {
-  const loaded = await loadMarketOps(projectId);
+  const loaded = await loadMarketOps(projectId, { crawl: false });
   if (!loaded.ok) return loaded;
   const actor = await resolveKitchenActor(projectId);
   if (!actorCanDrive(actor)) {
@@ -100,10 +100,13 @@ export async function requireDriverActor(projectId: string) {
   return { ok: true as const, ops: loaded.ops, actor };
 }
 
-async function loadMarketOps(projectId: string) {
+async function loadMarketOps(
+  projectId: string,
+  options?: { crawl?: boolean },
+) {
   const project = await getProject(projectId);
   if (!project) return { ok: false as const, error: "Seed not found." };
-  const ops = await ensureDeliveryOpsInSeed(project);
+  const ops = await ensureDeliveryOpsInSeed(project, options);
   if (!ops) {
     return { ok: false as const, error: "Hometown portals are not on this Seed." };
   }
@@ -142,7 +145,7 @@ export async function prepareDriverAccount(
   | { ok: true; ops: DeliveryOps; driver: DeliveryDriver | null }
   | { ok: false; error: string }
 > {
-  const loaded = await loadMarketOps(projectId);
+  const loaded = await loadMarketOps(projectId, { crawl: false });
   if (!loaded.ok) return loaded;
   if (isMasterEmail(email)) {
     return {

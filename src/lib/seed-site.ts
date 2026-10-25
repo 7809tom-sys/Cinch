@@ -1000,7 +1000,10 @@ async function readProofSurfaces(project: SeedProject): Promise<{
  * Opening the site or finishing a Conductor QA/proof task must run this —
  * writing qa/checklist.md alone is not proof.
  */
-export async function proofAndRepairSeedSite(project: SeedProject): Promise<{
+export async function proofAndRepairSeedSite(
+  project: SeedProject,
+  options?: { crawlMenus?: boolean },
+): Promise<{
   ok: boolean;
   failures: SeedSiteProofFailure[];
   repaired: boolean;
@@ -1025,7 +1028,9 @@ export async function proofAndRepairSeedSite(project: SeedProject): Promise<{
     await ensureShopInSeed(project);
   }
   if (briefIsDeliveryPlatform(project.name, project.brief)) {
-    await ensureDeliveryOpsInSeed(project);
+    await ensureDeliveryOpsInSeed(project, {
+      crawl: options?.crawlMenus !== false,
+    });
   }
 
   const after = collectSeedSiteProofFailures(

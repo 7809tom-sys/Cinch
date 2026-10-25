@@ -19,13 +19,15 @@ export default async function SeedDrivePage({
   const project = await getProject(id);
   if (!project) notFound();
 
-  await proofAndRepairSeedSite(project);
+  await proofAndRepairSeedSite(project, { crawlMenus: false });
   const session = await getHometownRoleSession(id);
   if (session?.role !== "driver") {
     redirect(`/site/${id}/enter?role=driver`);
   }
   const account = await prepareDriverAccount(id, session.email);
-  const ops = account.ok ? account.ops : await ensureDeliveryOpsInSeed(project);
+  const ops = account.ok
+    ? account.ops
+    : await ensureDeliveryOpsInSeed(project, { crawl: false });
   if (!ops) redirect(`/site/${id}`);
   const accountDriverId =
     account.ok && account.driver?.email?.toLowerCase() === session.email.toLowerCase()
