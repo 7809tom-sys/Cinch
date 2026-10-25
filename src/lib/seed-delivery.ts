@@ -1,4 +1,8 @@
 import { shouldStampTest } from "./hometown-testing";
+import {
+  sanitizeDriverDocuments,
+  type DriverDocuments,
+} from "./hometown-driver-docs";
 
 /**
  * Hometown Runner v1 — hyper-local food delivery ops (not a restaurant).
@@ -692,6 +696,8 @@ export type DeliveryDriver = {
    * The master-admin desk matches on this when the email differs.
    */
   stripeCustomerId?: string;
+  /** Slot status only. File bytes stay in private storage. */
+  documents?: DriverDocuments;
 };
 
 export type DeliveryLedgerSplit = {
@@ -2447,6 +2453,7 @@ export function normalizeDeliveryDriver(
         ? row.existingPlatformActive
         : Boolean(row.licenseOk && row.insuranceOk),
     ...driverPhotoId(row),
+    documents: sanitizeDriverDocuments(row.documents),
   };
 }
 

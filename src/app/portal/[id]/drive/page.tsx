@@ -85,7 +85,12 @@ export default async function PortalDriverPage({
           your own tax forms.
         </p>
         <div className="mt-8">
-          <HometownDriverPortal projectId={project.id} ops={ops} />
+          <HometownDriverPortal
+            projectId={project.id}
+            ops={ops}
+            viewerEmail={role?.email || customer.email}
+            viewerIsMaster={master}
+          />
         </div>
       </main>
       <SiteFooter />
