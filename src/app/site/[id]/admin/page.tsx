@@ -23,6 +23,12 @@ import { getProject } from "@/lib/store";
 import { SeedAdminSchedule } from "./schedule-panel";
 import { SeedAdminCommerceOps } from "./commerce-ops";
 import { SeedDeliveryLedger } from "./delivery-ledger";
+import { TestingBanner } from "@/components/delivery/testing-banner";
+import {
+  KitchenTestingToggle,
+  SiteTestingSwitch,
+} from "@/components/delivery/testing-switch";
+import { hometownSiteTesting } from "@/lib/hometown-testing";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +102,33 @@ export default async function SeedBusinessAdminPage({
     <>
       <style dangerouslySetInnerHTML={{ __html: admin.css }} />
       <main className="seed-admin">
+        {delivery && hometownSiteTesting(delivery) ? (
+          <TestingBanner />
+        ) : null}
+        {delivery && isMaster ? (
+          <section className="seed-admin-section" id="testing-mode">
+            <h2>Testing mode</h2>
+            <SiteTestingSwitch
+              projectId={id}
+              on={hometownSiteTesting(delivery)}
+            />
+            <ul className="seed-admin-tips">
+              {delivery.restaurants.map((restaurant) => (
+                <li key={restaurant.id}>
+                  <h3>
+                    {restaurant.name}
+                    {restaurant.testing ? " · Testing" : ""}
+                  </h3>
+                  <KitchenTestingToggle
+                    projectId={id}
+                    restaurantId={restaurant.id}
+                    on={restaurant.testing === true}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
         {durableStoreWarning() ? (
           <p className="seed-admin-support" role="status">
             <strong>Durable storage not connected. </strong>

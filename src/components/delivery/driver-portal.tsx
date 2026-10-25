@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
+import { hometownSiteTesting, recordIsTest } from "@/lib/hometown-testing";
 import type {
   DeliveryOps,
   DeliveryRestaurant,
@@ -145,8 +147,19 @@ export function HometownDriverPortal({
     });
   }
 
+  const payoutIsTest =
+    hometownSiteTesting(ops) ||
+    ops.ledger.some((row) => {
+      const kitchen = ops.restaurants.find((item) => item.id === row.restaurantId);
+      return (
+        (row.driverId === driverId || row.scoutId === driverId) &&
+        recordIsTest(ops, kitchen, row)
+      );
+    });
+
   return (
     <div className="space-y-6">
+      {hometownSiteTesting(ops) ? <TestingBanner /> : null}
       <section className="rounded-xl border border-brand/15 bg-brand-deep p-5 text-foam">
         <p className="text-xs font-bold tracking-[0.14em] text-accent uppercase">
           Driver portal
@@ -237,7 +250,8 @@ export function HometownDriverPortal({
               Connect payout
             </dt>
             <dd className="mt-1 text-xl font-extrabold">
-              ${pendingPayoutUsd.toFixed(2)}
+              ${pendingPayoutUsd.toFixed(2)}{" "}
+              {payoutIsTest ? <TestingBadge>Test</TestingBadge> : null}
             </dd>
             <p className="mt-1 text-xs text-mist">
               {payoutReady

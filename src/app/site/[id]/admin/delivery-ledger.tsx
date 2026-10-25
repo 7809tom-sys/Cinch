@@ -26,6 +26,8 @@ import {
   approveDeliveryDriverAction,
   freezeDeliveryDriverAction,
 } from "./actions";
+import { TestingBadge } from "@/components/delivery/testing-banner";
+import { recordIsTest } from "@/lib/hometown-testing";
 
 export function SeedDeliveryLedger({
   projectId,
@@ -186,7 +188,16 @@ export function SeedDeliveryLedger({
             ) : (
               ops.ledger.map((row) => (
                 <tr key={row.id}>
-                  <td>{row.customerName}</td>
+                  <td>
+                    {row.customerName}{" "}
+                    {recordIsTest(
+                      ops,
+                      ops.restaurants.find((item) => item.id === row.restaurantId),
+                      row,
+                    ) ? (
+                      <TestingBadge>Test</TestingBadge>
+                    ) : null}
+                  </td>
                   <td>
                     {ops.restaurants.find((item) => item.id === row.restaurantId)
                       ?.name ?? row.restaurantId}
