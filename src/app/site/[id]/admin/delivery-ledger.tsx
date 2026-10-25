@@ -28,14 +28,18 @@ import {
 } from "./actions";
 import { TestingBadge } from "@/components/delivery/testing-banner";
 import { driverPacketSummary } from "@/lib/hometown-driver-docs";
+import { driverW9Summary } from "@/lib/hometown-driver-w9";
+import { DriverW9Reveal } from "@/components/delivery/driver-w9-form";
 import { recordIsTest } from "@/lib/hometown-testing";
 
 export function SeedDeliveryLedger({
   projectId,
   ops,
+  viewerIsMaster = false,
 }: {
   projectId: string;
   ops: DeliveryOps;
+  viewerIsMaster?: boolean;
 }) {
   const [weeklyGmv, setWeeklyGmv] = useState(DEFAULT_WEEKLY_GMV_EXAMPLE);
   const [pending, startTransition] = useTransition();
@@ -343,9 +347,22 @@ export function SeedDeliveryLedger({
               <div>
                 <p className="seed-run-kicker">{driver.status}</p>
                 <h3>{driver.name}</h3>
-                <p className="seed-run-meta">
+                <div className="seed-run-meta">
                   License {driver.licenseOk ? "ok" : "missing"} ·{" "}
-                  {driverPacketSummary(driver.documents, driver.documentSignature)} · insurance{" "}
+                  {driverPacketSummary(driver.documents, driver.documentSignature)}
+                  {driverW9Summary(driver) ? (
+                    driver.w9 ? (
+                      <DriverW9Reveal
+                        projectId={projectId}
+                        driverId={driver.id}
+                        masked={driverW9Summary(driver) ?? ""}
+                        viewerIsMaster={viewerIsMaster}
+                      />
+                    ) : (
+                      ` · ${driverW9Summary(driver)}`
+                    )
+                  ) : null}{" "}
+                  · insurance{" "}
                   {driver.insuranceOk ? "ok" : "expired"} ·{" "}
                   {driver.classification === "full_time"
                     ? "full-time $79/mo"
@@ -362,7 +379,7 @@ export function SeedDeliveryLedger({
                   {scouted.length
                     ? ` · scout lock: ${scouted.map((row) => row.name).join(", ")}`
                     : " · no originating restaurants"}
-                </p>
+                </div>
               </div>
               {driver.status === "frozen" || driver.status === "suspended" ? (
                 <button

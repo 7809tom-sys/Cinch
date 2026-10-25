@@ -64,20 +64,28 @@ export function HometownDriverPortal({
   ops,
   viewerEmail = "",
   viewerIsMaster = false,
+  initialDriverId = "",
 }: {
   projectId: string;
   ops: DeliveryOps;
   viewerEmail?: string;
   viewerIsMaster?: boolean;
+  /** The signed-in driver's row. Seeded dispatch stays on the picker. */
+  initialDriverId?: string;
 }) {
+  const signedInId = ops.drivers.some((row) => row.id === initialDriverId)
+    ? initialDriverId
+    : "";
   const [driverId, setDriverId] = useState(
-    ops.drivers.find((row) => row.status === "approved")?.id ??
-      ops.drivers[0]?.id ??
+    signedInId ||
+      ops.drivers.find((row) => row.status === "approved")?.id ||
+      ops.drivers[0]?.id ||
       "",
   );
   const [weeklyGmv, setWeeklyGmv] = useState(DEFAULT_WEEKLY_GMV_EXAMPLE);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [workMode, setWorkMode] = useState<"driver" | "scout">("driver");
   const [leaveAtDoor, setLeaveAtDoor] = useState(true);
   const [photoNote, setPhotoNote] = useState("Brown bag at the door, photo on file.");
 
@@ -175,8 +183,41 @@ export function HometownDriverPortal({
           driverId={driver.id}
           documents={driver.documents}
           signature={driver.documentSignature}
+          w9={driver.w9}
+          packetRequired={driver.packetRequired === true}
+          viewerIsMaster={viewerIsMaster}
         />
       ) : null}
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Work as">
+        <button
+          type="button"
+          data-work-mode="driver"
+          aria-pressed={workMode === "driver"}
+          className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-bold ${
+            workMode === "driver"
+              ? "bg-brand-deep text-foam"
+              : "border border-brand/20 text-brand-deep"
+          }`}
+          onClick={() => setWorkMode("driver")}
+        >
+          Driver
+        </button>
+        <button
+          type="button"
+          data-work-mode="scout"
+          aria-pressed={workMode === "scout"}
+          className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-bold ${
+            workMode === "scout"
+              ? "bg-brand-deep text-foam"
+              : "border border-brand/20 text-brand-deep"
+          }`}
+          onClick={() => setWorkMode("scout")}
+        >
+          Scout
+        </button>
+      </div>
+      {workMode === "driver" ? (
+      <>
       <section className="rounded-xl border border-brand/15 bg-brand-deep p-5 text-foam">
         <p className="text-xs font-bold tracking-[0.14em] text-accent uppercase">
           Driver portal
@@ -567,7 +608,9 @@ export function HometownDriverPortal({
           </p>
         ) : null}
       </section>
-
+      </>
+      ) : (
+      <>
       <section className="rounded-xl border border-brand/15 bg-foam p-5">
         <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
           Scout residual
@@ -704,6 +747,8 @@ export function HometownDriverPortal({
           {STUDENT_SCOUT_TALKING_POINTS}
         </p>
       </section>
+      </>
+      )}
 
       <section className="rounded-xl border border-brand/15 bg-foam p-5">
         <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">

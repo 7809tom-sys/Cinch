@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { DriverDocumentDesk } from "@/components/delivery/driver-documents";
 import { HometownRoleLogin } from "@/components/delivery/role-login";
-import { isHometownRole } from "@/lib/hometown-role";
+import { prepareDriverAccount } from "@/lib/hometown-kitchen-session";
+import { isMasterEmail } from "@/lib/master-auth";
+import { getHometownRoleSession, isHometownRole } from "@/lib/hometown-role";
 import { seedNeedsDeliveryOps } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 
@@ -12,7 +15,7 @@ export default async function HometownRoleLoginPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; r?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -22,6 +25,13 @@ export default async function HometownRoleLoginPage({
     redirect(`/site/${id}`);
   }
   const initialRole = query.role && isHometownRole(query.role) ? query.role : undefined;
+  const session = await getHometownRoleSession(id);
+  const driverAccount =
+    session?.role === "driver"
+      ? await prepareDriverAccount(id, session.email)
+      : null;
+  const signedInDriver =
+    driverAccount && driverAccount.ok ? driverAccount.driver : null;
 
   return (
     <main className="min-h-dvh bg-background px-4 py-8 text-foreground sm:px-8">
@@ -45,7 +55,24 @@ export default async function HometownRoleLoginPage({
             .
           </p>
         </header>
-        <HometownRoleLogin projectId={id} initialRole={initialRole} />
+        {signedInDriver ? (
+          <div className="mb-8">
+            <DriverDocumentDesk
+              projectId={id}
+              driverId={signedInDriver.id}
+              documents={signedInDriver.documents}
+              signature={signedInDriver.documentSignature}
+              w9={signedInDriver.w9}
+              packetRequired={signedInDriver.packetRequired === true}
+              viewerIsMaster={isMasterEmail(session?.email)}
+            />
+          </div>
+        ) : null}
+        <HometownRoleLogin
+          projectId={id}
+          initialRole={initialRole}
+          inviteId={query.r?.trim() || undefined}
+        />
       </div>
     </main>
   );

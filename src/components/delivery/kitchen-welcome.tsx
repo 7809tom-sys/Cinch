@@ -118,6 +118,12 @@ export function KitchenWelcome({
             restaurantId={restaurant.id}
             on={restaurant.testing === true}
           />
+          <a
+            className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brand-deep underline"
+            href={`/site/${projectId}/table-tent/${restaurant.id}`}
+          >
+            Print QR table tent
+          </a>
         </div>
       </section>
 
