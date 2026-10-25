@@ -15,7 +15,7 @@ export default async function HometownRoleLoginPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{ role?: string; r?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -68,7 +68,11 @@ export default async function HometownRoleLoginPage({
             />
           </div>
         ) : null}
-        <HometownRoleLogin projectId={id} initialRole={initialRole} />
+        <HometownRoleLogin
+          projectId={id}
+          initialRole={initialRole}
+          inviteId={query.r?.trim() || undefined}
+        />
       </div>
     </main>
   );
