@@ -11,6 +11,7 @@ import {
   type DeliveryRestaurant,
   type DinerOrderTrack,
 } from "@/lib/seed-delivery";
+import { hometownSiteTesting } from "@/lib/hometown-testing";
 import {
   seedRestaurantFulfillmentModes,
   seedRestaurantMenuProducts,
@@ -43,6 +44,7 @@ export type HometownKitchenCard = {
   heroImage: string;
   categories: string[];
   plates: HometownPlate[];
+  testing?: boolean;
 };
 
 export type HometownTownLink = {
@@ -72,6 +74,7 @@ export type HometownDinerModel = {
   accountHref: string;
   privacyHref: string;
   websiteHref: string | null;
+  siteTesting?: boolean;
 };
 
 const PLATE_PHOTOS: Array<{ test: RegExp; src: string }> = [
@@ -272,6 +275,7 @@ export function assembleHometownDiner(input: {
           : hometownPlatePhoto(restaurant.name, plates[0]?.imageUrl),
       categories,
       plates,
+      testing: restaurant.testing === true,
     };
   });
 
@@ -310,6 +314,7 @@ export function assembleHometownDiner(input: {
     accountHref: input.accountHref,
     privacyHref: input.privacyHref,
     websiteHref: input.websiteHref,
+    siteTesting: hometownSiteTesting(input.ops),
   };
 }
 

@@ -13,6 +13,7 @@ import {
   kitchenProfileGaps,
 } from "@/lib/kitchen-profile-gaps";
 import { isDurableStoreConfigured } from "@/lib/kv-store";
+import { setKitchenTesting } from "@/lib/hometown-testing";
 import { saveDeliveryOps } from "@/lib/seed-delivery-io";
 import { storeSeedProductPhoto } from "@/lib/seed-product-media";
 import type { DeliveryOps } from "@/lib/seed-delivery";
@@ -86,6 +87,25 @@ export async function saveKitchenProfileAction(
   );
   if (!saved.ok) return saved;
   revalidateKitchen(projectId);
+  return { ok: true as const };
+}
+
+export async function setKitchenTestingAction(
+  projectId: string,
+  restaurantId: string,
+  on: boolean,
+) {
+  const loaded = await requireKitchenWrite(projectId, restaurantId);
+  if (!loaded.ok) return loaded;
+  const saved = await commit(
+    projectId,
+    setKitchenTesting(loaded.ops, restaurantId, on),
+    on ? "Kitchen marked testing" : "Kitchen left testing",
+  );
+  if (!saved.ok) return saved;
+  revalidateKitchen(projectId);
+  revalidatePath(`/hometown`);
+  revalidatePath(`/portal/${projectId}/drive`);
   return { ok: true as const };
 }
 

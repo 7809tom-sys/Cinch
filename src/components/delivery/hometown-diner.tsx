@@ -7,6 +7,7 @@ import { HometownMap } from "@/components/delivery/hometown-map";
 import { toggleFavoriteKitchenAction } from "@/app/portal/[id]/delivery-actions";
 import { placeSeedShopOrderAction } from "@/app/site/[id]/shop/actions";
 import type { HometownDinerModel, HometownPlate } from "@/lib/hometown-diner-model";
+import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
 import {
   DINER_SCHEDULE_WINDOWS,
   SCHEDULED_WINDOW_EXTRA_USD,
@@ -360,6 +361,11 @@ export function HometownDiner({
 
   return (
     <div className="min-h-dvh bg-[#f6f3ee] text-[#1a1714]">
+      {model.siteTesting !== false ? (
+        <div className="mx-auto w-full max-w-6xl px-4 pt-3">
+          <TestingBanner />
+        </div>
+      ) : null}
       <header className="sticky top-0 z-30 border-b border-black/5 bg-[#f6f3ee]/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <a href="#dinner" className="font-[family-name:var(--font-display)] text-lg font-extrabold text-[#0b2e2a]">
@@ -1018,7 +1024,10 @@ function KitchenCard({
         />
         <div className="space-y-1 p-4">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="font-[family-name:var(--font-display)] text-xl font-bold">{kitchen.name}</h3>
+            <h3 className="font-[family-name:var(--font-display)] text-xl font-bold">
+              {kitchen.name}{" "}
+              {kitchen.testing ? <TestingBadge /> : null}
+            </h3>
             <span className="shrink-0 text-sm font-semibold text-[#8a5a12]">
               {kitchen.rating == null
                 ? "New"

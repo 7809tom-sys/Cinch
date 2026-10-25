@@ -1,3 +1,5 @@
+import { shouldStampTest } from "./hometown-testing";
+
 /**
  * Hometown Runner v1 — hyper-local food delivery ops (not a restaurant).
  *
@@ -619,6 +621,8 @@ export type DeliveryRestaurant = {
    * Converted with DELIVERY_RADIUS_APPROX_MPH, not a live route.
    */
   deliveryRadiusMinutes?: number;
+  /** This kitchen stays in testing after the site-wide switch is turned off. */
+  testing?: boolean;
   /** False until this account leaves the new-kitchen welcome. */
   onboardingComplete?: boolean;
   /** Restaurant Stripe Connect — food net lands here. */
@@ -719,6 +723,8 @@ export type DeliveryLedgerRow = DeliveryLedgerSplit & {
   driverId: string | null;
   customerName: string;
   createdAt: string;
+  /** Written while site or kitchen testing was on. Stays set after go-live. */
+  test?: boolean;
 };
 
 export type MerchantTicket = {
@@ -738,6 +744,7 @@ export type MerchantTicket = {
   dinerRating?: DinerOrderRating | null;
   /** Uber Eats-class — kitchen marked the bag packed. */
   foodReadyAt?: string | null;
+  test?: boolean;
 };
 
 export type DriverRun = {
@@ -757,6 +764,7 @@ export type DriverRun = {
   fulfillment?: HometownFulfillment;
   dropoffInstruction?: DropoffInstruction;
   dropoffPhotoNote?: string | null;
+  test?: boolean;
 };
 
 export type DeliveryOps = {
@@ -768,6 +776,11 @@ export type DeliveryOps = {
   runs: DriverRun[];
   /** Uber Eats-class diner favorites — ops demo, one guest session. */
   favoriteRestaurantIds?: string[];
+  /**
+   * Site-wide Testing. Missing means on — Hometown Runner is in testing now.
+   * Set false when the master admin takes the site live.
+   */
+  hometownTesting?: boolean;
 };
 
 export function money(value: number): number {
@@ -2159,6 +2172,7 @@ export function normalizeDeliveryRestaurant(
         ? row.coverImageUrl
         : undefined,
     onboardingComplete: Boolean(row.onboardingComplete),
+    testing: row.testing === true ? true : undefined,
     connectAccountId: ownerProvisioned
       ? row.connectAccountId?.trim() || undefined
       : row.connectAccountId?.trim() ||
@@ -3294,6 +3308,7 @@ export function parseDeliveryOps(raw: string): DeliveryOps | null {
     });
     return {
       ...ops,
+      hometownTesting: parsed.hometownTesting !== false,
       ledger: ops.ledger.map((row) => ({
         ...row,
         scoutPaidDriverId:
@@ -3854,6 +3869,7 @@ export function recordDeliveryOrder(
     taxUsd: input.taxUsd,
   });
   const createdAt = input.createdAt ?? new Date().toISOString();
+  const testOrder = shouldStampTest(ops, restaurant);
   const row: DeliveryLedgerRow = {
     ...split,
     id: input.ledgerId,
@@ -3868,6 +3884,7 @@ export function recordDeliveryOrder(
     driverId: null,
     customerName: input.customerName,
     createdAt,
+    test: testOrder,
   };
   const ticket: MerchantTicket = {
     id: input.ticketId,
@@ -3884,6 +3901,7 @@ export function recordDeliveryOrder(
     createdAt,
     fulfillment,
     scheduledWindow: input.scheduledWindow ?? "ASAP",
+    test: testOrder,
   };
   const run: DriverRun = {
     id: input.runId,
@@ -3904,6 +3922,7 @@ export function recordDeliveryOrder(
       fulfillment === "delivery"
         ? (input.dropoffInstruction ?? "hand_to_customer")
         : undefined,
+    test: testOrder,
   };
   return {
     ...ops,

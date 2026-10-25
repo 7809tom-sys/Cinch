@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { KitchenWelcome } from "@/components/delivery/kitchen-welcome";
 import { HometownRestaurantPortal } from "@/components/delivery/restaurant-portal";
 import { prepareMerchantDesk } from "@/lib/hometown-kitchen-session";
+import { hometownSiteTesting } from "@/lib/hometown-testing";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { durableStoreWarning, menuPersistenceWarning } from "@/lib/kv-store";
 import { isMasterEmail } from "@/lib/master-auth";
@@ -83,6 +84,7 @@ export default async function SeedMerchantPage({
             restaurant={desk.restaurant}
             storageWarning={storageWarning}
             saveError={desk.saveError}
+            siteTesting={hometownSiteTesting(desk.ops)}
           />
         ) : (
           <HometownRestaurantPortal

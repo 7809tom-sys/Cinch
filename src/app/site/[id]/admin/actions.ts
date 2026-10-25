@@ -16,6 +16,8 @@ import {
   saveSeedShopCopy,
   type SeedAdminCopy,
 } from "@/lib/seed-site";
+import { setHometownTesting } from "@/lib/hometown-testing";
+import { ensureDeliveryOpsInSeed, saveDeliveryOps } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 import type { SeedShopOrder } from "@/lib/seed-site-copy";
 
@@ -51,6 +53,44 @@ async function loadBoard(projectId: string): Promise<SeedAdminCopy | null> {
   if (!preview) return null;
   const { css: _css, ...copy } = preview;
   return copy;
+}
+
+export async function setHometownTestingAction(projectId: string, on: boolean) {
+  const [customer, master] = await Promise.all([
+    getCurrentCustomer(),
+    getMasterSession(),
+  ]);
+  const email = master?.email || customer?.email || "";
+  if (!isMasterEmail(email)) {
+    return {
+      ok: false as const,
+      error: "Only the master admin can change Testing mode.",
+    };
+  }
+  const project = await getProject(projectId);
+  if (!project) return { ok: false as const, error: "Seed not found." };
+  const ops = await ensureDeliveryOpsInSeed(project);
+  if (!ops) {
+    return { ok: false as const, error: "Hometown Runner is not on this Seed." };
+  }
+  const saved = await saveDeliveryOps(
+    projectId,
+    setHometownTesting(ops, on),
+    on ? "Hometown Testing mode on" : "Hometown Testing mode off",
+  );
+  if (!saved.ok) {
+    return {
+      ok: false as const,
+      error: saved.error?.trim() || "Could not save Testing mode.",
+    };
+  }
+  revalidatePath(`/site/${projectId}/admin`);
+  revalidatePath(`/site/${projectId}/shop`);
+  revalidatePath(`/site/${projectId}/merchant`);
+  revalidatePath(`/hometown`);
+  revalidatePath(`/portal/${projectId}/drive`);
+  revalidatePath(`/portal/${projectId}/restaurant`);
+  return { ok: true as const };
 }
 
 export async function addSeedAdminAppointmentAction(

@@ -40,6 +40,13 @@ import {
   startKitchenPayoutsAction,
 } from "@/app/site/[id]/merchant/actions";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
+import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
+import { KitchenTestingToggle } from "@/components/delivery/testing-switch";
+import {
+  hometownSiteTesting,
+  kitchenIsTesting,
+  recordIsTest,
+} from "@/lib/hometown-testing";
 import {
   formatModifierLines,
   type MenuUploadInput,
@@ -138,6 +145,18 @@ export function HometownRestaurantPortal({
 
   return (
     <div className="space-y-6">
+      {hometownSiteTesting(ops) ? (
+        <TestingBanner />
+      ) : kitchenIsTesting(restaurant) ? (
+        <TestingBanner kitchen />
+      ) : null}
+      {restaurant ? (
+        <KitchenTestingToggle
+          projectId={projectId}
+          restaurantId={restaurant.id}
+          on={restaurant.testing === true}
+        />
+      ) : null}
       {storageWarning ? (
         <p
           className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950"
@@ -1007,7 +1026,14 @@ function OrderLane({
                   {ticket.scheduledWindow ? ` · ${ticket.scheduledWindow}` : ""}
                 </p>
                 <h3 className="mt-1 font-bold text-brand-deep">
-                  {ticket.customerName}
+                  {ticket.customerName}{" "}
+                  {recordIsTest(
+                    ops,
+                    ops.restaurants.find((row) => row.id === ticket.restaurantId),
+                    ticket,
+                  ) ? (
+                    <TestingBadge>Test</TestingBadge>
+                  ) : null}
                 </h3>
                 <p className="mt-1 text-sm text-muted">
                   {ticket.items

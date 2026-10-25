@@ -20,6 +20,8 @@ import {
 } from "@/lib/kitchen-profile-gaps";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import type { DeliveryRestaurant } from "@/lib/seed-delivery";
+import { TestingBanner } from "@/components/delivery/testing-banner";
+import { KitchenTestingToggle } from "@/components/delivery/testing-switch";
 
 const fieldClass =
   "mt-1 block min-h-11 w-full rounded-md border border-brand/20 bg-white px-3 text-base";
@@ -30,12 +32,14 @@ export function KitchenWelcome({
   restaurant,
   storageWarning,
   saveError,
+  siteTesting = true,
 }: {
   projectId: string;
   email: string;
   restaurant: DeliveryRestaurant;
   storageWarning: string | null;
   saveError: string | null;
+  siteTesting?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -83,6 +87,9 @@ export function KitchenWelcome({
 
   return (
     <div className="space-y-6">
+      {siteTesting ? <TestingBanner /> : restaurant.testing ? (
+        <TestingBanner kitchen />
+      ) : null}
       {storageWarning ? (
         <p
           className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950"
@@ -103,6 +110,13 @@ export function KitchenWelcome({
           The menu starts empty — nothing goes live until you add it and
           approve it.
         </p>
+        <div className="mt-4">
+          <KitchenTestingToggle
+            projectId={projectId}
+            restaurantId={restaurant.id}
+            on={restaurant.testing === true}
+          />
+        </div>
       </section>
 
       <section className="rounded-xl border border-brand/15 bg-white p-5">
