@@ -126,6 +126,9 @@ export default async function SeedBusinessAdminPage({
                     restaurantId={restaurant.id}
                     on={restaurant.testing === true}
                   />
+                  <a href={`/site/${id}/table-tent/${restaurant.id}`}>
+                    Print QR table tent
+                  </a>
                 </li>
               ))}
             </ul>
