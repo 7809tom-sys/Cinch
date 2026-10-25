@@ -10,6 +10,7 @@ import type {
 } from "@/lib/seed-delivery";
 import {
   HOMETOWN_KITCHEN_LINE,
+  DELIVERY_RADIUS_APPROX_LABEL,
   MERCHANT_DELIVERY_RADIUS_MILES,
   merchantDensityLine,
   availableDispatchDrivers,
@@ -34,7 +35,10 @@ import {
   setMerchantTicketStatusAction,
   setRestaurantPausedAction,
 } from "@/app/portal/[id]/delivery-actions";
-import { startKitchenPayoutsAction } from "@/app/site/[id]/merchant/actions";
+import {
+  saveKitchenProfileAction,
+  startKitchenPayoutsAction,
+} from "@/app/site/[id]/merchant/actions";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import {
   formatModifierLines,
@@ -202,11 +206,56 @@ export function HometownRestaurantPortal({
               account; fee, tip, and the 5% driver share go to the driver.
               You cannot keep the 5% on your own kitchen — sign another
               restaurant after one delivery if you want to scout. Drivers
-              manage their own tax forms. Delivery radius is a fixed{" "}
-              {MERCHANT_DELIVERY_RADIUS_MILES} miles — no expand or
-              Premier tiers. When the driver enters the kitchen geofence,
+              manage their own tax forms. Delivery area is{" "}
+              {restaurant?.deliveryRadiusMinutes
+                ? `about ${restaurant.deliveryRadiusMinutes} minutes. ${DELIVERY_RADIUS_APPROX_LABEL}`
+                : `a fixed ${MERCHANT_DELIVERY_RADIUS_MILES} miles until this kitchen sets a drive time.`}{" "}
+              When the driver enters the kitchen geofence,
               the ticket flips to Driver Arrived so you stage the bag.
             </p>
+            {restaurant ? (
+              <form
+                className="mt-4 flex flex-wrap items-end gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const minutes = Number(
+                    new FormData(event.currentTarget).get("deliveryRadiusMinutes"),
+                  );
+                  run(() =>
+                    saveKitchenProfileAction(projectId, restaurant.id, {
+                      name: restaurant.name,
+                      address: restaurant.address ?? "",
+                      hours: restaurant.hours ?? "",
+                      phone: restaurant.phone ?? "",
+                      deliveryRadiusMinutes: minutes > 0 ? minutes : null,
+                    }),
+                  );
+                }}
+              >
+                <label className="text-sm font-semibold text-brand-deep" htmlFor="desk-radius">
+                  Delivery area (minutes)
+                  <input
+                    id="desk-radius"
+                    name="deliveryRadiusMinutes"
+                    type="number"
+                    min={5}
+                    max={90}
+                    step={1}
+                    defaultValue={restaurant.deliveryRadiusMinutes ?? ""}
+                    placeholder="20"
+                    className="mt-1 block min-h-11 w-28 rounded-md border border-brand/20 px-3"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="inline-flex min-h-11 items-center rounded-md border border-brand/20 px-4 text-sm font-semibold text-brand-deep disabled:opacity-60"
+                >
+                  Save drive time
+                </button>
+                <p className="w-full text-xs text-muted">{DELIVERY_RADIUS_APPROX_LABEL}</p>
+              </form>
+            ) : null}
           </div>
           {restaurant ? (
             <button

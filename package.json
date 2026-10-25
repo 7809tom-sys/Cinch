@@ -11,6 +11,8 @@
     "assert:seed-delivery": "npx tsx scripts/assert-seed-delivery.ts",
     "assert:menu-crawler": "npx tsx scripts/assert-menu-crawler.ts",
     "assert:menu-document-extract": "npx tsx scripts/assert-menu-document-extract.ts",
+    "assert:kitchen-publish": "npx tsx scripts/assert-kitchen-publish.ts",
+    "assert:delivery-radius": "npx tsx scripts/assert-delivery-radius.ts",
     "assert:hometown-store": "npx tsx scripts/assert-hometown-store.ts",
     "assert:hometown-kitchen-access": "npx tsx scripts/assert-hometown-kitchen-access.ts",
     "assert:hometown-blank-menu": "npx tsx scripts/assert-hometown-blank-menu.ts",

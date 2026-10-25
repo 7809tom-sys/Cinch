@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { kitchenProfileGaps } from "./kitchen-profile-gaps";
 import type { DeliveryOps, DeliveryRestaurant } from "./seed-delivery";
 
 export function normalizeKitchenEmail(email: string): string {
@@ -92,12 +93,23 @@ export function ensureOwnerKitchen(
 export function saveKitchenProfile(
   ops: DeliveryOps,
   restaurantId: string,
-  input: { name: string; address: string; hours?: string; phone?: string },
+  input: {
+    name: string;
+    address: string;
+    hours?: string;
+    phone?: string;
+    deliveryRadiusMinutes?: number | null;
+  },
 ): DeliveryOps {
   const name = input.name.trim();
   const address = input.address.trim();
   const hours = (input.hours ?? "").trim();
   const phone = (input.phone ?? "").trim();
+  const minutes = input.deliveryRadiusMinutes;
+  const deliveryRadiusMinutes =
+    typeof minutes === "number" && Number.isFinite(minutes) && minutes > 0
+      ? Math.round(minutes)
+      : undefined;
   return {
     ...ops,
     restaurants: ops.restaurants.map((row) =>
@@ -109,6 +121,7 @@ export function saveKitchenProfile(
             hours,
             phone,
             neighborhood: address.slice(0, 80),
+            deliveryRadiusMinutes,
           }
         : row,
     ),
@@ -122,7 +135,9 @@ export function finishKitchenWelcome(
   return {
     ...ops,
     restaurants: ops.restaurants.map((row) =>
-      row.id === restaurantId ? { ...row, onboardingComplete: true } : row,
+      row.id === restaurantId && kitchenProfileGaps(row).length === 0
+        ? { ...row, onboardingComplete: true }
+        : row,
     ),
   };
 }
@@ -136,12 +151,11 @@ export function publishOwnerKitchen(
     ...ops,
     restaurants: ops.restaurants.map((row) => {
       if (row.id !== restaurantId || !row.ownerEmail?.trim()) return row;
-      const named =
-        Boolean(row.name.trim()) && Boolean((row.address ?? "").trim());
+      const ready = kitchenProfileGaps(row).length === 0;
       const live = (row.menu?.items ?? []).some(
         (item) => item.confirmedPriceUsd != null && !item.eightySixed,
       );
-      if (!named || !live) return row;
+      if (!ready || !live) return row;
       return {
         ...row,
         active: true,

@@ -16,6 +16,10 @@ import {
 import { hometownMenuPhotoSaver } from "@/lib/seed-delivery-io";
 import { publishOwnerKitchen } from "@/lib/hometown-kitchen-access";
 import {
+  kitchenProfileGapMessage,
+  kitchenProfileGaps,
+} from "@/lib/kitchen-profile-gaps";
+import {
   requireDriverActor,
   requireKitchenWrite,
   requireMenuIngest,
@@ -361,11 +365,9 @@ export async function approveMenuDraftAction(
   if (!loaded.ok) return loaded;
   const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
   if (restaurant?.ownerEmail?.trim()) {
-    if (!restaurant.name.trim() || !(restaurant.address ?? "").trim()) {
-      return {
-        ok: false as const,
-        error: "Add the restaurant name and address before approving the menu.",
-      };
+    const gaps = kitchenProfileGaps(restaurant);
+    if (gaps.length > 0) {
+      return { ok: false as const, error: kitchenProfileGapMessage(gaps) };
     }
     if ((restaurant.menu?.items ?? []).length === 0) {
       return {
