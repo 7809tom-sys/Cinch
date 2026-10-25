@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { RestaurantInviteForm } from "@/components/delivery/restaurant-invite-form";
+import { getHometownRoleSession } from "@/lib/hometown-role";
 import {
   HOMETOWN_STORE_PATH,
   listHometownMarkets,
@@ -22,6 +24,12 @@ export default async function HometownAccountPage({
 }) {
   const query = await searchParams;
   const markets = await listHometownMarkets();
+  const marketId =
+    query.market && markets.some((market) => market.id === query.market)
+      ? query.market
+      : markets[0]?.id;
+  const session = marketId ? await getHometownRoleSession(marketId) : null;
+  const diner = session?.role === "customer" ? session : null;
   const removedName =
     markets.find((market) => market.id === query.market)?.name ?? "this town";
   const known =
@@ -96,6 +104,16 @@ export default async function HometownAccountPage({
             Delete login on this device
           </button>
         </form>
+
+        {diner && marketId ? (
+          <div className="mt-10">
+            <RestaurantInviteForm projectId={marketId} dinerEmail={diner.email} />
+          </div>
+        ) : (
+          <p className="mt-8 text-sm text-muted">
+            Sign in as a diner to invite a restaurant.
+          </p>
+        )}
 
         <p className="mt-8 text-sm font-semibold">
           <Link href={HOMETOWN_STORE_PATH} className="text-brand-deep underline">

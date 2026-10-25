@@ -30,6 +30,7 @@ import {
   SiteTestingSwitch,
 } from "@/components/delivery/testing-switch";
 import { hometownSiteTesting } from "@/lib/hometown-testing";
+import { listRestaurantInvites } from "@/lib/restaurant-invite-store";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,7 @@ export default async function SeedBusinessAdminPage({
     : null;
   const orders = shop?.orders ?? [];
   const loadedDelivery = await ensureDeliveryOpsInSeed(project);
+  const restaurantInvites = isMaster ? await listRestaurantInvites(id) : [];
   const hometownRole = await getHometownRoleSession(id);
   const delivery =
     loadedDelivery && !isMaster
@@ -210,6 +212,34 @@ export default async function SeedBusinessAdminPage({
             serviceOptions={admin.services}
           />
         </section>
+
+        {isMaster ? (
+          <section className="seed-admin-section" id="restaurant-invites">
+            <h2>Restaurant invites</h2>
+            {restaurantInvites.length === 0 ? (
+              <p>No diner has invited a restaurant yet.</p>
+            ) : (
+              <ul>
+                {restaurantInvites.map((invite) => {
+                  const joined = delivery?.restaurants.find(
+                    (row) => row.id === invite.joinedRestaurantId,
+                  );
+                  return (
+                    <li key={invite.id}>
+                      {invite.dinerName} ({invite.dinerEmail}) invited {invite.restaurantName}
+                      {invite.restaurantEmail ? ` · ${invite.restaurantEmail}` : ""}
+                      {invite.website ? ` · ${invite.website}` : ""} · {invite.createdAt.slice(0, 10)} ·{" "}
+                      {invite.id}
+                      {joined
+                        ? ` · Joined as ${joined.name || joined.id}`
+                        : " · Not joined yet"}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        ) : null}
 
         {delivery ? (
           <SeedDeliveryLedger projectId={id} ops={delivery} viewerIsMaster={isMaster} />
