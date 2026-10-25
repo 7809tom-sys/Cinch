@@ -194,6 +194,12 @@ const storeDishes = parseRestaurantMenuPage(
   storefront,
   "https://order.online/business/66501/store/george-webb-restaurants-douglas-ave-793901?pickup=true",
 );
+const orderCounts = countMenuExtraction(
+  storeDishes.dishes,
+  storeDishes.photoReview,
+  "ordering",
+);
+console.log("ordering storefront fixture counts", orderCounts);
 const allAmericanOrder = storeDishes.dishes.find((item) => item.title === "All American");
 assert(
   allAmericanOrder?.priceUsd === 17.19 &&

@@ -54,8 +54,9 @@ import {
 import { kitchenFacingVisionError } from "@/lib/menu-vision-copy";
 import { parsePaperMenuWithVision } from "@/lib/menu-vision";
 import {
+  countDocumentExtraction,
   extractMenuDocument,
-  planUploadedMenuPhotos,
+  readUploadedMenu,
   type ExtractedMenuImage,
 } from "@/lib/menu-document-extract";
 import type { MenuPhotoFlag, ParsedMenuJson } from "@/lib/seed-delivery";
@@ -154,10 +155,6 @@ async function storeExtractedMenuImages(
   };
 }
 
-async function pricedMenuFromPdf(input: MenuUploadInput) {
-  return extractMenuDocument(input);
-}
-
 export async function uploadRestaurantMenuItemAction(
   projectId: string,
   restaurantId: string,
@@ -247,27 +244,12 @@ export async function ingestMenuPhotosAction(
     !nextInput.rawJson?.trim() &&
     (nextInput.attachments ?? []).some((file) => file.dataBase64?.trim());
 
-  if (canVision) {
-    const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
-    if (vision.ok && vision.parsed.items.length > 0) {
-      const photos = planUploadedMenuPhotos(nextInput, vision.parsed.items);
-      const stored = await storeExtractedMenuImages(
-        projectId,
-        restaurantId,
-        vision.parsed,
-        photos.matched,
-        photos.flagged,
-      );
-      nextInput = {
-        ...nextInput,
-        parsed: stored.parsed,
-        photoReview: stored.photoReview,
-        useFixture: false,
-        parseNote: `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Review prices and modifiers, then Approve.`,
-      };
-    } else {
-      const fromPdf = await pricedMenuFromPdf(nextInput);
-      if (!fromPdf) {
+  if (!nextInput.parsed && !nextInput.rawJson?.trim() && !nextInput.useFixture) {
+    let extracted = await extractMenuDocument(nextInput);
+    let parseNote = `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`;
+    if (!extracted && canVision) {
+      const vision = await parsePaperMenuWithVision(nextInput.attachments ?? []);
+      if (!vision.ok || vision.parsed.items.length === 0) {
         return {
           ok: false as const,
           error: kitchenFacingVisionError(
@@ -275,24 +257,10 @@ export async function ingestMenuPhotosAction(
           ),
         };
       }
-      const stored = await storeExtractedMenuImages(
-        projectId,
-        restaurantId,
-        fromPdf.parsed,
-        fromPdf.matched,
-        fromPdf.flagged,
-      );
-      nextInput = {
-        ...nextInput,
-        parsed: stored.parsed,
-        photoReview: stored.photoReview,
-        useFixture: false,
-        parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
-      };
+      extracted = await readUploadedMenu(nextInput, vision.parsed);
+      parseNote = `Vision parse (${vision.model}) from ${fileNames.join(", ")}. Printed prices only. Review, then Approve.`;
     }
-  } else if (!nextInput.parsed && !nextInput.rawJson?.trim() && !nextInput.useFixture) {
-    const fromPdf = await pricedMenuFromPdf(nextInput);
-    if (!fromPdf) {
+    if (!extracted) {
       return {
         ok: false as const,
         error: kitchenFacingVisionError(
@@ -300,19 +268,20 @@ export async function ingestMenuPhotosAction(
         ),
       };
     }
+    console.info("[hometown-menu-upload]", countDocumentExtraction(extracted));
     const stored = await storeExtractedMenuImages(
       projectId,
       restaurantId,
-      fromPdf.parsed,
-      fromPdf.matched,
-      fromPdf.flagged,
+      extracted.parsed,
+      extracted.matched,
+      extracted.flagged,
     );
     nextInput = {
       ...nextInput,
       parsed: stored.parsed,
       photoReview: stored.photoReview,
       useFixture: false,
-      parseNote: `Read ${fileNames.join(", ")} from the PDF text. Review prices, then Approve.`,
+      parseNote,
     };
   } else if (restaurant?.ownerEmail?.trim() && nextInput.useFixture && !nextInput.parsed) {
     return {
