@@ -38,8 +38,9 @@ export default async function PortalDriverPage({
     role?.role === "driver"
       ? await prepareDriverAccount(project.id, role.email)
       : null;
-  const fallback = await ensureDeliveryOpsInSeed(project);
-  const ops = account?.ok ? account.ops : fallback;
+  const ops = account?.ok
+    ? account.ops
+    : await ensureDeliveryOpsInSeed(project, { crawl: false });
   if (!ops) redirect(`/portal/${project.id}`);
   const master =
     isMasterEmail(customer.email) || isMasterEmail(role?.email);

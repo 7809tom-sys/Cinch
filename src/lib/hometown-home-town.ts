@@ -204,7 +204,9 @@ async function plantHometownHomeTown() {
     project.sitePublishedAt = OPENED_AT;
     await saveProject(project);
   }
-  const ops = await ensureDeliveryOpsInSeed(project);
+  // Menu fetches stay on the shop and merchant desks. Doing them here
+  // blocked driver sign-in, then wrote an older snapshot over the new driver.
+  const ops = await ensureDeliveryOpsInSeed(project, { crawl: false });
   if (ops && !homeTownMenusAreOpen(ops)) {
     await saveDeliveryOps(
       project.id,

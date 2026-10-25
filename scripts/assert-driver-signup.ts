@@ -10,6 +10,7 @@ import {
   ensureSignedInDriver,
   signedInDriverId,
 } from "../src/lib/hometown-driver-account";
+import { rebaseCrawlOntoLatest } from "../src/lib/seed-delivery-io";
 import {
   driverCanDispatch,
   driverOnboardingComplete,
@@ -79,6 +80,7 @@ const portalDrive = readFileSync("src/app/portal/[id]/drive/page.tsx", "utf8");
 const portal = readFileSync("src/components/delivery/driver-portal.tsx", "utf8");
 const desk = readFileSync("src/components/delivery/driver-documents.tsx", "utf8");
 const session = readFileSync("src/lib/hometown-kitchen-session.ts", "utf8");
+const homeTown = readFileSync("src/lib/hometown-home-town.ts", "utf8");
 assert(
   enter.includes("DriverDocumentDesk") &&
     enterAction.includes("prepareDriverAccount") &&
@@ -99,6 +101,28 @@ assert(
   session.includes("isMasterEmail(email)") &&
     session.includes("Opened a driver account"),
   "a non-master sign-up is saved, and the master does not get a new driver row",
+);
+assert(
+  session.includes("loadMarketOps(projectId, { crawl: false })") &&
+    siteDrive.includes("crawlMenus: false") &&
+    portalDrive.includes("crawl: false") &&
+    homeTown.includes("ensureDeliveryOpsInSeed(project, { crawl: false })"),
+  "driver sign-up and the driver portals do not wait on a menu crawl",
+);
+
+const crawled = {
+  ...ops,
+  restaurants: ops.restaurants.map((row, index) =>
+    index === 0 ? { ...row, lastCrawlError: "HTTP 403" } : row,
+  ),
+};
+const rebased = rebaseCrawlOntoLatest(first.ops, crawled);
+assert(
+  rebased.drivers.some((row) => row.email === "new.driver@town.test") &&
+    rebased.drivers.length === first.ops.drivers.length &&
+    rebased.restaurants[0]?.lastCrawlError === "HTTP 403" &&
+    rebased.restaurants.length >= first.ops.restaurants.length,
+  "a menu crawl save keeps a driver that signed up during the fetch",
 );
 
 console.log("driver signup packet assertions passed");
