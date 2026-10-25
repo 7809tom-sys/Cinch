@@ -12,9 +12,11 @@ const ROLES: HometownRole[] = ["customer", "merchant", "driver"];
 export function HometownRoleLogin({
   projectId,
   initialRole,
+  inviteId,
 }: {
   projectId: string;
   initialRole?: HometownRole;
+  inviteId?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,9 @@ export function HometownRoleLogin({
               }}
             >
               <input type="hidden" name="role" value={role} />
+              {role === "merchant" && inviteId ? (
+                <input type="hidden" name="invite" value={inviteId} />
+              ) : null}
               <p className="text-xs font-bold tracking-[0.14em] text-accent-deep uppercase">
                 {role}
               </p>

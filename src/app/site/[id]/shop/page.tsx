@@ -19,6 +19,7 @@ import {
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
 import { HometownDiner } from "@/components/delivery/hometown-diner";
+import { RestaurantInviteForm } from "@/components/delivery/restaurant-invite-form";
 import {
   HOMETOWN_ACCOUNT_PATH,
   HOMETOWN_PRIVACY_PATH,
@@ -41,7 +42,7 @@ export default async function SeedShopPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ kitchen?: string }>;
+  searchParams: Promise<{ kitchen?: string; invite?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -108,7 +109,18 @@ export default async function SeedShopPage({
         websiteHref: `/site/${id}`,
       });
       return (
-        <HometownDiner model={model} initialKitchenId={query.kitchen ?? null} />
+        <>
+          {query.invite === "1" && role?.role === "customer" ? (
+            <div className="mx-auto w-full max-w-xl px-4 pt-6">
+              <RestaurantInviteForm
+                projectId={id}
+                dinerEmail={role.email}
+                skipHref={`/site/${id}/shop`}
+              />
+            </div>
+          ) : null}
+          <HometownDiner model={model} initialKitchenId={query.kitchen ?? null} />
+        </>
       );
     }
   }
