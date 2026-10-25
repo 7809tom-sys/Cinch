@@ -34,11 +34,15 @@ export default async function HometownRoleLoginPage({
             Role-based login
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Sign in as a customer, merchant, or driver. Guest diners can still{" "}
+            Sign in as a customer, merchant, or driver. A new kitchen or
+            driver chooses a password the first time. Coming back uses that
+            password. Guest diners can still{" "}
             <Link className="font-semibold text-brand-deep underline" href={`/site/${id}/shop`}>
               order without an account
             </Link>
-            .{" "}
+            . If this email already had a kitchen or driver login before
+            passwords, ask Hometown admin for a set-password code. Typing the
+            email alone does not open that account.{" "}
             <Link className="font-semibold text-brand-deep underline" href={`/hometown/account?market=${id}`}>
               Delete the login on this device
             </Link>

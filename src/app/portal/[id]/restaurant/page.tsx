@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { prepareMerchantDesk } from "@/lib/hometown-kitchen-session";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { durableStoreWarning, menuPersistenceWarning } from "@/lib/kv-store";
-import { isMasterEmail } from "@/lib/master-auth";
+import { getMasterSession, masterIdentityVerified } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getPortalProjectSnapshot } from "../../actions";
 
@@ -45,13 +45,23 @@ export default async function PortalRestaurantPage({
    * The hometown merchant cookie is optional here. This page used to
    * render every seeded kitchen (Pilot Kitchen and the rest) whenever
    * that cookie was missing. A restaurant account — merchant cookie or
-   * the portal sign-in — only ever loads its own kitchen. Master admin
-   * still receives the full market via prepareMerchantDesk.
+   * the portal sign-in — only ever loads its own kitchen. A verified
+   * master session still receives the full market. The email string alone
+   * does not, and a merchant cookie wins over a leftover master session.
    */
   const restaurantEmail =
     role?.role === "merchant" ? role.email : customer.email;
-  const kitchenAccount = await prepareMerchantDesk(project.id, restaurantEmail);
-  const masterView = isMasterEmail(restaurantEmail);
+  const signedMaster =
+    role?.scope === "master" ||
+    Boolean(await getMasterSession()) ||
+    masterIdentityVerified(customer);
+  const masterView =
+    role?.role === "merchant" ? role.scope === "master" : signedMaster;
+  const kitchenAccount = await prepareMerchantDesk(
+    project.id,
+    restaurantEmail,
+    masterView ? "master" : "owner",
+  );
   const crawlWarning = await menuPersistenceWarning();
   const storageWarning = crawlWarning ?? durableStoreWarning();
 

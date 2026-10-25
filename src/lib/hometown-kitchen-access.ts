@@ -1,6 +1,11 @@
 import { createHash } from "crypto";
 import { kitchenProfileGaps } from "./kitchen-profile-gaps";
-import type { DeliveryOps, DeliveryRestaurant } from "./seed-delivery";
+import {
+  driverSoftwareAnnualUsd,
+  type DeliveryDriver,
+  type DeliveryOps,
+  type DeliveryRestaurant,
+} from "./seed-delivery";
 
 export function normalizeKitchenEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -222,4 +227,93 @@ export function actorCanDrive(actor: KitchenActor | null): boolean {
     actor.scope === "master" ||
     actor.scope === "operator"
   );
+}
+
+export function driversForEmail(
+  ops: Pick<DeliveryOps, "drivers">,
+  email: string,
+): DeliveryDriver[] {
+  const owner = normalizeKitchenEmail(email);
+  if (!owner) return [];
+  return ops.drivers.filter(
+    (row) => normalizeKitchenEmail(row.email ?? "") === owner,
+  );
+}
+
+/** Stable id so a second driver signup with the same email reopens the same record. */
+export function driverIdForEmail(email: string): string {
+  const hash = createHash("sha256")
+    .update(normalizeKitchenEmail(email))
+    .digest("hex")
+    .slice(0, 12);
+  return `drv-owner-${hash}`;
+}
+
+export function blankDriverAccount(email: string): DeliveryDriver {
+  const ownerEmail = normalizeKitchenEmail(email);
+  const name = (ownerEmail.split("@")[0] || "Driver").slice(0, 40);
+  return {
+    id: driverIdForEmail(ownerEmail),
+    name,
+    email: ownerEmail,
+    status: "pending",
+    licenseOk: false,
+    insuranceOk: false,
+    existingPlatformActive: false,
+    classification: "part_time",
+    softwareCadence: "monthly",
+    hoursOpenThisWeek: 0,
+    hoursOpenLast4Weeks: 0,
+    lastAppOpenAt: null,
+    softwareUsdPerYear: driverSoftwareAnnualUsd("part_time", "monthly"),
+    online: false,
+    payoutTrigger: "min_balance",
+    pendingPayoutUsd: 0,
+    lastPayoutAt: null,
+    taxFormsSelfManaged: true,
+    firstDeliveredAt: null,
+  };
+}
+
+export function ensureDriverAccount(
+  ops: DeliveryOps,
+  email: string,
+): { ops: DeliveryOps; driver: DeliveryDriver; created: boolean } {
+  const existing = driversForEmail(ops, email);
+  if (existing.length > 0) {
+    return { ops, driver: existing[0]!, created: false };
+  }
+  const driver = blankDriverAccount(email);
+  return {
+    ops: { ...ops, drivers: [...ops.drivers, driver] },
+    driver,
+    created: true,
+  };
+}
+
+/**
+ * A driver session may dash or scout only as the driver record for that
+ * email. Master and the seed operator (portal password) may still pick a driver.
+ * Starter drivers with no email are not claimable.
+ */
+export function actorMayOperateDriver(
+  actor: KitchenActor | null,
+  ops: Pick<DeliveryOps, "drivers">,
+  driverId: string,
+): boolean {
+  if (!actor || !driverId) return false;
+  if (actor.scope === "master" || actor.scope === "operator") return true;
+  if (actor.scope !== "driver") return false;
+  const driver = ops.drivers.find((row) => row.id === driverId);
+  if (!driver?.email?.trim()) return false;
+  return normalizeKitchenEmail(driver.email) === normalizeKitchenEmail(actor.email);
+}
+
+/** True when this email already owns a kitchen or driver record. */
+export function hometownIdentityClaimed(
+  ops: Pick<DeliveryOps, "restaurants" | "drivers">,
+  email: string,
+): boolean {
+  if (kitchensOwnedBy(ops, email).length > 0) return true;
+  return driversForEmail(ops, email).length > 0;
 }

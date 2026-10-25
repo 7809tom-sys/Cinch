@@ -15,7 +15,6 @@ import {
 import { HometownDiner } from "@/components/delivery/hometown-diner";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { opsVisibleToRestaurantAccount } from "@/lib/hometown-restaurant-view";
-import { isMasterEmail } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { buildSeedShopPreview } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
@@ -68,7 +67,7 @@ export default async function HometownAppPage({
       if (ops) {
         const role = await getHometownRoleSession(project.id);
         const visibleOps =
-          role?.role === "merchant" && !isMasterEmail(role.email)
+          role?.role === "merchant" && role.scope !== "master"
             ? opsVisibleToRestaurantAccount(ops, role.email)
             : ops;
         const townName = project.name.replace(/\s+seed$/i, "").trim() || project.name;

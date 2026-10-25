@@ -9,12 +9,14 @@ import {
   syncRestaurantMenuFromWebsite,
 } from "@/lib/hometown-menu-crawler";
 import {
+  actorMayOperateDriver,
+  publishOwnerKitchen,
+} from "@/lib/hometown-kitchen-access";
+import {
   applyCrawledRestaurantProfile,
   parseRestaurantProfile,
   type RestaurantProfileDraft,
 } from "@/lib/hometown-restaurant-profile";
-import { hometownMenuPhotoSaver } from "@/lib/seed-delivery-io";
-import { publishOwnerKitchen } from "@/lib/hometown-kitchen-access";
 import {
   kitchenProfileGapMessage,
   kitchenProfileGaps,
@@ -64,6 +66,7 @@ import { isDurableStoreConfigured } from "@/lib/kv-store";
 import {
   commitWebsiteMenuSync,
   ensureDeliveryOpsInSeed,
+  hometownMenuPhotoSaver,
   saveDeliveryOps as persistDeliveryOps,
 } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
@@ -76,6 +79,15 @@ function revalidateDelivery(projectId: string) {
   revalidatePath(`/site/${projectId}/drive`);
   revalidatePath(`/site/${projectId}/admin`);
   revalidatePath(`/site/${projectId}/shop`);
+}
+
+function rejectOtherDriver(
+  actor: { email: string; scope: "master" | "owner" | "driver" | "operator" } | null,
+  ops: DeliveryOps,
+  driverId: string,
+): { ok: false; error: string } | null {
+  if (actorMayOperateDriver(actor, ops, driverId)) return null;
+  return { ok: false, error: "Sign in as that driver." };
 }
 
 async function loadOps(projectId: string) {
@@ -512,6 +524,8 @@ export async function assignRestaurantScoutAction(
 ) {
   const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
+  const denied = rejectOtherDriver(loaded.actor, loaded.ops, driverId);
+  if (denied) return denied;
   const restaurant = loaded.ops.restaurants.find((row) => row.id === restaurantId);
   if (restaurant?.ownerEmail?.trim() && loaded.actor?.scope === "driver") {
     return { ok: false as const, error: "That kitchen isn't on this account." };
@@ -573,6 +587,8 @@ export async function setDriverOnlineAction(
 ) {
   const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
+  const denied = rejectOtherDriver(loaded.actor, loaded.ops, driverId);
+  if (denied) return denied;
   const saved = await saveDeliveryOps(
     projectId,
     setDriverOnline(loaded.ops, driverId, online),
@@ -590,6 +606,8 @@ export async function acceptDriverRunAction(
 ) {
   const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
+  const denied = rejectOtherDriver(loaded.actor, loaded.ops, driverId);
+  if (denied) return denied;
   const result = acceptDriverRun(loaded.ops, runId, driverId);
   if (!result.ok) return result;
   const saved = await saveDeliveryOps(projectId, result.ops, "Driver accepted an offer");
@@ -606,6 +624,8 @@ export async function advanceDriverArrivedAction(
 ) {
   const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
+  const denied = rejectOtherDriver(loaded.actor, loaded.ops, driverId);
+  if (denied) return denied;
   const result = advanceDriverArrived(loaded.ops, runId, driverId, location);
   if (!result.ok) return result;
   const saved = await saveDeliveryOps(
@@ -680,6 +700,8 @@ export async function advanceDriverRunAction(
 ) {
   const loaded = await requireDriverActor(projectId);
   if (!loaded.ok) return loaded;
+  const denied = rejectOtherDriver(loaded.actor, loaded.ops, driverId);
+  if (denied) return denied;
   const result = advanceDriverRun(
     loaded.ops,
     runId,

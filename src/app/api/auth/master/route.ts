@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import {
+  authenticateHometownAdmin,
+  HOMETOWN_LOCKED_ERROR,
+} from "@/lib/hometown-auth";
+import {
   encodeMasterSession,
   MASTER_SESSION_COOKIE,
   masterSessionCookieOptions,
-  verifyMasterPasswordLoginAsync,
 } from "@/lib/master-auth";
 
 /** Email + password master login — works without Google OAuth. */
@@ -21,18 +24,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const user = await verifyMasterPasswordLoginAsync(email, password);
-  if (!user) {
+  const user = await authenticateHometownAdmin(email, password);
+  if (!user.ok) {
     return NextResponse.json(
-      { ok: false, error: "Wrong email or password." },
-      { status: 401 },
+      { ok: false, error: user.error },
+      { status: user.error === HOMETOWN_LOCKED_ERROR ? 429 : 401 },
     );
   }
 
-  const response = NextResponse.json({ ok: true, user });
+  const response = NextResponse.json({
+    ok: true,
+    user: { email: user.email, name: user.name },
+  });
   response.cookies.set(
     MASTER_SESSION_COOKIE,
-    encodeMasterSession(user),
+    encodeMasterSession({ email: user.email, name: user.name }),
     masterSessionCookieOptions(),
   );
   return response;

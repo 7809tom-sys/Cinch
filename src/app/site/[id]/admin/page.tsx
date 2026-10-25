@@ -7,7 +7,7 @@ import {
 import {
   establishMasterSession,
   getMasterSession,
-  isMasterEmail,
+  masterIdentityVerified,
 } from "@/lib/master-auth";
 import { durableStoreWarning } from "@/lib/kv-store";
 import { getHometownRoleSession } from "@/lib/hometown-role";
@@ -49,7 +49,7 @@ export default async function SeedBusinessAdminPage({
   ]);
 
   let masterSession = master;
-  if (!masterSession && customer && isMasterEmail(customer.email)) {
+  if (!masterSession && customer && masterIdentityVerified(customer)) {
     await establishMasterSession({
       email: customer.email,
       name: customer.name || customer.email.split("@")[0] || customer.email,
@@ -57,9 +57,7 @@ export default async function SeedBusinessAdminPage({
     masterSession = await getMasterSession();
   }
 
-  const isMaster = Boolean(
-    masterSession || (customer && isMasterEmail(customer.email)),
-  );
+  const isMaster = Boolean(masterSession || masterIdentityVerified(customer));
   const isOwner = Boolean(
     customer &&
       (customerOwnsProject(customer, project.id) ||
@@ -83,7 +81,7 @@ export default async function SeedBusinessAdminPage({
   const loadedDelivery = await ensureDeliveryOpsInSeed(project);
   const hometownRole = await getHometownRoleSession(id);
   const delivery =
-    loadedDelivery && !isMaster
+    loadedDelivery && !isMaster && hometownRole?.scope !== "master"
       ? opsVisibleToRestaurantAccount(
           loadedDelivery,
           hometownRole?.role === "merchant"

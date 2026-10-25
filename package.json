@@ -15,6 +15,7 @@
     "assert:delivery-radius": "npx tsx scripts/assert-delivery-radius.ts",
     "assert:hometown-store": "npx tsx scripts/assert-hometown-store.ts",
     "assert:hometown-kitchen-access": "npx tsx scripts/assert-hometown-kitchen-access.ts",
+    "assert:hometown-auth": "npx tsx scripts/assert-hometown-auth.ts",
     "assert:hometown-blank-menu": "npx tsx scripts/assert-hometown-blank-menu.ts",
     "assert:hometown-restaurant-profile": "npx tsx scripts/assert-hometown-restaurant-profile.ts",
     "assert:hometown-stripe": "npx tsx scripts/assert-hometown-stripe.ts",

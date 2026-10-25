@@ -26,7 +26,6 @@ import {
 import { assembleHometownDiner } from "@/lib/hometown-diner-model";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { opsVisibleToRestaurantAccount } from "@/lib/hometown-restaurant-view";
-import { isMasterEmail } from "@/lib/master-auth";
 import { SeedShopBoard } from "./shop-board";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +71,7 @@ export default async function SeedShopPage({
     if (loaded) {
       const role = await getHometownRoleSession(id);
       const ops =
-        role?.role === "merchant" && !isMasterEmail(role.email)
+        role?.role === "merchant" && role.scope !== "master"
           ? opsVisibleToRestaurantAccount(loaded, role.email)
           : loaded;
       const found = findSellableMenuItems(ops);

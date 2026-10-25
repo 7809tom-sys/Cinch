@@ -4,7 +4,7 @@ import { SeedNotOnAccount } from "@/components/seed-not-on-account";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
 import { SiteFooter } from "@/components/site-footer";
 import { getHometownRoleSession } from "@/lib/hometown-role";
-import { isMasterEmail } from "@/lib/master-auth";
+import { getMasterSession, masterIdentityVerified } from "@/lib/master-auth";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
 import { getPortalProjectSnapshot } from "../../actions";
 
@@ -36,7 +36,9 @@ export default async function PortalDriverPage({
   if (!ops) redirect(`/portal/${project.id}`);
   const role = await getHometownRoleSession(project.id);
   const master =
-    isMasterEmail(customer.email) || isMasterEmail(role?.email);
+    role?.scope === "master" ||
+    Boolean(await getMasterSession()) ||
+    masterIdentityVerified(customer);
   if (!master && role?.role !== "driver") {
     redirect(`/portal/${project.id}/restaurant`);
   }

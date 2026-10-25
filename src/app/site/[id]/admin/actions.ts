@@ -6,7 +6,11 @@ import {
   customerOwnsProject,
   getCurrentCustomer,
 } from "@/lib/customer-auth";
-import { getMasterSession, isMasterEmail } from "@/lib/master-auth";
+import {
+  getMasterSession,
+  isMasterEmail,
+  masterIdentityVerified,
+} from "@/lib/master-auth";
 import { storeSeedProductPhoto, storeSeedProductPhotoFromUrl } from "@/lib/seed-product-media";
 import { lookupSeedProductByUpc } from "@/lib/seed-upc-catalog";
 import {
@@ -35,7 +39,7 @@ async function requireBusinessAdmin(projectId: string) {
     (customer &&
       (customerOwnsProject(customer, projectId) ||
         project.customerEmail === customer.email ||
-        isMasterEmail(customer.email))) ||
+        masterIdentityVerified(customer))) ||
       (master && isMasterEmail(master.email)),
   );
   if (!owns) {

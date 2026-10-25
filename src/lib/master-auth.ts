@@ -97,6 +97,27 @@ export function isMasterEmail(email: string | null | undefined): boolean {
 }
 
 /**
+ * Master scope from a customer account requires a verified factor already
+ * stored on that account. The email string alone is not enough.
+ */
+export function masterIdentityVerified(
+  customer: {
+    email?: string | null;
+    passwordHash?: string;
+    passwordSalt?: string;
+    emailVerifiedAt?: string;
+    authProvider?: string;
+    webauthnCredentials?: readonly unknown[] | null;
+  } | null | undefined,
+): boolean {
+  if (!customer || !isMasterEmail(customer.email)) return false;
+  if (customer.passwordHash && customer.passwordSalt) return true;
+  if (customer.authProvider === "google" && customer.emailVerifiedAt) return true;
+  if ((customer.webauthnCredentials?.length ?? 0) > 0) return true;
+  return false;
+}
+
+/**
  * Verify Google ID token, then enforce the master allowlist.
  * Public customer signup does not use this — use verifyGoogleIdToken instead.
  */

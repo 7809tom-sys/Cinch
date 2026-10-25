@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HometownPasswordResetPanel } from "@/app/admin/hometown-password-reset-panel";
 import { HometownSubscriptionsPanel } from "@/app/admin/hometown-subscriptions-panel";
 import { getHometownStripeAdminView } from "@/lib/hometown-stripe-admin";
 
@@ -40,6 +41,7 @@ export default async function HometownSubscriptionsPage() {
           person is on, and whether that subscription is active. This desk
           stays on the master admin login.
         </p>
+        <HometownPasswordResetPanel />
         <div className="mt-8">
           <HometownSubscriptionsPanel view={view} />
         </div>

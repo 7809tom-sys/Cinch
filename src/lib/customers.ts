@@ -58,7 +58,10 @@ type CustomerStore = {
 };
 
 const STORE_KEY = "customers";
-const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 8;
+/** Same length as a real scrypt hash so a missing account still compares in constant time. */
+const PASSWORD_DUMMY_SALT = "cinch-password-dummy-salt";
+const PASSWORD_DUMMY_HASH = "0".repeat(128);
 
 let memory: CustomerStore | null = null;
 
@@ -442,13 +445,97 @@ export async function verifyCustomerPassword(
   password: string,
 ): Promise<CustomerAccount | null> {
   const account = await getCustomerByEmail(email);
-  if (!account?.passwordHash || !account.passwordSalt) return null;
-  const ok = await passwordsMatch(
-    password,
-    account.passwordHash,
-    account.passwordSalt,
-  );
-  return ok ? account : null;
+  const salt = account?.passwordSalt || PASSWORD_DUMMY_SALT;
+  const hash = account?.passwordHash || PASSWORD_DUMMY_HASH;
+  const ok = await passwordsMatch(password, hash, salt);
+  if (!ok || !account?.passwordHash || !account.passwordSalt) return null;
+  return account;
+}
+
+/** First 16 hex chars of the scrypt hash. Not the password. */
+export function passwordHashTag(hash: string | null | undefined): string {
+  return (hash ?? "").slice(0, 16);
+}
+
+/**
+ * Current password tag, preferring a fresher store copy over this process's
+ * cache so a reset invalidates cookies on the next read.
+ */
+export async function customerPasswordTag(
+  customerId: string,
+): Promise<string | null> {
+  const local = await getCustomerById(customerId);
+  const fresh = await readJsonStore<CustomerStore>(STORE_KEY, {
+    accounts: [],
+    sessions: [],
+  });
+  const remote = (fresh.accounts ?? []).find((item) => item.id === customerId);
+  const account =
+    remote && (!local || remote.updatedAt >= local.updatedAt) ? remote : local;
+  if (!account?.passwordHash) return null;
+  return passwordHashTag(account.passwordHash);
+}
+
+/**
+ * Set or replace the scrypt password. Callers must already have authorized
+ * this change (a checked password, a master-admin code, or first signup).
+ * The password is hashed and is not logged.
+ */
+export async function setCustomerPassword(input: {
+  email: string;
+  password: string;
+  name?: string;
+}): Promise<PasswordResult> {
+  const email = normalizeEmail(input.email);
+  const { password } = input;
+  if (!isValidEmail(email)) {
+    return { ok: false, error: "Enter a valid email address." };
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return {
+      ok: false,
+      error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+    };
+  }
+
+  const store = await ensureCustomers();
+  let account = store.accounts.find((item) => item.email === email) ?? null;
+  const stamp = now();
+  const salt = randomBytes(16).toString("hex");
+  const passwordHash = await hashPassword(password, salt);
+  const created = !account;
+
+  if (!account) {
+    account = {
+      id: randomUUID(),
+      email,
+      name:
+        (input.name ?? email.split("@")[0] ?? "Customer").trim() || "Customer",
+      accessCode: generateAccessCode(),
+      passwordHash,
+      passwordSalt: salt,
+      webauthnCredentials: [],
+      projectIds: [],
+      createdAt: stamp,
+      updatedAt: stamp,
+      authProvider: "password",
+      lockgmProfile: createLockgmProfile(
+        (input.name ?? email.split("@")[0] ?? "Customer").trim() ||
+          "Customer",
+        stamp,
+      ),
+    };
+    store.accounts.unshift(account);
+  } else {
+    account.passwordHash = passwordHash;
+    account.passwordSalt = salt;
+    account.authProvider = "password";
+    account.updatedAt = stamp;
+    if (input.name?.trim()) account.name = input.name.trim();
+  }
+
+  await writeCustomers(store);
+  return { ok: true, customer: account, isNew: created };
 }
 
 /** Passkeys (Face ID / Touch ID / fingerprint) registered for a customer. */
