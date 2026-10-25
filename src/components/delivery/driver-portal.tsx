@@ -182,6 +182,9 @@ export function HometownDriverPortal({
           driverId={driver.id}
           documents={driver.documents}
           signature={driver.documentSignature}
+          w9={driver.w9}
+          packetRequired={driver.packetRequired === true}
+          viewerIsMaster={viewerIsMaster}
         />
       ) : null}
       <section className="rounded-xl border border-brand/15 bg-brand-deep p-5 text-foam">

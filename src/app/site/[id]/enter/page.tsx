@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { DriverDocumentDesk } from "@/components/delivery/driver-documents";
 import { HometownRoleLogin } from "@/components/delivery/role-login";
 import { prepareDriverAccount } from "@/lib/hometown-kitchen-session";
+import { isMasterEmail } from "@/lib/master-auth";
 import { getHometownRoleSession, isHometownRole } from "@/lib/hometown-role";
 import { seedNeedsDeliveryOps } from "@/lib/seed-delivery-io";
 import { getProject } from "@/lib/store";
@@ -61,6 +62,9 @@ export default async function HometownRoleLoginPage({
               driverId={signedInDriver.id}
               documents={signedInDriver.documents}
               signature={signedInDriver.documentSignature}
+              w9={signedInDriver.w9}
+              packetRequired={signedInDriver.packetRequired === true}
+              viewerIsMaster={isMasterEmail(session?.email)}
             />
           </div>
         ) : null}

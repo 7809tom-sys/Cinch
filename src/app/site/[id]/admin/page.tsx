@@ -208,7 +208,9 @@ export default async function SeedBusinessAdminPage({
           />
         </section>
 
-        {delivery ? <SeedDeliveryLedger projectId={id} ops={delivery} /> : null}
+        {delivery ? (
+          <SeedDeliveryLedger projectId={id} ops={delivery} viewerIsMaster={isMaster} />
+        ) : null}
 
         {admin.commerce ? (
           <SeedAdminCommerceOps

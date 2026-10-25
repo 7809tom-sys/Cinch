@@ -7,6 +7,7 @@ import {
   signDriverDocumentsAction,
   uploadDriverDocumentAction,
 } from "@/app/site/[id]/drive/actions";
+import { DriverW9Form } from "@/components/delivery/driver-w9-form";
 import {
   DRIVER_DOC_SLOTS,
   DRIVER_DOC_STATEMENT,
@@ -17,17 +18,24 @@ import {
   type DriverDocSlotId,
   type DriverDocuments,
 } from "@/lib/hometown-driver-docs";
+import type { DriverW9Status } from "@/lib/hometown-driver-w9";
 
 export function DriverDocumentDesk({
   projectId,
   driverId,
   documents,
   signature,
+  w9,
+  packetRequired = false,
+  viewerIsMaster = false,
 }: {
   projectId: string;
   driverId: string;
   documents?: DriverDocuments;
   signature?: DriverDocSignature;
+  w9?: DriverW9Status;
+  packetRequired?: boolean;
+  viewerIsMaster?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -247,6 +255,14 @@ export function DriverDocumentDesk({
           Sign
         </button>
       </div>
+      <DriverW9Form
+        projectId={projectId}
+        driverId={driverId}
+        w9={w9}
+        packetRequired={packetRequired}
+        viewerIsMaster={viewerIsMaster}
+        packetSigned={complete}
+      />
       {error ? (
         <p className="mt-3 text-sm font-semibold text-red-800" role="alert">
           {error}

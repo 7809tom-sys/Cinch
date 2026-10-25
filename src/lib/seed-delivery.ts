@@ -1,10 +1,12 @@
 import { shouldStampTest } from "./hometown-testing";
 import {
+  driverDocumentsComplete,
   sanitizeDriverDocuments,
   sanitizeDriverSignature,
   type DriverDocSignature,
   type DriverDocuments,
 } from "./hometown-driver-docs";
+import { sanitizeDriverW9, type DriverW9Status } from "./hometown-driver-w9";
 
 /**
  * Hometown Runner v1 — hyper-local food delivery ops (not a restaurant).
@@ -702,6 +704,13 @@ export type DeliveryDriver = {
   documents?: DriverDocuments;
   /** Name, time, and statement. The drawing stays in private storage. */
   documentSignature?: DriverDocSignature;
+  /**
+   * W-9 status only. The tax ID stays sealed in private storage.
+   * Last four digits are the only number stored here.
+   */
+  w9?: DriverW9Status;
+  /** New sign-ups. Seeded demo drivers leave this unset. */
+  packetRequired?: boolean;
 };
 
 export type DeliveryLedgerSplit = {
@@ -1184,9 +1193,21 @@ export function driverInsideDropoffGeofence(distanceMeters: number): boolean {
 export function driverOnboardingComplete(
   driver: Pick<
     DeliveryDriver,
-    "licenseOk" | "insuranceOk" | "existingPlatformActive"
+    | "licenseOk"
+    | "insuranceOk"
+    | "existingPlatformActive"
+    | "packetRequired"
+    | "documents"
+    | "documentSignature"
+    | "w9"
   >,
 ): boolean {
+  if (driver.packetRequired) {
+    return (
+      driverDocumentsComplete(driver.documents, driver.documentSignature) &&
+      Boolean(sanitizeDriverW9(driver.w9))
+    );
+  }
   return (
     driver.licenseOk &&
     driver.insuranceOk &&
@@ -2459,6 +2480,8 @@ export function normalizeDeliveryDriver(
     ...driverPhotoId(row),
     documents: sanitizeDriverDocuments(row.documents),
     documentSignature: sanitizeDriverSignature(row.documentSignature),
+    w9: sanitizeDriverW9(row.w9),
+    packetRequired: row.packetRequired === true ? true : undefined,
   };
 }
 

@@ -13,8 +13,8 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * The only way to read a driver document. The private blob URL is never
- * sent to the browser.
+ * The only way to read a license, insurance card, or signature.
+ * The W-9 tax ID is not served here. The private blob URL is never sent.
  */
 export async function GET(
   _request: Request,
