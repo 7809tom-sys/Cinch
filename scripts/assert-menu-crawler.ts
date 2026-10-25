@@ -19,15 +19,19 @@ import {
   MENU_PAGE_USER_AGENT,
   applyWebsiteMenuSync,
   classifyMenuFetchError,
+  countMenuExtraction,
   downloadPublicMenuPhoto,
   fetchRestaurantMenuPage,
   isSkippableMenuImage,
   isStoredMenuPhotoUrl,
   menuCrawlFailureMessage,
+  menuFollowLinks,
   menuPhotoIsPinned,
   parseRestaurantMenuHtml,
+  parseRestaurantMenuPage,
   resolveMenuAssetUrl,
   storeCrawledMenuPhotos,
+  syncRestaurantMenuFromWebsite,
   type MenuFetchImpl,
 } from "../src/lib/hometown-menu-crawler";
 import {
@@ -42,6 +46,22 @@ function assert(condition: unknown, message: string): asserts condition {
     throw new Error(message);
   }
 }
+
+const welcomeSource = readFileSync(
+  join(process.cwd(), "src/components/delivery/kitchen-welcome.tsx"),
+  "utf8",
+);
+const portalSource = readFileSync(
+  join(process.cwd(), "src/components/delivery/restaurant-portal.tsx"),
+  "utf8",
+);
+assert(
+  !welcomeSource.includes("step={0.25}") &&
+    welcomeSource.includes("step={0.01}") &&
+    !portalSource.includes("step={0.25}") &&
+    portalSource.includes("step={0.01}"),
+  "plate price fields accept any cent instead of stepping by 0.25",
+);
 
 const fixture = readFileSync(
   join(process.cwd(), "scripts/fixtures/george-webb-current-menu.html"),
@@ -97,6 +117,91 @@ assert(
   dishes.find((item) => item.title === "Country-Style Breakfast")?.available ===
     true,
   "860 calories is not an 86",
+);
+
+const webbPage = parseRestaurantMenuPage(fixture, pageUrl);
+const webbCounts = countMenuExtraction(
+  webbPage.dishes,
+  webbPage.photoReview,
+  "web",
+);
+assert(
+  webbCounts.pricesFound === 0 &&
+    webbCounts.pricesCaptured === 0 &&
+    webbCounts.dishesFound === dishes.length &&
+    webbCounts.imagesFound ===
+      webbCounts.imagesCaptured + webbCounts.imagesFlagged &&
+    webbCounts.imagesCaptured > 0 &&
+    webbPage.photoReview.some((flag) => flag.sourceUrl.includes("menu_scrambler.jpg")) &&
+    !webbPage.dishes.some((item) => item.imageUrl?.includes("menu_scrambler")),
+  "George Webb fixture: dishes and photos are counted, the shared scrambler photo is flagged, and no price is invented",
+);
+console.log("george webb fixture counts", webbCounts);
+
+const jsonLd = `<script type="application/ld+json">
+{"@type":"Menu","hasMenuItem":[
+  {"@type":"MenuItem","name":"Lake perch","description":"Friday fish fry","offers":{"price":"18.99"}},
+  {"@type":"MenuItem","name":"Cottage cheese","description":"A scoop"}
+]}
+</script>`;
+const jsonDishes = parseRestaurantMenuHtml(jsonLd, "https://lakeside.example/menu");
+assert(
+  jsonDishes.find((item) => item.title === "Lake perch")?.priceUsd === 18.99 &&
+    jsonDishes.find((item) => item.title === "Cottage cheese")?.priceUsd == null,
+  "JSON-LD keeps an exact cent price and still saves a dish that has no price",
+);
+
+const ordering = `<html><body>
+<a href="https://order.online/business/george-webb-66501">Order Online</a>
+<a href="/menu/breakfast">Breakfast menu</a>
+<a href="/gift-cards">Gift cards</a>
+<script type="application/json">
+{"items":[
+  {"name":"Webb Burger","price":9.49,"description":"Beef patty"},
+  {"name":"Gift Card","price":25,"description":"Store credit"}
+]}
+</script>
+</body></html>`;
+const orderingPage = parseRestaurantMenuPage(
+  ordering,
+  "https://georgewebb.com/menu/current-menu",
+);
+assert(
+  orderingPage.dishes.some((item) => item.title === "Webb Burger" && item.priceUsd === 9.49) &&
+    !orderingPage.dishes.some((item) => /gift card/i.test(item.title)),
+  "embedded ordering JSON keeps 9.49 and skips gift cards",
+);
+const links = menuFollowLinks(ordering, "https://georgewebb.com/menu/current-menu");
+assert(
+  links.includes("https://order.online/business/george-webb-66501") &&
+    links.includes("https://georgewebb.com/menu/breakfast") &&
+    !links.some((link) => /gift/i.test(link)),
+  "the crawl follows the menu and the online-ordering link, not gift cards",
+);
+
+const centHtml = `<html><body><h1>Dinner</h1><h3>House burger</h3><span class="price">$10.99</span></body></html>`;
+assert(
+  parseRestaurantMenuHtml(centHtml, "https://kitchen.example/menu").find(
+    (item) => item.title === "House burger",
+  )?.priceUsd === 10.99,
+  "a printed 10.99 stays 10.99 and is not rounded to a quarter",
+);
+
+const storefront = `<html><body>
+<script>{\\"items\\":[{\\"name\\":\\"All American\\",\\"description\\":\\"Two eggs\\",\\"displayPrice\\":\\"$$17.19\\",\\"imgUrl\\":\\"https://img.cdn4dd.com/photos/all-american.jpg\\"},{\\"name\\":\\"Gift Card\\",\\"displayPrice\\":\\"$$25.00\\"}]}</script>
+</body></html>`;
+const storeDishes = parseRestaurantMenuPage(
+  storefront,
+  "https://order.online/business/66501/store/george-webb-restaurants-douglas-ave-793901?pickup=true",
+);
+const allAmericanOrder = storeDishes.dishes.find((item) => item.title === "All American");
+assert(
+  allAmericanOrder?.priceUsd === 17.19 &&
+    allAmericanOrder.sourceKind === "ordering" &&
+    allAmericanOrder.category.toLowerCase().includes("douglas ave") &&
+    allAmericanOrder.imageUrl?.includes("all-american.jpg") &&
+    !storeDishes.dishes.some((item) => /gift card/i.test(item.title)),
+  "an ordering-page price is the printed cents for that store, with its photo, and a gift card is skipped",
 );
 
 const pricedHtml = `<html><body>
@@ -276,6 +381,83 @@ assert(
     isStoredMenuPhotoUrl(storedPhoto) &&
     !storedPhoto.includes("secondstreet.kitchen"),
   "the dish photo is stored in the app and not hotlinked",
+);
+
+const manyItems = Array.from({ length: 9 }, (_, index) => ({
+  id: `menu-crawl-plate-${index}`,
+  title: `Plate ${index} special`,
+  category: "Plates",
+  draftPriceUsd: 10 + index / 100,
+  confirmedPriceUsd: 10 + index / 100,
+  source: "ai_crawl" as const,
+}));
+let manyStores = 0;
+const manyStored = await storeCrawledMenuPhotos({
+  restaurant: {
+    ...tacosKitchen,
+    menu: {
+      sourceUrl: "https://secondstreet.kitchen/menu",
+      crawledAt: "2026-10-24T20:00:00.000Z",
+      items: manyItems,
+    },
+  },
+  crawled: manyItems.map((item, index) => ({
+    title: item.title,
+    category: "Plates",
+    priceUsd: item.draftPriceUsd,
+    available: true,
+    imageUrl: `https://secondstreet.kitchen/photos/plate-${index}-special.jpg`,
+  })),
+  fetchImpl: async () =>
+    new Response(jpeg, { status: 200, headers: { "content-type": "image/jpeg" } }),
+  storePhoto: async () => {
+    manyStores += 1;
+    return `/site/hometown-home/media/products/plate-${manyStores}.jpg`;
+  },
+});
+assert(
+  manyStores === 9 &&
+    manyStored.menu?.items.every((item) => item.photoSource === "website"),
+  "every matched dish photo is stored, including past the old 8-photo cap",
+);
+
+const followed = await syncRestaurantMenuFromWebsite({
+  ops: {
+    ...starterDeliveryOps("Hometown Runner"),
+    restaurants: starterDeliveryOps("Hometown Runner").restaurants.map((row) =>
+      row.id === "rest-tacos"
+        ? {
+            ...row,
+            websiteUrl: "https://georgewebb.com/menu/current-menu",
+            websiteConnected: true,
+            lastCrawledAt: null,
+          }
+        : row,
+    ),
+  },
+  restaurantId: "rest-tacos",
+  force: true,
+  followLinks: true,
+  html: ordering,
+  fetchImpl: async (url) => {
+    if (String(url).includes("order.online")) {
+      return new Response(
+        `<html><script type="application/json">{"items":[{"name":"All-American Breakfast","price":11.29,"description":"Two eggs"}]}</script></html>`,
+        { status: 200, headers: { "content-type": "text/html" } },
+      );
+    }
+    return new Response("<html><h1>Breakfast</h1><h3>Toast</h3></html>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+  },
+});
+const fromOrdering = followed.crawled.find(
+  (item) => item.title === "All-American Breakfast",
+);
+assert(
+  fromOrdering?.priceUsd === 11.29 && fromOrdering.sourceKind === "ordering",
+  "a price that exists only on the ordering page is captured from that page",
 );
 
 const opened = openHomeTownMenus(starterDeliveryOps("Hometown Runner"));
