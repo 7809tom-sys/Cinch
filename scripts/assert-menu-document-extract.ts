@@ -5,9 +5,12 @@
  * Run: npx tsx scripts/assert-menu-document-extract.ts
  */
 import {
+  countDocumentExtraction,
   extractMenuDocument,
+  extractUploadedMenuPhoto,
   matchMenuImagesToDishes,
   planUploadedMenuPhotos,
+  readUploadedMenu,
 } from "../src/lib/menu-document-extract";
 import { extractEmbeddedPdfImages } from "../src/lib/pdf-text";
 import {
@@ -201,37 +204,129 @@ assert(
   "approve sells the printed 8.95 and still holds the dish that had no price",
 );
 
-const pdfCounts = {
-  source: "pdf" as const,
-  dishesFound: extracted.parsed.items.length,
-  pricesFound: extracted.parsed.items.filter((item) => item.price != null).length,
-  pricesCaptured: extracted.parsed.items.filter((item) => item.price != null).length,
-  imagesFound: extracted.images.length + unmatched.flagged.length,
-  imagesCaptured: extracted.matched.length,
-  imagesFlagged: unmatched.flagged.length,
-};
-const photoCounts = {
-  source: "photo" as const,
-  dishesFound: extracted.parsed.items.length,
-  pricesFound: extracted.parsed.items.filter((item) => item.price != null).length,
-  pricesCaptured: extracted.parsed.items.filter((item) => item.price != null).length,
-  imagesFound: 1,
-  imagesCaptured: photoPlan.matched.length,
-  imagesFlagged: photoPlan.flagged.length,
-};
+const pdfCounts = countDocumentExtraction({
+  ...extracted,
+  images: [...extracted.images, unmatched.flagged[0]!.image],
+  flagged: unmatched.flagged,
+});
 assert(
-  pdfCounts.dishesFound >= 2 &&
+  pdfCounts.dishesFound === 2 &&
     pdfCounts.pricesFound === 1 &&
     pdfCounts.pricesCaptured === 1 &&
     pdfCounts.imagesFound === 2 &&
     pdfCounts.imagesCaptured === 1 &&
-    pdfCounts.imagesFlagged === 1 &&
-    photoCounts.imagesCaptured === 0 &&
-    photoCounts.imagesFlagged === 1,
-  "pdf and photo counts record found versus captured",
+    pdfCounts.imagesFlagged === 1,
+  "pdf counts record the printed price and the embedded photo that did not match",
 );
+
+const visionMenu = {
+  items: [
+    {
+      category: "Breakfast",
+      item_name: "All-American Breakfast",
+      price: 8.95,
+      description: "Two eggs and hashbrowns.",
+    },
+    {
+      category: "Breakfast",
+      item_name: "Side of toast",
+      price: null,
+      description: "No price printed.",
+    },
+  ],
+};
+const photoRead = extractUploadedMenuPhoto(
+  {
+    attachments: [
+      {
+        name: "menu-photo.jpg",
+        type: "image/jpeg",
+        dataBase64: jpeg.toString("base64"),
+      },
+      {
+        name: "all-american-breakfast.jpg",
+        type: "image/jpeg",
+        dataBase64: jpeg.toString("base64"),
+      },
+    ],
+  },
+  visionMenu,
+);
+const photoPriced = photoRead.parsed.items.find(
+  (item) => item.item_name === "All-American Breakfast",
+);
+const photoPlain = photoRead.parsed.items.find((item) => item.item_name === "Side of toast");
+assert(
+  photoPriced?.price === 8.95 &&
+    photoPlain?.price == null &&
+    photoRead.matched.length === 1 &&
+    photoRead.matched[0]?.itemName === "All-American Breakfast" &&
+    photoRead.flagged.length === 1 &&
+    photoRead.flagged[0]?.reason === "menu-page",
+  "a menu photo keeps the vision price and the companion dish photo, and does not crop the page",
+);
+const photoCounts = countDocumentExtraction(photoRead);
+assert(
+  photoCounts.dishesFound === 2 &&
+    photoCounts.pricesFound === 1 &&
+    photoCounts.pricesCaptured === 1 &&
+    photoCounts.imagesFound === 2 &&
+    photoCounts.imagesCaptured === 1 &&
+    photoCounts.imagesFlagged === 1,
+  "photo counts record found versus captured",
+);
+
+const textWins = await readUploadedMenu(
+  {
+    kind: "pdf",
+    attachments: [
+      {
+        name: "breakfast-menu.pdf",
+        type: "application/pdf",
+        dataBase64: pdf.toString("base64"),
+      },
+    ],
+  },
+  {
+    items: [
+      {
+        category: "Breakfast",
+        item_name: "All-American Breakfast",
+        price: 9.5,
+        description: "guessed",
+      },
+    ],
+  },
+);
+assert(
+  textWins?.source === "pdf" &&
+    textWins.parsed.items.find((item) => item.item_name === "All-American Breakfast")
+      ?.price === 8.95 &&
+    textWins.matched[0]?.itemName === "All-American Breakfast",
+  "a PDF text layer keeps 8.95 and its embedded dish photo when vision disagrees",
+);
+
+const scanned = extractUploadedMenuPhoto(
+  { attachments: [] },
+  visionMenu,
+  [
+    { name: "AllAmericanBreakfast", mime: "image/jpeg", bytes: new Uint8Array(jpeg) },
+    { name: "page-scan", mime: "image/jpeg", bytes: new Uint8Array(jpeg) },
+  ],
+  "pdf",
+);
+assert(
+  scanned.source === "pdf" &&
+    scanned.matched.length === 1 &&
+    scanned.flagged.length === 1 &&
+    scanned.parsed.items.find((item) => item.item_name === "All-American Breakfast")
+      ?.price === 8.95,
+  "a scanned PDF with no text still keeps the vision price and a named embedded photo",
+);
+
 console.log("pdf extraction counts", pdfCounts);
-console.log("menu photo counts", photoCounts);
+console.log("uploaded photo counts", photoCounts);
+console.log("scanned pdf via vision counts", countDocumentExtraction(scanned));
 console.log("menu document extraction assertions passed");
 }
 

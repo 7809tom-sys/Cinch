@@ -1,3 +1,4 @@
+import type { MenuSourceCounts } from "./hometown-menu-crawler";
 import { extractEmbeddedPdfImages, extractPdfDocumentText } from "./pdf-text";
 import {
   parsePricedMenuText,
@@ -63,6 +64,26 @@ export function matchMenuImagesToDishes(
 
 function isPdf(file: { name: string; type?: string }): boolean {
   return /pdf/i.test(file.type ?? "") || /\.pdf$/i.test(file.name);
+}
+
+function shownItems(parsed: ParsedMenuJson): ParsedMenuItem[] {
+  return parsed.items.map((item) => ({
+    ...item,
+    price: readShownMenuPrice(item.price),
+  }));
+}
+
+/** Embedded JPEG/PNG XObjects from every PDF in the upload. */
+export function embeddedPdfImages(input: MenuUploadInput): ExtractedMenuImage[] {
+  const images: ExtractedMenuImage[] = [];
+  for (const file of input.attachments ?? []) {
+    if (!isPdf(file) || !file.dataBase64?.trim()) continue;
+    const buffer = Buffer.from(file.dataBase64.replace(/\s/g, ""), "base64");
+    for (const image of extractEmbeddedPdfImages(buffer)) {
+      images.push({ name: image.name, mime: image.mime, bytes: image.bytes });
+    }
+  }
+  return images;
 }
 
 function isImage(file: { name: string; type?: string }): boolean {
@@ -134,4 +155,69 @@ export function planUploadedMenuPhotos(
     }
   }
   return { matched, flagged };
+}
+
+/**
+ * A photographed menu has no separate image files inside it. Prices come
+ * only from a vision read of what is printed. A file named for one dish is
+ * that dish's photo. The picture of the whole menu is flagged, not cropped.
+ * Named images embedded in a scanned PDF are matched the same way.
+ */
+export function extractUploadedMenuPhoto(
+  input: MenuUploadInput,
+  parsed: ParsedMenuJson,
+  extraImages: ExtractedMenuImage[] = [],
+  source: "pdf" | "photo" = "photo",
+): MenuDocumentExtract {
+  const items = shownItems(parsed);
+  const files = planUploadedMenuPhotos(input, items);
+  const embedded = matchMenuImagesToDishes(items, extraImages);
+  return {
+    source,
+    parsed: { items },
+    images: [
+      ...files.matched.map((row) => row.image),
+      ...files.flagged.map((row) => row.image),
+      ...extraImages,
+    ],
+    matched: [...files.matched, ...embedded.matched],
+    flagged: [...files.flagged, ...embedded.flagged],
+  };
+}
+
+/**
+ * PDF text wins when the file has a text layer, so a model cannot replace
+ * a printed price. A photo, or a PDF with no readable dishes, uses the
+ * vision read and still keeps embedded or companion dish photos.
+ */
+export async function readUploadedMenu(
+  input: MenuUploadInput,
+  visionParsed: ParsedMenuJson | null,
+): Promise<MenuDocumentExtract | null> {
+  const fromPdf = await extractMenuDocument(input);
+  if (fromPdf && fromPdf.parsed.items.length > 0) return fromPdf;
+  if (!visionParsed || visionParsed.items.length === 0) return null;
+  const embedded = embeddedPdfImages(input);
+  const pdf = (input.attachments ?? []).some((file) => isPdf(file));
+  return extractUploadedMenuPhoto(
+    input,
+    visionParsed,
+    embedded,
+    pdf ? "pdf" : "photo",
+  );
+}
+
+export function countDocumentExtraction(
+  extracted: MenuDocumentExtract,
+): MenuSourceCounts {
+  const prices = extracted.parsed.items.filter((item) => item.price != null).length;
+  return {
+    source: extracted.source,
+    dishesFound: extracted.parsed.items.length,
+    pricesFound: prices,
+    pricesCaptured: prices,
+    imagesFound: extracted.images.length,
+    imagesCaptured: extracted.matched.length,
+    imagesFlagged: extracted.flagged.length,
+  };
 }
