@@ -125,7 +125,7 @@ export function KitchenWelcome({
         ) : null}
         <form
           className="mt-4 grid gap-3 sm:grid-cols-2"
-          key={`${restaurant.name}|${restaurant.address}|${restaurant.hours}|${restaurant.phone}|${restaurant.coverImageUrl}`}
+          key={`${restaurant.name}|${restaurant.address}|${restaurant.hours}|${restaurant.phone}|${restaurant.deliveryRadiusMinutes ?? ""}|${restaurant.coverImageUrl}`}
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -136,6 +136,7 @@ export function KitchenWelcome({
                   address: String(form.get("address") ?? ""),
                   hours: String(form.get("hours") ?? ""),
                   phone: String(form.get("phone") ?? ""),
+                  deliveryRadiusMinutes: Number(form.get("deliveryRadiusMinutes")) || null,
                 }),
               "Restaurant info saved.",
             );
@@ -173,6 +174,24 @@ export function KitchenWelcome({
               placeholder="Mon–Sat 11am–9pm"
               className={fieldClass}
             />
+          </label>
+          <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-radius">
+            Delivery area (minutes)
+            <input
+              id="kitchen-radius"
+              name="deliveryRadiusMinutes"
+              type="number"
+              min={5}
+              max={90}
+              step={1}
+              defaultValue={restaurant.deliveryRadiusMinutes ?? ""}
+              placeholder="20"
+              className={fieldClass}
+            />
+            <span className="mt-1 block text-xs font-normal text-muted">
+              Optional. Approximate drive time: a straight line at 25 mph, not a
+              driving route. Leave blank to keep the 2-mile area.
+            </span>
           </label>
           <label className="text-sm font-semibold text-brand-deep" htmlFor="kitchen-phone">
             Phone
