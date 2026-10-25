@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { HometownDriverPortal } from "@/components/delivery/driver-portal";
 import { getHometownRoleSession } from "@/lib/hometown-role";
 import { ensureDeliveryOpsInSeed } from "@/lib/seed-delivery-io";
+import { isMasterEmail } from "@/lib/master-auth";
 import { proofAndRepairSeedSite } from "@/lib/seed-site";
 import { getProject } from "@/lib/store";
 
@@ -64,7 +65,12 @@ export default async function SeedDrivePage({
             </Link>
           </nav>
         </header>
-        <HometownDriverPortal projectId={id} ops={ops} />
+        <HometownDriverPortal
+          projectId={id}
+          ops={ops}
+          viewerEmail={session.email}
+          viewerIsMaster={isMasterEmail(session.email)}
+        />
       </div>
     </main>
   );

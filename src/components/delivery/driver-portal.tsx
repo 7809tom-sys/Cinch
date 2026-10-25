@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { TestingBanner, TestingBadge } from "@/components/delivery/testing-banner";
 import { HometownCornerLabel } from "@/components/delivery/hometown-corner";
+import { DriverDocumentDesk } from "@/components/delivery/driver-documents";
 import { hometownSiteTesting, recordIsTest } from "@/lib/hometown-testing";
 import type {
   DeliveryOps,
@@ -61,9 +62,13 @@ import type { MenuUploadInput } from "@/lib/seed-delivery";
 export function HometownDriverPortal({
   projectId,
   ops,
+  viewerEmail = "",
+  viewerIsMaster = false,
 }: {
   projectId: string;
   ops: DeliveryOps;
+  viewerEmail?: string;
+  viewerIsMaster?: boolean;
 }) {
   const [driverId, setDriverId] = useState(
     ops.drivers.find((row) => row.status === "approved")?.id ??
@@ -162,6 +167,15 @@ export function HometownDriverPortal({
     <div className="space-y-6">
       <HometownCornerLabel />
       {hometownSiteTesting(ops) ? <TestingBanner /> : null}
+      {driver &&
+      (viewerIsMaster ||
+        (driver.email ?? "").toLowerCase() === viewerEmail.trim().toLowerCase()) ? (
+        <DriverDocumentDesk
+          projectId={projectId}
+          driverId={driver.id}
+          documents={driver.documents}
+        />
+      ) : null}
       <section className="rounded-xl border border-brand/15 bg-brand-deep p-5 text-foam">
         <p className="text-xs font-bold tracking-[0.14em] text-accent uppercase">
           Driver portal
