@@ -14,6 +14,10 @@ import {
   startKitchenPayoutsAction,
   uploadKitchenCoverAction,
 } from "@/app/site/[id]/merchant/actions";
+import {
+  kitchenProfileGapMessage,
+  kitchenProfileGaps,
+} from "@/lib/kitchen-profile-gaps";
 import { collectPaperMenuUpload } from "@/lib/menu-upload-files";
 import type { DeliveryRestaurant } from "@/lib/seed-delivery";
 
@@ -393,6 +397,11 @@ export function KitchenWelcome({
           Approve sends the confirmed plates live on your kitchen. Until then
           diners don&apos;t see this restaurant.
         </p>
+        {kitchenProfileGaps(restaurant).length > 0 ? (
+          <p className="mt-3 text-sm font-semibold text-amber-800">
+            {kitchenProfileGapMessage(kitchenProfileGaps(restaurant))}
+          </p>
+        ) : null}
         {restaurant.menu?.parseNote ? (
           <p className="mt-3 text-sm text-muted">{restaurant.menu.parseNote}</p>
         ) : null}
@@ -470,9 +479,19 @@ export function KitchenWelcome({
         >
           Connect payouts
         </button>
+        {kitchenProfileGaps(restaurant).length > 0 ? (
+          <p className="mt-3 text-sm font-semibold text-amber-800">
+            {kitchenProfileGapMessage(kitchenProfileGaps(restaurant))}
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            Name, address, and hours are saved. Approving a priced plate can
+            take this kitchen live.
+          </p>
+        )}
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || kitchenProfileGaps(restaurant).length > 0}
           onClick={() =>
             run(
               () => finishKitchenWelcomeAction(projectId, restaurant.id),
