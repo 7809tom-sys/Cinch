@@ -53,7 +53,13 @@ async function commit(
 export async function saveKitchenProfileAction(
   projectId: string,
   restaurantId: string,
-  input: { name: string; address: string; hours?: string; phone?: string },
+  input: {
+    name: string;
+    address: string;
+    hours?: string;
+    phone?: string;
+    deliveryRadiusMinutes?: number | null;
+  },
 ) {
   const name = input.name.trim();
   const address = input.address.trim();
@@ -69,7 +75,13 @@ export async function saveKitchenProfileAction(
   if (!loaded.ok) return loaded;
   const saved = await commit(
     projectId,
-    saveKitchenProfile(loaded.ops, restaurantId, { name, address, hours, phone }),
+    saveKitchenProfile(loaded.ops, restaurantId, {
+      name,
+      address,
+      hours,
+      phone,
+      deliveryRadiusMinutes: input.deliveryRadiusMinutes,
+    }),
     "Kitchen saved its name, address, hours, and phone",
   );
   if (!saved.ok) return saved;

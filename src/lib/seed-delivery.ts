@@ -175,6 +175,13 @@ export const SCOUT_MIN_DELIVERIES_PER_MONTH = 1;
 export const MERCHANT_DELIVERY_RADIUS_MIN_MILES = 1.5;
 export const MERCHANT_DELIVERY_RADIUS_MAX_MILES = 2.5;
 export const MERCHANT_DELIVERY_RADIUS_MILES = 2;
+/**
+ * When a kitchen sets a drive-time radius, Hometown converts minutes to
+ * miles as a straight line at this speed. It is not a routing service.
+ */
+export const DELIVERY_RADIUS_APPROX_MPH = 25;
+export const DELIVERY_RADIUS_APPROX_LABEL =
+  "Approximate: straight-line distance at 25 mph, not a driving route.";
 /** Kitchen arrival geofence — stage the bag when the driver enters. */
 export const KITCHEN_ARRIVAL_GEOFENCE_METERS = 300;
 /** Drop-off verification — Complete Delivery is blocked outside this. */
@@ -607,6 +614,11 @@ export type DeliveryRestaurant = {
   ownerEmail?: string | null;
   /** Street address the kitchen typed on the welcome page. */
   address?: string;
+  /**
+   * Drive-time delivery area in minutes. Unset keeps the fixed 2-mile rule.
+   * Converted with DELIVERY_RADIUS_APPROX_MPH, not a live route.
+   */
+  deliveryRadiusMinutes?: number;
   /** False until this account leaves the new-kitchen welcome. */
   onboardingComplete?: boolean;
   /** Restaurant Stripe Connect — food net lands here. */
@@ -1028,15 +1040,33 @@ export type DropoffCompliance =
     }
   | { ok: false; error: string };
 
-/** One-time GPS pin, or a ZIP centroid, inside the fixed street radius. */
+/** Minutes the kitchen chose, as straight-line miles at 25 mph. Null keeps the 2-mile rule. */
+export function deliveryReachMiles(restaurant: {
+  deliveryRadiusMinutes?: number | null;
+}): { miles: number; approximate: boolean; minutes?: number } {
+  const minutes = restaurant.deliveryRadiusMinutes;
+  if (typeof minutes === "number" && Number.isFinite(minutes) && minutes > 0) {
+    return {
+      miles: (minutes * DELIVERY_RADIUS_APPROX_MPH) / 60,
+      approximate: true,
+      minutes,
+    };
+  }
+  return { miles: MERCHANT_DELIVERY_RADIUS_MILES, approximate: false };
+}
+
+/** One-time GPS pin, or a ZIP centroid, inside the kitchen's delivery area. */
 export function dropoffCompliance(input: {
   kitchen: GeoPoint;
   zip?: string | null;
   lat?: number | null;
   lng?: number | null;
   radiusMiles?: number;
+  /** False when the kitchen set a drive time. The 1.5–2.5 mile clamp stays on for the default. */
+  clampRadius?: boolean;
 }): DropoffCompliance {
   const radius = input.radiusMiles ?? MERCHANT_DELIVERY_RADIUS_MILES;
+  const clamp = input.clampRadius !== false;
   const zip = normalizeZip(input.zip ?? "");
   const hasGps =
     typeof input.lat === "number" &&
@@ -1046,7 +1076,7 @@ export function dropoffCompliance(input: {
   if (hasGps) {
     const point = { lat: input.lat as number, lng: input.lng as number };
     const miles = metersToMiles(haversineMeters(input.kitchen, point));
-    if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+    if (!withinDeliveryRadius(input.kitchen, point, radius, clamp)) {
       return { ok: false, error: DINER_DROPOFF_UNREACHABLE };
     }
     return {
@@ -1073,7 +1103,7 @@ export function dropoffCompliance(input: {
   }
   const point = { lat: centroid.lat, lng: centroid.lng };
   const miles = metersToMiles(haversineMeters(input.kitchen, point));
-  if (!dropoffWithinMerchantRadius(input.kitchen, point, radius)) {
+  if (!withinDeliveryRadius(input.kitchen, point, radius, clamp)) {
     return {
       ok: false,
       error: DINER_DROPOFF_UNREACHABLE,
@@ -1087,6 +1117,16 @@ export function dropoffCompliance(input: {
     feeUsd: tripChargeUsd(miles),
     zip,
   };
+}
+
+function withinDeliveryRadius(
+  merchant: GeoPoint,
+  dropoff: GeoPoint,
+  radiusMiles: number,
+  clamp: boolean,
+): boolean {
+  if (!clamp) return metersToMiles(haversineMeters(merchant, dropoff)) <= radiusMiles;
+  return dropoffWithinMerchantRadius(merchant, dropoff, radiusMiles);
 }
 
 /** FIXED 2-mile (1.5–2.5 allowed) merchant radius. Never expands. */
@@ -2105,6 +2145,12 @@ export function normalizeDeliveryRestaurant(
     ownerEmail,
     address: typeof row.address === "string" ? row.address.trim() : "",
     hours: typeof row.hours === "string" ? row.hours.trim() : "",
+    deliveryRadiusMinutes:
+      typeof row.deliveryRadiusMinutes === "number" &&
+      Number.isFinite(row.deliveryRadiusMinutes) &&
+      row.deliveryRadiusMinutes > 0
+        ? Math.round(row.deliveryRadiusMinutes)
+        : undefined,
     phone: typeof row.phone === "string" ? row.phone.trim() : "",
     coverImageUrl:
       typeof row.coverImageUrl === "string" &&
@@ -3790,6 +3836,8 @@ export function recordDeliveryOrder(
           zip: input.dropoffZip,
           lat: input.dropoffLat,
           lng: input.dropoffLng,
+          radiusMiles: deliveryReachMiles(restaurant).miles,
+          clampRadius: !deliveryReachMiles(restaurant).approximate,
         })
       : null;
   if (compliance && !compliance.ok) return ops;
