@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { OrderLiveTracking } from "@/components/delivery/order-live-tracking";
 import type { DinerOrderTrack } from "@/lib/seed-delivery";
 import {
   flagDinerIssueAction,
@@ -38,6 +39,10 @@ export function HometownDinerOrderDesk({
         row.orderId.toLowerCase().includes(needle),
     );
   }, [lookup, tracks]);
+  const liveOrder =
+    visible.find(
+      (row) => row.fulfillment === "delivery" && row.step !== "delivered",
+    ) ?? null;
 
   function run(
     fn: () => Promise<{ ok: true } | { ok: false; error: string }>,
@@ -76,6 +81,7 @@ export function HometownDinerOrderDesk({
           className={fieldClass}
         />
       </label>
+      <OrderLiveTracking projectId={projectId} orderId={liveOrder?.orderId ?? null} />
       {visible.length === 0 ? (
         <p className="rounded-2xl bg-white px-4 py-5 text-sm text-[#5c564f]">
           No bag matches that name yet.

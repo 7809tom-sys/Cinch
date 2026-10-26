@@ -353,3 +353,79 @@ export async function checkDurableStoreHealth(): Promise<DurableStoreHealth> {
     };
   }
 }
+
+type ExpiringEnvelope<T> = { expiresAt: number; value: T };
+
+function expiringPath(key: string): string {
+  const safe = key.replace(/[^a-zA-Z0-9._:-]/g, "_");
+  return path.join(dataDir(), "expiring", `${safe}.json`);
+}
+
+/**
+ * Short-lived JSON. Redis uses SET EX. The file fallback stores an expiry
+ * and treats a past expiresAt as missing. `now` is injectable for tests.
+ */
+export async function readExpiringJson<T>(
+  key: string,
+  now = Date.now(),
+): Promise<T | null> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const envelope = await redis.get<ExpiringEnvelope<T>>(KEY_PREFIX + key);
+      if (!envelope || typeof envelope.expiresAt !== "number") return null;
+      if (envelope.expiresAt <= now) return null;
+      return envelope.value ?? null;
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const raw = await fs.readFile(expiringPath(key), "utf8");
+    const envelope = JSON.parse(raw) as ExpiringEnvelope<T>;
+    if (!envelope || typeof envelope.expiresAt !== "number") return null;
+    if (envelope.expiresAt <= now) return null;
+    return envelope.value ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeExpiringJson<T>(
+  key: string,
+  value: T,
+  ttlSeconds: number,
+  now = Date.now(),
+): Promise<void> {
+  const ttl = Math.max(1, Math.floor(ttlSeconds));
+  const envelope: ExpiringEnvelope<T> = {
+    expiresAt: now + ttl * 1000,
+    value,
+  };
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.set(KEY_PREFIX + key, envelope, { ex: ttl });
+      return;
+    } catch (error) {
+      console.error("[kv-store] expiring Redis write failed", {
+        key,
+        message: error instanceof Error ? error.message : "Redis write failed.",
+      });
+    }
+  }
+  await fs.mkdir(path.dirname(expiringPath(key)), { recursive: true });
+  await fs.writeFile(expiringPath(key), JSON.stringify(envelope), "utf8");
+}
+
+export async function deleteExpiringJson(key: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.del(KEY_PREFIX + key);
+    } catch {
+      // File fallback still clears a local copy.
+    }
+  }
+  await fs.unlink(expiringPath(key)).catch(() => undefined);
+}

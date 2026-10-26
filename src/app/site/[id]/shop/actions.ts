@@ -13,6 +13,8 @@ import {
   HOMETOWN_HOME_TOWN_ID,
   ensureHometownHomeTown,
 } from "@/lib/hometown-home-town";
+import { rememberOrderViewers } from "@/lib/hometown-driver-location";
+import { getHometownRoleSession } from "@/lib/hometown-role";
 import { getProject } from "@/lib/store";
 
 function optionalCoord(value: FormDataEntryValue | null): number | undefined {
@@ -280,6 +282,12 @@ export async function placeSeedShopOrderAction(
         nextOps,
         "Wrote Hometown Runner ledger from a customer order",
       );
+      if (!hometownPickup) {
+        const session = await getHometownRoleSession(projectId);
+        const emails = [contact];
+        if (session?.role === "customer") emails.push(session.email);
+        await rememberOrderViewers(projectId, orderId, emails);
+      }
       revalidatePath(`/site/${projectId}/merchant`);
       revalidatePath(`/site/${projectId}/drive`);
       revalidatePath(`/site/${projectId}/admin`);
