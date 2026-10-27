@@ -24,6 +24,15 @@ import {
   seedIndustryKey,
 } from "@/lib/seed-site-copy";
 import { getHometownRoleSession } from "@/lib/hometown-role";
+import {
+  DESIGN_REPORT_DOC_PATH,
+  MIN_DESIGN_REPORT_SITES,
+  seedNeedsDesignReport,
+} from "@/lib/seed-design-report";
+import {
+  designReportProblemInBundle,
+  getSourceBundle,
+} from "@/lib/seed-source";
 import { getProject } from "@/lib/store";
 import { SiteOwnerChrome } from "./owner-chrome";
 
@@ -67,6 +76,22 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
   } catch {
     /* Preview still renders if repair or competitor crawl fails. */
   }
+  if (seedNeedsDesignReport(project) && !project.sitePublishedAt) {
+    const bundle = await getSourceBundle(project.id);
+    const designed = bundle?.files.some((file) => file.path === "app/page.tsx");
+    const held = designed ? null : designReportProblemInBundle(bundle);
+    if (held) {
+      return (
+        <DesignReportHolding
+          brand={customerFacingBrandName(project.name)}
+          industry={seedIndustryKey(project.name, project.brief)}
+          reason={held}
+          portalHref={`/portal/${project.id}`}
+        />
+      );
+    }
+  }
+
   const preview = await buildSeedSitePreview(project);
   const showShop = seedOffersCustomerShop(project.name, project.brief);
   const restaurantOrder = seedShopUsesRestaurantFulfillment(
@@ -450,5 +475,45 @@ export default async function PublicSeedSitePage({ params }: PageProps) {
         />
       ) : null}
     </>
+  );
+}
+
+function DesignReportHolding({
+  brand,
+  industry,
+  reason,
+  portalHref,
+}: {
+  brand: string;
+  industry: string;
+  reason: string;
+  portalHref: string;
+}) {
+  return (
+    <main className="flex min-h-[100svh] items-center justify-center bg-[#fffaf2] px-5 py-16 text-brand-deep">
+      <div className="w-full max-w-xl">
+        <p className="text-sm font-bold tracking-[0.18em] text-accent-deep">
+          RESEARCH BEFORE DESIGN
+        </p>
+        <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl font-extrabold leading-tight sm:text-4xl">
+          {brand} is not designed yet.
+        </h1>
+        <p className="mt-4 text-base leading-relaxed text-muted">
+          DeepSeek studies {MIN_DESIGN_REPORT_SITES} {industry} websites first
+          and writes how this site should be made from the best feature of each.
+          Design and code start after that report.
+        </p>
+        <p className="mt-4 rounded-md border border-brand-deep/15 bg-foam px-4 py-3 text-sm leading-relaxed">
+          {reason}
+        </p>
+        <p className="mt-6 text-sm text-muted">
+          Owners can follow the report in{" "}
+          <a className="font-bold text-brand-deep underline" href={portalHref}>
+            the portal
+          </a>{" "}
+          under Source → {DESIGN_REPORT_DOC_PATH}.
+        </p>
+      </div>
+    </main>
   );
 }

@@ -20,6 +20,8 @@ import {
   applyComparableOverlay,
   applyComparableOverlayToShop,
   comparableResearchMarkdown,
+  fetchedCompetitorHosts,
+  MIN_COMPARABLE_CRAWL,
   parseComparableResearch,
   researchComparables,
   researchMeetsHardRule,
@@ -27,6 +29,20 @@ import {
   taskIsComparableResearch,
   type ComparableResearch,
 } from "./seed-comparable-research";
+import {
+  buildDeepSeekDesignReport,
+  DEEPSEEK_DESIGN_REPORT_RULE,
+  DESIGN_REPORT_DOC_PATH,
+  DESIGN_REPORT_PATH,
+  designReportJson,
+  designReportMarkdown,
+  designReportProblem,
+  parseDesignReport,
+  pathIsSiteDesignOrCode,
+  seedNeedsDesignReport,
+  taskIsDesignReport,
+  type DeepSeekDesignReport,
+} from "./seed-design-report";
 import {
   SEED_EDIT_MUST_REACT_RULE,
   taskIsReactToEditedBrief,
@@ -256,6 +272,22 @@ export async function upsertSourceFile(input: {
   const store = await ensureSource();
   const bundle = getOrCreateBundle(store, input.projectId);
   const stamp = now();
+
+  const held = await designReportHoldsWrite(input, bundle);
+  if (held) {
+    bundle.revisions.unshift({
+      id: randomUUID(),
+      at: stamp,
+      path: input.path,
+      message: `Held until DeepSeek reports on 50 genre sites — ${held}`,
+      agentName: input.agentName ?? null,
+    });
+    bundle.revisions = bundle.revisions.slice(0, 80);
+    bundle.updatedAt = stamp;
+    await writeSource(store);
+    return bundle;
+  }
+
   const existing = bundle.files.find((file) => file.path === input.path);
 
   if (existing) {
@@ -287,6 +319,44 @@ export async function upsertSourceFile(input: {
   bundle.updatedAt = stamp;
   await writeSource(store);
   return bundle;
+}
+
+function bundleFileContent(
+  bundle: SourceBundle | null | undefined,
+  path: string,
+): string {
+  return bundle?.files.find((file) => file.path === path)?.content ?? "";
+}
+
+/** Why the DeepSeek design report does not pass yet, or null when it does. */
+export function designReportProblemInBundle(
+  bundle: SourceBundle | null | undefined,
+): string | null {
+  return designReportProblem(
+    parseDesignReport(bundleFileContent(bundle, DESIGN_REPORT_PATH)),
+    parseComparableResearch(
+      bundleFileContent(bundle, "content/comparable-research.json"),
+    ),
+  );
+}
+
+/**
+ * HARD RULE gate on every source write. An unpublished website Seed gets no
+ * design or code until the DeepSeek report passes. Owner uploads, docs,
+ * research, and ops data still save.
+ */
+async function designReportHoldsWrite(
+  input: { projectId: string; path: string; agentName?: string | null },
+  bundle: SourceBundle,
+): Promise<string | null> {
+  if (!pathIsSiteDesignOrCode(input.path)) return null;
+  if (input.agentName === "Owner") return null;
+  const { getProject } = await import("./store");
+  const project = await getProject(input.projectId);
+  if (!project || !seedNeedsDesignReport(project) || project.sitePublishedAt) {
+    return null;
+  }
+  return designReportProblemInBundle(bundle);
 }
 
 /** Seed starter files when a project is created. */
@@ -1145,6 +1215,94 @@ export async function ensureComparableResearchInSeed(input: {
   return research;
 }
 
+const designReportsInFlight = new Map<
+  string,
+  Promise<{ ok: true; report: DeepSeekDesignReport } | { ok: false; error: string }>
+>();
+
+/**
+ * HARD RULE: crawl the genre, then have DeepSeek review 50 sites that
+ * returned a page and write how this website should be made. Reuses a
+ * passing report; a new crawl needs a new report.
+ */
+export async function ensureDeepSeekDesignReportInSeed(input: {
+  projectId: string;
+  projectName: string;
+  brief: string;
+  referenceUrl?: string | null;
+  agentName?: string | null;
+}): Promise<
+  { ok: true; report: DeepSeekDesignReport } | { ok: false; error: string }
+> {
+  const running = designReportsInFlight.get(input.projectId);
+  if (running) return running;
+  const job = (async () => {
+    let research = await ensureComparableResearchInSeed(input);
+    if (fetchedCompetitorHosts(research).length < MIN_COMPARABLE_CRAWL) {
+      research = await researchComparables({
+        projectName: input.projectName,
+        brief: input.brief,
+        referenceUrl: input.referenceUrl,
+      });
+      await writeComparableResearchIntoSeed({
+        projectId: input.projectId,
+        projectName: input.projectName,
+        brief: input.brief,
+        research,
+        agent: "Conductor",
+      });
+    }
+
+    const bundle = await getSourceBundle(input.projectId);
+    const existing = parseDesignReport(
+      bundleFileContent(bundle, DESIGN_REPORT_PATH),
+    );
+    if (existing && !designReportProblem(existing, research)) {
+      return { ok: true as const, report: existing };
+    }
+
+    const built = await buildDeepSeekDesignReport({
+      projectName: input.projectName,
+      brief: input.brief,
+      research,
+    });
+    if (!built.ok) {
+      await upsertSourceFile({
+        projectId: input.projectId,
+        path: DESIGN_REPORT_DOC_PATH,
+        content: `# How this website should be made — DeepSeek report\n\n## HARD RULE\n\n${DEEPSEEK_DESIGN_REPORT_RULE.summary}\n\n## Status: blocked\n\n${built.error}\n\nNo design or website code is written until this report passes.\n`,
+        status: "draft",
+        message: "DeepSeek design report blocked — design and code held",
+        agentName: input.agentName ?? "Conductor",
+      });
+      return built;
+    }
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: DESIGN_REPORT_PATH,
+      content: designReportJson(built.report),
+      status: "ready",
+      message: `DeepSeek reviewed ${built.report.sitesReviewed.length} genre sites`,
+      agentName: input.agentName ?? "Conductor",
+    });
+    await upsertSourceFile({
+      projectId: input.projectId,
+      path: DESIGN_REPORT_DOC_PATH,
+      content: designReportMarkdown(built.report),
+      status: "ready",
+      message: "DeepSeek wrote how this website should be made",
+      agentName: input.agentName ?? "Conductor",
+    });
+    return built;
+  })();
+  designReportsInFlight.set(input.projectId, job);
+  try {
+    return await job;
+  } finally {
+    designReportsInFlight.delete(input.projectId);
+  }
+}
+
 /**
  * Map a finished / in-progress task onto concrete source edits.
  *
@@ -1227,6 +1385,22 @@ ${brief}
       brief,
       research,
       agent,
+    });
+    return;
+  }
+
+  // HARD RULE: DeepSeek reports on 50 genre sites before design or code.
+  if (taskIsDesignReport(input.taskTitle)) {
+    if (input.phase !== "started") return;
+    const identity = await projectIdentityFromSource(input.projectId);
+    const { getProject } = await import("./store");
+    const project = await getProject(input.projectId);
+    await ensureDeepSeekDesignReportInSeed({
+      projectId: input.projectId,
+      projectName: project?.name || identity.name || "Seed site",
+      brief: project?.brief || identity.brief || input.taskDetail,
+      referenceUrl: project?.referenceUrl,
+      agentName: agent,
     });
     return;
   }
