@@ -20,7 +20,17 @@ import {
   publishDevelopedSeedToMarketplace,
   refreshDevelopedSeedPreview,
 } from "./site-catalog";
-import { applyTaskToSource } from "./seed-source";
+import {
+  applyTaskToSource,
+  designReportProblemInBundle,
+  ensureDeepSeekDesignReportInSeed,
+  getSourceBundle,
+} from "./seed-source";
+import {
+  DEEPSEEK_DESIGN_REPORT_RULE,
+  seedNeedsDesignReport,
+  taskRunsBeforeDesignReport,
+} from "./seed-design-report";
 import {
   JUST_PUTZIT_NOT_ON_SEED,
   isJustPutzItSeedProject,
@@ -312,6 +322,40 @@ async function sentryAllowsSignOff(
   return false;
 }
 
+/**
+ * HARD RULE: no design or website-code task starts or signs off until
+ * DeepSeek has reported on 50 genre sites. Tries to write the report first.
+ */
+async function designReportAllowsTask(
+  project: SeedProject,
+  task: ProjectTask,
+): Promise<boolean> {
+  if (!seedNeedsDesignReport(project)) return true;
+  if (taskRunsBeforeDesignReport(task.title)) return true;
+  if (!designReportProblemInBundle(await getSourceBundle(project.id))) {
+    return true;
+  }
+  const result = await ensureDeepSeekDesignReportInSeed({
+    projectId: project.id,
+    projectName: project.name,
+    brief: project.brief,
+    referenceUrl: project.referenceUrl,
+  });
+  if (result.ok) {
+    pushActivity(
+      project,
+      `DeepSeek reviewed ${result.report.sitesReviewed.length} ${result.report.industry} websites and wrote how this site should be made (docs/design-report.md). Design and code can start.`,
+      getProjectManager().id,
+    );
+    return true;
+  }
+  const message = `${getProjectManager().name} held “${task.title}”. ${DEEPSEEK_DESIGN_REPORT_RULE.summary} ${result.error}`;
+  if (project.activity[0]?.message !== message) {
+    pushActivity(project, message, getProjectManager().id);
+  }
+  return false;
+}
+
 export async function advanceAssignedWork(
   projectId: string,
 ): Promise<SeedProject> {
@@ -320,6 +364,7 @@ export async function advanceAssignedWork(
 
   const assigned = project.tasks.filter((task) => task.status === "assigned");
   for (const task of assigned) {
+    if (!(await designReportAllowsTask(project, task))) continue;
     const agent = task.assigneeId ? getAgent(task.assigneeId) : null;
     task.status = "in_progress";
     task.updatedAt = now();
@@ -347,6 +392,7 @@ export async function advanceAssignedWork(
   );
   for (const task of inProgress) {
     const agent = task.assigneeId ? getAgent(task.assigneeId) : null;
+    if (!(await designReportAllowsTask(project, task))) continue;
     if (!(await sentryAllowsSignOff(project, task))) continue;
     task.status = "done";
     task.updatedAt = now();
@@ -885,7 +931,10 @@ export async function tickProjectWork(
     const agent = inProgress.assigneeId
       ? getAgent(inProgress.assigneeId)
       : null;
-    if (!(await sentryAllowsSignOff(project, inProgress))) {
+    if (
+      !(await designReportAllowsTask(project, inProgress)) ||
+      !(await sentryAllowsSignOff(project, inProgress))
+    ) {
       await saveProject(project);
       return finishResult(project, false, inProgress.title, null);
     }
@@ -979,6 +1028,10 @@ export async function tickProjectWork(
   }
 
   if (assigned) {
+    if (!(await designReportAllowsTask(project, assigned))) {
+      await saveProject(project);
+      return finishResult(project, false, assigned.title, null);
+    }
     const agent = assigned.assigneeId ? getAgent(assigned.assigneeId) : null;
     const startedTitle = assigned.title;
     assigned.status = "in_progress";

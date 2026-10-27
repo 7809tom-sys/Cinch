@@ -61,6 +61,8 @@ export type AiGenerateInput = {
   systemPrompt: string;
   /** The admin's plain-English instruction plus any supporting context. */
   userPrompt: string;
+  maxTokens?: number;
+  temperature?: number;
 };
 
 export type AiGenerateResult =
@@ -175,7 +177,8 @@ async function callDeepSeek(apiKey: string, input: AiGenerateInput): Promise<str
     },
     body: JSON.stringify({
       model,
-      temperature: 0.6,
+      temperature: input.temperature ?? 0.6,
+      ...(input.maxTokens ? { max_tokens: input.maxTokens } : {}),
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: input.systemPrompt },
@@ -238,4 +241,28 @@ export async function generateWithAi(
     ok: false,
     error: errors[0] || "AI generation failed.",
   };
+}
+
+/** DeepSeek only — no failover to another provider. */
+export async function generateWithDeepSeek(
+  input: AiGenerateInput,
+): Promise<AiGenerateResult> {
+  const storedKeys = await loadStoredProviderKeys();
+  const apiKey = providerKey("deepseek", storedKeys);
+  if (!apiKey) {
+    return {
+      ok: false,
+      error:
+        "DeepSeek is not configured. Add DEEPSEEK_API_KEY in env or Seed settings.",
+    };
+  }
+  try {
+    const text = await callDeepSeek(apiKey, input);
+    return { ok: true, text, provider: "deepseek", model: DEFAULT_MODELS.deepseek };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "DeepSeek failed.",
+    };
+  }
 }

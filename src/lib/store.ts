@@ -35,6 +35,11 @@ import {
 import { readJsonStore, writeJsonStore } from "./kv-store";
 import { planPrepBuildTasks } from "./seed-prep";
 import {
+  DEEPSEEK_DESIGN_REPORT_RULE,
+  DEEPSEEK_DESIGN_REPORT_TITLE,
+  taskIsDesignReport,
+} from "./seed-design-report";
+import {
   applySeedIdentityEdit,
   bootstrapSourceTree,
   deleteSourceBundle,
@@ -1023,6 +1028,12 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
       minSkillLevel: 3,
     },
     {
+      title: DEEPSEEK_DESIGN_REPORT_TITLE,
+      detail: `${DEEPSEEK_DESIGN_REPORT_RULE.summary} DeepSeek reads the 50 highest-scoring sites in this genre that returned a page, names the best feature of each, and writes the blueprint — layout, hero, navigation, CTA, trust, conversion path, phone/tablet/app, SEO/AIO, visual style — to docs/design-report.md. Every design and code task after this one follows that report.`,
+      requiredSkills: ["research"],
+      minSkillLevel: 3,
+    },
+    {
       title: "Adopt existing library modulars",
       detail: modularsFirst,
       requiredSkills: ["architecture", "research"],
@@ -1075,7 +1086,9 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   ];
 
   if (briefAsksForWholeSiteBuild(project.brief)) {
-    backlog.unshift({
+    const afterReport =
+      backlog.findIndex((item) => taskIsDesignReport(item.title)) + 1;
+    backlog.splice(afterReport, 0, {
       title: "Build the whole site",
       detail: `Conductor assigned a full-site / multi-step build. Prefer modular library reuse; send the remaining assembly to Manus when that key is configured. ${modularsFirst}`,
       requiredSkills: ["architecture", "research"],
@@ -1084,7 +1097,7 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   }
 
   if (seedNeedsBusinessAdmin(project.brief) && !briefAsksForEcommerce(project.brief)) {
-    backlog.splice(6, 0, {
+    backlog.splice(7, 0, {
       title: "Build business admin panel",
       detail: `Grow the Seed’s own admin: calendar/schedule and education tips. Reuse any admin/schedule modulars first; custom-build only what the library lacks. ${modularsFirst}`,
       requiredSkills: ["frontend", "ui"],
@@ -1093,13 +1106,13 @@ export async function planBuild(projectId: string): Promise<SeedProject> {
   }
 
   if (briefAsksForEcommerce(project.brief)) {
-    backlog.splice(6, 0, {
+    backlog.splice(7, 0, {
       title: "Build Seed shop e-commerce",
       detail: `HARD RULE: the Seed grows e-commerce — not a separate Cinch platform checkout. Survey shop/cart modulars first, then custom-build product catalog + cart into Seed source (content/shop.copy.json, app/shop/page.tsx). ${modularsFirst}`,
       requiredSkills: ["frontend", "ui"],
       minSkillLevel: 3,
     });
-    backlog.splice(7, 0, {
+    backlog.splice(8, 0, {
       title: "Grow commerce ops into Seed admin",
       detail: `HARD RULE: inventory, UPS parcel shipping, LTL freight, and sales tax live in the Seed business admin (content/admin.copy.json) — not a Cinch platform module. HARD RULE: follow THIS brief — never rename another Seed’s pages/catalog. HARD RULE: adding products is scan-first — barcode/UPC pulls manufacturer title, description, and images; the owner only enters sell price and on-hand qty. Starter catalog is empty when the owner stocks items. Wire stock levels, ship-from ZIP, parcel vs LTL modes, nexus tax, and open orders into /admin. Reuse modulars first. ${modularsFirst}`,
       requiredSkills: ["frontend", "ui", "backend"],

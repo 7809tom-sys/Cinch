@@ -21,6 +21,7 @@ import { WatchPingLine } from "@/components/watch-ping-line";
 import { GROWTH_AXES, SEED_GROWTH_TAGLINE } from "@/lib/seed-growth";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 type PageProps = {
   params: Promise<{ id: string }>;

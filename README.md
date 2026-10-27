@@ -70,6 +70,10 @@ Lane defaults:
 
 See Admin → Agents & providers for the live sample routes (cheap vs expensive). Run `npm run assert:conductor-routing` to verify the policy.
 
+### Research before design (hard rule)
+
+No design or website code is written for a website Seed until **DeepSeek** reviews 50 websites in the same genre and writes how the site should be made from the best feature of each. The report is saved to `docs/design-report.md` in the Seed source. This rule needs `DEEPSEEK_API_KEY`, and there is no failover to another provider. Without the key, new website Seeds stay on a "Research before design" page. See `docs/seed-deepseek-design-report.md`. Guard: `npm run assert:seed-design-report`.
+
 ### Connect API — link an existing website to its Seed
 
 **Connecting is not building.** Example: **cinchseed.com → justputzit.com**.
